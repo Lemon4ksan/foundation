@@ -261,3 +261,22 @@ func FilterInPlace[T any](slice []T, fn func(T) bool) []T {
 
 	return slice[:n]
 }
+
+// Filter returns a new slice containing only elements that satisfy the predicate fn.
+//
+// If the input slice is nil or empty, Filter returns nil.
+func Filter[T any](slice []T, fn func(T) bool) []T {
+	if len(slice) == 0 || fn == nil {
+		return nil
+	}
+
+	var res []T
+	for _, v := range slice {
+		if fn(v) {
+			res = append(res, v)
+		}
+	}
+
+	return res
+}
+

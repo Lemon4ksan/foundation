@@ -29,6 +29,18 @@ func TestMap(t *testing.T) {
 	}
 }
 
+func TestFilter(t *testing.T) {
+	if Filter[int](nil, func(x int) bool { return true }) != nil {
+		t.Fatal("expected nil for nil slice")
+	}
+
+	in := []int{1, 2, 3, 4, 5}
+	evens := Filter(in, func(x int) bool { return x%2 == 0 })
+	if len(evens) != 2 || evens[0] != 2 || evens[1] != 4 {
+		t.Errorf("expected [2 4], got %v", evens)
+	}
+}
+
 func TestSet(t *testing.T) {
 	s := NewSet(1, 2, 2, 3)
 	if len(s) != 3 {
