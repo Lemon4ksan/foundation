@@ -104,7 +104,7 @@ func (b *ExponentialBackoff) NextDelay(attempt int) time.Duration {
 
 		var sleep time.Duration
 		if delta > 0 {
-			sleep = b.Initial + rand.FastJitter(delta)
+			sleep = b.Initial + rand.Jitter(delta)
 		} else {
 			sleep = b.Initial
 		}
@@ -134,7 +134,7 @@ func (b *ExponentialBackoff) applyJitter(baseDelay time.Duration) time.Duration 
 			return 0
 		}
 
-		return rand.FastJitter(baseDelay)
+		return rand.Jitter(baseDelay)
 
 	case JitterEqual:
 		if baseDelay <= 0 {
@@ -143,7 +143,7 @@ func (b *ExponentialBackoff) applyJitter(baseDelay time.Duration) time.Duration 
 
 		half := baseDelay / 2
 
-		return half + rand.FastJitter(half)
+		return half + rand.Jitter(half)
 
 	default:
 		return baseDelay
@@ -200,7 +200,7 @@ func (b *LinearBackoff) NextDelay(attempt int) time.Duration {
 
 func (b *LinearBackoff) applyJitter(baseDelay time.Duration) time.Duration {
 	if b.Jitter == JitterFull && baseDelay > 0 {
-		return rand.FastJitter(baseDelay)
+		return rand.Jitter(baseDelay)
 	}
 
 	return baseDelay
@@ -232,7 +232,7 @@ func (b *ConstantBackoff) Reset() {}
 // NextDelay returns the constant delay.
 func (b *ConstantBackoff) NextDelay(attempt int) time.Duration {
 	if b.Jitter == JitterFull && b.Delay > 0 {
-		return rand.FastJitter(b.Delay)
+		return rand.Jitter(b.Delay)
 	}
 
 	return b.Delay

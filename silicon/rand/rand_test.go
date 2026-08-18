@@ -17,6 +17,6 @@ func TestFastRand(t *testing.T) {
 	val := fastrand.Intn(100)
 	assert.True(t, val >= 0 && val < 100)
 
-	jitter := fastrand.FastJitter(500 * time.Millisecond)
+	jitter := fastrand.Jitter(500 * time.Millisecond)
 	assert.True(t, jitter >= 0 && jitter < 500*time.Millisecond)
 }

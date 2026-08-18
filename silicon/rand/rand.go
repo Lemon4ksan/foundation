@@ -44,10 +44,10 @@ func Intn(n int) int {
 	return int(fastrand.Uint32n(uint32(n)))
 }
 
-// FastJitter returns a pseudo-random jitter duration between 0 and maxJitter.
+// Jitter returns a pseudo-random jitter duration between 0 and maxJitter.
 //
 //go:inline
-func FastJitter(maxJitter time.Duration) time.Duration {
+func Jitter(maxJitter time.Duration) time.Duration {
 	if maxJitter <= 0 {
 		return 0
 	}
