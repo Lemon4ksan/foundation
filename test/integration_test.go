@@ -16,7 +16,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/time/rate"
+	"github.com/lemon4ksan/foundation/async/rate"
 
 	"github.com/lemon4ksan/foundation/async/dedup"
 	"github.com/lemon4ksan/foundation/async/event"
