@@ -212,3 +212,46 @@ func BenchmarkIndexTwoBytes_AVX2(b *testing.B) {
 		_ = simd.IndexTwoBytesVector(data, '\r', '\n')
 	}
 }
+
+func TestIndexCRLF(t *testing.T) {
+	data := []byte("GET / HTTP/1.1\r\nHost: example.com\r\n\r\nBody")
+
+	crlfIdx := simd.IndexCRLF(data)
+	assert.Equal(t, 14, crlfIdx)
+
+	doubleCRLFIdx := simd.IndexDoubleCRLF(data)
+	assert.Equal(t, 33, doubleCRLFIdx)
+
+	assert.Equal(t, -1, simd.IndexCRLF([]byte("no crlf here")))
+	assert.Equal(t, -1, simd.IndexDoubleCRLF([]byte("single \r\n crlf")))
+}
+
+func BenchmarkIndexCRLF(b *testing.B) {
+	data := make([]byte, 1024)
+	for i := range data {
+		data[i] = 'x'
+	}
+	data[1022] = '\r'
+	data[1023] = '\n'
+
+	b.ReportAllocs()
+	for b.Loop() {
+		_ = simd.IndexCRLF(data)
+	}
+}
+
+func BenchmarkIndexDoubleCRLF(b *testing.B) {
+	data := make([]byte, 1024)
+	for i := range data {
+		data[i] = 'x'
+	}
+	data[1020] = '\r'
+	data[1021] = '\n'
+	data[1022] = '\r'
+	data[1023] = '\n'
+
+	b.ReportAllocs()
+	for b.Loop() {
+		_ = simd.IndexDoubleCRLF(data)
+	}
+}

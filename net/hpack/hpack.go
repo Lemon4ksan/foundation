@@ -93,6 +93,9 @@ type Decoder struct {
 	// to fully parse before. Unlike buf, we own this data.
 	saveBuf bytes.Buffer
 
+	// bufDec is a reused scratch buffer for zero-allocation Huffman decoding.
+	bufDec []byte
+
 	firstField bool // processing the first field of the header block
 }
 
@@ -104,6 +107,7 @@ func NewDecoder(maxDynamicTableSize uint32, emitFunc func(f HeaderField)) *Decod
 		emit:        emitFunc,
 		emitEnabled: true,
 		firstField:  true,
+		bufDec:      make([]byte, 0, 512),
 	}
 	d.dynTab.allowedMaxSize = maxDynamicTableSize
 	d.dynTab.setMaxSize(maxDynamicTableSize)
@@ -150,6 +154,7 @@ func (d *Decoder) Reset(maxDynamicTableSize uint32, emitFunc func(f HeaderField)
 	d.firstField = true
 	d.buf = nil
 	d.saveBuf.Reset()
+	d.bufDec = d.bufDec[:0]
 	d.dynTab.table.ents = d.dynTab.table.ents[:0]
 	d.dynTab.table.evictCount = 0
 	d.dynTab.table.byName = nil
@@ -523,14 +528,13 @@ func (d *Decoder) decodeString(u undecodedString) (string, error) {
 	if !u.isHuff {
 		return string(u.b), nil
 	}
-	buf := bufPool.Get().(*bytes.Buffer)
-	buf.Reset() // don't trust others
-	var s string
-	err := huffmanDecode(buf, d.maxStrLen, u.b)
-	if err == nil {
-		s = buf.String()
+	var err error
+	d.bufDec, err = AppendHuffmanDecode(d.bufDec[:0], u.b)
+	if err != nil {
+		return "", err
 	}
-	buf.Reset() // be nice to GC
-	bufPool.Put(buf)
-	return s, err
+	if d.maxStrLen != 0 && len(d.bufDec) > d.maxStrLen {
+		return "", ErrStringLength
+	}
+	return string(d.bufDec), nil
 }

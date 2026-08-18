@@ -9,6 +9,7 @@
 package charmap // import "github.com/lemon4ksan/foundation/text/encoding/charmap"
 
 import (
+	"encoding/binary"
 	"unicode/utf8"
 
 	"github.com/lemon4ksan/foundation/text/encoding"
@@ -118,18 +119,36 @@ type charmapDecoder struct {
 }
 
 func (m charmapDecoder) Transform(dst, src []byte, atEOF bool) (nDst, nSrc int, err error) {
-	for i, c := range src {
-		if m.charmap.asciiSuperset && c < utf8.RuneSelf {
-			if nDst >= len(dst) {
-				err = transform.ErrShortDst
+	ascii := m.charmap.asciiSuperset
+	for nSrc < len(src) {
+		if ascii {
+			// SWAR Fast-Path: Process 8 bytes (uint64) at a time if all bytes are ASCII (< 0x80)
+			for nSrc+8 <= len(src) && nDst+8 <= len(dst) {
+				v := binary.LittleEndian.Uint64(src[nSrc:])
+				if (v & 0x8080808080808080) != 0 {
+					break
+				}
+				binary.LittleEndian.PutUint64(dst[nDst:], v)
+				nSrc += 8
+				nDst += 8
+			}
+
+			if nSrc < len(src) && src[nSrc] < utf8.RuneSelf {
+				if nDst >= len(dst) {
+					err = transform.ErrShortDst
+					break
+				}
+				dst[nDst] = src[nSrc]
+				nDst++
+				nSrc++
+				continue
+			}
+			if nSrc >= len(src) {
 				break
 			}
-			dst[nDst] = c
-			nDst++
-			nSrc = i + 1
-			continue
 		}
 
+		c := src[nSrc]
 		decode := &m.charmap.decode[c]
 		n := int(decode.len)
 		if nDst+n > len(dst) {
@@ -141,7 +160,7 @@ func (m charmapDecoder) Transform(dst, src []byte, atEOF bool) (nDst, nSrc int, 
 			dst[nDst] = decode.data[j]
 			nDst++
 		}
-		nSrc = i + 1
+		nSrc++
 	}
 	return nDst, nSrc, err
 }
@@ -168,6 +187,22 @@ func (m charmapEncoder) Transform(dst, src []byte, atEOF bool) (nDst, nSrc int, 
 	r, size := rune(0), 0
 loop:
 	for nSrc < len(src) {
+		if m.charmap.asciiSuperset {
+			// SWAR Fast-Path: Process 8 bytes (uint64) at a time if all bytes are ASCII (< 0x80)
+			for nSrc+8 <= len(src) && nDst+8 <= len(dst) {
+				v := binary.LittleEndian.Uint64(src[nSrc:])
+				if (v & 0x8080808080808080) != 0 {
+					break
+				}
+				binary.LittleEndian.PutUint64(dst[nDst:], v)
+				nSrc += 8
+				nDst += 8
+			}
+			if nSrc >= len(src) {
+				break
+			}
+		}
+
 		if nDst >= len(dst) {
 			err = transform.ErrShortDst
 			break

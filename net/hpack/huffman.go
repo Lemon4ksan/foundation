@@ -39,6 +39,54 @@ func HuffmanDecodeToString(v []byte) (string, error) {
 	return buf.String(), nil
 }
 
+// AppendHuffmanDecode decodes the Huffman-encoded data in v, appends the decoded bytes
+// to dst, and returns the resulting slice with zero allocations if dst has enough capacity.
+func AppendHuffmanDecode(dst []byte, v []byte) ([]byte, error) {
+	rootHuffmanNode := getRootHuffmanNode()
+	n := rootHuffmanNode
+	cur, cbits, sbits := uint(0), uint8(0), uint8(0)
+	for _, b := range v {
+		cur = cur<<8 | uint(b)
+		cbits += 8
+		sbits += 8
+		for cbits >= 8 {
+			idx := byte(cur >> (cbits - 8))
+			n = n.children[idx]
+			if n == nil {
+				return dst, ErrInvalidHuffman
+			}
+			if n.children == nil {
+				dst = append(dst, n.sym)
+				cbits -= n.codeLen
+				n = rootHuffmanNode
+				sbits = cbits
+			} else {
+				cbits -= 8
+			}
+		}
+	}
+	for cbits > 0 {
+		n = n.children[byte(cur<<(8-cbits))]
+		if n == nil {
+			return dst, ErrInvalidHuffman
+		}
+		if n.children != nil || n.codeLen > cbits {
+			break
+		}
+		dst = append(dst, n.sym)
+		cbits -= n.codeLen
+		n = rootHuffmanNode
+		sbits = cbits
+	}
+	if sbits > 7 {
+		return dst, ErrInvalidHuffman
+	}
+	if mask := uint(1<<cbits - 1); cur&mask != mask {
+		return dst, ErrInvalidHuffman
+	}
+	return dst, nil
+}
+
 // ErrInvalidHuffman is returned for errors found decoding
 // Huffman-encoded strings.
 var ErrInvalidHuffman = errors.New("hpack: invalid Huffman-encoded data")

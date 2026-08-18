@@ -95,3 +95,61 @@ func IndexByteTwoSWAR(b []byte, target1, target2 byte) int {
 
 	return -1
 }
+
+// IndexCRLF searches for the first occurrence of "\r\n" in b using 64-bit SWAR chunking.
+// Returns the index of '\r', or -1 if not found.
+func IndexCRLF(b []byte) int {
+	n := len(b)
+	if n < 2 {
+		return -1
+	}
+
+	targetWord := RepeatByte0x01 * uint64('\r')
+	i := 0
+
+	for i+8 <= n {
+		word := *(*uint64)(unsafe.Pointer(&b[i]))
+		xor := word ^ targetWord
+		hasZero := (xor - RepeatByte0x01) &^ xor & RepeatByte0x80
+
+		for hasZero != 0 {
+			tz := bits.TrailingZeros64(hasZero)
+			byteIdx := tz >> 3
+			idx := i + byteIdx
+			if idx+1 < n && b[idx+1] == '\n' {
+				return idx
+			}
+			hasZero &^= uint64(0xFF) << (byteIdx << 3)
+		}
+		i += 8
+	}
+
+	for ; i < n-1; i++ {
+		if b[i] == '\r' && b[i+1] == '\n' {
+			return i
+		}
+	}
+	return -1
+}
+
+// IndexDoubleCRLF searches for the first occurrence of "\r\n\r\n" (HTTP header boundary) in b.
+// Returns the index of the first '\r', or -1 if not found.
+func IndexDoubleCRLF(b []byte) int {
+	n := len(b)
+	if n < 4 {
+		return -1
+	}
+
+	for i := 0; i <= n-4; {
+		idx := IndexCRLF(b[i:])
+		if idx == -1 || i+idx+3 >= n {
+			return -1
+		}
+		pos := i + idx
+		if b[pos+2] == '\r' && b[pos+3] == '\n' {
+			return pos
+		}
+		i = pos + 1
+	}
+	return -1
+}
