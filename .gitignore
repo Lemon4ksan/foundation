@@ -1,0 +1,11 @@
+.DS_Store
+.idea/
+.vscode/
+*.exe
+*.test
+*.out
+coverage.txt
+profile.pprof
+vendor/
+go.work
+go.work.sum

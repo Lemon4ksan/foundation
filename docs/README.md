@@ -1,0 +1,65 @@
+# Foundation Documentation Hub
+
+Welcome to the technical documentation hub for `github.com/lemon4ksan/foundation` — the unified silicon substrate and concurrency runtime for Go.
+
+## Architectural Layout
+
+```text
+foundation/
+├── silicon/                  // Hardware Substrate (0 B/op, Memory, SIMD)
+│   ├── SIMD.md               // 256-bit AVX2/BMI2 vector processing (81.7 GB/s)
+│   ├── BYTESCONV.md          // Zero-copy scanning, slicing, and unsafe conversions
+│   ├── OFFHEAP.md            // Direct memory slabs bypassing Go GC
+│   ├── POOL.md               // Multi-tier memory arenas and perpetual byte storage
+│   ├── RINGBUF.md            // Lock-free SPSC / MPMC ring buffers and SoA
+│   ├── CLOCK_AND_RAND.md     // Monotonic fast-clock, lock-free fastrand, UUID v7
+│   └── TRIE.md               // Compressed radix search trees
+│
+├── async/                    // Concurrency & Runtime Orchestration
+│   ├── LIFECYCLE.md          // DAG DFS topological service boot & BehaviorRunner
+│   ├── EVENT.md              // Type-safe non-blocking event bus
+│   ├── TASK.md               // Correlation-ID task manager, timeouts, and futures
+│   ├── DEDUP.md              // Single-flight request deduplication & panic isolation
+│   ├── FSM.md                // Strictly typed FSM with rollback & DOT export
+│   ├── PIPELINE.md           // Concurrent mapping, fan-out/fan-in, DataLoader
+│   ├── POOL.md               // Auto-scaling goroutine worker pool
+│   ├── SCHEDULER.md          // Microsecond precision task scheduler & cron
+│   └── LOG.md                // Zero-allocation structured logging
+│
+└── sync/                     // Tactical Synchronization & Resilience
+    └── SYNC.md               // KeyLock, Limiter (Vegas/Keyed), Breaker, Backoff, Semaphore, Lazy, SpinLock
+```
+
+## Module Index
+
+### Silicon & Memory Substrate (`silicon/`)
+
+| Module | Documentation | Focus Area |
+| :--- | :--- | :--- |
+| `simd` | [`docs/silicon/SIMD.md`](silicon/SIMD.md) | Vectorized 256-bit AVX2 frame masking at 81.7 GB/s. |
+| `bytesconv` | [`docs/silicon/BYTESCONV.md`](silicon/BYTESCONV.md) | Zero-copy string/slice conversions and delimiter tokenization. |
+| `offheap` | [`docs/silicon/OFFHEAP.md`](silicon/OFFHEAP.md) | Direct virtual memory slabs eliminating GC scan latency. |
+| `pool` | [`docs/silicon/POOL.md`](silicon/POOL.md) | Contiguous bump-allocator arenas with O(1) instant reset. |
+| `ringbuf` | [`docs/silicon/RINGBUF.md`](silicon/RINGBUF.md) | Lock-free SPSC / MPMC ring buffers eliminating channel mutex overhead. |
+| `clock`/`rand` | [`docs/silicon/CLOCK_AND_RAND.md`](silicon/CLOCK_AND_RAND.md) | Monotonic clock without syscalls and lock-free sortable UUID v7. |
+| `trie` | [`docs/silicon/TRIE.md`](silicon/TRIE.md) | Compressed radix prefix trees for URL routing and domain lookup. |
+
+### Concurrency & Runtime Orchestration (`async/`)
+
+| Module | Documentation | Focus Area |
+| :--- | :--- | :--- |
+| `lifecycle` | [`docs/async/LIFECYCLE.md`](async/LIFECYCLE.md) | Topologically sorted DAG service boot and reverse graceful teardown. |
+| `event` | [`docs/async/EVENT.md`](async/EVENT.md) | Type-safe non-blocking event bus preventing slow consumer backpressure. |
+| `task` | [`docs/async/TASK.md`](async/TASK.md) | Correlation-ID async task manager with pooled memory and deadlines. |
+| `dedup` | [`docs/async/DEDUP.md`](async/DEDUP.md) | Single-flight request coalescing with safe worker panic isolation. |
+| `fsm` | [`docs/async/FSM.md`](async/FSM.md) | Strictly typed finite state machines with transactional rollback. |
+| `pipeline` | [`docs/async/PIPELINE.md`](async/PIPELINE.md) | Concurrent mapping pipelines with rate limiting and DataLoader batching. |
+| `pool` | [`docs/async/POOL.md`](async/POOL.md) | Auto-scaling goroutine worker pool with idle scale-down and futures. |
+| `scheduler` | [`docs/async/SCHEDULER.md`](async/SCHEDULER.md) | Microsecond precision task scheduler with recurring interval loops. |
+| `log` | [`docs/async/LOG.md`](async/LOG.md) | Zero-allocation structured logging facade with asynchronous flushing. |
+
+### Tactical Synchronization (`async/sync/`)
+
+| Module | Documentation | Focus Area |
+| :--- | :--- | :--- |
+| `sync` | [`docs/async/SYNC.md`](async/SYNC.md) | Striped KeyLock, Vegas AdaptiveLimiter, CircuitBreaker, Jittered Backoff, and Resizable Semaphore. |
