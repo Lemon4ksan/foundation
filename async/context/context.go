@@ -111,6 +111,38 @@ func (c *Context) Value(key any) any {
 	return nil
 }
 
+// Set attaches or updates key and val in-place within the current [Context].
+//
+// This provides true zero-allocation context enrichment in single-goroutine request pipelines.
+func (c *Context) Set(key any, val any) *Context {
+	if c == nil || key == nil {
+		return c
+	}
+
+	for i := len(c.extra) - 1; i >= 0; i-- {
+		if c.extra[i].key == key {
+			c.extra[i].value = val
+			return c
+		}
+	}
+
+	for i := min(c.count, inlineCapacity) - 1; i >= 0; i-- {
+		if c.inline[i].key == key {
+			c.inline[i].value = val
+			return c
+		}
+	}
+
+	if c.count < inlineCapacity {
+		c.inline[c.count] = kvEntry{key: key, value: val}
+	} else {
+		c.extra = append(c.extra, kvEntry{key: key, value: val})
+	}
+	c.count++
+
+	return c
+}
+
 // WithValue returns a copy of parent carrying key and val in a flat structure.
 func WithValue(parent stdctx.Context, key any, val any) *Context {
 	if parent == nil {
