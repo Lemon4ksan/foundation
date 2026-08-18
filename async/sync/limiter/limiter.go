@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"golang.org/x/time/rate"
+	"github.com/lemon4ksan/foundation/async/rate"
 )
 
 // AdaptiveLimiter controls concurrency dynamically using a Vegas-style congestion algorithm.

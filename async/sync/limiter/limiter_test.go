@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"golang.org/x/time/rate"
+	"github.com/lemon4ksan/foundation/async/rate"
 )
 
 func TestNewAdaptiveLimiter(t *testing.T) {
