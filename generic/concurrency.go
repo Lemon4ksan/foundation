@@ -7,6 +7,7 @@ package generic
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math"
 	"math/rand/v2"
 	"sync"
@@ -531,3 +532,66 @@ func (tg *TaskGroup[T]) Wait() []Result[T] {
 
 	return tg.results
 }
+
+// RaceFirstSuccess executes multiple task functions concurrently and returns the first
+// [Result] that represents a success (r.IsSuccess() is true).
+//
+// Once the first successful result is obtained, all other ongoing tasks are immediately
+// cancelled via their execution context.
+//
+// If all tasks fail, RaceFirstSuccess returns the error of the last failed task.
+// If tasks is empty, it returns a Failure with an error.
+func RaceFirstSuccess[T any](ctx context.Context, tasks ...func(context.Context) Result[T]) Result[T] {
+	if len(tasks) == 0 {
+		return Failure[T](errors.New("generic: no tasks to race"))
+	}
+
+	raceCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	resCh := make(chan Result[T], len(tasks))
+	var wg sync.WaitGroup
+
+	for _, task := range tasks {
+		if task == nil {
+			continue
+		}
+
+		wg.Add(1)
+		go func(fn func(context.Context) Result[T]) {
+			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					resCh <- Failure[T](fmt.Errorf("generic: task panic: %v", r))
+				}
+			}()
+
+			res := fn(raceCtx)
+			resCh <- res
+			if res.IsSuccess() {
+				cancel()
+			}
+		}(task)
+	}
+
+	go func() {
+		wg.Wait()
+		close(resCh)
+	}()
+
+	var lastErr error
+	for res := range resCh {
+		if res.IsSuccess() {
+			return res
+		}
+		_, err := res.Unwrap()
+		lastErr = err
+	}
+
+	if lastErr == nil {
+		lastErr = ctx.Err()
+	}
+
+	return Failure[T](lastErr)
+}
+

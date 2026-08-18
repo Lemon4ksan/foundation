@@ -771,3 +771,50 @@ func TestLazy_TakeDropToSeq(t *testing.T) {
 	r.Stride(0, func(v int) bool { return true })
 }
 
+func TestRaceFirstSuccess(t *testing.T) {
+	t.Run("first_success_wins", func(t *testing.T) {
+		task1 := func(ctx context.Context) Result[string] {
+			time.Sleep(100 * time.Millisecond)
+			return Success("slow")
+		}
+		task2 := func(ctx context.Context) Result[string] {
+			time.Sleep(10 * time.Millisecond)
+			return Success("fast")
+		}
+		task3 := func(ctx context.Context) Result[string] {
+			return Failure[string](errors.New("immediate fail"))
+		}
+
+		res := RaceFirstSuccess(context.Background(), task1, task2, task3)
+		if !res.IsSuccess() {
+			t.Fatal("expected success")
+		}
+		val, _ := res.Unwrap()
+		if val != "fast" {
+			t.Errorf("expected 'fast', got %q", val)
+		}
+	})
+
+	t.Run("all_fail", func(t *testing.T) {
+		task1 := func(ctx context.Context) Result[int] {
+			return Failure[int](errors.New("fail1"))
+		}
+		task2 := func(ctx context.Context) Result[int] {
+			return Failure[int](errors.New("fail2"))
+		}
+
+		res := RaceFirstSuccess(context.Background(), task1, task2)
+		if res.IsSuccess() {
+			t.Fatal("expected failure")
+		}
+	})
+
+	t.Run("empty_tasks", func(t *testing.T) {
+		res := RaceFirstSuccess[int](context.Background())
+		if res.IsSuccess() {
+			t.Fatal("expected failure on empty tasks")
+		}
+	})
+}
+
+
