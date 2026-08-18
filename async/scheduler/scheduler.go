@@ -117,6 +117,10 @@ func (s *Scheduler) AcquireTask() *Task {
 // Do not read, write, or hold references to a task once it has been released,
 // as doing so will cause serious data races and memory corruption.
 func (s *Scheduler) ReleaseTask(t *Task) {
+	if s == nil || t == nil {
+		return
+	}
+
 	t.ID = ""
 	t.Execute = nil
 	t.Interval = 0
@@ -135,6 +139,10 @@ func (s *Scheduler) ReleaseTask(t *Task) {
 //
 // Time Complexity: O(log N) where N is the number of scheduled tasks.
 func (s *Scheduler) Schedule(t *Task) {
+	if s == nil || t == nil {
+		return
+	}
+
 	s.mu.Lock()
 	heap.Push(&s.tasks, t)
 	s.mu.Unlock()

@@ -42,11 +42,12 @@ func (a *RequestArena) Alloc(n int) []byte {
 		return nil
 	}
 
-	if a.off+n <= len(a.buf) {
+	alignedN := (n + 7) &^ 7
+	if a.off+alignedN <= len(a.buf) {
 		start := a.off
-		a.off += n
+		a.off += alignedN
 
-		return a.buf[start:a.off]
+		return a.buf[start : start+n]
 	}
 
 	return make([]byte, n)

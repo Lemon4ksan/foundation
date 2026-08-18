@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// package fsm implements a strictly typed, thread-safe finite state machine (FSM).
+// Package fsm implements a strictly typed, thread-safe finite state machine (FSM).
 //
 // It provides a generic FSM framework parameterized over comparable [State] and
 // [Event] types, ensuring that invalid transitions are caught at compile time.

@@ -629,3 +629,27 @@ func TestJobs_StoreErrors(t *testing.T) {
 	err8 := m8.Close()
 	assert.NoError(t, err8)
 }
+
+func TestManager_CancelAll(t *testing.T) {
+	m := NewManager[string, string](0)
+
+	var cancelledCount atomic.Int32
+	cb := func(ctx context.Context, res string, err error) {
+		if errors.Is(err, context.Canceled) {
+			cancelledCount.Add(1)
+		}
+	}
+
+	_ = m.Add("job1", cb)
+	_ = m.Add("job2", cb)
+	_ = m.Add("job3", cb)
+
+	assert.Equal(t, 3, m.Count())
+
+	m.CancelAll(context.Canceled)
+	time.Sleep(10 * time.Millisecond)
+
+	assert.Equal(t, 0, m.Count())
+	assert.Equal(t, int32(3), cancelledCount.Load())
+}
+

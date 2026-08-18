@@ -429,3 +429,81 @@ func FuzzArena_AllocStruct(f *testing.F) {
 		}
 	})
 }
+
+func TestOffHeap_RemainingEdgeCases(t *testing.T) {
+	// RawBytes test
+	buf, err := offheap.NewBuffer(1024)
+	require.NoError(t, err)
+	defer buf.Release()
+
+	buf.WriteString("hello")
+	raw := buf.RawBytes(10)
+	assert.Equal(t, 10, len(raw))
+
+	assert.Equal(t, 10, buf.Len())
+	assert.Equal(t, 1024, buf.Cap())
+
+	// Released buffer methods
+	buf2, _ := offheap.NewBuffer(128)
+	buf2.Release()
+	assert.Equal(t, 0, buf2.Len())
+	assert.Equal(t, 0, buf2.Cap())
+	assert.Nil(t, buf2.RawBytes(10))
+	assert.Nil(t, buf2.Bytes())
+	_, err = buf2.Write([]byte("abc"))
+	assert.Error(t, err)
+	_, err = buf2.WriteString("abc")
+	assert.Error(t, err)
+	buf2.RewindRead()
+
+	// StructBytes & CastBytes
+	type Plain struct {
+		A uint64
+		B uint32
+	}
+	p := &Plain{A: 100, B: 200}
+	sb := offheap.StructBytes(p)
+	assert.Equal(t, int(unsafe.Sizeof(Plain{})), len(sb))
+
+	var nilP *Plain
+	assert.Nil(t, offheap.StructBytes(nilP))
+
+	castBack := offheap.CastBytes[Plain](sb)
+	require.Len(t, castBack, 1)
+	assert.Equal(t, uint64(100), castBack[0].A)
+	assert.Equal(t, uint32(200), castBack[0].B)
+
+	// CastBytes too short
+	tooShort := offheap.CastBytes[Plain](sb[:4])
+	assert.Nil(t, tooShort)
+
+	// Arena AllocBuffer and Scope
+	arena, err := offheap.NewArena(4096)
+	require.NoError(t, err)
+	defer arena.Release()
+
+	ab := arena.AllocBuffer(512)
+	require.NotNil(t, ab)
+	assert.Equal(t, 512, ab.Cap())
+
+	// offheap.Scope
+	called := false
+	errScope := offheap.Scope(4096, func(a *offheap.Arena) {
+		called = true
+		_ = offheap.AllocStruct[testFrameHeader](a)
+	})
+	assert.NoError(t, errScope)
+	assert.True(t, called)
+
+	// Slab allocator released methods
+	slab, err := offheap.NewSlabAllocator[testFrameHeader](64)
+	require.NoError(t, err)
+	assert.Equal(t, 0, slab.Len())
+	assert.Equal(t, 64, slab.Cap())
+	assert.Equal(t, 64, slab.Available())
+	slab.Reset()
+	slab.Release()
+	assert.Equal(t, 0, slab.Len())
+	slab.Release() // double release safety
+}
+

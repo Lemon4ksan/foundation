@@ -61,13 +61,13 @@ func (a *Arena) Alloc(n int) unsafe.Pointer {
 		return nil
 	}
 
-	reqSize := int32(n)
-	if a.offset+reqSize > a.size {
+	alignedSize := (int32(n) + 7) &^ 7
+	if a.offset+alignedSize > a.size {
 		return nil
 	}
 
 	ptr := unsafe.Add(a.page, a.offset)
-	a.offset += reqSize
+	a.offset += alignedSize
 
 	return ptr
 }

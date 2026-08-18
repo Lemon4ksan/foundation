@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// package pool provides a dynamic, auto-scaling worker pool.
+// Package pool provides a dynamic, auto-scaling worker pool.
 //
 // The worker pool manages worker goroutines dynamically.
 // It scales up workers under load (up to a configured maximum)

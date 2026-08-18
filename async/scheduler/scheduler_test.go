@@ -290,3 +290,50 @@ func TestScheduler_Start_AlreadyCanceled(t *testing.T) {
 	// This should return immediately without blocking
 	sched.Start(ctx)
 }
+
+func TestScheduler_TaskPanicRecovery(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		sched := New()
+		ctx, cancel := context.WithCancel(t.Context())
+		defer cancel()
+
+		var periodicRuns atomic.Int32
+
+		// 1. Panicking periodic task
+		pTask := sched.AcquireTask()
+		pTask.ID = "panic-periodic"
+		pTask.Interval = 1 * time.Hour
+		pTask.NextRun = time.Now().Add(1 * time.Hour)
+		pTask.Execute = func(ctx context.Context) error {
+			periodicRuns.Add(1)
+			panic("periodic-boom")
+		}
+		sched.Schedule(pTask)
+
+		// 2. Panicking one-off task
+		oneOff := sched.AcquireTask()
+		oneOff.ID = "panic-oneoff"
+		oneOff.Interval = 0
+		oneOff.NextRun = time.Now().Add(1 * time.Hour)
+		oneOff.Execute = func(ctx context.Context) error {
+			panic("oneoff-boom")
+		}
+		sched.Schedule(oneOff)
+
+		// Nil schedule safety
+		sched.Schedule(nil)
+		sched.ReleaseTask(nil)
+
+		go sched.Start(ctx)
+
+		// Advance 3 hours: periodic task should run twice despite panics
+		time.Sleep(3 * time.Hour)
+		cancel()
+		synctest.Wait()
+
+		if periodicRuns.Load() < 2 {
+			t.Errorf("expected at least 2 runs of periodic task, got %d", periodicRuns.Load())
+		}
+	})
+}
+

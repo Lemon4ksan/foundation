@@ -174,7 +174,7 @@ func (s *SlabAllocator[T]) Reset() {
 
 // Len returns the number of currently allocated (in-use) slots.
 func (s *SlabAllocator[T]) Len() int {
-	if s == nil {
+	if s == nil || s.page == nil {
 		return 0
 	}
 
@@ -183,7 +183,7 @@ func (s *SlabAllocator[T]) Len() int {
 
 // Cap returns the total slot capacity.
 func (s *SlabAllocator[T]) Cap() int {
-	if s == nil {
+	if s == nil || s.page == nil {
 		return 0
 	}
 
@@ -192,7 +192,7 @@ func (s *SlabAllocator[T]) Cap() int {
 
 // Available returns the number of free slots remaining.
 func (s *SlabAllocator[T]) Available() int {
-	if s == nil {
+	if s == nil || s.page == nil {
 		return 0
 	}
 
@@ -208,5 +208,6 @@ func (s *SlabAllocator[T]) Release() {
 		s.page = nil
 		s.bitmap = nil
 		s.free = 0
+		s.cap = 0
 	}
 }

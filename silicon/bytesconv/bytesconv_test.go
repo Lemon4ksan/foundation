@@ -158,3 +158,78 @@ func TestFastHash64(t *testing.T) {
 	assert.NotEqual(t, h1, h3)
 	assert.NotZero(t, FastHash64(nil))
 }
+
+func TestPatternSlicer(t *testing.T) {
+	t.Parallel()
+
+	// 1-byte pattern
+	s1 := NewPatternSlicer([]byte(":"), 1)
+	parts, ok := s1.Slice([]byte("key:value"))
+	assert.True(t, ok)
+	assert.Len(t, parts, 2)
+	assert.Equal(t, "key:", string(parts[0]))
+	assert.Equal(t, "value", string(parts[1]))
+
+	// 2-byte pattern
+	s2 := NewPatternSlicer([]byte("\r\n"), 2)
+	parts2, ok2 := s2.Slice([]byte("HTTP/1.1 200 OK\r\nContent-Type: text/plain"))
+	assert.True(t, ok2)
+	assert.Len(t, parts2, 2)
+	assert.Equal(t, "HTTP/1.1 200 OK\r\n", string(parts2[0]))
+
+	// Multi-byte pattern
+	s3 := NewPatternSlicer([]byte("DELIM"), 5)
+	all := s3.SliceAll([]byte("AADELIMBBDELIMCC"))
+	assert.Len(t, all, 3)
+
+	// Slice edge cases: empty or no match
+	assert.Len(t, s1.SliceAll(nil), 1)
+	emptySlicer := NewPatternSlicer(nil, 0)
+	assert.Len(t, emptySlicer.SliceAll([]byte("data")), 1)
+	_, okNoMatch := s1.Slice([]byte("no-match"))
+	assert.False(t, okNoMatch)
+}
+
+func TestScannerRoutines(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, "abc", TrimSpaceASCII("  abc  \t\r\n"))
+	assert.Equal(t, "abc", string(TrimSpaceASCIIBytes([]byte(" \r\n abc \t"))))
+	assert.Equal(t, "hello", TrimQuotesStr(`"hello"`))
+	assert.Equal(t, `hello"`, TrimQuotesStr(`hello"`))
+
+	b1, b2, ok := CutByte("a:b", ':')
+	assert.True(t, ok)
+	assert.Equal(t, "a", b1)
+	assert.Equal(t, "b", b2)
+
+	bb1, bb2, okBytes := CutByteBytes([]byte("foo=bar"), '=')
+	assert.True(t, okBytes)
+	assert.Equal(t, "foo", string(bb1))
+	assert.Equal(t, "bar", string(bb2))
+
+	var tokens []string
+	for token := range ScanTokens("gzip, deflate, br", ',') {
+		tokens = append(tokens, token)
+	}
+	assert.Equal(t, []string{"gzip", "deflate", "br"}, tokens)
+
+	var tokenBytes [][]byte
+	for tb := range ScanTokensBytes([]byte("a, b, c"), ',') {
+		tokenBytes = append(tokenBytes, tb)
+	}
+	assert.Len(t, tokenBytes, 3)
+
+	pairs := make(map[string]string)
+	for k, v := range ScanPairs("a=1; b=2; c=3", ';', '=') {
+		pairs[k] = v
+	}
+	assert.Equal(t, map[string]string{"a": "1", "b": "2", "c": "3"}, pairs)
+
+	pairBytes := make(map[string]string)
+	for k, v := range ScanPairsBytes([]byte("k1=v1&k2=v2"), '&', '=') {
+		pairBytes[string(k)] = string(v)
+	}
+	assert.Equal(t, map[string]string{"k1": "v1", "k2": "v2"}, pairBytes)
+}
+

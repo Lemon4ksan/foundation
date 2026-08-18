@@ -56,7 +56,7 @@ func Map[In, Out any](
 	mapper func(context.Context, In) (Out, error),
 ) ([]Out, error) {
 	if mapper == nil {
-		return nil, errors.New("yumi: mapper function is nil")
+		return nil, errors.New("pipeline: mapper function is nil")
 	}
 
 	p := NewPipeline[In, Out](cfg)
@@ -73,7 +73,7 @@ func ForEach[In any](
 	fn func(context.Context, In) error,
 ) error {
 	if fn == nil {
-		return errors.New("yumi: function is nil")
+		return errors.New("pipeline: function is nil")
 	}
 
 	p := NewPipeline[In, struct{}](cfg)
@@ -302,6 +302,13 @@ func (p *Pipeline[In, Out]) Stream(
 ) (<-chan Out, <-chan error) {
 	out := make(chan Out, p.config.Workers)
 	errs := make(chan error, p.config.Workers)
+
+	if mapper == nil {
+		errs <- errors.New("pipeline: mapper function is nil")
+		close(out)
+		close(errs)
+		return out, errs
+	}
 
 	go func() {
 		defer close(out)

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// package event implements a thread-safe, non-blocking, type-based event bus
+// Package event implements a thread-safe, non-blocking, type-based event bus
 // for asynchronous in-process communication.
 //
 // It provides a decoupled architecture where independent components can publish

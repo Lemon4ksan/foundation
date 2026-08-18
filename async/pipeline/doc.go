@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// package pipeline provides a generic concurrent pipeline for bulk data processing.
+// Package pipeline provides a generic concurrent pipeline for bulk data processing.
 //
 // It parallelizes slice or stream transformations with configurable worker
 // count, rate limiting, input-order preservation, and optional fail-fast

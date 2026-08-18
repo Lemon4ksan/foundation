@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// package dedup provides generic duplicate call suppression with context
+// Package dedup provides generic duplicate call suppression with context
 // awareness and panic isolation.
 //
 // It solves the "thundering herd" problem by ensuring that duplicate concurrent

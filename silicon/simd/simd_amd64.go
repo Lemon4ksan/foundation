@@ -68,7 +68,7 @@ func StreamCopy256(dst, src []byte) int {
 	}
 
 	n := min(len(dst), len(src))
-	if n >= 64 && hasAVX2 {
+	if n >= 64 && hasAVX2 && uintptr(unsafe.Pointer(&dst[0]))%32 == 0 {
 		streamCopy256(dst[:n], src[:n])
 
 		rem := n &^ 31

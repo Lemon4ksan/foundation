@@ -111,3 +111,29 @@ func TestRingBufferConcurrentProduceConsume(t *testing.T) {
 
 	consumeWg.Wait()
 }
+
+func TestRingBuffer_EdgeCases(t *testing.T) {
+	// Defaults for zero / negative capacity
+	rbDef := ringbuf.NewRingBuffer[int](0)
+	assert.NotNil(t, rbDef)
+
+	spscDef := ringbuf.NewSPSCRingBuffer[int](-10)
+	assert.NotNil(t, spscDef)
+	assert.Equal(t, 2, spscDef.Cap()) // rounded to min power of 2
+
+	// PacketBatchSoA tests
+	batchDef := ringbuf.NewPacketBatchSoA(0)
+	assert.NotNil(t, batchDef)
+
+	batch := ringbuf.NewPacketBatchSoA(16)
+	_ = batch.Append(6, 100, 1024, 0)
+	_ = batch.Append(17, 200, 512, 0)
+	_ = batch.Append(6, 300, 2048, 0)
+
+	tcpIndices := batch.FilterByProtocol(6, nil)
+	assert.Equal(t, []int{0, 2}, tcpIndices)
+
+	batch.Reset()
+	assert.Empty(t, batch.FilterByProtocol(6, nil))
+}
+

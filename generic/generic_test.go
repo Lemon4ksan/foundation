@@ -629,3 +629,133 @@ func TestTernary(t *testing.T) {
 		t.Error("expected 'no'")
 	}
 }
+
+func TestKeysAndValues(t *testing.T) {
+	m := map[string]int{"a": 1, "b": 2}
+	keys := Keys(m)
+	values := Values(m)
+
+	if len(keys) != 2 || len(values) != 2 {
+		t.Errorf("expected 2 keys and 2 values, got %v, %v", keys, values)
+	}
+
+	// Chunked edge cases
+	if Chunked([]int{1, 2, 3}, 0) != nil {
+		t.Error("expected nil for Chunked with size <= 0")
+	}
+	chunks := Chunked([]int{1, 2, 3, 4, 5}, 2)
+	if len(chunks) != 3 || len(chunks[0]) != 2 || len(chunks[2]) != 1 {
+		t.Errorf("unexpected chunks: %v", chunks)
+	}
+}
+
+func TestCoalesceNil(t *testing.T) {
+	var a *int
+	b := Ptr(10)
+	c := Ptr(20)
+
+	res := CoalesceNil(a, b, c)
+	if res == nil || *res != 10 {
+		t.Errorf("expected *res=10, got %v", res)
+	}
+
+	var x, y *int
+	if CoalesceNil(x, y) != nil {
+		t.Error("expected nil for all nil inputs")
+	}
+}
+
+func TestShardedMap_All(t *testing.T) {
+	sm := NewShardedMap[uint64, int]()
+	sm.Set(1, 10)
+	sm.Set(2, 20)
+	sm.Set(3, 30)
+
+	all := sm.All()
+	if len(all) != 3 {
+		t.Errorf("expected 3 items, got %d", len(all))
+	}
+
+	sm.Delete(2)
+	all = sm.All()
+	if len(all) != 2 {
+		t.Errorf("expected 2 items after delete, got %d", len(all))
+	}
+
+	var nilSm *ShardedMap[uint64, int]
+	if nilSm.All() != nil {
+		t.Error("expected nil for nil ShardedMap.All")
+	}
+	if _, ok := nilSm.Get(1); ok {
+		t.Error("expected false for nil ShardedMap.Get")
+	}
+	nilSm.Set(1, 10)
+	nilSm.Delete(1)
+}
+
+func TestFuture_ContextAndTimeout(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancel()
+
+	f := NewFutureContext[string](ctx, func(c context.Context) (string, error) {
+		<-c.Done()
+		return "", c.Err()
+	})
+
+	_, err := f.Get(context.Background())
+	if err == nil {
+		t.Error("expected context error on timeout")
+	}
+
+	// Double set (idempotent)
+	fManual := NewFuture[int]()
+	fManual.Set(10, nil)
+	fManual.Set(20, nil)
+
+	val, err := fManual.Get(context.Background())
+	if err != nil || val != 10 {
+		t.Errorf("expected val=10, got val=%d, err=%v", val, err)
+	}
+
+	var nilFuture *Future[int]
+	nilFuture.Set(1, nil)
+	_, err = nilFuture.Get(context.Background())
+	if err == nil {
+		t.Error("expected error for nil Future.Get")
+	}
+}
+
+func TestLazy_TakeDropToSeq(t *testing.T) {
+	seq := func(yield func(int) bool) {
+		for i := 1; i <= 5; i++ {
+			if !yield(i) {
+				return
+			}
+		}
+	}
+
+	taken := Take(seq, 2)
+	slice := ToSlice(taken)
+	if len(slice) != 2 || slice[0] != 1 || slice[1] != 2 {
+		t.Errorf("expected [1 2], got %v", slice)
+	}
+
+	if len(ToSlice(Take(seq, 0))) != 0 {
+		t.Error("expected empty slice for Take <= 0")
+	}
+
+	dropped := Drop(seq, 3)
+	sliceDropped := ToSlice(dropped)
+	if len(sliceDropped) != 2 || sliceDropped[0] != 4 || sliceDropped[1] != 5 {
+		t.Errorf("expected [4 5], got %v", sliceDropped)
+	}
+
+	if len(ToSlice(Drop(seq, 0))) != 5 {
+		t.Error("expected 5 elements for Drop <= 0")
+	}
+
+	// Stride step <= 0
+	r := NewRange(1, 5)
+	r.Stride(0, func(v int) bool { return true })
+}
+

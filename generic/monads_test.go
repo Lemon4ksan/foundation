@@ -139,3 +139,71 @@ func TestTaskGroupFailureCancellation(t *testing.T) {
 	assert.Equal(t, 1, failureCount)
 	assert.Equal(t, 1, cancelledCount)
 }
+
+func TestMonads_RemainingBranches(t *testing.T) {
+	// Optional Value on None
+	none := None[int]()
+	val, ok := none.Value()
+	assert.False(t, ok)
+	assert.Equal(t, 0, val)
+
+	// Result MapResult & FlatMapResult
+	successRes := Success(10)
+	failRes := Failure[int](errors.New("fail"))
+
+	mappedSuccess := MapResult(successRes, func(v int) string { return "ten" })
+	assert.True(t, mappedSuccess.IsSuccess())
+	valStr, _ := mappedSuccess.Unwrap()
+	assert.Equal(t, "ten", valStr)
+
+	mappedFail := MapResult(failRes, func(v int) string { return "none" })
+	assert.False(t, mappedFail.IsSuccess())
+
+	flatSuccess := FlatMapResult(successRes, func(v int) Result[string] { return Success("flat-ten") })
+	assert.True(t, flatSuccess.IsSuccess())
+
+	flatFail := FlatMapResult(failRes, func(v int) Result[string] { return Success("none") })
+	assert.False(t, flatFail.IsSuccess())
+
+	// Recover & RecoverWith
+	recovered := failRes.Recover(func(err error) int { return 99 })
+	assert.Equal(t, 99, recovered)
+
+	recoveredSuccess := successRes.Recover(func(err error) int { return 99 })
+	assert.Equal(t, 10, recoveredSuccess)
+
+	recWith := failRes.RecoverWith(func(err error) Result[int] { return Success(77) })
+	assert.True(t, recWith.IsSuccess())
+	v, _ := recWith.Unwrap()
+	assert.Equal(t, 77, v)
+
+	recWithSuccess := successRes.RecoverWith(func(err error) Result[int] { return Success(77) })
+	assert.True(t, recWithSuccess.IsSuccess())
+	v, _ = recWithSuccess.Unwrap()
+	assert.Equal(t, 10, v)
+
+	// TypedResult RecoverWith & FlatMap
+	typedFail := FailureTyped[int, *CustomErr](&CustomErr{msg: "err"})
+	typedSuccess := SuccessTyped[int, *CustomErr](50)
+
+	recTypedWith := typedFail.RecoverWith(func(e *CustomErr) TypedResult[int, *CustomErr] {
+		return SuccessTyped[int, *CustomErr](88)
+	})
+	assert.True(t, recTypedWith.IsSuccess())
+
+	recTypedSuccess := typedSuccess.RecoverWith(func(e *CustomErr) TypedResult[int, *CustomErr] {
+		return SuccessTyped[int, *CustomErr](88)
+	})
+	assert.True(t, recTypedSuccess.IsSuccess())
+
+	flatTyped := FlatMapTypedResult(typedSuccess, func(v int) TypedResult[string, *CustomErr] {
+		return SuccessTyped[string, *CustomErr]("typed-ok")
+	})
+	assert.True(t, flatTyped.IsSuccess())
+
+	flatTypedFail := FlatMapTypedResult(typedFail, func(v int) TypedResult[string, *CustomErr] {
+		return SuccessTyped[string, *CustomErr]("none")
+	})
+	assert.False(t, flatTypedFail.IsSuccess())
+}
+

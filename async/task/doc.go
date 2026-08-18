@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// package task provides a concurrent-safe mechanism for tracking asynchronous
+// Package task provides a concurrent-safe mechanism for tracking asynchronous
 // request-response cycles by unique correlation IDs.
 //
 // It is primarily designed for high-performance network protocol implementations

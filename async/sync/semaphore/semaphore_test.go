@@ -129,18 +129,30 @@ func TestSemaphore_ContextCancelled(t *testing.T) {
 }
 
 func TestSemaphore_AlreadyCancelled(t *testing.T) {
-	// Demonstrating the bug where Acquire succeeds even if context is already cancelled
-	// if we are under the limit.
 	sem := New(1)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
 	err := sem.Acquire(ctx)
-	// We want to test this behavior. Currently, it returns nil (doesn't check context if active < limit).
-	// Let's document this behavior.
-	if err != nil {
-		t.Logf("Acquire properly failed when already cancelled: %v", err)
-	} else {
-		t.Log("Acquire succeeded even with cancelled context (bug/vulnerability)")
+	if err == nil {
+		t.Fatal("expected error on already cancelled context")
+	}
+}
+
+func TestSemaphore_NegativeLimitsAndEdgeCases(t *testing.T) {
+	// Negative limit coerced to 0
+	sem := New(-1)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancel()
+
+	err := sem.Acquire(ctx)
+	if err == nil {
+		t.Fatal("expected acquire to block and fail with timeout on 0-limit semaphore")
+	}
+
+	// Resize to negative
+	sem.Resize(-5)
+	if sem.limit != 0 {
+		t.Errorf("expected limit=0, got %d", sem.limit)
 	}
 }

@@ -400,6 +400,40 @@ func TestPipeline_Stream_RateLimiting_Cancelled(t *testing.T) {
 	assert.ErrorIs(t, streamErrs[0], context.Canceled)
 }
 
+func TestPipeline_Helpers_EdgeCases(t *testing.T) {
+	ctx := context.Background()
+	cfg := PipelineConfig{Workers: 2}
+
+	// Map nil check
+	_, err := Map[int, int](ctx, cfg, []int{1}, nil)
+	assert.Error(t, err)
+
+	// Map empty slice
+	mapped, err := Map(ctx, cfg, []int{}, func(_ context.Context, in int) (int, error) { return in, nil })
+	assert.NoError(t, err)
+	assert.Empty(t, mapped)
+
+	// ForEach nil check
+	err = ForEach[int](ctx, cfg, []int{1}, nil)
+	assert.Error(t, err)
+
+	// ForEach empty slice
+	err = ForEach(ctx, cfg, []int{}, func(_ context.Context, in int) error { return nil })
+	assert.NoError(t, err)
+
+	// Process nil mapper
+	p := NewPipeline[int, int](cfg)
+	_, err = p.Process(ctx, []int{1}, nil)
+	assert.Error(t, err)
+
+	// Stream nil mapper
+	inCh := make(chan int)
+	close(inCh)
+	_, errCh := p.Stream(ctx, inCh, nil)
+	err = <-errCh
+	assert.Error(t, err)
+}
+
 func BenchmarkPipeline_Process(b *testing.B) {
 	cfg := PipelineConfig{
 		Workers: 8,
@@ -422,3 +456,4 @@ func BenchmarkPipeline_Process(b *testing.B) {
 		_, _ = p.Process(context.Background(), inputs, mapper)
 	}
 }
+

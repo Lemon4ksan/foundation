@@ -39,7 +39,7 @@ type call[V any] struct {
 	panicVal  any
 }
 
-// Group cooridinates concurrent executions and suppresses duplicate calls
+// Group coordinates concurrent executions and suppresses duplicate calls
 // for identical parameterized keys.
 //
 // The zero value of Group is ready to use and safe for concurrent execution
@@ -68,12 +68,12 @@ type CallFn[V any] func(ctx context.Context) (V, error)
 func (group *Group[K, V]) Do(ctx context.Context, key K, callFn CallFn[V]) (V, error) {
 	if group == nil {
 		var zero V
-		return zero, errors.New("batto: group is nil")
+		return zero, errors.New("dedup: group is nil")
 	}
 
 	if callFn == nil {
 		var zero V
-		return zero, errors.New("batto: callFn is nil")
+		return zero, errors.New("dedup: callFn is nil")
 	}
 
 	if err := ctx.Err(); err != nil {
@@ -86,19 +86,19 @@ func (group *Group[K, V]) Do(ctx context.Context, key K, callFn CallFn[V]) (V, e
 		group.calls = make(map[K]*call[V])
 	}
 
-	call, ok := group.calls[key]
+	c, ok := group.calls[key]
 	if !ok {
 		// Current call is the initiator for this key.
-		call, ch := group.startWorker(key, callFn)
-		return group.wait(ctx, key, call, ch)
+		c, ch := group.startWorker(key, callFn)
+		return group.wait(ctx, key, c, ch)
 	}
 
-	call.mu.Lock()
-	if call.done {
+	c.mu.Lock()
+	if c.done {
 		// The call finished just as we were locking group.mu and c.mu.
 		// Extract values and return immediately without enqueuing.
-		val, err, panicVal := call.val, call.err, call.panicVal
-		call.mu.Unlock()
+		val, err, panicVal := c.val, c.err, c.panicVal
+		c.mu.Unlock()
 		group.mu.Unlock()
 
 		if panicVal != nil {
@@ -111,11 +111,73 @@ func (group *Group[K, V]) Do(ctx context.Context, key K, callFn CallFn[V]) (V, e
 
 	// Register a new waiting channel for this duplicate concurrent call.
 	ch := make(chan Result[V], 1)
-	call.waiters[ch] = ctx
-	call.mu.Unlock()
+	c.waiters[ch] = ctx
+	c.mu.Unlock()
 	group.mu.Unlock()
 
-	return group.wait(ctx, key, call, ch)
+	return group.wait(ctx, key, c, ch)
+}
+
+// DoChan executes and suppresses duplicate concurrent calls for a given key,
+// returning a receive-only channel that receives the single [Result].
+func (group *Group[K, V]) DoChan(ctx context.Context, key K, callFn CallFn[V]) <-chan Result[V] {
+	ch := make(chan Result[V], 1)
+
+	if group == nil {
+		ch <- Result[V]{Err: errors.New("dedup: group is nil")}
+		return ch
+	}
+
+	if callFn == nil {
+		ch <- Result[V]{Err: errors.New("dedup: callFn is nil")}
+		return ch
+	}
+
+	if err := ctx.Err(); err != nil {
+		ch <- Result[V]{Err: err}
+		return ch
+	}
+
+	group.mu.Lock()
+	if group.calls == nil {
+		group.calls = make(map[K]*call[V])
+	}
+
+	c, ok := group.calls[key]
+	if !ok {
+		c, initCh := group.startWorker(key, callFn)
+		go func() {
+			val, err := group.wait(ctx, key, c, initCh)
+			ch <- Result[V]{Val: val, Err: err}
+		}()
+		return ch
+	}
+
+	c.mu.Lock()
+	if c.done {
+		val, err, panicVal := c.val, c.err, c.panicVal
+		c.mu.Unlock()
+		group.mu.Unlock()
+
+		if panicVal != nil {
+			ch <- Result[V]{Err: ErrWorkerPanicked, PanicVal: panicVal}
+		} else {
+			ch <- Result[V]{Val: val, Err: err}
+		}
+		return ch
+	}
+
+	waiterCh := make(chan Result[V], 1)
+	c.waiters[waiterCh] = ctx
+	c.mu.Unlock()
+	group.mu.Unlock()
+
+	go func() {
+		val, err := group.wait(ctx, key, c, waiterCh)
+		ch <- Result[V]{Val: val, Err: err}
+	}()
+
+	return ch
 }
 
 // startWorker initializes the call structure, registers it in the group,

@@ -304,3 +304,30 @@ func TestBus_BaseEventAndClosedSub(t *testing.T) {
 	subNil := b2.Subscribe(nil, TestEventA{}, nil)
 	assert.Len(t, subNil.types, 1)
 }
+
+func TestBus_SetOnDropped(t *testing.T) {
+	b := New()
+	defer b.Close()
+
+	var droppedEvent Event
+	b.SetOnDropped(func(e Event, subID uint64) {
+		droppedEvent = e
+	})
+
+	sub := b.Subscribe(TestEventA{})
+	// Fill sub buffer (buffer size is 128)
+	for i := 0; i < 128; i++ {
+		b.Publish(TestEventA{})
+	}
+
+	// 129th event should overflow and trigger SetOnDropped callback
+	overflowEvent := TestEventA{}
+	b.Publish(overflowEvent)
+
+	assert.NotNil(t, droppedEvent)
+	assert.IsType(t, TestEventA{}, droppedEvent)
+
+	// Clean up sub
+	sub.Unsubscribe()
+}
+

@@ -588,3 +588,20 @@ func TestKeyedLimiter_Close(t *testing.T) {
 		t.Errorf("expected ErrClosed, got %v", err)
 	}
 }
+
+func TestKeyedLimiter_Len(t *testing.T) {
+	kl := NewKeyedLimiter[string](rate.Limit(100), 1, 100*time.Millisecond)
+	defer func() {
+		_ = kl.Close()
+	}()
+
+	if kl.Len() != 0 {
+		t.Errorf("expected 0, got %d", kl.Len())
+	}
+	_, _ = kl.Allow("k1")
+	_, _ = kl.Allow("k2")
+	if kl.Len() != 2 {
+		t.Errorf("expected 2, got %d", kl.Len())
+	}
+}
+

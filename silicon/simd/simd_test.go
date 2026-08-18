@@ -7,6 +7,7 @@ package simd_test
 import (
 	"bytes"
 	"testing"
+	"unsafe"
 
 	"github.com/stretchr/testify/assert"
 
@@ -65,7 +66,77 @@ func TestApplyFastMaskVector(t *testing.T) {
 	// Unmasking
 	simd.ApplyFastMaskVector(payload, mask)
 	assert.Equal(t, orig, payload)
+
+	// Short payload (< 32 bytes)
+	shortPayload := []byte("short payload")
+	origShort := []byte("short payload")
+	simd.ApplyFastMaskVector(shortPayload, mask)
+	assert.NotEqual(t, origShort, shortPayload)
+	simd.ApplyFastMaskVector(shortPayload, mask)
+	assert.Equal(t, origShort, shortPayload)
 }
+
+func TestStreamCopy256(t *testing.T) {
+	src := make([]byte, 128)
+	for i := range src {
+		src[i] = byte(i)
+	}
+
+	dst := make([]byte, 128)
+	n := simd.StreamCopy256(dst, src)
+	assert.Equal(t, 128, n)
+	assert.Equal(t, src, dst)
+
+	// Remainder unaligned copy
+	srcOdd := make([]byte, 100)
+	dstOdd := make([]byte, 100)
+	nOdd := simd.StreamCopy256(dstOdd, srcOdd)
+	assert.Equal(t, 100, nOdd)
+
+	// Zero length
+	assert.Equal(t, 0, simd.StreamCopy256(nil, nil))
+}
+
+func TestPrefetchAndBMI2(t *testing.T) {
+	data := make([]byte, 64)
+	simd.PrefetchL1(nil)
+	simd.PrefetchL1(unsafe.Pointer(&data[0]))
+
+	assert.Equal(t, 0, simd.CountLeadingZeros(0x8000000000000000))
+	assert.Equal(t, 64, simd.CountLeadingZeros(0))
+	assert.Equal(t, 0, simd.CountTrailingZeros(1))
+	assert.Equal(t, 64, simd.CountTrailingZeros(0))
+
+	val := uint64(0x123456789ABCDEF0)
+	mask := uint64(0x0F0F0F0F0F0F0F0F)
+	extracted := simd.ExtractBits(val, mask)
+	deposited := simd.DepositBits(extracted, mask)
+	assert.Equal(t, val&mask, deposited)
+}
+
+func TestWordMatch(t *testing.T) {
+	p64 := simd.PackWord64("123456789")
+	assert.NotZero(t, p64)
+	p64Short := simd.PackWord64("123")
+	assert.NotZero(t, p64Short)
+
+	p32 := simd.PackWord32("12345")
+	assert.NotZero(t, p32)
+	p32Short := simd.PackWord32("12")
+	assert.NotZero(t, p32Short)
+
+	buf := []byte("HTTP/1.1 200 OK\r\n")
+	assert.True(t, simd.MatchWord64(buf, simd.PackWord64("HTTP/1.1")))
+	assert.True(t, simd.MatchWord64Str(buf, "HTTP/1.1"))
+	assert.False(t, simd.MatchWord64(buf[:4], p64))
+	assert.False(t, simd.MatchWord64Str(buf[:4], "HTTP/1.1"))
+
+	assert.True(t, simd.MatchWord32(buf, simd.PackWord32("HTTP")))
+	assert.True(t, simd.MatchWord32Str(buf, "HTTP"))
+	assert.False(t, simd.MatchWord32(buf[:2], p32))
+	assert.False(t, simd.MatchWord32Str(buf[:2], "HTTP"))
+}
+
 
 func BenchmarkIndexByte_Std(b *testing.B) {
 	data := make([]byte, 1024)

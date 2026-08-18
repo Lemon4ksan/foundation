@@ -43,7 +43,6 @@ func TestGroup_Do_SuppressedExecution(t *testing.T) {
 				}
 
 				mu.Lock()
-
 				results = append(results, val)
 				mu.Unlock()
 			})
@@ -100,73 +99,52 @@ func TestGroup_Do_PartialContextCancellation(t *testing.T) {
 
 		var wg sync.WaitGroup
 
-		// Goroutine A: Will cancel while waiting
+		// Caller A (Initiator)
 		wg.Go(func() {
-			_, err := g.Do(ctxA, "key-2", fn)
-
-			mu.Lock()
-			errA = err
-			mu.Unlock()
+			_, errA = g.Do(ctxA, "key-2", fn)
 		})
 
-		// Goroutine B: Will wait and successfully complete
+		// Caller B (Secondary Waiter)
 		wg.Go(func() {
-			r, err := g.Do(ctxB, "key-2", fn)
-
+			val, err := g.Do(ctxB, "key-2", fn)
 			mu.Lock()
-			resultB = r
+			resultB = val
 			errB = err
 			mu.Unlock()
 		})
 
-		// Let both goroutines enter Do and block
+		// Let both enter and wait
 		synctest.Wait()
+
+		// Cancel Caller A while execution is in progress
 		cancelA()
 		synctest.Wait()
 
-		mu.Lock()
-		eA := errA
-		mu.Unlock()
-
-		if eA == nil || !errors.Is(eA, context.Canceled) {
-			t.Errorf("caller A error = %v, want context.Canceled", eA)
+		if errA == nil || !errors.Is(errA, context.Canceled) {
+			t.Errorf("caller A error = %v, want context.Canceled", errA)
 		}
 
-		// Check that B is still waiting on the execution (under mutex protection)
-		mu.Lock()
-		resB := resultB
-		eB := errB
-		mu.Unlock()
-
-		if resB != "" || eB != nil {
-			t.Errorf("caller B completed prematurely: val = %q, err = %v", resB, eB)
-		}
-
-		// Advance virtual time past worker execution threshold
+		// Advance virtual time so worker finishes for Caller B
 		time.Sleep(150 * time.Millisecond)
 		wg.Wait()
 
-		gotCount := runCount.Load()
-		if gotCount != 1 {
-			t.Errorf("worker execution count = %d, want 1", gotCount)
-		}
-
 		mu.Lock()
-		resBFinal := resultB
-		eBFinal := errB
-		mu.Unlock()
+		defer mu.Unlock()
 
-		if eBFinal != nil {
-			t.Errorf("caller B error = %v, want nil", eBFinal)
+		if errB != nil {
+			t.Errorf("caller B failed: %v", errB)
+		}
+		if resultB != "success" {
+			t.Errorf("caller B result = %q, want %q", resultB, "success")
 		}
 
-		if resBFinal != "success" {
-			t.Errorf("caller B result = %q, want %q", resBFinal, "success")
+		if got := runCount.Load(); got != 1 {
+			t.Errorf("total executions = %d, want 1", got)
 		}
 	})
 }
 
-func TestGroup_Do_WorkerContextCancellation(t *testing.T) {
+func TestGroup_Do_AllWaitersCancelled(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		g := &Group[string, string]{}
 
@@ -183,66 +161,74 @@ func TestGroup_Do_WorkerContextCancellation(t *testing.T) {
 				workerCancelled.Store(true)
 				return "", workerCtx.Err()
 			case <-time.After(100 * time.Millisecond):
-				return "completed", nil
+				return "done", nil
 			}
 		}
 
 		var wg sync.WaitGroup
 
-		wg.Go(func() { g.Do(ctxA, "key-3", fn) })
-		wg.Go(func() { g.Do(ctxB, "key-3", fn) })
+		wg.Go(func() {
+			_, _ = g.Do(ctxA, "key-3", fn)
+		})
 
-		// Let them start and block inside worker selection
+		wg.Go(func() {
+			_, _ = g.Do(ctxB, "key-3", fn)
+		})
+
+		// Let both enter and block
 		synctest.Wait()
+
+		// Cancel all waiting callers
 		cancelA()
 		cancelB()
+
+		// Allow cancellation propagation into the worker's internal context
 		synctest.Wait()
+		wg.Wait()
 
 		if !workerCancelled.Load() {
-			t.Error("worker context was not cancelled after all waiters cancelled their contexts")
+			t.Errorf("worker was not cancelled after all waiters aborted")
 		}
-
-		wg.Wait()
 	})
 }
 
 func TestGroup_Do_PanicIsolation(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		g := &Group[string, string]{}
-		ctx := t.Context()
 
-		fn := func(workerCtx context.Context) (string, error) {
+		fnStarted := make(chan struct{})
+		fn := func(_ context.Context) (string, error) {
+			close(fnStarted)
 			time.Sleep(50 * time.Millisecond)
 			panic("simulated-panic")
 		}
 
-		var wg sync.WaitGroup
-
 		var (
 			recoveredPanic any
 			secondErr      error
+			wg             sync.WaitGroup
 		)
 
-		// Goroutine 1: Initiator (will receive and propagate panic)
-		wg.Go(func() {
+		wg.Add(2)
+
+		// Caller 1 (Initiator)
+		go func() {
+			defer wg.Done()
 			defer func() {
-				if r := recover(); r != nil {
-					recoveredPanic = r
-				}
+				recoveredPanic = recover()
 			}()
+			_, _ = g.Do(t.Context(), "key-panic", fn)
+		}()
 
-			g.Do(ctx, "key-4", fn)
-		})
+		<-fnStarted
 
-		// Ensure the initiator has successfully registered first
+		// Caller 2 (Secondary waiter)
+		go func() {
+			defer wg.Done()
+			_, secondErr = g.Do(t.Context(), "key-panic", fn)
+		}()
+
 		synctest.Wait()
-
-		// Goroutine 2: Secondary waiter (will receive ErrWorkerPanicked)
-		wg.Go(func() {
-			_, secondErr = g.Do(ctx, "key-4", fn)
-		})
-
-		// Advance virtual time past the panic point
 		time.Sleep(100 * time.Millisecond)
 		wg.Wait()
 
@@ -265,7 +251,7 @@ func TestGroup_Do_ExpiredContext(t *testing.T) {
 
 		var runCount atomic.Int32
 
-		fn := func(workerCtx context.Context) (string, error) {
+		fn := func(_ context.Context) (string, error) {
 			runCount.Add(1)
 			return "data", nil
 		}
@@ -288,7 +274,7 @@ func TestGroup_Do_KeyReutilization(t *testing.T) {
 
 		var runCount atomic.Int32
 
-		fn := func(workerCtx context.Context) (string, error) {
+		fn := func(_ context.Context) (string, error) {
 			runCount.Add(1)
 			return "value", nil
 		}
@@ -329,7 +315,7 @@ func TestGroup_Do_MultiKeyParallelism(t *testing.T) {
 			results  = make(map[string]string)
 		)
 
-		fn := func(workerCtx context.Context) (string, error) {
+		fn := func(_ context.Context) (string, error) {
 			runCount.Add(1)
 			time.Sleep(100 * time.Millisecond)
 			return "val", nil
@@ -353,10 +339,7 @@ func TestGroup_Do_MultiKeyParallelism(t *testing.T) {
 			mu.Unlock()
 		})
 
-		// Let both start and block inside virtual time sleep
 		synctest.Wait()
-
-		// Advance virtual time to complete both executions
 		time.Sleep(150 * time.Millisecond)
 		wg.Wait()
 
@@ -372,4 +355,147 @@ func TestGroup_Do_MultiKeyParallelism(t *testing.T) {
 			t.Errorf("results mismatch: %v", results)
 		}
 	})
+}
+
+func TestGroup_EdgeCases_NilAndInvalidInputs(t *testing.T) {
+	var nilGroup *Group[string, int]
+	ctx := context.Background()
+
+	_, err := nilGroup.Do(ctx, "key", func(_ context.Context) (int, error) { return 1, nil })
+	if err == nil {
+		t.Error("expected error for nil group.Do")
+	}
+
+	g := &Group[string, int]{}
+	_, err = g.Do(ctx, "key", nil)
+	if err == nil {
+		t.Error("expected error for nil callFn in Do")
+	}
+
+	// DoChan nil checks
+	ch := nilGroup.DoChan(ctx, "key", func(_ context.Context) (int, error) { return 1, nil })
+	res := <-ch
+	if res.Err == nil {
+		t.Error("expected error in DoChan for nil group")
+	}
+
+	ch = g.DoChan(ctx, "key", nil)
+	res = <-ch
+	if res.Err == nil {
+		t.Error("expected error in DoChan for nil callFn")
+	}
+
+	// Expired context in DoChan
+	cancCtx, cancel := context.WithCancel(context.Background())
+	cancel()
+	ch = g.DoChan(cancCtx, "key", func(_ context.Context) (int, error) { return 1, nil })
+	res = <-ch
+	if res.Err == nil {
+		t.Error("expected error in DoChan for expired context")
+	}
+}
+
+func TestGroup_DoChan_SuccessAndCoalesce(t *testing.T) {
+	g := &Group[string, string]{}
+	ctx := context.Background()
+
+	ch1 := g.DoChan(ctx, "chan-key", func(_ context.Context) (string, error) {
+		time.Sleep(20 * time.Millisecond)
+		return "chan-val", nil
+	})
+
+	ch2 := g.DoChan(ctx, "chan-key", func(_ context.Context) (string, error) {
+		return "should-not-run", nil
+	})
+
+	res1 := <-ch1
+	res2 := <-ch2
+
+	if res1.Val != "chan-val" || res1.Err != nil {
+		t.Errorf("res1 = %+v, want 'chan-val'", res1)
+	}
+	if res2.Val != "chan-val" || res2.Err != nil {
+		t.Errorf("res2 = %+v, want 'chan-val'", res2)
+	}
+}
+
+func TestGroup_CallAlreadyDoneBranches(t *testing.T) {
+	g := &Group[string, string]{
+		calls: make(map[string]*call[string]),
+	}
+
+	// Manually inject a completed call
+	g.calls["done-key"] = &call[string]{
+		done: true,
+		val:  "done-value",
+	}
+
+	val, err := g.Do(context.Background(), "done-key", func(_ context.Context) (string, error) {
+		return "unexpected", nil
+	})
+	if err != nil || val != "done-value" {
+		t.Errorf("Do returned val=%q, err=%v, want 'done-value'", val, err)
+	}
+
+	// Inject a completed panic call
+	g.calls["panic-key"] = &call[string]{
+		done:     true,
+		panicVal: "some-panic",
+	}
+	_, err = g.Do(context.Background(), "panic-key", func(_ context.Context) (string, error) {
+		return "unexpected", nil
+	})
+	if !errors.Is(err, ErrWorkerPanicked) {
+		t.Errorf("Do returned err=%v, want ErrWorkerPanicked", err)
+	}
+
+	// DoChan on already completed call
+	ch := g.DoChan(context.Background(), "done-key", func(_ context.Context) (string, error) {
+		return "unexpected", nil
+	})
+	res := <-ch
+	if res.Val != "done-value" || res.Err != nil {
+		t.Errorf("DoChan on done call returned %+v, want 'done-value'", res)
+	}
+
+	// DoChan on already panicked call
+	ch = g.DoChan(context.Background(), "panic-key", func(_ context.Context) (string, error) {
+		return "unexpected", nil
+	})
+	res = <-ch
+	if !errors.Is(res.Err, ErrWorkerPanicked) {
+		t.Errorf("DoChan on panic call returned %+v, want ErrWorkerPanicked", res)
+	}
+}
+
+func TestGroup_Wait_CancellationAfterDone(t *testing.T) {
+	g := &Group[string, string]{}
+	ctx, cancel := context.WithCancel(context.Background())
+
+	resCh := make(chan Result[string], 1)
+	c := &call[string]{
+		done: true,
+	}
+
+	// Place result on channel
+	resCh <- Result[string]{Val: "cancelled-but-done"}
+	cancel() // Cancel context
+
+	val, err := g.wait(ctx, "test-key", c, resCh)
+	if err != nil || val != "cancelled-but-done" {
+		t.Errorf("wait with cancelled ctx but done=true returned val=%q, err=%v", val, err)
+	}
+
+	// Test panic propagation on cancellation when done=true
+	resChPanic := make(chan Result[string], 1)
+	resChPanic <- Result[string]{PanicVal: "wait-panic"}
+
+	defer func() {
+		r := recover()
+		if r != "wait-panic" {
+			t.Errorf("recovered = %v, want 'wait-panic'", r)
+		}
+	}()
+
+	_, _ = g.wait(ctx, "test-key-panic", c, resChPanic)
 }

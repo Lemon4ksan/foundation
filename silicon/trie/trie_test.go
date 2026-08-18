@@ -151,6 +151,50 @@ func TestRadixTree_Delete(t *testing.T) {
 	assert.False(t, deleted)
 }
 
+func TestRadixTree_EdgeCases(t *testing.T) {
+	tree := trie.New[string]()
+
+	// Empty string root insertion and retrieval
+	tree.Insert("", "empty_root")
+	val, ok := tree.Get("")
+	assert.True(t, ok)
+	assert.Equal(t, "empty_root", val)
+
+	// Complex branch splitting
+	tree.Insert("romane", "1")
+	tree.Insert("romanus", "2")
+	tree.Insert("romulus", "3")
+	tree.Insert("rubens", "4")
+	tree.Insert("ruber", "5")
+	tree.Insert("rubicon", "6")
+	tree.Insert("rubicundus", "7")
+
+	assert.Equal(t, 8, tree.Len())
+
+	// WalkPrefix early termination
+	visited := 0
+	tree.WalkPrefix("rom", func(key string, val string) bool {
+		visited++
+		return false // stop immediately
+	})
+	assert.Equal(t, 1, visited)
+
+	// WalkPrefix on non-existent prefix
+	nonVisited := 0
+	tree.WalkPrefix("xyz", func(key string, val string) bool {
+		nonVisited++
+		return true
+	})
+	assert.Equal(t, 0, nonVisited)
+
+	// Delete edge collapsing
+	tree.Delete("romane")
+	tree.Delete("romanus")
+	val, ok = tree.Get("romulus")
+	assert.True(t, ok)
+	assert.Equal(t, "3", val)
+}
+
 func BenchmarkRadixTree_Get_ZeroAlloc(b *testing.B) {
 	tree := trie.New[int]()
 	for i := 0; i < 1000; i++ {

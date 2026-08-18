@@ -103,3 +103,17 @@ func TestSpinLock_TryLockConcurrent(t *testing.T) {
 		t.Errorf("expected counter to be %d, got %d", expected, counter)
 	}
 }
+
+func TestSpinLock_UnlockPanic(t *testing.T) {
+	var mu SpinLock
+
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Fatal("expected unlock of unlocked spinlock to panic")
+		}
+	}()
+
+	mu.Unlock()
+}
+
