@@ -19,7 +19,7 @@ The standard library `context.WithValue` is one of the most pervasive yet hidden
 
 ## 2. Memory Architecture & Mechanics
 
-`FastContext` replaces the heap-allocated linked list with a **contiguous, flat inline array buffer**.
+`Context` replaces the heap-allocated linked list with a **contiguous, flat inline array buffer**.
 
 ```mermaid
 graph TD
@@ -62,11 +62,11 @@ go test -bench="PipelineLifecycle" -benchmem -count=3 ./async/context
 | Implementation | Execution Speed | Memory Allocated | Heap Allocations |
 | :--- | :---: | :---: | :---: |
 | **Standard `stdctx.Context`** | `175.1 ns/op` | `240 B/op` | `5 allocs/op` |
-| **`FastContext.InPlace`** | **`117.6 ns/op`** *(~33% faster)* | **`0 B/op`** | **`0 allocs/op`** |
-| **`FastContext.Pool`** *(with recycling)* | **`137.2 ns/op`** | **`0 B/op`** | **`0 allocs/op`** |
+| **`Context.InPlace`** | **`117.6 ns/op`** *(~33% faster)* | **`0 B/op`** | **`0 allocs/op`** |
+| **`Context.Pool`** *(with recycling)* | **`137.2 ns/op`** | **`0 B/op`** | **`0 allocs/op`** |
 
 > [!TIP]
-> Under a server load of **500,000 requests/sec**, standard Go allocates **~120 MB/sec** and **2.5 million objects/sec** solely for context metadata. `FastContext` drops this memory footprint and GC churn to **absolute zero**.
+> Under a server load of **500,000 requests/sec**, standard Go allocates **~120 MB/sec** and **2.5 million objects/sec** solely for context metadata. `Context` drops this memory footprint and GC churn to **absolute zero**.
 
 ---
 
@@ -74,7 +74,7 @@ go test -bench="PipelineLifecycle" -benchmem -count=3 ./async/context
 
 ### Seamless Ingress Conversion (100% Transparent)
 
-Convert standard incoming contexts at the pipeline boundary. Downstream handlers can pass `FastContext` anywhere a standard `context.Context` is accepted:
+Convert standard incoming contexts at the pipeline boundary. Downstream handlers can pass `Context` anywhere a standard `context.Context` is accepted:
 
 ```go
 package main

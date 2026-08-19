@@ -18,8 +18,8 @@ func IndexTwoBytesVector(b []byte, c1, c2 byte) int {
 	return IndexByteTwoSWAR(b, c1, c2)
 }
 
-// ApplyFastMaskVector falls back to SWAR 64-bit XOR masking on non-amd64 architectures.
-func ApplyFastMaskVector(b []byte, mask uint32) {
+// XORMask32 masks slice b using a 4-byte cyclic mask via SWAR 64-bit XOR on non-amd64 architectures.
+func XORMask32(b []byte, mask uint32) {
 	if len(b) == 0 {
 		return
 	}
@@ -43,6 +43,8 @@ func ApplyFastMaskVector(b []byte, mask uint32) {
 		b[i] ^= maskBytes[i&3]
 	}
 }
+
+
 
 func extractBitsHW(val, mask uint64) uint64 {
 	return extractBitsSWAR(val, mask)

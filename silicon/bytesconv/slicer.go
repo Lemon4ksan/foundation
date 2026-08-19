@@ -60,30 +60,56 @@ func (s *PatternSlicer) Slice(data []byte) ([][]byte, bool) {
 
 // SliceAll recursively splits data on every match of Pattern + Offset.
 func (s *PatternSlicer) SliceAll(data []byte) [][]byte {
+	return s.SliceAllInto(data, nil)
+}
+
+// SliceInto finds the first occurrence of Pattern in data, splitting into pre-allocated dst slice.
+// If matched, dst is resliced and populated with [data[:splitPoint], data[splitPoint:]], returning (dst, true).
+// If not matched, dst is populated with [data], returning (dst, false).
+func (s *PatternSlicer) SliceInto(data []byte, dst [][]byte) ([][]byte, bool) {
+	dst = dst[:0]
 	if len(data) == 0 || len(s.Pattern) == 0 {
-		return [][]byte{data}
+		return append(dst, data), false
 	}
 
-	var result [][]byte
+	idx := s.findIndex(data)
+	if idx == -1 {
+		return append(dst, data), false
+	}
+
+	splitPoint := idx + s.Offset
+	if splitPoint <= 0 || splitPoint >= len(data) {
+		return append(dst, data), false
+	}
+
+	return append(dst, data[:splitPoint], data[splitPoint:]), true
+}
+
+// SliceAllInto recursively splits data into pre-allocated dst slice on every match of Pattern + Offset.
+func (s *PatternSlicer) SliceAllInto(data []byte, dst [][]byte) [][]byte {
+	dst = dst[:0]
+	if len(data) == 0 || len(s.Pattern) == 0 {
+		return append(dst, data)
+	}
 
 	curr := data
 
 	for len(curr) > 0 {
 		idx := s.findIndex(curr)
 		if idx == -1 {
-			result = append(result, curr)
+			dst = append(dst, curr)
 			break
 		}
 
 		splitPoint := idx + s.Offset
 		if splitPoint <= 0 || splitPoint >= len(curr) {
-			result = append(result, curr)
+			dst = append(dst, curr)
 			break
 		}
 
-		result = append(result, curr[:splitPoint])
+		dst = append(dst, curr[:splitPoint])
 		curr = curr[splitPoint:]
 	}
 
-	return result
+	return dst
 }

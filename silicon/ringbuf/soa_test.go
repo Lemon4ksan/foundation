@@ -14,7 +14,7 @@ import (
 )
 
 type PacketAoS struct {
-	StreamID   uint32
+	FlowID     uint32
 	PayloadLen uint16
 	Protocol   byte
 	Flags      byte
@@ -57,7 +57,7 @@ func BenchmarkBatch_SoA_Vs_AoS(b *testing.B) {
 		_ = soa.Append(proto, uint32(i), uint16(i*10), 0x01)
 		aos[i] = PacketAoS{
 			Protocol:   proto,
-			StreamID:   uint32(i),
+			FlowID:     uint32(i),
 			PayloadLen: uint16(i * 10),
 			Flags:      0x01,
 		}

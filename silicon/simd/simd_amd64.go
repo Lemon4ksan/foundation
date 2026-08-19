@@ -122,8 +122,8 @@ func IndexTwoBytesVector(b []byte, c1, c2 byte) int {
 	return IndexByteTwoSWAR(b, c1, c2)
 }
 
-// ApplyFastMaskVector masks slice b using a 4-byte mask via 256-bit AVX2 VPXOR vector instructions.
-func ApplyFastMaskVector(b []byte, mask uint32) {
+// XORMask32 masks slice b using a 4-byte cyclic mask via 256-bit AVX2 VPXOR vector instructions.
+func XORMask32(b []byte, mask uint32) {
 	if len(b) >= 32 && hasAVX2 {
 		applyFastMaskAVX2(b, mask)
 
@@ -137,6 +137,8 @@ func ApplyFastMaskVector(b []byte, mask uint32) {
 
 	maskSWAR(b, mask)
 }
+
+
 
 func maskSWAR(b []byte, mask uint32) {
 	if len(b) == 0 {

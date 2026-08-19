@@ -35,7 +35,7 @@ func TestIndexByteTwoSWAR(t *testing.T) {
 }
 
 func TestIndexByteVector(t *testing.T) {
-	data := []byte("Host: api.example.com\r\nAccept: application/json\r\nUser-Agent: aoni-fast-client/1.0\r\n")
+	data := []byte("Host: api.example.com\r\nAccept: application/json\r\nUser-Agent: foundation-client/1.0\r\n")
 
 	colonIdx := simd.IndexByteVector(data, ':')
 	assert.Equal(t, 4, colonIdx)
@@ -48,31 +48,31 @@ func TestIndexByteVector(t *testing.T) {
 }
 
 func TestIndexTwoBytesVector(t *testing.T) {
-	data := []byte("Host: api.example.com\r\nAccept: application/json\r\nUser-Agent: aoni-fast-client/1.0\r\n")
+	data := []byte("Host: api.example.com\r\nAccept: application/json\r\nUser-Agent: foundation-client/1.0\r\n")
 
 	idx := simd.IndexTwoBytesVector(data, ':', '\n')
 	assert.Equal(t, 4, idx)
 }
 
-func TestApplyFastMaskVector(t *testing.T) {
-	payload := []byte("Hello WebSocket World! 123456789012345678901234567890")
+func TestXORMask32(t *testing.T) {
+	payload := []byte("Hello Foundation World! 123456789012345678901234567890")
 	orig := make([]byte, len(payload))
 	copy(orig, payload)
 
 	mask := uint32(0x12345678)
-	simd.ApplyFastMaskVector(payload, mask)
+	simd.XORMask32(payload, mask)
 	assert.NotEqual(t, orig, payload)
 
 	// Unmasking
-	simd.ApplyFastMaskVector(payload, mask)
+	simd.XORMask32(payload, mask)
 	assert.Equal(t, orig, payload)
 
 	// Short payload (< 32 bytes)
 	shortPayload := []byte("short payload")
 	origShort := []byte("short payload")
-	simd.ApplyFastMaskVector(shortPayload, mask)
+	simd.XORMask32(shortPayload, mask)
 	assert.NotEqual(t, origShort, shortPayload)
-	simd.ApplyFastMaskVector(shortPayload, mask)
+	simd.XORMask32(shortPayload, mask)
 	assert.Equal(t, origShort, shortPayload)
 }
 
@@ -136,7 +136,6 @@ func TestWordMatch(t *testing.T) {
 	assert.False(t, simd.MatchWord32(buf[:2], p32))
 	assert.False(t, simd.MatchWord32Str(buf[:2], "HTTP"))
 }
-
 
 func BenchmarkIndexByte_Std(b *testing.B) {
 	data := make([]byte, 1024)

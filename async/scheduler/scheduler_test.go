@@ -336,4 +336,3 @@ func TestScheduler_TaskPanicRecovery(t *testing.T) {
 		}
 	})
 }
-

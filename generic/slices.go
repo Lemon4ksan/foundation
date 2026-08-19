@@ -279,4 +279,3 @@ func Filter[T any](slice []T, fn func(T) bool) []T {
 
 	return res
 }
-

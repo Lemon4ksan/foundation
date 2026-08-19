@@ -456,4 +456,3 @@ func BenchmarkPipeline_Process(b *testing.B) {
 		_, _ = p.Process(context.Background(), inputs, mapper)
 	}
 }
-

@@ -460,7 +460,7 @@ func (l *DataLoader[K, V]) executeBatch() {
 		} else if v, ok := results[k]; ok {
 			val = v
 		} else {
-			itemErr = errors.New("aoni dataloader: key not found in batch results")
+			itemErr = errors.New("foundation dataloader: key not found in batch results")
 		}
 
 		for _, ch := range chans {
@@ -594,4 +594,3 @@ func RaceFirstSuccess[T any](ctx context.Context, tasks ...func(context.Context)
 
 	return Failure[T](lastErr)
 }
-

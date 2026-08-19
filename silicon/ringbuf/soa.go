@@ -9,10 +9,10 @@ import (
 )
 
 // ErrBatchFull is returned when attempting to add items to a full PacketBatchSoA.
-var ErrBatchFull = errors.New("aoni/ringbuf: packet batch is full")
+var ErrBatchFull = errors.New("foundation/ringbuf: packet batch is full")
 
 // PacketBatchSoA implements a Structure-of-Arrays (SoA) memory layout for high-density
-// Layer-3 IP packet and frame batch processing.
+// Layer-3/4 IP packet and network flow batch processing.
 //
 // Hardware Architecture Benefit:
 // Unlike AoS (Array of Structures) which places padded struct fields adjacently,
@@ -23,7 +23,7 @@ type PacketBatchSoA struct {
 	Capacity    int
 	Len         int
 	Protocols   []byte   // Contiguous slice of 1-byte IP protocol IDs (6=TCP, 17=UDP, 1=ICMP)
-	StreamIDs   []uint32 // Contiguous slice of 4-byte HTTP/2 / QUIC Stream IDs
+	FlowIDs     []uint32 // Contiguous slice of 4-byte flow/connection IDs or 5-tuple hashes
 	PayloadLens []uint16 // Contiguous slice of 2-byte payload lengths
 	Flags       []byte   // Contiguous slice of 1-byte control flags
 }
@@ -38,20 +38,20 @@ func NewPacketBatchSoA(capacity int) *PacketBatchSoA {
 		Capacity:    capacity,
 		Len:         0,
 		Protocols:   make([]byte, 0, capacity),
-		StreamIDs:   make([]uint32, 0, capacity),
+		FlowIDs:     make([]uint32, 0, capacity),
 		PayloadLens: make([]uint16, 0, capacity),
 		Flags:       make([]byte, 0, capacity),
 	}
 }
 
 // Append adds a packet metadata tuple to the batch in SoA layout.
-func (b *PacketBatchSoA) Append(proto byte, streamID uint32, payloadLen uint16, flags byte) error {
+func (b *PacketBatchSoA) Append(proto byte, flowID uint32, payloadLen uint16, flags byte) error {
 	if b.Len >= b.Capacity {
 		return ErrBatchFull
 	}
 
 	b.Protocols = append(b.Protocols, proto)
-	b.StreamIDs = append(b.StreamIDs, streamID)
+	b.FlowIDs = append(b.FlowIDs, flowID)
 	b.PayloadLens = append(b.PayloadLens, payloadLen)
 	b.Flags = append(b.Flags, flags)
 	b.Len++
@@ -63,7 +63,7 @@ func (b *PacketBatchSoA) Append(proto byte, streamID uint32, payloadLen uint16, 
 func (b *PacketBatchSoA) Reset() {
 	b.Len = 0
 	b.Protocols = b.Protocols[:0]
-	b.StreamIDs = b.StreamIDs[:0]
+	b.FlowIDs = b.FlowIDs[:0]
 	b.PayloadLens = b.PayloadLens[:0]
 	b.Flags = b.Flags[:0]
 }

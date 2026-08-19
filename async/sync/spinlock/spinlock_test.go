@@ -116,4 +116,3 @@ func TestSpinLock_UnlockPanic(t *testing.T) {
 
 	mu.Unlock()
 }
-

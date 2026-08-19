@@ -14,19 +14,19 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lemon4ksan/foundation/async/rate"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/lemon4ksan/foundation/async/rate"
 
 	"github.com/lemon4ksan/foundation/async/dedup"
 	"github.com/lemon4ksan/foundation/async/event"
-	"github.com/lemon4ksan/foundation/async/task"
 	"github.com/lemon4ksan/foundation/async/lifecycle"
 	"github.com/lemon4ksan/foundation/async/pool"
 	"github.com/lemon4ksan/foundation/async/sync/breaker"
 	"github.com/lemon4ksan/foundation/async/sync/keylock"
 	"github.com/lemon4ksan/foundation/async/sync/limiter"
 	"github.com/lemon4ksan/foundation/async/sync/semaphore"
+	"github.com/lemon4ksan/foundation/async/task"
 )
 
 // DownstreamMock represents a simulated flaky downstream service.

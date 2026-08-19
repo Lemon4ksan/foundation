@@ -136,4 +136,3 @@ func TestRingBuffer_EdgeCases(t *testing.T) {
 	batch.Reset()
 	assert.Empty(t, batch.FilterByProtocol(6, nil))
 }
-

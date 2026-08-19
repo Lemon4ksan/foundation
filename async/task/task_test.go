@@ -53,14 +53,14 @@ func TestAdd_Errors(t *testing.T) {
 		require.NoError(t, err)
 
 		err = m.Add(1, nil)
-		assert.ErrorIs(t, err, ErrJobDuplicate)
+		assert.ErrorIs(t, err, ErrTaskDuplicate)
 	})
 
 	t.Run("Manager Closed", func(t *testing.T) {
 		m := NewManager[uint64, string](0)
 		require.NoError(t, m.Close())
 		err := m.Add(1, nil)
-		assert.ErrorIs(t, err, ErrJobClosed)
+		assert.ErrorIs(t, err, ErrTaskClosed)
 	})
 
 	t.Run("Capacity Reached", func(t *testing.T) {
@@ -69,7 +69,7 @@ func TestAdd_Errors(t *testing.T) {
 		require.NoError(t, err)
 
 		err = m.Add(2, nil)
-		assert.ErrorContains(t, err, "job manager capacity reached")
+		assert.ErrorContains(t, err, "task manager capacity reached")
 	})
 }
 
@@ -163,13 +163,13 @@ func TestWaitFor(t *testing.T) {
 		m.Add(id, nil) // No WithWait
 
 		_, err := m.WaitFor(context.Background(), id)
-		assert.ErrorIs(t, err, ErrWaitFor)
+		assert.ErrorIs(t, err, ErrTaskWaitFor)
 	})
 
 	t.Run("Job Not Found", func(t *testing.T) {
 		m := NewManager[uint64, string](0)
 		_, err := m.WaitFor(context.Background(), 404)
-		assert.ErrorIs(t, err, ErrJobNotFound)
+		assert.ErrorIs(t, err, ErrTaskNotFound)
 	})
 
 	t.Run("Context Cancelled", func(t *testing.T) {
@@ -194,7 +194,7 @@ func TestTimeoutsAndContexts(t *testing.T) {
 		wg.Add(1)
 
 		err := m.Add(id, func(ctx context.Context, res string, err error) {
-			assert.ErrorIs(t, err, ErrJobTimeout)
+			assert.ErrorIs(t, err, ErrTaskTimeout)
 			wg.Done()
 		}, WithTimeout[string](10*time.Millisecond))
 		require.NoError(t, err)
@@ -211,7 +211,7 @@ func TestTimeoutsAndContexts(t *testing.T) {
 		wg.Add(1)
 
 		err := m.Add(id, func(c context.Context, res string, err error) {
-			assert.ErrorIs(t, err, ErrJobCancelled)
+			assert.ErrorIs(t, err, ErrTaskCancelled)
 			wg.Done()
 		}, WithContext[string](ctx))
 		require.NoError(t, err)
@@ -266,7 +266,7 @@ func TestClose(t *testing.T) {
 
 		done := make(chan struct{}, 2)
 		m.Add(id1, func(ctx context.Context, res string, err error) {
-			assert.ErrorIs(t, err, ErrJobClosed)
+			assert.ErrorIs(t, err, ErrTaskClosed)
 
 			done <- struct{}{}
 		})
@@ -275,7 +275,7 @@ func TestClose(t *testing.T) {
 		// Test WaitFor unblocking on Close
 		go func() {
 			_, err := m.WaitFor(context.Background(), id2)
-			assert.ErrorIs(t, err, ErrJobClosed)
+			assert.ErrorIs(t, err, ErrTaskClosed)
 
 			done <- struct{}{}
 		}()
@@ -445,7 +445,7 @@ func TestCoverage_WaitForClosedChannel(t *testing.T) {
 
 	select {
 	case err := <-waitErrCh:
-		assert.ErrorIs(t, err, ErrJobClosed)
+		assert.ErrorIs(t, err, ErrTaskClosed)
 	case <-time.After(time.Second):
 		t.Fatal("WaitFor did not unblock after manager Close")
 	}
@@ -652,4 +652,3 @@ func TestManager_CancelAll(t *testing.T) {
 	assert.Equal(t, 0, m.Count())
 	assert.Equal(t, int32(3), cancelledCount.Load())
 }
-

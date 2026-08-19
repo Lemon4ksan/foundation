@@ -115,7 +115,7 @@ func IndexCRLF(b []byte) int {
 	return -1
 }
 
-// IndexDoubleCRLF searches for the first occurrence of "\r\n\r\n" (HTTP header boundary) in b.
+// IndexDoubleCRLF searches for the first occurrence of "\r\n\r\n" (protocol framing boundary) in b.
 // Returns the index of the first '\r', or -1 if not found.
 func IndexDoubleCRLF(b []byte) int {
 	n := len(b)

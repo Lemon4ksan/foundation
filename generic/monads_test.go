@@ -206,4 +206,3 @@ func TestMonads_RemainingBranches(t *testing.T) {
 	})
 	assert.False(t, flatTypedFail.IsSuccess())
 }
-

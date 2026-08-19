@@ -506,4 +506,3 @@ func TestOffHeap_RemainingEdgeCases(t *testing.T) {
 	assert.Equal(t, 0, slab.Len())
 	slab.Release() // double release safety
 }
-

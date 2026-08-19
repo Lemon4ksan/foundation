@@ -17,29 +17,29 @@ import (
 )
 
 var (
-	// ErrJobTimeout is returned when a job exceeds its allowed execution time
+	// ErrTaskTimeout is returned when a task exceeds its allowed execution time
 	// defined by [WithTimeout].
-	ErrJobTimeout = errors.New("job: request timed out")
+	ErrTaskTimeout = errors.New("task: request timed out")
 
-	// ErrJobClosed is returned when the manager is shutting down and all
-	// pending jobs are being cancelled.
-	ErrJobClosed = errors.New("job: manager closed")
+	// ErrTaskClosed is returned when the manager is shutting down and all
+	// pending tasks are being cancelled.
+	ErrTaskClosed = errors.New("task: manager closed")
 
-	// ErrJobCancelled is returned when the context associated with the job
+	// ErrTaskCancelled is returned when the context associated with the task
 	// is cancelled or expires.
-	ErrJobCancelled = errors.New("job: context cancelled")
+	ErrTaskCancelled = errors.New("task: context cancelled")
 
-	// ErrJobDuplicate is returned when attempting to add a job ID that is
+	// ErrTaskDuplicate is returned when attempting to add a task ID that is
 	// already being tracked by the manager.
-	ErrJobDuplicate = errors.New("job: duplicate job ID")
+	ErrTaskDuplicate = errors.New("task: duplicate task ID")
 
-	// ErrJobNotFound is returned when attempting to resolve, wait for, or remove
-	// a job ID that does not exist in the manager's registry.
-	ErrJobNotFound = errors.New("job: not found")
+	// ErrTaskNotFound is returned when attempting to resolve, wait for, or remove
+	// a task ID that does not exist in the manager's registry.
+	ErrTaskNotFound = errors.New("task: not found")
 
-	// ErrWaitFor is returned when [Manager.WaitFor] is invoked on a job
+	// ErrTaskWaitFor is returned when [Manager.WaitFor] is invoked on a task
 	// that was not initialized with the [WithWait] option.
-	ErrWaitFor = errors.New("job was not created with WithWait option")
+	ErrTaskWaitFor = errors.New("task: was not created with WithWait option")
 )
 
 // Callback defines the function signature for handling completed jobs.
@@ -178,7 +178,7 @@ func (m *Manager[K, T]) SetCallbackStrategy(strategy CallbackStrategy) {
 
 // WithTimeout sets a maximum duration the job is allowed to remain pending.
 // If the timeout is reached before resolution, the job is automatically resolved
-// with [ErrJobTimeout].
+// with [ErrTaskTimeout].
 func WithTimeout[T any](timeout time.Duration) Option[T] {
 	return func(c *config[T]) {
 		c.timeout = timeout
@@ -187,7 +187,7 @@ func WithTimeout[T any](timeout time.Duration) Option[T] {
 
 // WithContext associates a [context.Context] with the job.
 // If the context is cancelled or expires before resolution, the job is automatically
-// resolved with [ErrJobCancelled].
+// resolved with [ErrTaskCancelled].
 func WithContext[T any](ctx context.Context) Option[T] {
 	return func(c *config[T]) {
 		c.ctx = ctx
@@ -206,7 +206,7 @@ func WithKeepAlive[T any](keepAlive bool) Option[T] {
 }
 
 // WithWait enables synchronous waiting for this job using the [Manager.WaitFor] method.
-// Without this option, calling WaitFor on the job ID will return an [ErrWaitFor] error.
+// Without this option, calling WaitFor on the job ID will return an [ErrTaskWaitFor] error.
 func WithWait[T any]() Option[T] {
 	return func(c *config[T]) {
 		c.wait = true
@@ -257,7 +257,7 @@ func (m *Manager[K, T]) NextID() K {
 //
 // # Errors
 //
-// It returns [ErrJobClosed] if the manager is already closed, or [ErrJobDuplicate]
+// It returns [ErrTaskClosed] if the manager is already closed, or [ErrTaskDuplicate]
 // if the provided id is already registered. If a capacity limit is configured
 // and reached, it returns an error wrapping the capacity limit details.
 //
@@ -269,7 +269,7 @@ func (m *Manager[K, T]) Add(id K, cb Callback[T], opts ...Option[T]) error {
 	defer m.mu.Unlock()
 
 	if m.closed {
-		return ErrJobClosed
+		return ErrTaskClosed
 	}
 
 	cfg := defaultConfig[T]()
@@ -285,7 +285,7 @@ func (m *Manager[K, T]) Add(id K, cb Callback[T], opts ...Option[T]) error {
 	}
 
 	if m.capacity > 0 && storeLen >= m.capacity {
-		return fmt.Errorf("job manager capacity reached (%d)", m.capacity)
+		return fmt.Errorf("task manager capacity reached (%d)", m.capacity)
 	}
 
 	_, exists, err := m.store.Get(cfg.ctx, id)
@@ -294,7 +294,7 @@ func (m *Manager[K, T]) Add(id K, cb Callback[T], opts ...Option[T]) error {
 	}
 
 	if exists {
-		return ErrJobDuplicate
+		return ErrTaskDuplicate
 	}
 
 	e := m.entryPool.Get().(*Entry[T])
@@ -312,14 +312,14 @@ func (m *Manager[K, T]) Add(id K, cb Callback[T], opts ...Option[T]) error {
 
 	if cfg.timeout > 0 {
 		timer := time.AfterFunc(cfg.timeout, func() {
-			m.Resolve(id, *new(T), ErrJobTimeout)
+			m.Resolve(id, *new(T), ErrTaskTimeout)
 		})
 		e.timerStop = timer.Stop
 	}
 
 	if cfg.ctx != nil && cfg.ctx != context.Background() {
 		stop := context.AfterFunc(cfg.ctx, func() {
-			m.Resolve(id, *new(T), ErrJobCancelled)
+			m.Resolve(id, *new(T), ErrTaskCancelled)
 		})
 		e.ctxStop = stop
 	}
@@ -479,10 +479,10 @@ func (m *Manager[K, T]) RemoveContext(ctx context.Context, id K) bool {
 // WaitFor blocks the current goroutine until the specific job is resolved,
 // the provided ctx is canceled, or the manager is closed.
 //
-// It returns [ErrWaitFor] if the job was registered without the [WithWait] option,
-// or [ErrJobNotFound] if the job does not exist. If the context is canceled
+// It returns [ErrTaskWaitFor] if the job was registered without the [WithWait] option,
+// or [ErrTaskNotFound] if the job does not exist. If the context is canceled
 // before the job is resolved, it returns the context error. If the manager
-// is closed while waiting, it returns [ErrJobClosed].
+// is closed while waiting, it returns [ErrTaskClosed].
 func (m *Manager[K, T]) WaitFor(ctx context.Context, id K) (T, error) {
 	m.mu.Lock()
 
@@ -500,17 +500,17 @@ func (m *Manager[K, T]) WaitFor(ctx context.Context, id K) (T, error) {
 	m.mu.Unlock()
 
 	if !ok {
-		return *new(T), ErrJobNotFound
+		return *new(T), ErrTaskNotFound
 	}
 
 	if wCh == nil {
-		return *new(T), ErrWaitFor
+		return *new(T), ErrTaskWaitFor
 	}
 
 	select {
 	case res, ok := <-wCh:
 		if !ok {
-			return *new(T), ErrJobClosed
+			return *new(T), ErrTaskClosed
 		}
 
 		return res.val, res.err
@@ -547,7 +547,7 @@ func (m *Manager[K, T]) CancelAllContext(ctx context.Context, err error) {
 }
 
 // Close shuts down the manager, marks it as closed, and cancels all currently
-// pending jobs with [ErrJobClosed].
+// pending jobs with [ErrTaskClosed].
 //
 // Once the manager is closed, no new jobs can be added via the [Manager.Add] method.
 // Close is safe for concurrent use and idempotent; subsequent calls return nil.
@@ -570,7 +570,7 @@ func (m *Manager[K, T]) Close() error {
 	m.mu.Unlock()
 
 	if getErr == nil {
-		m.closePending(pending, ErrJobClosed)
+		m.closePending(pending, ErrTaskClosed)
 	}
 
 	return nil

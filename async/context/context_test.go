@@ -118,7 +118,7 @@ func TestFastContext_Pool(t *testing.T) {
 // 1. Chained Writes: adding 5 values (Trace, Proxy, Tenant, Timeout, Retry)
 func BenchmarkFastContext_ChainWrites_5(b *testing.B) {
 	bg := context.Background()
-	
+
 	b.ReportAllocs()
 
 	for b.Loop() {
@@ -133,7 +133,7 @@ func BenchmarkFastContext_ChainWrites_5(b *testing.B) {
 
 func BenchmarkStdlibContext_ChainWrites_5(b *testing.B) {
 	bg := stdctx.Background()
-	
+
 	b.ReportAllocs()
 
 	for b.Loop() {
@@ -279,4 +279,3 @@ func BenchmarkFastContext_Pool_PipelineLifecycle(b *testing.B) {
 		pool.Release(ctx)
 	}
 }
-

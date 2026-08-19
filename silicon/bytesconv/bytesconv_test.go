@@ -17,7 +17,7 @@ func TestB2SAndS2B(t *testing.T) {
 	assert.Empty(t, B2S(nil))
 	assert.Nil(t, S2B(""))
 
-	str := "Hello, Aoni!"
+	str := "Hello, Foundation!"
 
 	b := S2B(str)
 	assert.True(t, bytes.Equal(b, []byte(str)))
@@ -71,10 +71,10 @@ func TestAppendToLower(t *testing.T) {
 	assert.Empty(t, AppendToLower(nil, nil))
 
 	dst := []byte("Header: ")
-	src := []byte("X-Aoni-Test")
+	src := []byte("X-Foundation-Test")
 	got := AppendToLower(dst, src)
 
-	assert.Equal(t, "Header: x-aoni-test", string(got))
+	assert.Equal(t, "Header: x-foundation-test", string(got))
 }
 
 func TestTrimQuotes(t *testing.T) {
@@ -232,4 +232,3 @@ func TestScannerRoutines(t *testing.T) {
 	}
 	assert.Equal(t, map[string]string{"k1": "v1", "k2": "v2"}, pairBytes)
 }
-

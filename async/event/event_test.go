@@ -330,4 +330,3 @@ func TestBus_SetOnDropped(t *testing.T) {
 	// Clean up sub
 	sub.Unsubscribe()
 }
-

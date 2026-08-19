@@ -53,6 +53,7 @@ func BenchmarkCompare_URL_Parse_Foundation(b *testing.B) {
 // -----------------------------------------------------------------------------
 
 const testDomain = "subdomain.deep.service.co.uk"
+
 var testDomainBytes = []byte(testDomain)
 
 func BenchmarkCompare_PSL_eTLD_String_Std(b *testing.B) {

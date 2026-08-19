@@ -604,4 +604,3 @@ func TestKeyedLimiter_Len(t *testing.T) {
 		t.Errorf("expected 2, got %d", kl.Len())
 	}
 }
-

@@ -130,7 +130,7 @@ func AllocStruct[T any](a *Arena) *T {
 
 	size := int(unsafe.Sizeof(zero))
 	if size == 0 {
-		return &zero
+		return new(T)
 	}
 
 	align := int(unsafe.Alignof(zero))

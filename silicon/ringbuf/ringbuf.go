@@ -8,7 +8,6 @@ package ringbuf
 
 import (
 	"sync/atomic"
-	"unsafe"
 
 	"golang.org/x/sys/cpu"
 )
@@ -112,6 +111,3 @@ func (r *RingBuffer[T]) Len() int {
 
 	return int(head - tail)
 }
-
-// Ensure unused variable reference to suppress import unused warning if any.
-var _ = unsafe.Sizeof(0)

@@ -8,7 +8,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"fmt"
+	"strconv"
 	"time"
 )
 
@@ -39,7 +39,7 @@ func GenerateCorrelationID() string {
 	var bytes [16]byte
 	if _, err := rand.Read(bytes[:]); err != nil {
 		// Fallback to time-based key if crypto/rand fails
-		return fmt.Sprintf("fallback-%d", time.Now().UnixNano())
+		return "fallback-" + strconv.FormatInt(time.Now().UnixNano(), 10)
 	}
 
 	return hex.EncodeToString(bytes[:])

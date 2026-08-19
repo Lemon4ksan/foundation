@@ -6,6 +6,7 @@ package rand
 
 import (
 	"encoding/binary"
+	"slices"
 	"time"
 
 	"github.com/lemon4ksan/foundation/silicon/bytesconv"
@@ -39,7 +40,7 @@ func AppendUUIDv7(dst []byte, now time.Time) []byte {
 
 	// 4. Hex encoding with hyphens directly into dst
 	start := len(dst)
-	dst = append(dst, make([]byte, 36)...)
+	dst = slices.Grow(dst, 36)[:start+36]
 	buf := dst[start:]
 
 	buf[0] = hexDigits[raw[0]>>4]

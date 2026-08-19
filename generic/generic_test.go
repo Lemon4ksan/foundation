@@ -405,7 +405,7 @@ func TestDataLoader(t *testing.T) {
 		t.Errorf("expected bob = 3, got val %d, err %v", val2, err2)
 	}
 
-	if err3 == nil || err3.Error() != "aoni dataloader: key not found in batch results" {
+	if err3 == nil || err3.Error() != "foundation dataloader: key not found in batch results" {
 		t.Errorf("expected key not found error, got %v", err3)
 	}
 
@@ -816,5 +816,3 @@ func TestRaceFirstSuccess(t *testing.T) {
 		}
 	})
 }
-
-
