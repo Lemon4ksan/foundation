@@ -816,3 +816,50 @@ func TestRaceFirstSuccess(t *testing.T) {
 		}
 	})
 }
+
+func TestMutexAndLockGuards(t *testing.T) {
+	t.Parallel()
+
+	m := NewMutex(10)
+	if m.Get() != 10 {
+		t.Fatalf("expected 10, got %d", m.Get())
+	}
+
+	m.Set(20)
+	if m.Get() != 20 {
+		t.Fatalf("expected 20, got %d", m.Get())
+	}
+
+	old := m.Swap(30)
+	if old != 20 || m.Get() != 30 {
+		t.Fatalf("expected old 20, current 30, got old %d, current %d", old, m.Get())
+	}
+
+	res := m.Update(func(curr int) int { return curr + 5 })
+	if res != 35 || m.Get() != 35 {
+		t.Fatalf("expected 35, got %d", res)
+	}
+
+	m.With(func(val *int) {
+		*val = 100
+	})
+	if m.Get() != 100 {
+		t.Fatalf("expected 100, got %d", m.Get())
+	}
+
+	if !m.TryWith(func(val *int) { *val = 200 }) || m.Get() != 200 {
+		t.Fatal("expected TryWith to succeed")
+	}
+
+	var mu sync.Mutex
+	val := WithGuard(&mu, func() int { return 42 })
+	if val != 42 {
+		t.Fatalf("expected 42, got %d", val)
+	}
+
+	var rw sync.RWMutex
+	rVal := WithRGuard(&rw, func() string { return "apple" })
+	if rVal != "apple" {
+		t.Fatalf("expected apple, got %s", rVal)
+	}
+}

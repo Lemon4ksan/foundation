@@ -70,6 +70,105 @@ func (s *Safe[T]) Read(fn func(val T)) {
 	s.mu.RUnlock()
 }
 
+// Mutex encapsulates a value of type T protected by an ultra-lightweight, non-reentrant [sync.Mutex].
+// Recommended over [Safe] when writes are frequent or when read/write contention does not justify RWMutex overhead.
+type Mutex[T any] struct {
+	mu sync.Mutex
+	v  T
+}
+
+// NewMutex constructs a new [Mutex] container initialized with initial.
+func NewMutex[T any](initial T) *Mutex[T] {
+	return &Mutex[T]{v: initial}
+}
+
+// Get returns a copy of the protected value under exclusive lock.
+func (m *Mutex[T]) Get() T {
+	m.mu.Lock()
+	val := m.v
+	m.mu.Unlock()
+
+	return val
+}
+
+// Set replaces the protected value under exclusive lock.
+func (m *Mutex[T]) Set(v T) {
+	m.mu.Lock()
+	m.v = v
+	m.mu.Unlock()
+}
+
+// Swap atomically replaces the protected value and returns the previous value.
+func (m *Mutex[T]) Swap(v T) T {
+	m.mu.Lock()
+	old := m.v
+	m.v = v
+	m.mu.Unlock()
+
+	return old
+}
+
+// Update atomically mutates the value via fn under lock, resolving Read-Modify-Write races.
+func (m *Mutex[T]) Update(fn func(current T) T) T {
+	m.mu.Lock()
+	m.v = fn(m.v)
+	res := m.v
+	m.mu.Unlock()
+
+	return res
+}
+
+// With provides scoped mutable pointer access to T under exclusive lock.
+func (m *Mutex[T]) With(fn func(val *T)) {
+	m.mu.Lock()
+	fn(&m.v)
+	m.mu.Unlock()
+}
+
+// TryWith attempts to acquire the lock and executes fn if successful, returning true.
+func (m *Mutex[T]) TryWith(fn func(val *T)) bool {
+	if m.mu.TryLock() {
+		fn(&m.v)
+		m.mu.Unlock()
+
+		return true
+	}
+
+	return false
+}
+
+// WithLock executes fn while holding the exclusive lock of locker.
+func WithLock(l sync.Locker, fn func()) {
+	l.Lock()
+	fn()
+	l.Unlock()
+}
+
+// WithGuard executes fn while holding the exclusive lock of locker and returns the computed result.
+func WithGuard[T any](l sync.Locker, fn func() T) T {
+	l.Lock()
+	res := fn()
+	l.Unlock()
+
+	return res
+}
+
+// WithRLock executes fn while holding the shared read lock of rw.
+func WithRLock(rw *sync.RWMutex, fn func()) {
+	rw.RLock()
+	fn()
+	rw.RUnlock()
+}
+
+// WithRGuard executes fn while holding the shared read lock of rw and returns the computed result.
+func WithRGuard[T any](rw *sync.RWMutex, fn func() T) T {
+	rw.RLock()
+	res := fn()
+	rw.RUnlock()
+
+	return res
+}
+
 // Atomic is a generic, lock-free atomic container built on [atomic.Pointer].
 type Atomic[T any] struct {
 	ptr atomic.Pointer[T]
