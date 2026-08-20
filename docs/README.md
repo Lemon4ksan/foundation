@@ -60,8 +60,8 @@ foundation/
 | `scheduler` | [`docs/async/SCHEDULER.md`](async/SCHEDULER.md) | Microsecond precision task scheduler with recurring interval loops. |
 | `log` | [`docs/async/LOG.md`](async/LOG.md) | Zero-allocation structured logging facade with asynchronous flushing. |
 
-### Tactical Synchronization (`async/sync/`)
+### Tactical Synchronization (`sync/`)
 
 | Module | Documentation | Focus Area |
 | :--- | :--- | :--- |
-| `sync` | [`docs/async/SYNC.md`](async/SYNC.md) | Striped KeyLock, Vegas AdaptiveLimiter, CircuitBreaker, Jittered Backoff, and Resizable Semaphore. |
+| `sync` | [`docs/sync.md`](sync.md) | Striped KeyLock, Vegas AdaptiveLimiter, CircuitBreaker, Jittered Backoff, and Resizable Semaphore. |

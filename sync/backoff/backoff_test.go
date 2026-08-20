@@ -10,7 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/lemon4ksan/foundation/async/sync/backoff"
+	"github.com/lemon4ksan/foundation/sync/backoff"
 )
 
 func TestExponentialBackoff_Deterministic(t *testing.T) {

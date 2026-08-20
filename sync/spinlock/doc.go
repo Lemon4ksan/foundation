@@ -38,7 +38,7 @@
 //	import (
 //	    "fmt"
 //
-//	    "github.com/lemon4ksan/foundation/async/sync/spinlock"
+//	    "github.com/lemon4ksan/foundation/sync/spinlock"
 //	)
 //
 //	func main() {

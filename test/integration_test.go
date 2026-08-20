@@ -22,10 +22,10 @@ import (
 	"github.com/lemon4ksan/foundation/async/event"
 	"github.com/lemon4ksan/foundation/async/lifecycle"
 	"github.com/lemon4ksan/foundation/async/pool"
-	"github.com/lemon4ksan/foundation/async/sync/breaker"
-	"github.com/lemon4ksan/foundation/async/sync/keylock"
-	"github.com/lemon4ksan/foundation/async/sync/limiter"
-	"github.com/lemon4ksan/foundation/async/sync/semaphore"
+	"github.com/lemon4ksan/foundation/sync/breaker"
+	"github.com/lemon4ksan/foundation/sync/keylock"
+	"github.com/lemon4ksan/foundation/sync/limiter"
+	"github.com/lemon4ksan/foundation/sync/semaphore"
 	"github.com/lemon4ksan/foundation/async/task"
 )
 

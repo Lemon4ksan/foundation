@@ -71,7 +71,7 @@
 //	    "fmt"
 //	    "time"
 //
-//	    "github.com/lemon4ksan/foundation/async/sync/limiter"
+//	    "github.com/lemon4ksan/foundation/sync/limiter"
 //	)
 //
 //	func main() {
@@ -106,7 +106,7 @@
 //	    "time"
 //
 //	    "golang.org/x/time/rate"
-//	    "github.com/lemon4ksan/foundation/async/sync/limiter"
+//	    "github.com/lemon4ksan/foundation/sync/limiter"
 //	)
 //
 //	func main() {

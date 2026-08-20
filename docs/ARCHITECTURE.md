@@ -60,5 +60,5 @@ graph TD
 | | `pipeline` | [`docs/async/PIPELINE.md`](async/PIPELINE.md) | Concurrent mapping pipelines with rate-limiting and fan-out/fan-in. |
 | | `pool` | [`docs/async/POOL.md`](async/POOL.md) | Dynamic auto-scaling goroutine worker pool with futures. |
 | | `scheduler` | [`docs/async/SCHEDULER.md`](async/SCHEDULER.md) | Microsecond-precision recurring task schedulers and cron runners. |
-| | `sync` | [`docs/async/SYNC.md`](async/SYNC.md) | Striped key-based locks, Vegas limiters, breakers, backoff, and semaphores. |
+| | `sync` | [`docs/sync.md`](sync.md) | Striped key-based locks, Vegas limiters, breakers, backoff, and semaphores. |
 | | `log` | [`docs/async/LOG.md`](async/LOG.md) | High-performance zero-allocation structured logger facade. |

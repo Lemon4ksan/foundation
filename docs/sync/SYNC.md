@@ -1,8 +1,8 @@
-# Tactical Synchronization (`async/sync`)
+# Tactical Synchronization (`sync`)
 
-[![Go Reference](https://img.shields.io/badge/go-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/lemon4ksan/foundation/async/sync)
+[![Go Reference](https://img.shields.io/badge/go-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/lemon4ksan/foundation/sync)
 
-`async/sync` provides hardened synchronization, locking, rate limiting, circuit breaking, and backoff primitives designed for high-concurrency environments.
+`sync` provides hardened synchronization, locking, rate limiting, circuit breaking, and backoff primitives designed for high-concurrency environments.
 
 ## Motivation & Problem Context
 
@@ -21,7 +21,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lemon4ksan/foundation/async/sync/keylock"
+	"github.com/lemon4ksan/foundation/sync/keylock"
 )
 
 func main() {
@@ -51,7 +51,7 @@ func main() {
 Static rate limiters either underutilize bandwidth or overwhelm downstream services during degradation. Vegas measures latency (RTT) and automatically contracts limits during latency spikes.
 
 ```go
-import "github.com/lemon4ksan/foundation/async/sync/limiter"
+import "github.com/lemon4ksan/foundation/sync/limiter"
 
 adLim := limiter.NewAdaptiveLimiter(10.0) // Start with initial limit of 10
 
@@ -76,7 +76,7 @@ Rate limiting users by IP address without leaking memory over millions of unique
 ```go
 import (
 	"golang.org/x/time/rate"
-	"github.com/lemon4ksan/foundation/async/sync/limiter"
+	"github.com/lemon4ksan/foundation/sync/limiter"
 )
 
 // 10 req/sec, burst 20, TTL 5 minutes of inactivity
@@ -97,7 +97,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/lemon4ksan/foundation/async/sync/breaker"
+	"github.com/lemon4ksan/foundation/sync/breaker"
 )
 
 cb := breaker.New[UserProfile](breaker.Config{
@@ -126,7 +126,7 @@ Mathematical backoff calculators with Full, Equal, and Decorrelated Jitter distr
 import (
 	"time"
 
-	"github.com/lemon4ksan/foundation/async/sync/backoff"
+	"github.com/lemon4ksan/foundation/sync/backoff"
 )
 
 b := backoff.New(

@@ -30,7 +30,7 @@
 //	import (
 //	    "fmt"
 //
-//	    "github.com/lemon4ksan/foundation/async/sync/lazy"
+//	    "github.com/lemon4ksan/foundation/sync/lazy"
 //	)
 //
 //	func main() {

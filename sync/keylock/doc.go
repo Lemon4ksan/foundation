@@ -36,7 +36,7 @@
 //	    "sync"
 //	    "time"
 //
-//	    "github.com/lemon4ksan/foundation/async/sync/keylock"
+//	    "github.com/lemon4ksan/foundation/sync/keylock"
 //	)
 //
 //	func main() {

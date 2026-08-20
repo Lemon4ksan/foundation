@@ -4,8 +4,6 @@
 
 `async/context` provides an ultra-high-performance, flat-array implementation of `context.Context` designed for high-throughput request pipelines, 100% standard library interoperability, and generic type-safe value retrieval.
 
----
-
 ## 1. Motivation & The Hidden Cost of Standard `context.Context`
 
 The standard library `context.WithValue` is one of the most pervasive yet hidden memory and CPU bottlenecks in Go backend services and networking engines.
@@ -14,8 +12,6 @@ The standard library `context.WithValue` is one of the most pervasive yet hidden
 1. **$O(N)$ Linked-List Pointer Chasing**: Every `context.WithValue(ctx, key, val)` allocates a new `valueCtx` node wrapping its parent. In a microservice or HTTP client with 5–8 middleware layers (Tracing, Auth, Proxy, Timeout, Tenant, Retry, Cache), looking up a key requires traversing a deeply nested chain of pointers across the heap, triggering CPU L1/L2 cache misses.
 2. **Interface Boxing Allocations**: Each call requires boxing `key any` and `value any`, forcing **2 heap allocations per middleware stage** and multiplying Garbage Collector (GC) pressure under high RPS.
 3. **Runtime Type-Cast Fragility**: Reading values requires unsafe runtime type assertions `val, ok := ctx.Value(k).(MyType)`, which risk runtime panics or silent bugs on mismatch.
-
----
 
 ## 2. Memory Architecture & Mechanics
 
@@ -47,8 +43,6 @@ graph TD
 | **Type Safety** | Dynamic runtime cast `.(any)` | Strict generic `generic.Optional[T]` |
 | **Interoperability** | Standard `context.Context` | **100% compliant `context.Context`** |
 
----
-
 ## 3. Empirical Benchmarks
 
 Benchmarks executed on **12th Gen Intel(R) Core(TM) i5-12400F** (Go 1.25.4):
@@ -67,8 +61,6 @@ go test -bench="PipelineLifecycle" -benchmem -count=3 ./async/context
 
 > [!TIP]
 > Under a server load of **500,000 requests/sec**, standard Go allocates **~120 MB/sec** and **2.5 million objects/sec** solely for context metadata. `Context` drops this memory footprint and GC churn to **absolute zero**.
-
----
 
 ## 4. Usage & Ergonomics
 
@@ -94,8 +86,6 @@ func IngressMiddleware(next http.Handler) http.Handler {
 }
 ```
 
----
-
 ### Type-Safe Generic Extraction (`asyncctx.Get[T]`)
 
 Eliminate dangerous `.(any)` type assertions and boilerplate `if !ok` branches:
@@ -119,8 +109,6 @@ if trace, ok := traceOpt.Value(); ok {
 tenantID := asyncctx.GetOr[string](ctx, "tenant_key", "default-tenant")
 ```
 
----
-
 ### In-Place Zero-Allocation Enrichment
 
 For single-goroutine request lifecycles and middleware chains:
@@ -133,8 +121,6 @@ func EnrichRequestContext(ctx *asyncctx.FastContext) {
     ctx.Set("is_premium", true)
 }
 ```
-
----
 
 ### Recycled Context Pool (`asyncctx.NewPool`)
 

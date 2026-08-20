@@ -41,7 +41,7 @@
 //	    "context"
 //	    "fmt"
 //
-//	    "github.com/lemon4ksan/foundation/async/sync/semaphore"
+//	    "github.com/lemon4ksan/foundation/sync/semaphore"
 //	)
 //
 //	func main() {
