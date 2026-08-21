@@ -138,8 +138,6 @@ func XORMask32(b []byte, mask uint32) {
 	maskSWAR(b, mask)
 }
 
-
-
 func maskSWAR(b []byte, mask uint32) {
 	if len(b) == 0 {
 		return

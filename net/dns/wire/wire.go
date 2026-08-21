@@ -2,7 +2,8 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package wire provides utilities for encoding and decoding DNS messages.
+// Package wire provides low-level utilities, constants, encoders, and decoders
+// for standard RFC 1035, RFC 2181, RFC 3596, RFC 6891, and RFC 9460 DNS wire messages.
 package wire
 
 import (
@@ -11,6 +12,7 @@ import (
 	"fmt"
 	"net/netip"
 	"strings"
+	"time"
 )
 
 var (
@@ -26,14 +28,126 @@ var (
 	ErrECHConfigNotFound = errors.New("foundation/net/dns/wire: ech config parameter not found in https record")
 )
 
+// Standard DNS limits defined in RFC 1035 §2.3.4, RFC 2181 §8, and RFC 8767 §4.
 const (
-	TypeA     uint16 = 1  // IPv4 host address (RFC 1035)
-	TypeAAAA  uint16 = 28 // IPv6 host address (RFC 3596)
-	TypeOPT   uint16 = 41 // OPT record (RFC 6891)
-	TypeHTTPS uint16 = 65 // HTTPS record (RFC 9460)
+	// MaxLabelLength is the maximum allowed octet length of an individual DNS label (RFC 1035 §2.3.4).
+	MaxLabelLength = 63
 
-	ClassIN uint16 = 1 // Internet class (RFC 1035)
+	// MaxDomainNameLength is the maximum allowed octet length of a fully-qualified domain name (RFC 1035 §2.3.4).
+	MaxDomainNameLength = 255
 
+	// MaxUDPMessageSize is the legacy maximum size of unextended UDP DNS messages (RFC 1035 §2.3.4).
+	MaxUDPMessageSize = 512
+
+	// MaxRFC2181TTL is the maximum numeric value of a 31-bit TTL (2147483647 seconds / 0x7FFFFFFF) per RFC 2181 §8.
+	MaxRFC2181TTL uint32 = 0x7FFFFFFF
+
+	// MaxTTLCap is the maximum recommended authoritative TTL cap of 7 days (RFC 8767 §4).
+	MaxTTLCap = 7 * 24 * time.Hour
+)
+
+// Standard DNS Resource Record (RR) TYPEs defined in RFC 1035 §3.2.2, RFC 3596 §2.1, RFC 6891, and RFC 9460.
+const (
+	TypeA     uint16 = 1  // a host address (IPv4) per RFC 1035 §3.4.1
+	TypeNS    uint16 = 2  // an authoritative name server per RFC 1035 §3.3.11
+	TypeMD    uint16 = 3  // a mail destination (Obsolete - use MX) per RFC 1035 §3.3.4
+	TypeMF    uint16 = 4  // a mail forwarder (Obsolete - use MX) per RFC 1035 §3.3.5
+	TypeCNAME uint16 = 5  // the canonical name for an alias per RFC 1035 §3.3.1
+	TypeSOA   uint16 = 6  // marks the start of a zone of authority per RFC 1035 §3.3.13
+	TypeMB    uint16 = 7  // a mailbox domain name (EXPERIMENTAL) per RFC 1035 §3.3.3
+	TypeMG    uint16 = 8  // a mail group member (EXPERIMENTAL) per RFC 1035 §3.3.6
+	TypeMR    uint16 = 9  // a mail rename domain name (EXPERIMENTAL) per RFC 1035 §3.3.8
+	TypeNULL  uint16 = 10 // a null RR (EXPERIMENTAL) per RFC 1035 §3.3.10
+	TypeWKS   uint16 = 11 // a well known service description per RFC 1035 §3.4.2
+	TypePTR   uint16 = 12 // a domain name pointer per RFC 1035 §3.3.12
+	TypeHINFO uint16 = 13 // host information per RFC 1035 §3.3.2
+	TypeMINFO uint16 = 14 // mailbox or mail list information per RFC 1035 §3.3.7
+	TypeMX    uint16 = 15 // mail exchange per RFC 1035 §3.3.9
+	TypeTXT   uint16 = 16 // text strings per RFC 1035 §3.3.14
+	TypeAAAA  uint16 = 28 // an IPv6 host address per RFC 3596 §2.1
+	TypeOPT   uint16 = 41 // OPT pseudo-record per RFC 6891
+	TypeSVCB  uint16 = 64 // Service Binding record per RFC 9460
+	TypeHTTPS uint16 = 65 // HTTPS service binding record per RFC 9460
+)
+
+// Standard DNS Question Types (QTYPEs) defined in RFC 1035 §3.2.3.
+const (
+	QTypeAXFR  uint16 = 252 // A request for a transfer of an entire zone (RFC 1035 §3.2.3)
+	QTypeMAILB uint16 = 253 // A request for mailbox-related records (MB, MG or MR) (RFC 1035 §3.2.3)
+	QTypeMAILA uint16 = 254 // A request for mail agent RRs (Obsolete - see MX) (RFC 1035 §3.2.3)
+	QTypeALL   uint16 = 255 // A request for all records (*) (RFC 1035 §3.2.3)
+)
+
+// Standard DNS CLASS and QCLASS values defined in RFC 1035 §3.2.4 & §3.2.5.
+const (
+	ClassIN   uint16 = 1   // the Internet (RFC 1035 §3.2.4)
+	ClassCS   uint16 = 2   // the CSNET class (Obsolete) (RFC 1035 §3.2.4)
+	ClassCH   uint16 = 3   // the CHAOS class (RFC 1035 §3.2.4)
+	ClassHS   uint16 = 4   // Hesiod class (RFC 1035 §3.2.4)
+	QClassANY uint16 = 255 // any class (*) (RFC 1035 §3.2.5)
+)
+
+// Standard DNS Header Bit Flags defined in RFC 1035 §4.1.1 and RFC 2181 §9.
+const (
+	FlagQR uint16 = 0x8000 // Query (0) or Response (1)
+	FlagAA uint16 = 0x0400 // Authoritative Answer
+	FlagTC uint16 = 0x0200 // TrunCation (RFC 1035 §4.1.1 & RFC 2181 §9)
+	FlagRD uint16 = 0x0100 // Recursion Desired
+	FlagRA uint16 = 0x0080 // Recursion Available
+)
+
+// Standard DNS Header Operation Codes (OPCODEs) defined in RFC 1035 §4.1.1.
+const (
+	OpcodeQuery  uint16 = 0 // a standard query (QUERY)
+	OpcodeIQuery uint16 = 1 // an inverse query (IQUERY) (Obsolete per RFC 3425)
+	OpcodeStatus uint16 = 2 // a server status request (STATUS)
+)
+
+// Standard DNS Response Codes (RCODEs) defined in RFC 1035 §4.1.1 and RFC 2308.
+type RCode uint8
+
+const (
+	// RCodeNoError indicates no error condition occurred (RFC 1035 §4.1.1).
+	RCodeNoError RCode = 0
+
+	// RCodeFormatError indicates the name server was unable to interpret the query (RFC 1035 §4.1.1).
+	RCodeFormatError RCode = 1
+
+	// RCodeServerFailure indicates the name server failed due to internal error (RFC 1035 §4.1.1).
+	RCodeServerFailure RCode = 2
+
+	// RCodeNameError (NXDOMAIN) indicates the queried domain name does not exist (RFC 1035 §4.1.1, RFC 2308 §2.1).
+	RCodeNameError RCode = 3
+
+	// RCodeNotImplemented indicates the name server does not support the requested kind of query (RFC 1035 §4.1.1).
+	RCodeNotImplemented RCode = 4
+
+	// RCodeRefused indicates the name server refuses to perform the specified operation for policy reasons (RFC 1035 §4.1.1).
+	RCodeRefused RCode = 5
+)
+
+// String returns the canonical RFC text representation of the DNS RCODE.
+func (r RCode) String() string {
+	switch r {
+	case RCodeNoError:
+		return "NOERROR"
+	case RCodeFormatError:
+		return "FORMERR"
+	case RCodeServerFailure:
+		return "SERVFAIL"
+	case RCodeNameError:
+		return "NXDOMAIN"
+	case RCodeNotImplemented:
+		return "NOTIMP"
+	case RCodeRefused:
+		return "REFUSED"
+	default:
+		return fmt.Sprintf("RCODE_%d", uint8(r))
+	}
+}
+
+// EDNS0 Option Codes defined in RFC 6891, RFC 7871, and RFC 7830.
+const (
 	EDNS0OptionECS     uint16 = 8  // RFC 7871
 	EDNS0OptionPadding uint16 = 12 // RFC 7830
 )
@@ -55,6 +169,43 @@ type EDNSOptions struct {
 type DNSRecord struct {
 	Addr netip.Addr
 	TTL  uint32
+}
+
+// NormalizeTTL normalizes a raw 32-bit DNS wire TTL adhering strictly to RFC 2181 §8 and RFC 8767 §4.
+//
+// Behavior:
+// - If the sign bit (MSB / bit 31) is set, RFC 2181 §8 interprets it as 0 unless clamped per RFC 8767.
+// - Clamps the resulting duration to the standard 7-day cap (604,800s / MaxTTLCap per RFC 8767 §4).
+func NormalizeTTL(rawTTL uint32) time.Duration {
+	if (rawTTL & 0x80000000) != 0 {
+		rawTTL = rawTTL & MaxRFC2181TTL
+	}
+
+	maxSeconds := uint32(MaxTTLCap / time.Second)
+	if rawTTL > maxSeconds {
+		rawTTL = maxSeconds
+	}
+
+	return time.Duration(rawTTL) * time.Second
+}
+
+// SelectRRSetTTL selects the effective TTL for a Resource Record Set (RRSet) per RFC 2181 §5.2.
+//
+// RFC 2181 §5.2 mandates that if a client receives an RRSet with differing TTLs,
+// it MUST treat the RRs for all purposes as if all TTLs in the RRSet were set to the lowest TTL in the RRSet.
+func SelectRRSetTTL(ttls ...uint32) time.Duration {
+	if len(ttls) == 0 {
+		return 0
+	}
+
+	minTTL := ttls[0]
+	for _, ttl := range ttls[1:] {
+		if ttl < minTTL {
+			minTTL = ttl
+		}
+	}
+
+	return NormalizeTTL(minTTL)
 }
 
 // PackDNSQuery Encodes a DNS question section into RFC 1035 wire format,
@@ -125,7 +276,7 @@ func appendQName(buf []byte, domain string) ([]byte, error) {
 			continue
 		}
 
-		if len(label) > 63 {
+		if len(label) > MaxLabelLength {
 			return nil, ErrInvalidDomain
 		}
 

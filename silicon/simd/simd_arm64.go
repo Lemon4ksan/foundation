@@ -65,8 +65,6 @@ func XORMask32(b []byte, mask uint32) {
 	}
 }
 
-
-
 func extractBitsHW(val, mask uint64) uint64 {
 	return extractBitsSWAR(val, mask)
 }
