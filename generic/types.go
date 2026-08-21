@@ -124,3 +124,11 @@ func Ternary[T any](cond bool, a, b T) T {
 
 	return b
 }
+
+// IsSameType reports whether type parameters A and B denote the exact same underlying type.
+func IsSameType[A, B any]() bool {
+	var a *A
+	_, ok := any(a).(*B)
+	return ok
+}
+

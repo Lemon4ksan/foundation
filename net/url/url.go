@@ -49,6 +49,11 @@ func init() {
 	}
 }
 
+// IsAbsURL reports whether path begins with an absolute HTTP or HTTPS scheme identifier (RFC 3986 §3.1 & §4.3).
+func IsAbsURL(path string) bool {
+	return len(path) >= 7 && (strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://"))
+}
+
 // Parse parses rawURL string or returns a cached [*url.URL] pointer.
 func Parse(rawURL string) (*url.URL, error) {
 	if rawURL == "" {
@@ -83,6 +88,89 @@ func Parse(rawURL string) (*url.URL, error) {
 	sh.mu.Unlock()
 
 	return parsed, nil
+}
+
+// CloneURL returns a deep copy of u.
+func CloneURL(u *url.URL) *url.URL {
+	if u == nil {
+		return nil
+	}
+
+	cloned := *u
+	if u.User != nil {
+		userCopy := *u.User
+		cloned.User = &userCopy
+	}
+
+	return &cloned
+}
+
+// NormalizeBaseURL parses and normalizes a raw Base URI string, ensuring a trailing slash per RFC 3986 §5.2.3.
+func NormalizeBaseURL(raw string) (*url.URL, error) {
+	if raw == "" {
+		return &url.URL{}, nil
+	}
+
+	formatted := raw
+	if !strings.HasSuffix(formatted, "/") {
+		formatted += "/"
+	}
+
+	return Parse(formatted)
+}
+
+// Resolve resolves a relative path or absolute URL against baseURL (RFC 3986 §5).
+// It features an O(1) zero-allocation fast-path for root-domain paths and normalizes slash boundaries.
+func Resolve(baseURL *url.URL, path string) (*url.URL, error) {
+	if (path == "" || path == "/") && baseURL != nil && baseURL.Host != "" {
+		return CloneURL(baseURL), nil
+	}
+
+	if IsAbsURL(path) || baseURL == nil || baseURL.Host == "" {
+		return Parse(path)
+	}
+
+	// Fast-path: root domain (no subpath) + root-relative path (e.g. "https://api.com" + "/users")
+	if len(path) > 0 && path[0] == '/' && (baseURL.Path == "" || baseURL.Path == "/") {
+		return &url.URL{
+			Scheme:   baseURL.Scheme,
+			Host:     baseURL.Host,
+			Path:     path,
+			User:     baseURL.User,
+			RawQuery: baseURL.RawQuery,
+		}, nil
+	}
+
+	targetStr, err := ResolveString(baseURL, path)
+	if err != nil {
+		return nil, err
+	}
+
+	return Parse(targetStr)
+}
+
+// ResolveString computes the resolved target URL string from baseURL and path (RFC 3986 §5).
+func ResolveString(baseURL *url.URL, path string) (string, error) {
+	if IsAbsURL(path) || baseURL == nil || baseURL.Host == "" {
+		return path, nil
+	}
+
+	if path == "" || path == "/" {
+		return baseURL.String(), nil
+	}
+
+	baseStr := strings.TrimSuffix(baseURL.String(), "/")
+	if path[0] == '/' {
+		return baseStr + path, nil
+	}
+
+	// If relative path without slash (e.g. "users/1" or "../api"), use RFC 3986 reference resolution
+	rel, err := Parse(strings.TrimLeft(path, "/"))
+	if err != nil {
+		return "", err
+	}
+
+	return baseURL.ResolveReference(rel).String(), nil
 }
 
 // ReplaceVar performs path variable replacement ({key} -> value) in path.
@@ -160,21 +248,6 @@ func AppendRawQuery(targetURL, rawQuery string) string {
 	bufPool.Put(bufPtr)
 
 	return res
-}
-
-// CloneURL returns a deep copy of u.
-func CloneURL(u *url.URL) *url.URL {
-	if u == nil {
-		return nil
-	}
-
-	cloned := *u
-	if u.User != nil {
-		userCopy := *u.User
-		cloned.User = &userCopy
-	}
-
-	return &cloned
 }
 
 // MatchDomainPattern checks if host matches pattern (supporting exact and *.wildcard matches).

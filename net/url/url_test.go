@@ -88,3 +88,33 @@ func TestIsSameDomainOrSubdomain(t *testing.T) {
 	assert.True(t, url.IsSameDomainOrSubdomain("example.com", "example.com"))
 	assert.False(t, url.IsSameDomainOrSubdomain("other.com", "example.com"))
 }
+
+func TestResolve(t *testing.T) {
+	t.Parallel()
+
+	base1, err := url.NormalizeBaseURL("https://api.example.com/v1")
+	require.NoError(t, err)
+	assert.Equal(t, "https://api.example.com/v1/", base1.String())
+
+	// 1. Relative path without slash -> /v1/users
+	u, err := url.Resolve(base1, "users")
+	require.NoError(t, err)
+	assert.Equal(t, "https://api.example.com/v1/users", u.String())
+
+	// 2. Relative path with leading slash -> /v1/users (safe normalization!)
+	u, err = url.Resolve(base1, "/users")
+	require.NoError(t, err)
+	assert.Equal(t, "https://api.example.com/v1/users", u.String())
+
+	// 3. Absolute URL -> bypasses base
+	u, err = url.Resolve(base1, "https://other.com/auth")
+	require.NoError(t, err)
+	assert.Equal(t, "https://other.com/auth", u.String())
+
+	// 4. Root BaseURL fast-path
+	baseRoot, _ := url.Parse("https://api.example.com")
+	u, err = url.Resolve(baseRoot, "/users/42")
+	require.NoError(t, err)
+	assert.Equal(t, "https://api.example.com/users/42", u.String())
+}
+
