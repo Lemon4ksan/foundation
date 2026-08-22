@@ -138,8 +138,8 @@ func (d *DoTResolver) LookupDNSRecords(ctx context.Context, host string) ([]wire
 	defer conn.Close()
 
 	var (
-		v4Records []wire.DNSRecord
-		v6Records []wire.DNSRecord
+		v4Records  []wire.DNSRecord
+		v6Records  []wire.DNSRecord
 		err4, err6 error
 	)
 

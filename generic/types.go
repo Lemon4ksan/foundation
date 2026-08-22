@@ -131,4 +131,3 @@ func IsSameType[A, B any]() bool {
 	_, ok := any(a).(*B)
 	return ok
 }
-

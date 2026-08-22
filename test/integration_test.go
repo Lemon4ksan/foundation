@@ -22,11 +22,11 @@ import (
 	"github.com/lemon4ksan/foundation/async/event"
 	"github.com/lemon4ksan/foundation/async/lifecycle"
 	"github.com/lemon4ksan/foundation/async/pool"
+	"github.com/lemon4ksan/foundation/async/task"
 	"github.com/lemon4ksan/foundation/sync/breaker"
 	"github.com/lemon4ksan/foundation/sync/keylock"
 	"github.com/lemon4ksan/foundation/sync/limiter"
 	"github.com/lemon4ksan/foundation/sync/semaphore"
-	"github.com/lemon4ksan/foundation/async/task"
 )
 
 // DownstreamMock represents a simulated flaky downstream service.

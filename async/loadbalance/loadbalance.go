@@ -46,7 +46,7 @@ type Target[T any] struct {
 	activeConns atomic.Int64
 	failCount   atomic.Uint32
 	unhealthy   atomic.Bool
-	lastFailed  atomic.Int64 // UnixNano
+	lastFailed  atomic.Int64  // UnixNano
 	latencyEWMA atomic.Uint64 // nanoseconds
 }
 

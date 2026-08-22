@@ -62,8 +62,8 @@ const (
 
 // Standard HPKE AEAD identifiers defined in RFC 9180 §7.3 and draft-ietf-tls-esni-22 §4.
 const (
-	AEAD_AES_128_GCM        uint16 = 0x0001
-	AEAD_AES_256_GCM        uint16 = 0x0002
+	AEAD_AES_128_GCM       uint16 = 0x0001
+	AEAD_AES_256_GCM       uint16 = 0x0002
 	AEAD_CHACHA20_POLY1305 uint16 = 0x0003
 )
 

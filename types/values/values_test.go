@@ -16,11 +16,11 @@ import (
 )
 
 type sampleStruct struct {
-	U64  values.Uint64String    `json:"u64"`
-	I64  values.Int64String     `json:"i64"`
-	F64  values.Float64String   `json:"f64"`
-	Bool values.BoolInt         `json:"bool"`
-	Unix values.UnixTimestamp   `json:"unix"`
+	U64  values.Uint64String     `json:"u64"`
+	I64  values.Int64String      `json:"i64"`
+	F64  values.Float64String    `json:"f64"`
+	Bool values.BoolInt          `json:"bool"`
+	Unix values.UnixTimestamp    `json:"unix"`
 	RFC  values.RFC3339Timestamp `json:"rfc"`
 }
 
