@@ -11,7 +11,7 @@
 
 ## Architectural Pillars
 
-`foundation` is strictly partitioned into two foundational domains with zero external framework dependencies:
+`foundation` is strictly partitioned into cohesive foundational domains with zero external framework dependencies:
 
 ### 1. Silicon & Memory Substrate (`silicon/`)
 Hardware-adjacent primitives engineered for zero memory allocations and line-rate throughput:
@@ -25,6 +25,7 @@ Hardware-adjacent primitives engineered for zero memory allocations and line-rat
 
 ### 2. Concurrency & Runtime Orchestration (`async/`)
 Predictable, resilient primitives for goroutine governance and synchronization:
+* **`context`**: Flat-array, L1-cache resident `context.Context` with zero allocations.
 * **`lifecycle`**: Topologically sorted DAG service boot, health monitoring, and graceful teardown.
 * **`event`**: Type-safe, non-blocking asynchronous event bus.
 * **`task`**: Asynchronous task manager with correlation IDs, context timeouts, and futures.
@@ -33,8 +34,19 @@ Predictable, resilient primitives for goroutine governance and synchronization:
 * **`pipeline`**: Concurrent worker pipelines with token-bucket rate limiting and DataLoader batching.
 * **`pool`**: Auto-scaling goroutine worker pools with idle scale-down and panic recovery.
 * **`scheduler`**: Microsecond-precision recurring task schedulers and cron runners.
-* **`sync`**: Striped key-based locks, Vegas adaptive limiters, circuit breakers, and jittered backoff.
 * **`log`**: Zero-allocation structured logging facade with asynchronous flushing.
+
+### 3. Tactical Synchronization & Resilience (`sync/`)
+* **`sync`**: Striped key-based locks, Vegas adaptive limiters, circuit breakers, and jittered backoff.
+
+### 4. Type-Safe Generics & Collections (`generic/`)
+* **`generic`**: Thread-safe `Safe[T]`, in-memory TTL `Cache[K, V]`, monadic `Optional`/`Result`, and lazy `iter.Seq` streams.
+
+### 5. Streaming I/O & Replayable Buffers (`io/`)
+* **`io`**: Replayable body buffers, allocation-free `BytesReader`, and pooled stream copy helpers.
+
+### 6. Low-Level Network Protocol Primitives (`net/`)
+* **`net`**: HPACK compression, gRPC-Web framing, RFC 9211 Cache-Status, DoH/DoQ/DoT DNS, and Proxy connectors.
 
 ## Installation
 
@@ -46,8 +58,11 @@ go get github.com/lemon4ksan/foundation
 
 Detailed architecture specifications and practical recipes are located in the [`docs/`](docs/README.md) directory:
 * [Architecture & Engineering Manifesto](docs/ARCHITECTURE.md)
-* [Async Runtime Reference](docs/README.md#concurrency--runtime-orchestration-async)
 * [Silicon Substrate Reference](docs/README.md#silicon--memory-substrate-silicon)
+* [Async Runtime Reference](docs/README.md#concurrency--runtime-orchestration-async)
+* [Generics & Collections Reference](docs/README.md#type-safe-generics--collections-generic)
+* [Streaming I/O Reference](docs/README.md#streaming-io--replay-buffers-io)
+* [Network Protocol Reference](docs/README.md#low-level-network-protocol-primitives-net)
 
 ## License
 

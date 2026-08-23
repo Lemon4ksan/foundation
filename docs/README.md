@@ -27,8 +27,17 @@ foundation/
 │   ├── SCHEDULER.md          // Microsecond precision task scheduler & cron
 │   └── LOG.md                // Zero-allocation structured logging
 │
-└── sync/                     // Tactical Synchronization & Resilience
-    └── SYNC.md               // KeyLock, Limiter (Vegas/Keyed), Breaker, Backoff, Semaphore, Lazy, SpinLock
+├── sync/                     // Tactical Synchronization & Resilience
+│   └── SYNC.md               // KeyLock, Limiter (Vegas/Keyed), Breaker, Backoff, Semaphore, Lazy, SpinLock
+│
+├── generic/                  // Type-Safe Generics & Collections
+│   └── GENERIC.md            // Safe[T], Cache[K,V], Optional/Result, Slices, Maps, ApplyOptions
+│
+├── io/                       // Streaming I/O & Replayable Buffers
+│   └── IO.md                 // ReplayableBody, BytesReader, Stream Limits, Copy Pools
+│
+└── net/                      // Low-Level Network Protocol Primitives
+    └── NET.md                // HPACK, gRPC-Web, Cache-Status, DoH/DoQ, Proxy, Cookie, PSL
 ```
 
 ## Module Index
@@ -64,4 +73,22 @@ foundation/
 
 | Module | Documentation | Focus Area |
 | :--- | :--- | :--- |
-| `sync` | [`docs/sync.md`](sync.md) | Striped KeyLock, Vegas AdaptiveLimiter, CircuitBreaker, Jittered Backoff, and Resizable Semaphore. |
+| `sync` | [`docs/sync/SYNC.md`](sync/SYNC.md) | Striped KeyLock, Vegas AdaptiveLimiter, CircuitBreaker, Jittered Backoff, and Resizable Semaphore. |
+
+### Type-Safe Generics & Collections (`generic/`)
+
+| Module | Documentation | Focus Area |
+| :--- | :--- | :--- |
+| `generic` | [`docs/generic/GENERIC.md`](generic/GENERIC.md) | Thread-safe `Safe[T]`, in-memory TTL `Cache[K, V]`, monadic `Optional`/`Result`, and lazy iterators. |
+
+### Streaming I/O & Replay Buffers (`io/`)
+
+| Module | Documentation | Focus Area |
+| :--- | :--- | :--- |
+| `io` | [`docs/io/IO.md`](io/IO.md) | Replayable body buffers, allocation-free `BytesReader`, and pooled stream copy helpers. |
+
+### Low-Level Network Protocol Primitives (`net/`)
+
+| Module | Documentation | Focus Area |
+| :--- | :--- | :--- |
+| `net` | [`docs/net/NET.md`](net/NET.md) | HPACK compression, gRPC-Web framing, RFC 9211 Cache-Status, DoH/DoQ/DoT DNS, and Proxy engines. |
