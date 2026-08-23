@@ -9,7 +9,7 @@ package contentdisposition
 import (
 	"mime"
 	"net/url"
-	"path/filepath"
+	"path"
 	"strings"
 	"unicode/utf8"
 
@@ -53,7 +53,13 @@ func FileName(filename string) string {
 		}
 	}
 
-	filename = filepath.Base(filepath.Clean(strings.TrimSpace(sb.String())))
+	cleaned := strings.ReplaceAll(sb.String(), "\\", "/")
+	if len(cleaned) >= 2 && cleaned[1] == ':' &&
+		((cleaned[0] >= 'a' && cleaned[0] <= 'z') || (cleaned[0] >= 'A' && cleaned[0] <= 'Z')) {
+		cleaned = cleaned[2:]
+	}
+
+	filename = path.Base(path.Clean(strings.TrimSpace(cleaned)))
 
 	for strings.HasPrefix(filename, "..") || strings.HasPrefix(filename, ".") {
 		filename = strings.TrimPrefix(filename, "..")
