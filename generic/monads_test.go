@@ -206,3 +206,90 @@ func TestMonads_RemainingBranches(t *testing.T) {
 	})
 	assert.False(t, flatTypedFail.IsSuccess())
 }
+
+func TestFromAndFromPtr(t *testing.T) {
+	// From (comma-ok)
+	optOk := From(100, true)
+	assert.True(t, optOk.IsPresent())
+	val, ok := optOk.Value()
+	assert.True(t, ok)
+	assert.Equal(t, 100, val)
+
+	optNone := From(100, false)
+	assert.False(t, optNone.IsPresent())
+	valNone, okNone := optNone.Value()
+	assert.False(t, okNone)
+	assert.Equal(t, 0, valNone)
+
+	// FromPtr
+	x := 42
+	optPtr := FromPtr(&x)
+	assert.True(t, optPtr.IsPresent())
+	valPtr, okPtr := optPtr.Value()
+	assert.True(t, okPtr)
+	assert.Equal(t, &x, valPtr)
+
+	var nilPtr *int
+	optNilPtr := FromPtr(nilPtr)
+	assert.False(t, optNilPtr.IsPresent())
+	_, okNil := optNilPtr.Value()
+	assert.False(t, okNil)
+}
+
+func TestFromResultAndFromTypedResult(t *testing.T) {
+	// FromResult success
+	resSuccess := ToResult("hello", nil)
+	assert.True(t, resSuccess.IsSuccess())
+	val, err := resSuccess.Unwrap()
+	assert.Equal(t, "hello", val)
+	assert.Nil(t, err)
+
+	// FromResult failure
+	dummyErr := errors.New("something went wrong")
+	resFail := ToResult("hello", dummyErr)
+	assert.False(t, resFail.IsSuccess())
+	valFail, errFail := resFail.Unwrap()
+	assert.Equal(t, "", valFail)
+	assert.Equal(t, dummyErr, errFail)
+
+	// FromTypedResult success
+	typedSuccess := FromTypedResult[int, *CustomErr](123, nil)
+	assert.True(t, typedSuccess.IsSuccess())
+	tVal, tErr := typedSuccess.Unwrap()
+	assert.Equal(t, 123, tVal)
+	assert.Nil(t, tErr)
+
+	// FromTypedResult failure
+	customErr := &CustomErr{msg: "typed fail"}
+	typedFail := FromTypedResult[int, *CustomErr](123, customErr)
+	assert.False(t, typedFail.IsSuccess())
+	tValFail, tErrFail := typedFail.Unwrap()
+	assert.Equal(t, 0, tValFail)
+	assert.Equal(t, customErr, tErrFail)
+}
+
+func TestMustValue(t *testing.T) {
+	// Optional MustValue
+	optSome := Some("data")
+	assert.Equal(t, "data", optSome.MustValue())
+	optNone := None[string]()
+	assert.Panics(t, func() {
+		optNone.MustValue()
+	})
+
+	// Result MustValue
+	resOk := Success(55)
+	assert.Equal(t, 55, resOk.MustValue())
+	resErr := Failure[int](errors.New("bang"))
+	assert.Panics(t, func() {
+		resErr.MustValue()
+	})
+
+	// TypedResult MustValue
+	typedOk := SuccessTyped[string, *CustomErr]("typed-value")
+	assert.Equal(t, "typed-value", typedOk.MustValue())
+	typedErr := FailureTyped[string, *CustomErr](&CustomErr{msg: "typed-err"})
+	assert.Panics(t, func() {
+		typedErr.MustValue()
+	})
+}

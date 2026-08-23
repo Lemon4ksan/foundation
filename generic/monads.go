@@ -32,6 +32,28 @@ func None[T any]() Optional[T] {
 	return Optional[T]{}
 }
 
+// From creates an [Optional] from a value and a boolean indicator (comma-ok pattern).
+//
+// If ok is true, it returns [Some](v). Otherwise, it returns [None].
+func From[T any](v T, ok bool) Optional[T] {
+	if !ok {
+		return None[T]()
+	}
+
+	return Some(v)
+}
+
+// FromPtr creates an [Optional] wrapping a pointer value.
+//
+// If ptr is nil, it returns [None]. Otherwise, it returns [Some](ptr).
+func FromPtr[T any](ptr *T) Optional[*T] {
+	if ptr == nil {
+		return None[*T]()
+	}
+
+	return Some(ptr)
+}
+
 // IsPresent returns true if the optional contains a valid wrapped value.
 func (o Optional[T]) IsPresent() bool {
 	return o.valid
@@ -42,6 +64,15 @@ func (o Optional[T]) IsPresent() bool {
 // If the optional is empty, it returns the zero value of type T and false.
 func (o Optional[T]) Value() (T, bool) {
 	return o.val, o.valid
+}
+
+// MustValue returns the wrapped value if present, or panics if the optional is empty.
+func (o Optional[T]) MustValue() T {
+	if !o.valid {
+		panic("generic: called MustValue on an empty Optional")
+	}
+
+	return o.val
 }
 
 // ValueOr returns the wrapped value if present, otherwise returning the fallback value.
@@ -117,6 +148,17 @@ func Failure[T any](err error) Result[T] {
 	return Result[T]{err: err}
 }
 
+// ToResult instantiates a [Result] from a value and error tuple.
+//
+// If err is not nil, it returns [Failure](err). Otherwise, it returns [Success](v).
+func ToResult[T any](v T, err error) Result[T] {
+	if err != nil {
+		return Failure[T](err)
+	}
+
+	return Success(v)
+}
+
 // IsSuccess returns true if the result represents a successful operation (err is nil).
 func (r Result[T]) IsSuccess() bool {
 	return r.err == nil
@@ -125,6 +167,15 @@ func (r Result[T]) IsSuccess() bool {
 // Unwrap returns the computed value and any associated execution error.
 func (r Result[T]) Unwrap() (T, error) {
 	return r.val, r.err
+}
+
+// MustValue returns the computed value if successful, or panics with the execution error.
+func (r Result[T]) MustValue() T {
+	if r.err != nil {
+		panic(r.err)
+	}
+
+	return r.val
 }
 
 // Recover returns the wrapped value on success, or uses f to compute a fallback
@@ -227,6 +278,17 @@ func FailureTyped[T any, E error](err E) TypedResult[T, E] {
 	return TypedResult[T, E]{err: err, hasErr: true}
 }
 
+// FromTypedResult instantiates a [TypedResult] from a value and typed error tuple.
+//
+// If err is not nil (or non-zero error), it returns [FailureTyped](err). Otherwise, it returns [SuccessTyped](v).
+func FromTypedResult[T any, E error](v T, err E) TypedResult[T, E] {
+	if isInterfaceNil(err) {
+		return SuccessTyped[T, E](v)
+	}
+
+	return FailureTyped[T, E](err)
+}
+
 // IsSuccess returns true if the result represents a successful execution (no error flag is set).
 func (r TypedResult[T, E]) IsSuccess() bool {
 	return !r.hasErr
@@ -235,6 +297,15 @@ func (r TypedResult[T, E]) IsSuccess() bool {
 // Unwrap returns the computed value and any associated execution error.
 func (r TypedResult[T, E]) Unwrap() (T, E) {
 	return r.val, r.err
+}
+
+// MustValue returns the computed value if successful, or panics with the execution error.
+func (r TypedResult[T, E]) MustValue() T {
+	if !r.IsSuccess() {
+		panic(r.err)
+	}
+
+	return r.val
 }
 
 // Recover returns the wrapped value on success, or uses f to compute a fallback

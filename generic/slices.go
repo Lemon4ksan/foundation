@@ -235,6 +235,14 @@ func Find[T any](slice []T, fn func(T) bool) (T, bool) {
 	return zero, false
 }
 
+// FindOptional searches for the first element in the slice that satisfies the predicate fn,
+// returning the result wrapped in an [Optional].
+//
+// If fn is nil or no matching element is found, it returns [None].
+func FindOptional[T any](slice []T, fn func(T) bool) Optional[T] {
+	return From(Find(slice, fn))
+}
+
 // FilterInPlace filters the provided slice in place without allocating new memory.
 //
 // It clears the unused trailing elements of the modified backing array using the

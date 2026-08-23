@@ -38,9 +38,6 @@ type Cookie struct {
 	MaxAge       int       `json:"maxAge,omitempty"`
 }
 
-// CookieDTO is an alias for [Cookie] provided for backwards compatibility.
-type CookieDTO = Cookie
-
 // hasProhibitedControlChars reports whether s contains CTL characters %x00-08 / %x0A-1F / %x7F (excluding HTAB %x09)
 // per RFC 6265bis §5.5 Step 1 & §5.7 Step 3.
 func hasProhibitedControlChars(s string) bool {
@@ -86,8 +83,8 @@ func ParseSetCookieHeader(headerVal, defaultDomain, defaultPath string) Cookie {
 	return c
 }
 
-// ParseCookieAttribute sets the corresponding field on [CookieDTO] with zero heap allocations using case-insensitive ASCII comparison.
-func ParseCookieAttribute(key, val string, c *CookieDTO) {
+// ParseCookieAttribute sets the corresponding field on [Cookie] with zero heap allocations using case-insensitive ASCII comparison.
+func ParseCookieAttribute(key, val string, c *Cookie) {
 	hasVal := len(val) > 0
 
 	// RFC 6265bis §5.5 Step 6: Attribute value longer than 1024 octets must be ignored

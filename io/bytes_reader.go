@@ -5,6 +5,7 @@
 package io
 
 import (
+	"bufio"
 	"bytes"
 	"io"
 	"slices"
@@ -73,4 +74,52 @@ func StripBOMBytes(data []byte) []byte {
 	}
 
 	return data
+}
+
+// StripBOM detects and discards UTF-8, UTF-16LE, and UTF-16BE Byte Order Marks (BOM) from an io.Reader.
+func StripBOM(reader io.Reader) io.Reader {
+	if reader == nil {
+		return nil
+	}
+
+	if br, ok := reader.(*bufio.Reader); ok {
+		peek, err := br.Peek(3)
+		if err == nil && len(peek) >= 3 && bytes.HasPrefix(peek, bomUTF8) {
+			_, _ = br.Discard(3)
+			return br
+		}
+
+		peek, err = br.Peek(2)
+		if err == nil && len(peek) >= 2 {
+			if (peek[0] == 0xFE && peek[1] == 0xFF) || (peek[0] == 0xFF && peek[1] == 0xFE) {
+				_, _ = br.Discard(2)
+			}
+		}
+
+		return br
+	}
+
+	var buf [3]byte
+
+	n, _ := io.ReadFull(reader, buf[:])
+	if n == 0 {
+		return reader
+	}
+
+	off := 0
+	if n >= 3 && buf[0] == 0xEF && buf[1] == 0xBB && buf[2] == 0xBF {
+		off = 3
+	} else if n >= 2 && ((buf[0] == 0xFE && buf[1] == 0xFF) || (buf[0] == 0xFF && buf[1] == 0xFE)) {
+		off = 2
+	}
+
+	if off == n {
+		return reader
+	}
+
+	if off > 0 {
+		return io.MultiReader(bytes.NewReader(buf[off:n]), reader)
+	}
+
+	return io.MultiReader(bytes.NewReader(buf[:n]), reader)
 }

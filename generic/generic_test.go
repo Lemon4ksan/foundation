@@ -863,3 +863,38 @@ func TestMutexAndLockGuards(t *testing.T) {
 		t.Fatalf("expected apple, got %s", rVal)
 	}
 }
+
+func TestFindAndFindOptional(t *testing.T) {
+	items := []int{10, 20, 30, 40}
+
+	// Find
+	v, ok := Find(items, func(x int) bool { return x == 30 })
+	if !ok || v != 30 {
+		t.Fatalf("expected to find 30, got %d (ok=%v)", v, ok)
+	}
+
+	_, ok = Find(items, func(x int) bool { return x == 99 })
+	if ok {
+		t.Fatal("expected not found for 99")
+	}
+
+	// FindOptional
+	opt := FindOptional(items, func(x int) bool { return x == 20 })
+	if !opt.IsPresent() {
+		t.Fatal("expected 20 to be present in Optional")
+	}
+	if val, ok := opt.Value(); !ok || val != 20 {
+		t.Fatalf("expected 20, got %d", val)
+	}
+
+	optNone := FindOptional(items, func(x int) bool { return x == 99 })
+	if optNone.IsPresent() {
+		t.Fatal("expected None for 99")
+	}
+
+	// Nil predicate
+	optNilPred := FindOptional(items, nil)
+	if optNilPred.IsPresent() {
+		t.Fatal("expected None for nil predicate")
+	}
+}
