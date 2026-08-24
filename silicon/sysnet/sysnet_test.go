@@ -33,3 +33,24 @@ func TestTuneSocketConn(t *testing.T) {
 	sysnet.TuneSocketConn(client)
 	client.Close()
 }
+
+func TestBatchUDPConn_GSO(t *testing.T) {
+	uconn, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 0})
+	assert.NoError(t, err)
+	defer uconn.Close()
+
+	batch := sysnet.NewBatchUDPConn(uconn)
+	assert.NotNil(t, batch)
+
+	_ = batch.SetGSO(1200)
+	_ = batch.SetGRO(true)
+
+	bufs := [][]byte{
+		[]byte("hello"),
+		[]byte("world"),
+	}
+
+	n, err := batch.WriteVectorTo(bufs, uconn.LocalAddr())
+	assert.NoError(t, err)
+	assert.Equal(t, int64(10), n)
+}

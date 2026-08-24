@@ -191,6 +191,42 @@ func (c *BatchUDPConn) SetWriteBuffer(bytes int) error {
 	return nil
 }
 
+// SetGSO configures UDP Generic Segmentation Offload (GSO) segment size on the underlying socket.
+func (c *BatchUDPConn) SetGSO(segmentSize int) error {
+	if sysConn, ok := c.PacketConn.(SyscallConnector); ok {
+		raw, err := sysConn.SyscallConn()
+		if err == nil {
+			var sysErr error
+
+			_ = raw.Control(func(fd uintptr) {
+				sysErr = setUDPSegmentFD(fd, segmentSize)
+			})
+
+			return sysErr
+		}
+	}
+
+	return nil
+}
+
+// SetGRO enables or disables UDP Generic Receive Offload (GRO) on the underlying socket.
+func (c *BatchUDPConn) SetGRO(enable bool) error {
+	if sysConn, ok := c.PacketConn.(SyscallConnector); ok {
+		raw, err := sysConn.SyscallConn()
+		if err == nil {
+			var sysErr error
+
+			_ = raw.Control(func(fd uintptr) {
+				sysErr = setUDPGROFD(fd, enable)
+			})
+
+			return sysErr
+		}
+	}
+
+	return nil
+}
+
 // SyscallConn returns a raw network connection for OS syscall access.
 func (c *BatchUDPConn) SyscallConn() (syscallConn, error) {
 	if sys, ok := c.PacketConn.(interface {
