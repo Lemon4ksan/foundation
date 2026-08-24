@@ -32,6 +32,11 @@ func AcquireScope() *Scope {
 	return s
 }
 
+// NewScope creates or acquires an active [Scope] from the internal pool.
+func NewScope() *Scope {
+	return AcquireScope()
+}
+
 // Release returns the Scope to the internal pool and invalidates all borrows made within it.
 func (s *Scope) Release() {
 	if s == nil {
