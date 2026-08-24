@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/netip"
 	"strings"
 
 	"github.com/lemon4ksan/foundation/generic"
@@ -222,4 +223,54 @@ func LookupFirstIP(ctx context.Context, r Resolver, host string) generic.Optiona
 	}
 
 	return generic.Some(ips[0].IP)
+}
+
+// LookupNetIP resolves a hostname into a slice of zero-allocation [netip.Addr] value objects.
+func LookupNetIP(ctx context.Context, r Resolver, host string) ([]netip.Addr, error) {
+	if addr, err := netip.ParseAddr(host); err == nil {
+		return []netip.Addr{addr.Unmap()}, nil
+	}
+
+	addrs, err := r.LookupIPAddr(ctx, host)
+	if err != nil {
+		return nil, err
+	}
+
+	netIPs := make([]netip.Addr, 0, len(addrs))
+	for _, ipAddr := range addrs {
+		if addr, ok := netip.AddrFromSlice(ipAddr.IP); ok {
+			netIPs = append(netIPs, addr.Unmap())
+		}
+	}
+
+	return netIPs, nil
+}
+
+// LookupNetIPResult executes a hostname lookup and returns a [generic.Result] containing [netip.Addr] slices.
+func LookupNetIPResult(ctx context.Context, r Resolver, host string) generic.Result[[]netip.Addr] {
+	if r == nil {
+		return generic.Failure[[]netip.Addr](ErrNoResolversConfigured)
+	}
+
+	ips, err := LookupNetIP(ctx, r, host)
+	if err != nil {
+		return generic.Failure[[]netip.Addr](err)
+	}
+
+	return generic.Success(ips)
+}
+
+// LookupFirstNetIP returns the first resolved [netip.Addr] wrapped in a [generic.Optional].
+func LookupFirstNetIP(ctx context.Context, r Resolver, host string) generic.Optional[netip.Addr] {
+	res := LookupNetIPResult(ctx, r, host)
+	if !res.IsSuccess() {
+		return generic.None[netip.Addr]()
+	}
+
+	ips, _ := res.Unwrap()
+	if len(ips) == 0 || !ips[0].IsValid() {
+		return generic.None[netip.Addr]()
+	}
+
+	return generic.Some(ips[0])
 }
