@@ -9,6 +9,7 @@ package simd
 import (
 	"bytes"
 	"math/bits"
+	"unicode/utf8"
 	"unsafe"
 )
 
@@ -135,4 +136,27 @@ func IndexDoubleCRLF(b []byte) int {
 		i = pos + 1
 	}
 	return -1
+}
+
+// ValidUTF8 reports whether b consists of valid UTF-8-encoded bytes,
+// accelerated with 64-bit SWAR vector ASCII fast-path processing (processing 8 bytes/cycle).
+func ValidUTF8(b []byte) bool {
+	n := len(b)
+	i := 0
+
+	// Fast 8-byte SWAR loop for ASCII runs
+	for i+8 <= n {
+		word := *(*uint64)(unsafe.Pointer(&b[i]))
+		if (word & RepeatByte0x80) != 0 {
+			break
+		}
+		i += 8
+	}
+
+	if i == n {
+		return true
+	}
+
+	// Tail and multibyte validation
+	return utf8.Valid(b[i:])
 }

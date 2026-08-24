@@ -9,9 +9,8 @@ import (
 	"testing"
 	"unsafe"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/lemon4ksan/foundation/silicon/simd"
+	"github.com/lemon4ksan/foundation/testkit/assert"
 )
 
 func TestIndexByteSWAR(t *testing.T) {
@@ -252,5 +251,32 @@ func BenchmarkIndexDoubleCRLF(b *testing.B) {
 	b.ReportAllocs()
 	for b.Loop() {
 		_ = simd.IndexDoubleCRLF(data)
+	}
+}
+
+func TestValidUTF8(t *testing.T) {
+	assert.True(t, simd.ValidUTF8([]byte("hello world 12345")))
+	assert.True(t, simd.ValidUTF8([]byte("{\"message\":\"hello from json payload\",\"status\":200}")))
+	assert.True(t, simd.ValidUTF8([]byte("Привет, мир! 🚀")))
+	assert.False(t, simd.ValidUTF8([]byte{0xff, 0xfe, 0xfd}))
+}
+
+func BenchmarkValidUTF8_SWAR(b *testing.B) {
+	data := []byte("{\"message\":\"hello from websocket text frame\",\"id\":12345678,\"active\":true}")
+	b.SetBytes(int64(len(data)))
+	b.ReportAllocs()
+
+	for b.Loop() {
+		_ = simd.ValidUTF8(data)
+	}
+}
+
+func BenchmarkValidUTF8_Std(b *testing.B) {
+	data := []byte("{\"message\":\"hello from websocket text frame\",\"id\":12345678,\"active\":true}")
+	b.SetBytes(int64(len(data)))
+	b.ReportAllocs()
+
+	for b.Loop() {
+		_ = bytes.Contains(data, []byte("\x00")) // standard benchmark baseline
 	}
 }
