@@ -17,6 +17,11 @@ func TestCoarseClock(t *testing.T) {
 		t.Fatalf("expected non-zero coarse nano, got %d", nano)
 	}
 
+	sec := clock.CoarseNowUnix()
+	if sec <= 0 {
+		t.Fatalf("expected non-zero coarse sec, got %d", sec)
+	}
+
 	ct := clock.CoarseTime()
 	if ct.IsZero() {
 		t.Fatal("expected non-zero coarse time")
@@ -30,18 +35,53 @@ func TestCoarseClock(t *testing.T) {
 	}
 }
 
-func BenchmarkCoarseClock(b *testing.B) {
+func TestRDTSC(t *testing.T) {
+	c1 := clock.RDTSC()
+	if c1 == 0 {
+		t.Fatal("expected non-zero RDTSC cycles")
+	}
+
+	time.Sleep(2 * time.Millisecond)
+
+	c2 := clock.RDTSC()
+	if c2 <= c1 {
+		t.Fatalf("expected RDTSC cycles to advance: c1=%d, c2=%d", c1, c2)
+	}
+
+	dur := clock.ElapsedCycles(c1)
+	if dur < time.Millisecond || dur > 50*time.Millisecond {
+		t.Fatalf("expected elapsed duration around ~2ms, got %v", dur)
+	}
+}
+
+func BenchmarkRDTSC(b *testing.B) {
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
+		_ = clock.RDTSC()
+	}
+}
+
+func BenchmarkCoarseClock_Nano(b *testing.B) {
+	b.ReportAllocs()
+
+	for b.Loop() {
 		_ = clock.CoarseNowNano()
+	}
+}
+
+func BenchmarkCoarseClock_Time(b *testing.B) {
+	b.ReportAllocs()
+
+	for b.Loop() {
+		_ = clock.CoarseTime()
 	}
 }
 
 func BenchmarkStandardTimeNow(b *testing.B) {
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = time.Now()
 	}
 }
