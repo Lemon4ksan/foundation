@@ -65,6 +65,11 @@ func (b Bytes) AsSlice() []byte {
 	return unsafe.Slice((*byte)(b.ptr), b.len)
 }
 
+// Bytes returns a []byte view of the underlying memory (alias for [AsSlice]).
+func (b Bytes) Bytes() []byte {
+	return b.AsSlice()
+}
+
 // Clone creates an independent, GC-heap copy of the data that safely outlives
 // the current borrow scope.
 func (b Bytes) Clone() []byte {
