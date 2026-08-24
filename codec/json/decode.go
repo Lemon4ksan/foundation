@@ -923,6 +923,18 @@ func decodeInterface(data []byte, cursor int, p unsafe.Pointer, cfg *DecoderConf
 		return cursor, errUnexpectedEnd
 	}
 
+	existing := *(*any)(p)
+	if existing != nil {
+		rv := reflect.ValueOf(existing)
+		if rv.Kind() == reflect.Pointer && !rv.IsNil() {
+			elemType := rv.Type().Elem()
+			dec, err := getDecoder(elemType)
+			if err == nil {
+				return dec(data, cursor, unsafe.Pointer(rv.Pointer()), cfg)
+			}
+		}
+	}
+
 	val, newCursor, err := decodeDynamic(data, cursor, cfg)
 	if err != nil {
 		return cursor, err
