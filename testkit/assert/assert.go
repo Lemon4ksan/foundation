@@ -508,19 +508,60 @@ func LessOrEqualf[T Ordered](t testing.TB, e1, e2 T, format string, args ...any)
 	return LessOrEqual(t, e1, e2, fmt.Sprintf(format, args...))
 }
 
+// AnError is an error value suitable for testing error handling.
+var AnError = errors.New("assert.AnError general error for testing")
+
+func toFloat64(val any) (float64, bool) {
+	switch v := val.(type) {
+	case float64:
+		return v, true
+	case float32:
+		return float64(v), true
+	case int:
+		return float64(v), true
+	case int8:
+		return float64(v), true
+	case int16:
+		return float64(v), true
+	case int32:
+		return float64(v), true
+	case int64:
+		return float64(v), true
+	case uint:
+		return float64(v), true
+	case uint8:
+		return float64(v), true
+	case uint16:
+		return float64(v), true
+	case uint32:
+		return float64(v), true
+	case uint64:
+		return float64(v), true
+	default:
+		return 0, false
+	}
+}
+
 // InDelta asserts that |expected - actual| <= delta.
-func InDelta(t testing.TB, expected, actual, delta float64, msgAndArgs ...any) bool {
+func InDelta(t testing.TB, expected, actual any, delta float64, msgAndArgs ...any) bool {
 	t.Helper()
 
-	if math.IsNaN(expected) || math.IsNaN(actual) {
+	expF, ok1 := toFloat64(expected)
+	actF, ok2 := toFloat64(actual)
+
+	if !ok1 || !ok2 {
+		return fail(t, fmt.Sprintf("Parameters must be numerical: expected=%#v, actual=%#v", expected, actual), msgAndArgs...)
+	}
+
+	if math.IsNaN(expF) || math.IsNaN(actF) {
 		return fail(t, "Values cannot be NaN", msgAndArgs...)
 	}
 
-	if math.Abs(expected-actual) <= delta {
+	if math.Abs(expF-actF) <= delta {
 		return true
 	}
 
-	return fail(t, fmt.Sprintf("Difference between %f and %f is greater than %f", expected, actual, delta), msgAndArgs...)
+	return fail(t, fmt.Sprintf("Difference between %f and %f is greater than %f", expF, actF, delta), msgAndArgs...)
 }
 
 // IsType asserts that object is of the same type as expectedType.

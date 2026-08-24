@@ -252,8 +252,11 @@ func LessOrEqualf[T assert.Ordered](t testing.TB, e1, e2 T, format string, args 
 	}
 }
 
+// AnError is an error value suitable for testing error handling.
+var AnError = assert.AnError
+
 // InDelta asserts |expected - actual| <= delta, failing immediately if not.
-func InDelta(t testing.TB, expected, actual, delta float64, msgAndArgs ...any) {
+func InDelta(t testing.TB, expected, actual any, delta float64, msgAndArgs ...any) {
 	t.Helper()
 	if !assert.InDelta(t, expected, actual, delta, msgAndArgs...) {
 		t.FailNow()
