@@ -58,7 +58,7 @@ func EqualExportedValues(t testing.TB, expected, actual any, msgAndArgs ...any) 
 // EqualExportedValuesf asserts that the exported fields of two structs are equal with format.
 func EqualExportedValuesf(t testing.TB, expected, actual any, format string, args ...any) {
 	t.Helper()
-	if !assert.EqualExportedValues(t, expected, actual, fmt.Sprintf(format, args...)) {
+	if !assert.EqualExportedValuesf(t, expected, actual, format, args...) {
 		t.FailNow()
 	}
 }
