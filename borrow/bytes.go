@@ -93,11 +93,40 @@ func (b Bytes) IsValid() bool {
 	return b.slot.IsValid(b.gen)
 }
 
+// Slice returns a sub-slice of Bytes within [low:high] bound to the same generational slot.
+func (b Bytes) Slice(low, high int) Bytes {
+	if b.slot != nil {
+		b.slot.CheckValid(b.gen)
+	}
+
+	if low < 0 || high > b.len || low > high {
+		panic("borrow: slice index out of bounds")
+	}
+
+	subLen := high - low
+	subCap := b.cap - low
+
+	if b.ptr == nil || subLen == 0 {
+		return Bytes{slot: b.slot, gen: b.gen}
+	}
+
+	subPtr := unsafe.Pointer(uintptr(b.ptr) + uintptr(low))
+
+	return Bytes{
+		ptr:  subPtr,
+		len:  subLen,
+		cap:  subCap,
+		slot: b.slot,
+		gen:  b.gen,
+	}
+}
+
 // Release invalidates this Bytes handle and increments the slot's generation.
 func (b *Bytes) Release() {
 	if b.slot != nil && b.gen != 0 {
 		b.slot.Invalidate()
 	}
+
 	b.ptr = nil
 	b.len = 0
 	b.cap = 0
