@@ -12,6 +12,9 @@ import (
 	"github.com/lemon4ksan/foundation/testkit/assert"
 )
 
+// AnError is an error value suitable for testing error handling.
+var AnError = assert.AnError
+
 // Equal asserts that two objects are equal, failing immediately if not.
 func Equal(t testing.TB, expected, actual any, msgAndArgs ...any) {
 	t.Helper()
@@ -36,6 +39,14 @@ func EqualValues(t testing.TB, expected, actual any, msgAndArgs ...any) {
 	}
 }
 
+// EqualValuesf asserts that two objects are equal after type conversion with format, failing immediately if not.
+func EqualValuesf(t testing.TB, expected, actual any, format string, args ...any) {
+	t.Helper()
+	if !assert.EqualValuesf(t, expected, actual, format, args...) {
+		t.FailNow()
+	}
+}
+
 // EqualExportedValues asserts that the exported fields of two structs are equal.
 func EqualExportedValues(t testing.TB, expected, actual any, msgAndArgs ...any) {
 	t.Helper()
@@ -44,10 +55,26 @@ func EqualExportedValues(t testing.TB, expected, actual any, msgAndArgs ...any) 
 	}
 }
 
+// EqualExportedValuesf asserts that the exported fields of two structs are equal with format.
+func EqualExportedValuesf(t testing.TB, expected, actual any, format string, args ...any) {
+	t.Helper()
+	if !assert.EqualExportedValues(t, expected, actual, fmt.Sprintf(format, args...)) {
+		t.FailNow()
+	}
+}
+
 // NotEqual asserts that two objects are not equal, failing immediately if they are.
 func NotEqual(t testing.TB, expected, actual any, msgAndArgs ...any) {
 	t.Helper()
 	if !assert.NotEqual(t, expected, actual, msgAndArgs...) {
+		t.FailNow()
+	}
+}
+
+// NotEqualf asserts that two objects are not equal with format, failing immediately if they are.
+func NotEqualf(t testing.TB, expected, actual any, format string, args ...any) {
+	t.Helper()
+	if !assert.NotEqualf(t, expected, actual, format, args...) {
 		t.FailNow()
 	}
 }
@@ -76,18 +103,44 @@ func False(t testing.TB, value bool, msgAndArgs ...any) {
 	}
 }
 
+// Falsef asserts that value is false with format, failing immediately if true.
+func Falsef(t testing.TB, value bool, format string, args ...any) {
+	t.Helper()
+	if !assert.Falsef(t, value, format, args...) {
+		t.FailNow()
+	}
+}
+
 // Nil asserts that object is nil, failing immediately if not.
-func Nil(t testing.TB, object any, msgAndArgs ...any) {
+func Nil(t testing.TB, object any, msgAndArgs ...any) bool {
 	t.Helper()
 	if !assert.Nil(t, object, msgAndArgs...) {
+		t.FailNow()
+	}
+	return true
+}
+
+// Nilf asserts that object is nil with format, failing immediately if not.
+func Nilf(t testing.TB, object any, format string, args ...any) {
+	t.Helper()
+	if !assert.Nilf(t, object, format, args...) {
 		t.FailNow()
 	}
 }
 
 // NotNil asserts that object is not nil, failing immediately if nil.
-func NotNil(t testing.TB, object any, msgAndArgs ...any) {
+func NotNil(t testing.TB, object any, msgAndArgs ...any) bool {
 	t.Helper()
 	if !assert.NotNil(t, object, msgAndArgs...) {
+		t.FailNow()
+	}
+	return true
+}
+
+// NotNilf asserts that object is not nil with format, failing immediately if nil.
+func NotNilf(t testing.TB, object any, format string, args ...any) {
+	t.Helper()
+	if !assert.NotNilf(t, object, format, args...) {
 		t.FailNow()
 	}
 }
@@ -100,10 +153,26 @@ func NoError(t testing.TB, err error, msgAndArgs ...any) {
 	}
 }
 
+// NoErrorf asserts that err is nil with format, failing immediately if non-nil.
+func NoErrorf(t testing.TB, err error, format string, args ...any) {
+	t.Helper()
+	if !assert.NoErrorf(t, err, format, args...) {
+		t.FailNow()
+	}
+}
+
 // Error asserts that err is non-nil, failing immediately if nil.
 func Error(t testing.TB, err error, msgAndArgs ...any) {
 	t.Helper()
 	if !assert.Error(t, err, msgAndArgs...) {
+		t.FailNow()
+	}
+}
+
+// Errorf asserts that err is non-nil with format, failing immediately if nil.
+func Errorf(t testing.TB, err error, format string, args ...any) {
+	t.Helper()
+	if !assert.Errorf(t, err, format, args...) {
 		t.FailNow()
 	}
 }
@@ -116,10 +185,26 @@ func EqualError(t testing.TB, err error, errString string, msgAndArgs ...any) {
 	}
 }
 
+// EqualErrorf asserts that err is not nil and matches errString with format.
+func EqualErrorf(t testing.TB, err error, errString string, format string, args ...any) {
+	t.Helper()
+	if !assert.EqualErrorf(t, err, errString, format, args...) {
+		t.FailNow()
+	}
+}
+
 // ErrorIs asserts that target is in err chain, failing immediately if not.
 func ErrorIs(t testing.TB, err, target error, msgAndArgs ...any) {
 	t.Helper()
 	if !assert.ErrorIs(t, err, target, msgAndArgs...) {
+		t.FailNow()
+	}
+}
+
+// ErrorIsf asserts that target is in err chain with format.
+func ErrorIsf(t testing.TB, err, target error, format string, args ...any) {
+	t.Helper()
+	if !assert.ErrorIsf(t, err, target, format, args...) {
 		t.FailNow()
 	}
 }
@@ -132,10 +217,26 @@ func NotErrorIs(t testing.TB, err, target error, msgAndArgs ...any) {
 	}
 }
 
+// NotErrorIsf asserts that target is not in err chain with format.
+func NotErrorIsf(t testing.TB, err, target error, format string, args ...any) {
+	t.Helper()
+	if !assert.NotErrorIsf(t, err, target, format, args...) {
+		t.FailNow()
+	}
+}
+
 // ErrorAs asserts that errors.As(err, target) succeeds, failing immediately if not.
 func ErrorAs(t testing.TB, err error, target any, msgAndArgs ...any) {
 	t.Helper()
 	if !assert.ErrorAs(t, err, target, msgAndArgs...) {
+		t.FailNow()
+	}
+}
+
+// ErrorAsf asserts that errors.As(err, target) succeeds with format.
+func ErrorAsf(t testing.TB, err error, target any, format string, args ...any) {
+	t.Helper()
+	if !assert.ErrorAsf(t, err, target, format, args...) {
 		t.FailNow()
 	}
 }
@@ -148,10 +249,26 @@ func ErrorContains(t testing.TB, err error, contains string, msgAndArgs ...any) 
 	}
 }
 
+// ErrorContainsf asserts that err contains substring with format.
+func ErrorContainsf(t testing.TB, err error, contains string, format string, args ...any) {
+	t.Helper()
+	if !assert.ErrorContainsf(t, err, contains, format, args...) {
+		t.FailNow()
+	}
+}
+
 // Contains asserts container contains element, failing immediately if not.
 func Contains(t testing.TB, container, element any, msgAndArgs ...any) {
 	t.Helper()
 	if !assert.Contains(t, container, element, msgAndArgs...) {
+		t.FailNow()
+	}
+}
+
+// Containsf asserts container contains element with format.
+func Containsf(t testing.TB, container, element any, format string, args ...any) {
+	t.Helper()
+	if !assert.Containsf(t, container, element, format, args...) {
 		t.FailNow()
 	}
 }
@@ -180,10 +297,26 @@ func Len(t testing.TB, object any, length int, msgAndArgs ...any) {
 	}
 }
 
+// Lenf asserts object has length with format.
+func Lenf(t testing.TB, object any, length int, format string, args ...any) {
+	t.Helper()
+	if !assert.Lenf(t, object, length, format, args...) {
+		t.FailNow()
+	}
+}
+
 // Empty asserts object is empty, failing immediately if not.
 func Empty(t testing.TB, object any, msgAndArgs ...any) {
 	t.Helper()
 	if !assert.Empty(t, object, msgAndArgs...) {
+		t.FailNow()
+	}
+}
+
+// Emptyf asserts object is empty with format.
+func Emptyf(t testing.TB, object any, format string, args ...any) {
+	t.Helper()
+	if !assert.Emptyf(t, object, format, args...) {
 		t.FailNow()
 	}
 }
@@ -196,10 +329,26 @@ func NotEmpty(t testing.TB, object any, msgAndArgs ...any) {
 	}
 }
 
+// NotEmptyf asserts object is not empty with format.
+func NotEmptyf(t testing.TB, object any, format string, args ...any) {
+	t.Helper()
+	if !assert.NotEmptyf(t, object, format, args...) {
+		t.FailNow()
+	}
+}
+
 // Zero asserts object is its type zero value, failing immediately if not.
 func Zero(t testing.TB, object any, msgAndArgs ...any) {
 	t.Helper()
 	if !assert.Zero(t, object, msgAndArgs...) {
+		t.FailNow()
+	}
+}
+
+// Zerof asserts object is its type zero value with format.
+func Zerof(t testing.TB, object any, format string, args ...any) {
+	t.Helper()
+	if !assert.Zerof(t, object, format, args...) {
 		t.FailNow()
 	}
 }
@@ -212,10 +361,26 @@ func NotZero(t testing.TB, object any, msgAndArgs ...any) {
 	}
 }
 
+// NotZerof asserts object is not zero value with format.
+func NotZerof(t testing.TB, object any, format string, args ...any) {
+	t.Helper()
+	if !assert.NotZerof(t, object, format, args...) {
+		t.FailNow()
+	}
+}
+
 // Greater asserts e1 > e2, failing immediately if not.
 func Greater[T assert.Ordered](t testing.TB, e1, e2 T, msgAndArgs ...any) {
 	t.Helper()
 	if !assert.Greater(t, e1, e2, msgAndArgs...) {
+		t.FailNow()
+	}
+}
+
+// Greaterf asserts e1 > e2 with format.
+func Greaterf[T assert.Ordered](t testing.TB, e1, e2 T, format string, args ...any) {
+	t.Helper()
+	if !assert.Greaterf(t, e1, e2, format, args...) {
 		t.FailNow()
 	}
 }
@@ -228,10 +393,26 @@ func GreaterOrEqual[T assert.Ordered](t testing.TB, e1, e2 T, msgAndArgs ...any)
 	}
 }
 
+// GreaterOrEqualf asserts e1 >= e2 with format.
+func GreaterOrEqualf[T assert.Ordered](t testing.TB, e1, e2 T, format string, args ...any) {
+	t.Helper()
+	if !assert.GreaterOrEqualf(t, e1, e2, format, args...) {
+		t.FailNow()
+	}
+}
+
 // Less asserts e1 < e2, failing immediately if not.
 func Less[T assert.Ordered](t testing.TB, e1, e2 T, msgAndArgs ...any) {
 	t.Helper()
 	if !assert.Less(t, e1, e2, msgAndArgs...) {
+		t.FailNow()
+	}
+}
+
+// Lessf asserts e1 < e2 with format.
+func Lessf[T assert.Ordered](t testing.TB, e1, e2 T, format string, args ...any) {
+	t.Helper()
+	if !assert.Lessf(t, e1, e2, format, args...) {
 		t.FailNow()
 	}
 }
@@ -252,13 +433,18 @@ func LessOrEqualf[T assert.Ordered](t testing.TB, e1, e2 T, format string, args 
 	}
 }
 
-// AnError is an error value suitable for testing error handling.
-var AnError = assert.AnError
-
 // InDelta asserts |expected - actual| <= delta, failing immediately if not.
 func InDelta(t testing.TB, expected, actual any, delta float64, msgAndArgs ...any) {
 	t.Helper()
 	if !assert.InDelta(t, expected, actual, delta, msgAndArgs...) {
+		t.FailNow()
+	}
+}
+
+// InDeltaf asserts |expected - actual| <= delta with format.
+func InDeltaf(t testing.TB, expected, actual any, delta float64, format string, args ...any) {
+	t.Helper()
+	if !assert.InDeltaf(t, expected, actual, delta, format, args...) {
 		t.FailNow()
 	}
 }
@@ -271,10 +457,26 @@ func IsType(t testing.TB, expectedType, object any, msgAndArgs ...any) {
 	}
 }
 
+// IsTypef asserts object is of same type as expectedType with format.
+func IsTypef(t testing.TB, expectedType, object any, format string, args ...any) {
+	t.Helper()
+	if !assert.IsTypef(t, expectedType, object, format, args...) {
+		t.FailNow()
+	}
+}
+
 // JSONEq asserts two JSON strings are equivalent, failing immediately if not.
 func JSONEq(t testing.TB, expected, actual string, msgAndArgs ...any) {
 	t.Helper()
 	if !assert.JSONEq(t, expected, actual, msgAndArgs...) {
+		t.FailNow()
+	}
+}
+
+// JSONEqf asserts two JSON strings are equivalent with format.
+func JSONEqf(t testing.TB, expected, actual string, format string, args ...any) {
+	t.Helper()
+	if !assert.JSONEqf(t, expected, actual, format, args...) {
 		t.FailNow()
 	}
 }
@@ -287,10 +489,26 @@ func Regexp(t testing.TB, rx, str any, msgAndArgs ...any) {
 	}
 }
 
+// Regexpf asserts string matches regular expression with format.
+func Regexpf(t testing.TB, rx, str any, format string, args ...any) {
+	t.Helper()
+	if !assert.Regexpf(t, rx, str, format, args...) {
+		t.FailNow()
+	}
+}
+
 // Same asserts two pointers reference the same object, failing immediately if not.
 func Same(t testing.TB, expected, actual any, msgAndArgs ...any) {
 	t.Helper()
 	if !assert.Same(t, expected, actual, msgAndArgs...) {
+		t.FailNow()
+	}
+}
+
+// Samef asserts two pointers reference the same object with format.
+func Samef(t testing.TB, expected, actual any, format string, args ...any) {
+	t.Helper()
+	if !assert.Samef(t, expected, actual, format, args...) {
 		t.FailNow()
 	}
 }
@@ -303,10 +521,26 @@ func WithinDuration(t testing.TB, expected, actual time.Time, delta time.Duratio
 	}
 }
 
+// WithinDurationf asserts two times are within delta of each other with format.
+func WithinDurationf(t testing.TB, expected, actual time.Time, delta time.Duration, format string, args ...any) {
+	t.Helper()
+	if !assert.WithinDurationf(t, expected, actual, delta, format, args...) {
+		t.FailNow()
+	}
+}
+
 // FileExists asserts that file exists, failing immediately if not.
 func FileExists(t testing.TB, filepath string, msgAndArgs ...any) {
 	t.Helper()
 	if !assert.FileExists(t, filepath, msgAndArgs...) {
+		t.FailNow()
+	}
+}
+
+// FileExistsf asserts that file exists with format.
+func FileExistsf(t testing.TB, filepath string, format string, args ...any) {
+	t.Helper()
+	if !assert.FileExistsf(t, filepath, format, args...) {
 		t.FailNow()
 	}
 }
@@ -319,10 +553,26 @@ func NoFileExists(t testing.TB, filepath string, msgAndArgs ...any) {
 	}
 }
 
+// NoFileExistsf asserts that file does not exist with format.
+func NoFileExistsf(t testing.TB, filepath string, format string, args ...any) {
+	t.Helper()
+	if !assert.NoFileExistsf(t, filepath, format, args...) {
+		t.FailNow()
+	}
+}
+
 // NoDirExists asserts that directory does not exist, failing immediately if it does.
 func NoDirExists(t testing.TB, dirpath string, msgAndArgs ...any) {
 	t.Helper()
 	if !assert.NoDirExists(t, dirpath, msgAndArgs...) {
+		t.FailNow()
+	}
+}
+
+// NoDirExistsf asserts that directory does not exist with format.
+func NoDirExistsf(t testing.TB, dirpath string, format string, args ...any) {
+	t.Helper()
+	if !assert.NoDirExistsf(t, dirpath, format, args...) {
 		t.FailNow()
 	}
 }
@@ -335,10 +585,26 @@ func Panics(t testing.TB, f func(), msgAndArgs ...any) {
 	}
 }
 
+// Panicsf asserts that f panics with format.
+func Panicsf(t testing.TB, f func(), format string, args ...any) {
+	t.Helper()
+	if !assert.Panicsf(t, f, format, args...) {
+		t.FailNow()
+	}
+}
+
 // PanicsWithError asserts that f panics with specific error string, failing immediately if not.
 func PanicsWithError(t testing.TB, errString string, f func(), msgAndArgs ...any) {
 	t.Helper()
 	if !assert.PanicsWithError(t, errString, f, msgAndArgs...) {
+		t.FailNow()
+	}
+}
+
+// PanicsWithErrorf asserts that f panics with specific error string with format.
+func PanicsWithErrorf(t testing.TB, errString string, f func(), format string, args ...any) {
+	t.Helper()
+	if !assert.PanicsWithErrorf(t, errString, f, format, args...) {
 		t.FailNow()
 	}
 }
@@ -351,6 +617,14 @@ func NotPanics(t testing.TB, f func(), msgAndArgs ...any) {
 	}
 }
 
+// NotPanicsf asserts that f does not panic with format.
+func NotPanicsf(t testing.TB, f func(), format string, args ...any) {
+	t.Helper()
+	if !assert.NotPanicsf(t, f, format, args...) {
+		t.FailNow()
+	}
+}
+
 // Eventually asserts condition becomes true within waitFor duration, failing immediately if not.
 func Eventually(t testing.TB, condition func() bool, waitFor, tick time.Duration, msgAndArgs ...any) {
 	t.Helper()
@@ -359,10 +633,26 @@ func Eventually(t testing.TB, condition func() bool, waitFor, tick time.Duration
 	}
 }
 
+// Eventuallyf asserts condition becomes true within waitFor duration with format.
+func Eventuallyf(t testing.TB, condition func() bool, waitFor, tick time.Duration, format string, args ...any) {
+	t.Helper()
+	if !assert.Eventuallyf(t, condition, waitFor, tick, format, args...) {
+		t.FailNow()
+	}
+}
+
 // Never asserts condition never becomes true within waitFor duration, failing immediately if it does.
 func Never(t testing.TB, condition func() bool, waitFor, tick time.Duration, msgAndArgs ...any) {
 	t.Helper()
 	if !assert.Never(t, condition, waitFor, tick, msgAndArgs...) {
+		t.FailNow()
+	}
+}
+
+// Neverf asserts condition never becomes true within waitFor duration with format.
+func Neverf(t testing.TB, condition func() bool, waitFor, tick time.Duration, format string, args ...any) {
+	t.Helper()
+	if !assert.Neverf(t, condition, waitFor, tick, format, args...) {
 		t.FailNow()
 	}
 }
