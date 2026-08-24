@@ -5,29 +5,45 @@
 package generic
 
 import (
+	"hash/maphash"
 	"maps"
 	"sync"
 )
 
-// ShardCount is the number of shards in the sharded map.
-const ShardCount = 32
+// ShardCount is the number of shards in the sharded map (power of two).
+const (
+	ShardCount = 32
+	shardMask  = ShardCount - 1
+)
 
-// ShardedMap is a high-performance, thread-safe sharded map with zero lock contention between different keys.
-type ShardedMap[K ~uint64 | ~int64, V any] struct {
-	shards [ShardCount]struct {
-		mu    sync.RWMutex
-		items map[K]V
-	}
+type paddedShard[K comparable, V any] struct {
+	mu    sync.RWMutex
+	items map[K]V
+	_     [32]byte // Cache-line padding isolating 64-byte L1 cache lines across CPU cores
+}
+
+// ShardedMap is a high-performance, thread-safe sharded map with zero lock contention between different keys,
+// hardware-accelerated maphash hashing, and cache-line alignment to eliminate False Sharing.
+type ShardedMap[K comparable, V any] struct {
+	shards [ShardCount]paddedShard[K, V]
+	seed   maphash.Seed
 }
 
 // NewShardedMap creates a new sharded map.
-func NewShardedMap[K ~uint64 | ~int64, V any]() *ShardedMap[K, V] {
-	m := &ShardedMap[K, V]{}
+func NewShardedMap[K comparable, V any]() *ShardedMap[K, V] {
+	m := &ShardedMap[K, V]{
+		seed: maphash.MakeSeed(),
+	}
 	for i := range ShardCount {
 		m.shards[i].items = make(map[K]V)
 	}
 
 	return m
+}
+
+func (m *ShardedMap[K, V]) getShard(key K) *paddedShard[K, V] {
+	idx := int(maphash.Comparable(m.seed, key) & shardMask)
+	return &m.shards[idx]
 }
 
 // Get retrieves the value for the given key from the sharded map.
@@ -37,12 +53,30 @@ func (m *ShardedMap[K, V]) Get(key K) (V, bool) {
 		return zero, false
 	}
 
-	shard := &m.shards[uint64(key)%ShardCount]
+	shard := m.getShard(key)
 	shard.mu.RLock()
 	val, ok := shard.items[key]
 	shard.mu.RUnlock()
 
 	return val, ok
+}
+
+// TryGet attempts to retrieve the value for the given key without blocking if the shard is write-locked.
+func (m *ShardedMap[K, V]) TryGet(key K) (val V, ok, acquired bool) {
+	if m == nil {
+		var zero V
+		return zero, false, false
+	}
+
+	shard := m.getShard(key)
+	if !shard.mu.TryRLock() {
+		var zero V
+		return zero, false, false
+	}
+	defer shard.mu.RUnlock()
+
+	v, exists := shard.items[key]
+	return v, exists, true
 }
 
 // Set sets the value for the given key in the sharded map.
@@ -51,10 +85,26 @@ func (m *ShardedMap[K, V]) Set(key K, val V) {
 		return
 	}
 
-	shard := &m.shards[uint64(key)%ShardCount]
+	shard := m.getShard(key)
 	shard.mu.Lock()
 	shard.items[key] = val
 	shard.mu.Unlock()
+}
+
+// TrySet attempts to set the value for the given key without blocking if the shard is locked.
+func (m *ShardedMap[K, V]) TrySet(key K, val V) bool {
+	if m == nil {
+		return false
+	}
+
+	shard := m.getShard(key)
+	if !shard.mu.TryLock() {
+		return false
+	}
+	defer shard.mu.Unlock()
+
+	shard.items[key] = val
+	return true
 }
 
 // Delete deletes the value for the given key from the sharded map.
@@ -63,10 +113,27 @@ func (m *ShardedMap[K, V]) Delete(key K) {
 		return
 	}
 
-	shard := &m.shards[uint64(key)%ShardCount]
+	shard := m.getShard(key)
 	shard.mu.Lock()
 	delete(shard.items, key)
 	shard.mu.Unlock()
+}
+
+// Len returns the total number of items stored across all shards.
+func (m *ShardedMap[K, V]) Len() int {
+	if m == nil {
+		return 0
+	}
+
+	count := 0
+	for i := range ShardCount {
+		shard := &m.shards[i]
+		shard.mu.RLock()
+		count += len(shard.items)
+		shard.mu.RUnlock()
+	}
+
+	return count
 }
 
 // All returns a copy of all key-value pairs in the sharded map.
