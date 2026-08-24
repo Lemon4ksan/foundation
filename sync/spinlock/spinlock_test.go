@@ -116,3 +116,55 @@ func TestSpinLock_UnlockPanic(t *testing.T) {
 
 	mu.Unlock()
 }
+
+func BenchmarkSpinLock_Sequential(b *testing.B) {
+	var mu SpinLock
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		mu.Lock()
+		mu.Unlock()
+	}
+}
+
+func BenchmarkMutex_Sequential(b *testing.B) {
+	var mu sync.Mutex
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		mu.Lock()
+		mu.Unlock()
+	}
+}
+
+func BenchmarkSpinLock_Parallel(b *testing.B) {
+	var mu SpinLock
+	counter := 0
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			mu.Lock()
+			counter++
+			mu.Unlock()
+		}
+	})
+}
+
+func BenchmarkMutex_Parallel(b *testing.B) {
+	var mu sync.Mutex
+	counter := 0
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			mu.Lock()
+			counter++
+			mu.Unlock()
+		}
+	})
+}
