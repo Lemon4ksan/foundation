@@ -68,7 +68,47 @@ func Equal(t testing.TB, expected, actual any, msgAndArgs ...any) bool {
 		}
 	}
 
+	if expected != nil && actual != nil {
+		v1 := reflect.ValueOf(expected)
+		v2 := reflect.ValueOf(actual)
+		if v1.Type() == v2.Type() {
+			if (v1.Kind() == reflect.Pointer && v1.Elem().Kind() == reflect.Struct) || v1.Kind() == reflect.Struct {
+				if equalExported(v1, v2) {
+					return true
+				}
+			}
+		}
+	}
+
 	return fail(t, fmt.Sprintf("Not equal: \nexpected: %#v\nactual  : %#v", expected, actual), msgAndArgs...)
+}
+
+func equalExported(v1, v2 reflect.Value) bool {
+	if v1.Kind() == reflect.Pointer {
+		if v1.IsNil() || v2.IsNil() {
+			return v1.IsNil() == v2.IsNil()
+		}
+		v1 = v1.Elem()
+		v2 = v2.Elem()
+	}
+
+	if v1.Kind() != reflect.Struct || v2.Kind() != reflect.Struct {
+		return reflect.DeepEqual(v1.Interface(), v2.Interface())
+	}
+
+	for i := 0; i < v1.NumField(); i++ {
+		field := v1.Type().Field(i)
+		if !field.IsExported() {
+			continue
+		}
+		f1 := v1.Field(i)
+		f2 := v2.Field(i)
+		if !reflect.DeepEqual(f1.Interface(), f2.Interface()) {
+			return false
+		}
+	}
+
+	return true
 }
 
 // Equalf asserts that two objects are equal with a formatted message.
