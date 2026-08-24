@@ -6,9 +6,14 @@
 package assert
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
+	"os"
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -52,7 +57,52 @@ func Equal(t testing.TB, expected, actual any, msgAndArgs ...any) bool {
 		return true
 	}
 
+	if b1, ok1 := expected.([]byte); ok1 {
+		if b2, ok2 := actual.([]byte); ok2 {
+			if bytes.Equal(b1, b2) {
+				return true
+			}
+		}
+	}
+
 	return fail(t, fmt.Sprintf("Not equal: \nexpected: %#v\nactual  : %#v", expected, actual), msgAndArgs...)
+}
+
+// Equalf asserts that two objects are equal with a formatted message.
+func Equalf(t testing.TB, expected, actual any, format string, args ...any) bool {
+	t.Helper()
+	return Equal(t, expected, actual, fmt.Sprintf(format, args...))
+}
+
+// EqualValues asserts that two objects are equal after type conversion.
+func EqualValues(t testing.TB, expected, actual any, msgAndArgs ...any) bool {
+	t.Helper()
+
+	if reflect.DeepEqual(expected, actual) {
+		return true
+	}
+
+	if expected == nil || actual == nil {
+		return fail(t, fmt.Sprintf("Not equal values: \nexpected: %#v\nactual  : %#v", expected, actual), msgAndArgs...)
+	}
+
+	expVal := reflect.ValueOf(expected)
+	actVal := reflect.ValueOf(actual)
+
+	if actVal.Type().ConvertibleTo(expVal.Type()) {
+		converted := actVal.Convert(expVal.Type()).Interface()
+		if reflect.DeepEqual(expected, converted) {
+			return true
+		}
+	}
+
+	return fail(t, fmt.Sprintf("Not equal values: \nexpected: %#v\nactual  : %#v", expected, actual), msgAndArgs...)
+}
+
+// EqualExportedValues asserts that the exported fields of two structs are equal.
+func EqualExportedValues(t testing.TB, expected, actual any, msgAndArgs ...any) bool {
+	t.Helper()
+	return Equal(t, expected, actual, msgAndArgs...)
 }
 
 // NotEqual asserts that two objects are not equal.
@@ -75,6 +125,12 @@ func True(t testing.TB, value bool, msgAndArgs ...any) bool {
 	}
 
 	return fail(t, "Should be true", msgAndArgs...)
+}
+
+// Truef asserts that the value is true with a formatted message.
+func Truef(t testing.TB, value bool, format string, args ...any) bool {
+	t.Helper()
+	return True(t, value, fmt.Sprintf(format, args...))
 }
 
 // False asserts that the value is false.
@@ -117,7 +173,7 @@ func isNil(object any) bool {
 
 	val := reflect.ValueOf(object)
 	switch val.Kind() {
-	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice, reflect.UnsafePointer:
 		return val.IsNil()
 	default:
 		return false
@@ -146,6 +202,21 @@ func Error(t testing.TB, err error, msgAndArgs ...any) bool {
 	return fail(t, "An error is expected but got nil", msgAndArgs...)
 }
 
+// EqualError asserts that err is not nil and has exact error string.
+func EqualError(t testing.TB, err error, errString string, msgAndArgs ...any) bool {
+	t.Helper()
+
+	if err == nil {
+		return fail(t, fmt.Sprintf("An error is expected but got nil (expected error string: %q)", errString), msgAndArgs...)
+	}
+
+	if err.Error() == errString {
+		return true
+	}
+
+	return fail(t, fmt.Sprintf("Error line does not match:\nexpected: %q\nactual  : %q", errString, err.Error()), msgAndArgs...)
+}
+
 // ErrorIs asserts that target is in err's chain.
 func ErrorIs(t testing.TB, err, target error, msgAndArgs ...any) bool {
 	t.Helper()
@@ -155,6 +226,28 @@ func ErrorIs(t testing.TB, err, target error, msgAndArgs ...any) bool {
 	}
 
 	return fail(t, fmt.Sprintf("Target error should be in err chain:\nexpected: %q\nin chain: %+v", target, err), msgAndArgs...)
+}
+
+// NotErrorIs asserts that target is not in err's chain.
+func NotErrorIs(t testing.TB, err, target error, msgAndArgs ...any) bool {
+	t.Helper()
+
+	if !errors.Is(err, target) {
+		return true
+	}
+
+	return fail(t, fmt.Sprintf("Target error should NOT be in err chain: %q", target), msgAndArgs...)
+}
+
+// ErrorAs asserts that errors.As(err, target) succeeds.
+func ErrorAs(t testing.TB, err error, target any, msgAndArgs ...any) bool {
+	t.Helper()
+
+	if errors.As(err, target) {
+		return true
+	}
+
+	return fail(t, fmt.Sprintf("Should be in error chain: %+v", target), msgAndArgs...)
 }
 
 // ErrorContains asserts that err contains the given substring.
@@ -233,15 +326,23 @@ func NotContains(t testing.TB, container, element any, msgAndArgs ...any) bool {
 				return fail(t, fmt.Sprintf("%#v should not contain %#v", container, element), msgAndArgs...)
 			}
 		}
+
 		return true
 	case reflect.Map:
 		if val.MapIndex(reflect.ValueOf(element)).IsValid() {
 			return fail(t, fmt.Sprintf("%#v should not contain key %#v", container, element), msgAndArgs...)
 		}
+
 		return true
 	}
 
 	return true
+}
+
+// NotContainsf asserts that container does not contain element with formatted message.
+func NotContainsf(t testing.TB, container, element any, format string, args ...any) bool {
+	t.Helper()
+	return NotContains(t, container, element, fmt.Sprintf(format, args...))
 }
 
 // Len asserts that the object has the specified length.
@@ -401,6 +502,147 @@ func LessOrEqual[T Ordered](t testing.TB, e1, e2 T, msgAndArgs ...any) bool {
 	return fail(t, fmt.Sprintf("%v is not less than or equal to %v", e1, e2), msgAndArgs...)
 }
 
+// LessOrEqualf asserts that e1 <= e2 with formatted message.
+func LessOrEqualf[T Ordered](t testing.TB, e1, e2 T, format string, args ...any) bool {
+	t.Helper()
+	return LessOrEqual(t, e1, e2, fmt.Sprintf(format, args...))
+}
+
+// InDelta asserts that |expected - actual| <= delta.
+func InDelta(t testing.TB, expected, actual, delta float64, msgAndArgs ...any) bool {
+	t.Helper()
+
+	if math.IsNaN(expected) || math.IsNaN(actual) {
+		return fail(t, "Values cannot be NaN", msgAndArgs...)
+	}
+
+	if math.Abs(expected-actual) <= delta {
+		return true
+	}
+
+	return fail(t, fmt.Sprintf("Difference between %f and %f is greater than %f", expected, actual, delta), msgAndArgs...)
+}
+
+// IsType asserts that object is of the same type as expectedType.
+func IsType(t testing.TB, expectedType, object any, msgAndArgs ...any) bool {
+	t.Helper()
+
+	if reflect.TypeOf(object) == reflect.TypeOf(expectedType) {
+		return true
+	}
+
+	return fail(t, fmt.Sprintf("Object expected to be of type %T, but was %T", expectedType, object), msgAndArgs...)
+}
+
+// JSONEq asserts that two JSON strings are equivalent.
+func JSONEq(t testing.TB, expected, actual string, msgAndArgs ...any) bool {
+	t.Helper()
+
+	var expObj, actObj any
+	if err := json.Unmarshal([]byte(expected), &expObj); err != nil {
+		return fail(t, fmt.Sprintf("Expected value is not valid JSON: %s", err), msgAndArgs...)
+	}
+
+	if err := json.Unmarshal([]byte(actual), &actObj); err != nil {
+		return fail(t, fmt.Sprintf("Actual value is not valid JSON: %s", err), msgAndArgs...)
+	}
+
+	return Equal(t, expObj, actObj, msgAndArgs...)
+}
+
+// Regexp asserts that a string matches a regular expression.
+func Regexp(t testing.TB, rx, str any, msgAndArgs ...any) bool {
+	t.Helper()
+
+	var regex *regexp.Regexp
+	switch r := rx.(type) {
+	case string:
+		var err error
+		regex, err = regexp.Compile(r)
+		if err != nil {
+			return fail(t, fmt.Sprintf("Invalid regexp %q: %s", r, err), msgAndArgs...)
+		}
+	case *regexp.Regexp:
+		regex = r
+	default:
+		return fail(t, fmt.Sprintf("Invalid regexp type: %T", rx), msgAndArgs...)
+	}
+
+	s, ok := str.(string)
+	if !ok {
+		return fail(t, fmt.Sprintf("Invalid string type: %T", str), msgAndArgs...)
+	}
+
+	if regex.MatchString(s) {
+		return true
+	}
+
+	return fail(t, fmt.Sprintf("%q does not match %q", s, regex.String()), msgAndArgs...)
+}
+
+// Same asserts that two pointers reference the same object.
+func Same(t testing.TB, expected, actual any, msgAndArgs ...any) bool {
+	t.Helper()
+
+	if expected == actual {
+		return true
+	}
+
+	return fail(t, fmt.Sprintf("Not same pointer: expected %p, got %p", expected, actual), msgAndArgs...)
+}
+
+// WithinDuration asserts that two times are within delta of each other.
+func WithinDuration(t testing.TB, expected, actual time.Time, delta time.Duration, msgAndArgs ...any) bool {
+	t.Helper()
+
+	diff := actual.Sub(expected)
+	if diff < 0 {
+		diff = -diff
+	}
+
+	if diff <= delta {
+		return true
+	}
+
+	return fail(t, fmt.Sprintf("Max difference between %v and %v allowed is %v, but difference was %v", expected, actual, delta, diff), msgAndArgs...)
+}
+
+// FileExists asserts that a file exists.
+func FileExists(t testing.TB, filepath string, msgAndArgs ...any) bool {
+	t.Helper()
+
+	info, err := os.Stat(filepath)
+	if err == nil && !info.IsDir() {
+		return true
+	}
+
+	return fail(t, fmt.Sprintf("File %q does not exist", filepath), msgAndArgs...)
+}
+
+// NoFileExists asserts that a file does not exist.
+func NoFileExists(t testing.TB, filepath string, msgAndArgs ...any) bool {
+	t.Helper()
+
+	_, err := os.Stat(filepath)
+	if os.IsNotExist(err) {
+		return true
+	}
+
+	return fail(t, fmt.Sprintf("File %q unexpectedly exists", filepath), msgAndArgs...)
+}
+
+// NoDirExists asserts that a directory does not exist.
+func NoDirExists(t testing.TB, dirpath string, msgAndArgs ...any) bool {
+	t.Helper()
+
+	info, err := os.Stat(dirpath)
+	if os.IsNotExist(err) || (err == nil && !info.IsDir()) {
+		return true
+	}
+
+	return fail(t, fmt.Sprintf("Directory %q unexpectedly exists", dirpath), msgAndArgs...)
+}
+
 // Panics asserts that the function panics.
 func Panics(t testing.TB, f func(), msgAndArgs ...any) bool {
 	t.Helper()
@@ -420,6 +662,38 @@ func Panics(t testing.TB, f func(), msgAndArgs ...any) bool {
 	}
 
 	return fail(t, "Func should panic", msgAndArgs...)
+}
+
+// PanicsWithError asserts that the function panics with specific error string.
+func PanicsWithError(t testing.TB, errString string, f func(), msgAndArgs ...any) bool {
+	t.Helper()
+
+	var panicVal any
+	didPanic := false
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				didPanic = true
+				panicVal = r
+			}
+		}()
+		f()
+	}()
+
+	if !didPanic {
+		return fail(t, "Func should panic", msgAndArgs...)
+	}
+
+	pStr := fmt.Sprint(panicVal)
+	if err, ok := panicVal.(error); ok {
+		pStr = err.Error()
+	}
+
+	if pStr == errString {
+		return true
+	}
+
+	return fail(t, fmt.Sprintf("Panic message mismatch:\nexpected: %q\nactual  : %q", errString, pStr), msgAndArgs...)
 }
 
 // NotPanics asserts that the function does not panic.
