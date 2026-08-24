@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 	"sync"
 	"unsafe"
@@ -436,6 +437,9 @@ func decodeUnmarshaler(t reflect.Type) decodeFunc {
 		}
 
 		val := reflect.NewAt(t, p).Elem()
+		if val.Kind() == reflect.Pointer && val.IsNil() {
+			val.Set(reflect.New(t.Elem()))
+		}
 		u, ok := val.Interface().(Unmarshaler)
 		if !ok {
 			return cursor, errors.New("json: type does not implement Unmarshaler")
@@ -543,10 +547,8 @@ type structFieldDecoder struct {
 	quoted bool
 }
 
-func compileStructDecoder(t reflect.Type) (decodeFunc, error) {
+func compileStructFieldDecoders(t reflect.Type, baseOffset uintptr, fieldMap map[string]structFieldDecoder) error {
 	numFields := t.NumField()
-	fieldMap := make(map[string]structFieldDecoder, numFields)
-
 	for i := 0; i < numFields; i++ {
 		sf := t.Field(i)
 		if sf.PkgPath != "" && !sf.Anonymous {
@@ -558,14 +560,27 @@ func compileStructDecoder(t reflect.Type) (decodeFunc, error) {
 			continue
 		}
 
+		ft := sf.Type
+		if sf.Anonymous && opts.name == "" {
+			if ft.Kind() == reflect.Pointer {
+				ft = ft.Elem()
+			}
+			if ft.Kind() == reflect.Struct {
+				if err := compileStructFieldDecoders(ft, baseOffset+sf.Offset, fieldMap); err != nil {
+					return err
+				}
+				continue
+			}
+		}
+
 		dec, err := compileDecoder(sf.Type)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		sfd := structFieldDecoder{
 			name:   opts.name,
-			offset: sf.Offset,
+			offset: baseOffset + sf.Offset,
 			decode: dec,
 			quoted: opts.quoted,
 		}
@@ -575,6 +590,14 @@ func compileStructDecoder(t reflect.Type) (decodeFunc, error) {
 		}
 		fieldMap[sf.Name] = sfd
 		fieldMap[strings.ToLower(sf.Name)] = sfd
+	}
+	return nil
+}
+
+func compileStructDecoder(t reflect.Type) (decodeFunc, error) {
+	fieldMap := make(map[string]structFieldDecoder)
+	if err := compileStructFieldDecoders(t, 0, fieldMap); err != nil {
+		return nil, err
 	}
 
 	return func(data []byte, cursor int, p unsafe.Pointer, cfg *DecoderConfig) (int, error) {
@@ -832,7 +855,33 @@ func compileMapDecoder(t reflect.Type) (decodeFunc, error) {
 	keyType := t.Key()
 	elemType := t.Elem()
 
-	if keyType.Kind() != reflect.String {
+	var parseKey func(string) (reflect.Value, error)
+	switch keyType.Kind() {
+	case reflect.String:
+		parseKey = func(s string) (reflect.Value, error) {
+			return reflect.ValueOf(s).Convert(keyType), nil
+		}
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		parseKey = func(s string) (reflect.Value, error) {
+			n, err := strconv.ParseInt(s, 10, keyType.Bits())
+			if err != nil {
+				return reflect.Value{}, err
+			}
+			v := reflect.New(keyType).Elem()
+			v.SetInt(n)
+			return v, nil
+		}
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		parseKey = func(s string) (reflect.Value, error) {
+			n, err := strconv.ParseUint(s, 10, keyType.Bits())
+			if err != nil {
+				return reflect.Value{}, err
+			}
+			v := reflect.New(keyType).Elem()
+			v.SetUint(n)
+			return v, nil
+		}
+	default:
 		return nil, fmt.Errorf("json: unsupported map key type: %s", keyType.String())
 	}
 
@@ -912,7 +961,12 @@ func compileMapDecoder(t reflect.Type) (decodeFunc, error) {
 			}
 			cursor = newCursor
 
-			mapVal.SetMapIndex(reflect.ValueOf(keyStr), elemVal)
+			kv, err := parseKey(keyStr)
+			if err != nil {
+				return cursor, err
+			}
+
+			mapVal.SetMapIndex(kv, elemVal)
 		}
 	}, nil
 }

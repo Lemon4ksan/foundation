@@ -25,12 +25,15 @@ func parseTag(field reflect.StructField) tagOptions {
 	}
 
 	if tag == "" {
+		if field.Anonymous {
+			return tagOptions{name: ""}
+		}
 		return tagOptions{name: field.Name}
 	}
 
 	parts := strings.Split(tag, ",")
 	name := parts[0]
-	if name == "" {
+	if name == "" && !field.Anonymous {
 		name = field.Name
 	}
 

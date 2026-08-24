@@ -317,9 +317,9 @@ type structFieldEncoder struct {
 	isZero    func(p unsafe.Pointer) bool
 }
 
-func compileStructEncoder(t reflect.Type) (encoderFunc, error) {
+func compileStructFields(t reflect.Type, baseOffset uintptr) ([]structFieldEncoder, error) {
 	numFields := t.NumField()
-	fields := make([]structFieldEncoder, 0, numFields)
+	var fields []structFieldEncoder
 
 	for i := 0; i < numFields; i++ {
 		sf := t.Field(i)
@@ -332,6 +332,21 @@ func compileStructEncoder(t reflect.Type) (encoderFunc, error) {
 			continue
 		}
 
+		ft := sf.Type
+		if sf.Anonymous && opts.name == "" {
+			if ft.Kind() == reflect.Pointer {
+				ft = ft.Elem()
+			}
+			if ft.Kind() == reflect.Struct {
+				nested, err := compileStructFields(ft, baseOffset+sf.Offset)
+				if err != nil {
+					return nil, err
+				}
+				fields = append(fields, nested...)
+				continue
+			}
+		}
+
 		enc, err := compileEncoder(sf.Type)
 		if err != nil {
 			return nil, err
@@ -339,7 +354,7 @@ func compileStructEncoder(t reflect.Type) (encoderFunc, error) {
 
 		sfe := structFieldEncoder{
 			nameBytes: []byte(sf.Name),
-			offset:    sf.Offset,
+			offset:    baseOffset + sf.Offset,
 			encode:    enc,
 			omitEmpty: opts.omitEmpty,
 			quoted:    opts.quoted,
@@ -351,6 +366,15 @@ func compileStructEncoder(t reflect.Type) (encoderFunc, error) {
 		}
 
 		fields = append(fields, sfe)
+	}
+
+	return fields, nil
+}
+
+func compileStructEncoder(t reflect.Type) (encoderFunc, error) {
+	fields, err := compileStructFields(t, 0)
+	if err != nil {
+		return nil, err
 	}
 
 	return func(e *encodeState, p unsafe.Pointer) error {
