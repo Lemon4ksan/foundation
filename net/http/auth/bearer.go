@@ -74,12 +74,15 @@ func FormatBearer(token string) string {
 // IsValidBearerToken reports whether token conforms to the RFC 6750 §2.1 b64token ABNF production:
 // 1*( ALPHA / DIGIT / "-" / "." / "_" / "~" / "+" / "/" ) *"="
 func IsValidBearerToken(token string) bool {
-	if len(token) == 0 {
+	n := len(token)
+	if n == 0 {
 		return false
 	}
 
+	_ = token[n-1]
+
 	padding := false
-	for i := range len(token) {
+	for i := range n {
 		b := token[i]
 		if b == '=' {
 			padding = true

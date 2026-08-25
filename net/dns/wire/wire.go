@@ -103,7 +103,7 @@ const (
 	OpcodeStatus uint16 = 2 // a server status request (STATUS)
 )
 
-// Standard DNS Response Codes (RCODEs) defined in RFC 1035 §4.1.1 and RFC 2308.
+// RCode defines standard DNS Response Codes (RCODEs) defined in RFC 1035 §4.1.1 and RFC 2308.
 type RCode uint8
 
 const (
@@ -355,8 +355,12 @@ func appendPaddingOption(buf []byte, padToBlock int) []byte {
 
 	buf = appendUint16(buf, uint16(paddingNeeded))
 	if paddingNeeded > 0 {
-		padding := make([]byte, paddingNeeded)
-		buf = append(buf, padding...)
+		var zeroBuf [128]byte
+		for paddingNeeded > 0 {
+			chunk := min(paddingNeeded, len(zeroBuf))
+			buf = append(buf, zeroBuf[:chunk]...)
+			paddingNeeded -= chunk
+		}
 	}
 
 	return buf

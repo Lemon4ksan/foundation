@@ -6,9 +6,11 @@ package simd_test
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 	"unsafe"
 
+	"github.com/lemon4ksan/foundation/silicon/bytesconv"
 	"github.com/lemon4ksan/foundation/silicon/simd"
 	"github.com/lemon4ksan/foundation/testkit/assert"
 )
@@ -278,5 +280,157 @@ func BenchmarkValidUTF8_Std(b *testing.B) {
 
 	for b.Loop() {
 		_ = bytes.Contains(data, []byte("\x00")) // standard benchmark baseline
+	}
+}
+
+func TestEqualFoldVector(t *testing.T) {
+	tests := []struct {
+		a, b string
+		want bool
+	}{
+		{"", "", true},
+		{"Content-Type", "content-type", true},
+		{"USER-AGENT: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0", "user-agent: mozilla/5.0 (windows nt 10.0; win64; x64) chrome/120.0", true},
+		{"A very long header value that exceeds 32 bytes for AVX2 SIMD testing", "a very long header value that exceeds 32 bytes for avx2 simd testing", true},
+		{"A very long header value that exceeds 32 bytes with a single difference X", "a very long header value that exceeds 32 bytes with a single difference Y", false},
+		{"Short", "LongerString", false},
+	}
+
+	for _, tt := range tests {
+		got := simd.EqualFoldVector([]byte(tt.a), []byte(tt.b))
+		assert.Equal(t, tt.want, got)
+	}
+}
+
+func BenchmarkEqualFold_AVX2(b *testing.B) {
+	str1 := []byte("User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+	str2 := []byte("user-agent: mozilla/5.0 (windows nt 10.0; win64; x64) applewebkit/537.36 (khtml, like gecko) chrome/120.0.0.0 safari/537.36")
+
+	b.SetBytes(int64(len(str1)))
+	b.ReportAllocs()
+
+	for b.Loop() {
+		_ = simd.EqualFoldVector(str1, str2)
+	}
+}
+
+func BenchmarkEqualFold_PureGoTable(b *testing.B) {
+	str1 := "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+	str2 := "user-agent: mozilla/5.0 (windows nt 10.0; win64; x64) applewebkit/537.36 (khtml, like gecko) chrome/120.0.0.0 safari/537.36"
+
+	b.SetBytes(int64(len(str1)))
+	b.ReportAllocs()
+
+	for b.Loop() {
+		_ = bytesconv.EqualFoldASCII(str1, str2)
+	}
+}
+
+func BenchmarkEqualFold_Stdlib(b *testing.B) {
+	str1 := "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+	str2 := "user-agent: mozilla/5.0 (windows nt 10.0; win64; x64) applewebkit/537.36 (khtml, like gecko) chrome/120.0.0.0 safari/537.36"
+
+	b.SetBytes(int64(len(str1)))
+	b.ReportAllocs()
+
+	for b.Loop() {
+		_ = strings.EqualFold(str1, str2)
+	}
+}
+
+func TestScanByteVector(t *testing.T) {
+	data := []byte("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 1234\r\n\r\n")
+	idx := simd.ScanByteVector(data, ':')
+	assert.Equal(t, 29, idx)
+
+	idxNone := simd.ScanByteVector(data, 'Z')
+	assert.Equal(t, -1, idxNone)
+}
+
+func TestIndexCRLFCRLFVector(t *testing.T) {
+	data := []byte("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{\"status\":\"ok\"}")
+	idx := simd.IndexCRLFCRLFVector(data)
+	assert.Equal(t, 51, idx) // 51 is byte index right after \r\n\r\n
+
+	noEnd := []byte("HTTP/1.1 200 OK\r\nIncomplete-Header: true\r\n")
+	idxNoEnd := simd.IndexCRLFCRLFVector(noEnd)
+	assert.Equal(t, -1, idxNoEnd)
+}
+
+func TestFindMatchLengthVector(t *testing.T) {
+	a := []byte("The quick brown fox jumps over the lazy dog and runs away into the forest quickly")
+	b := []byte("The quick brown fox jumps over the lazy cat and runs away into the forest quickly")
+
+	matchLen := simd.FindMatchLengthVector(a, b, len(a))
+	assert.Equal(t, 40, matchLen) // Matches "The quick brown fox jumps over the lazy " (length 40)
+}
+
+func TestHash64Vector(t *testing.T) {
+	data := []byte("The quick brown fox jumps over the lazy dog")
+	h1 := simd.Hash64Vector(data, 0)
+	h2 := simd.Hash64Vector(data, 0)
+	assert.Equal(t, h1, h2)
+	assert.True(t, h1 != 0)
+
+	differentData := []byte("The quick brown fox jumps over the lazy cat")
+	h3 := simd.Hash64Vector(differentData, 0)
+	assert.True(t, h1 != h3)
+}
+
+func BenchmarkScanByte_AVX2(b *testing.B) {
+	data := make([]byte, 1024)
+	for i := range data {
+		data[i] = 'A'
+	}
+	data[1023] = ':'
+
+	b.SetBytes(int64(len(data)))
+	b.ReportAllocs()
+
+	for b.Loop() {
+		_ = simd.ScanByteVector(data, ':')
+	}
+}
+
+func BenchmarkIndexCRLFCRLF_AVX2(b *testing.B) {
+	data := make([]byte, 1024)
+	copy(data, []byte("POST /api/v1/trade/submit HTTP/1.1\r\nHost: api.steampowered.com\r\nAuthorization: Bearer test\r\n\r\n"))
+
+	b.SetBytes(int64(len(data)))
+	b.ReportAllocs()
+
+	for b.Loop() {
+		_ = simd.IndexCRLFCRLFVector(data)
+	}
+}
+
+func BenchmarkFindMatchLength_AVX2(b *testing.B) {
+	a := make([]byte, 256)
+	bSlice := make([]byte, 256)
+	for i := range a {
+		a[i] = byte(i)
+		bSlice[i] = byte(i)
+	}
+	a[200] = 0xFF // mismatch at 200
+
+	b.SetBytes(256)
+	b.ReportAllocs()
+
+	for b.Loop() {
+		_ = simd.FindMatchLengthVector(a, bSlice, 256)
+	}
+}
+
+func BenchmarkHash64_AVX2(b *testing.B) {
+	data := make([]byte, 1024)
+	for i := range data {
+		data[i] = byte(i)
+	}
+
+	b.SetBytes(1024)
+	b.ReportAllocs()
+
+	for b.Loop() {
+		_ = simd.Hash64Vector(data, 0x12345678)
 	}
 }
