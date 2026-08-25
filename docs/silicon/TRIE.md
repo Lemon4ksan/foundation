@@ -6,7 +6,7 @@
 
 ## Motivation & Problem Context
 
-Standard hash maps (`map[string]T`) only support exact key lookups. Evaluating wildcard domain routes or longest URL path prefixes requires linear scans across all registered routes, taking $O(N)$ time. Matching routes with regular expressions introduces heavy CPU overhead and dynamic memory allocations. Compressed radix search trees provide deterministic $O(K)$ lookups where $K$ is the path length, with zero heap allocations.
+Standard hash maps (`map[string]T`) only support exact key lookups. Evaluating wildcard domain routes or longest URL path prefixes requires linear scans across all registered routes, taking O(N) time. Matching routes with regular expressions introduces heavy CPU overhead and dynamic memory allocations. Compressed radix search trees provide deterministic O(K) lookups where K is the path length, with zero heap allocations.
 
 ## Comparison
 

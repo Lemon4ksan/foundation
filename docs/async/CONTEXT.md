@@ -9,7 +9,7 @@
 The standard library `context.WithValue` is one of the most pervasive yet hidden memory and CPU bottlenecks in Go backend services and networking engines.
 
 ### The Architectural Problem in Standard Go:
-1. **$O(N)$ Linked-List Pointer Chasing**: Every `context.WithValue(ctx, key, val)` allocates a new `valueCtx` node wrapping its parent. In a microservice or HTTP client with 5–8 middleware layers (Tracing, Auth, Proxy, Timeout, Tenant, Retry, Cache), looking up a key requires traversing a deeply nested chain of pointers across the heap, triggering CPU L1/L2 cache misses.
+1. **O(N) Linked-List Pointer Chasing**: Every `context.WithValue(ctx, key, val)` allocates a new `valueCtx` node wrapping its parent. In a microservice or HTTP client with 5–8 middleware layers (Tracing, Auth, Proxy, Timeout, Tenant, Retry, Cache), looking up a key requires traversing a deeply nested chain of pointers across the heap, triggering CPU L1/L2 cache misses.
 2. **Interface Boxing Allocations**: Each call requires boxing `key any` and `value any`, forcing **2 heap allocations per middleware stage** and multiplying Garbage Collector (GC) pressure under high RPS.
 3. **Runtime Type-Cast Fragility**: Reading values requires unsafe runtime type assertions `val, ok := ctx.Value(k).(MyType)`, which risk runtime panics or silent bugs on mismatch.
 
@@ -38,7 +38,7 @@ graph TD
 | :--- | :--- | :--- |
 | **Data Structure** | Singly-linked list of `valueCtx` structs | Contiguous flat array (`[8]kvEntry` inline buffer) |
 | **Memory Locality** | Dispersed throughout heap memory | Packed in a single CPU cache line |
-| **Lookup Complexity** | $O(N)$ pointer traversals | $O(K)$ linear scan within contiguous L1 cache |
+| **Lookup Complexity** | O(N) pointer traversals | O(K) linear scan within contiguous L1 cache |
 | **Allocations (5 Writes)**| **5 heap allocations (240 bytes)** | **0 heap allocations (0 B/op)** |
 | **Type Safety** | Dynamic runtime cast `.(any)` | Strict generic `generic.Optional[T]` |
 | **Interoperability** | Standard `context.Context` | **100% compliant `context.Context`** |
@@ -51,7 +51,7 @@ Benchmarks executed on **12th Gen Intel(R) Core(TM) i5-12400F** (Go 1.25.4):
 go test -bench="PipelineLifecycle" -benchmem -count=3 ./async/context
 ```
 
-### Real-World Pipeline Scenario (5 Middleware Writes $\rightarrow$ 5 Engine Reads)
+### Real-World Pipeline Scenario (5 Middleware Writes -> 5 Engine Reads)
 
 | Implementation | Execution Speed | Memory Allocated | Heap Allocations |
 | :--- | :---: | :---: | :---: |

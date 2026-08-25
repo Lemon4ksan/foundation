@@ -34,7 +34,7 @@ id := rand.UUIDv7Into(&buf)
 ## Architecture & Mechanics
 
 * **Lock-Free PRNG**: Uses high-performance Xorshift / Wyhash algorithms seeded per CPU core to completely eliminate mutex contention.
-* **Cached Timestamp Tickers**: For high-concurrency loops where microsecond precision is sufficient, `clock.NowCached()` updates timestamps in background goroutines, reducing timestamp reads to a single atomic load ($< 1\text{ ns}$).
+* **Cached Timestamp Tickers**: For high-concurrency loops where microsecond precision is sufficient, `clock.NowCached()` updates timestamps in background goroutines, reducing timestamp reads to a single atomic load (< 1 ns).
 
 ## Practical Recipes
 

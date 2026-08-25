@@ -6,7 +6,7 @@
 
 ## Motivation & Problem Context
 
-Standard `sync.Pool` objects are subject to reclamation by the Go runtime during garbage collection cycles, causing periodic allocation spikes immediately following a collection. Furthermore, network protocol parsers that allocate numerous small metadata chunks per frame incur high per-object allocation overhead. Contiguous memory arenas allow allocating many small objects in a single contiguous block with instant $O(1)$ reclamation via pointer reset.
+Standard `sync.Pool` objects are subject to reclamation by the Go runtime during garbage collection cycles, causing periodic allocation spikes immediately following a collection. Furthermore, network protocol parsers that allocate numerous small metadata chunks per frame incur high per-object allocation overhead. Contiguous memory arenas allow allocating many small objects in a single contiguous block with instant O(1) reclamation via pointer reset.
 
 ## Comparison
 
