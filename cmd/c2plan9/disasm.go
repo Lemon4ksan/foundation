@@ -94,6 +94,19 @@ func DisassembleAMD64(code []byte, baseOffset uint64) ([]DisassembledInst, error
 		text := x86asm.GoSyntax(inst, pc, symLookup)
 		text = cleanPlan9Syntax(text)
 
+		if inst.Op == x86asm.BSWAP && strings.HasPrefix(text, "BSWAP") {
+			hasRexW := len(raw) >= 3 && (raw[0]&0xF8 == 0x48)
+			reg := strings.TrimSpace(strings.TrimPrefix(strings.TrimPrefix(text, "BSWAPQ"), "BSWAPL"))
+			if strings.HasPrefix(text, "BSWAP ") {
+				reg = strings.TrimSpace(text[6:])
+			}
+			if hasRexW {
+				text = "BSWAPQ " + reg
+			} else {
+				text = "BSWAPL " + reg
+			}
+		}
+
 		insts = append(insts, DisassembledInst{
 			Offset:   pc,
 			Length:   inst.Len,
