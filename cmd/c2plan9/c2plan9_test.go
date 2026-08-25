@@ -72,7 +72,7 @@ func TestC2Plan9EndToEnd(t *testing.T) {
 		},
 	}
 
-	asmBytes, err := EmitPlan9Assembly("simd", obj.Symbols, sigs, obj.ROData, obj.Relocations)
+	asmBytes, err := EmitPlan9Assembly("simd", obj.Symbols, sigs, obj.ROData, obj.Relocations, "amd64")
 	if err != nil {
 		t.Fatalf("failed to emit Plan 9 assembly: %v", err)
 	}
