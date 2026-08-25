@@ -225,6 +225,17 @@ func BenchmarkUUID_String(b *testing.B) {
 	}
 }
 
+func BenchmarkUUID_Format(b *testing.B) {
+	u := uuid.MustNewV4()
+	var buf [36]byte
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		u.Format(&buf)
+	}
+}
+
 func BenchmarkUUID_Append(b *testing.B) {
 	u := uuid.MustNewV4()
 	var buf [36]byte
@@ -233,5 +244,15 @@ func BenchmarkUUID_Append(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		_ = u.Append(buf[:0])
+	}
+}
+
+func BenchmarkUUID_Parse(b *testing.B) {
+	s := "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		_, _ = uuid.Parse(s)
 	}
 }

@@ -71,10 +71,12 @@ func Compile(opts CompileOptions) (string, error) {
 		wslArgs := []string{
 			"clang", "-c", wslSrc, "-o", wslOut,
 			"-O3",
+			"-ffreestanding",
 			"-fno-asynchronous-unwind-tables",
 			"-fno-exceptions",
 			"-fno-rtti",
 			"-fno-stack-protector",
+			"-fomit-frame-pointer",
 			"-mno-red-zone",
 			"-mavx2",
 			"-mpclmul",
@@ -100,6 +102,7 @@ func Compile(opts CompileOptions) (string, error) {
 		"-fno-exceptions",
 		"-fno-rtti",
 		"-fno-stack-protector",
+		"-fomit-frame-pointer",
 	}
 
 	if opts.TargetArch == "" || opts.TargetArch == "amd64" {

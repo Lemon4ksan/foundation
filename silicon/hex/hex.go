@@ -74,7 +74,7 @@ func FromHexChar(c byte) (byte, bool) {
 	return val, true
 }
 
-// Encode encodes src into dst using 16-bit LUT stores.
+// Encode encodes src into dst using hardware SIMD vectorization or 16-bit LUT stores.
 // dst must have length of at least EncodedLen(len(src)).
 //
 //go:inline
@@ -83,12 +83,14 @@ func Encode(dst, src []byte) int {
 	if len(dst) < needed {
 		return 0
 	}
+	return encodeVector(dst, src)
+}
 
+func encodeScalar(dst, src []byte) int {
 	for i, v := range src {
 		*(*uint16)(unsafe.Pointer(&dst[i*2])) = hexLUT16[v]
 	}
-
-	return needed
+	return len(src) * 2
 }
 
 // Encode16 encodes a fixed 16-byte buffer (e.g. UUID / TraceID) into a 32-byte hex slice.
@@ -139,7 +141,7 @@ func EncodeToString(src []byte) string {
 	return unsafe.String(unsafe.SliceData(buf), len(buf))
 }
 
-// Decode decodes src into dst using branchless nibble lookup.
+// Decode decodes src into dst using hardware vectorization or branchless nibble lookup.
 // Returns the number of bytes written to dst.
 func Decode(dst, src []byte) (int, error) {
 	if len(src)%2 != 0 {
@@ -149,7 +151,11 @@ func Decode(dst, src []byte) (int, error) {
 	if len(dst) < needed {
 		return 0, ErrBufferTooSmall
 	}
+	return decodeVector(dst, src)
+}
 
+func decodeScalar(dst, src []byte) (int, error) {
+	needed := len(src) / 2
 	for i := 0; i < needed; i++ {
 		hi := decodeLUT[src[i*2]]
 		lo := decodeLUT[src[i*2+1]]
@@ -158,7 +164,6 @@ func Decode(dst, src []byte) (int, error) {
 		}
 		dst[i] = (hi << 4) | lo
 	}
-
 	return needed, nil
 }
 

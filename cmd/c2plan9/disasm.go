@@ -138,10 +138,10 @@ func cleanPlan9Syntax(s string) string {
 		s = "NOP"
 	}
 
-	// Fix 8-bit register suffixes (e.g. TESTL $12, DL -> TESTB $12, DL)
+	// Fix 8-bit register suffixes/prefixes (e.g. CMPL DL, $160 -> CMPB DL, $160)
 	eightBitRegs := []string{"AL", "BL", "CL", "DL", "SIL", "DIL", "BPL", "SPL", "R8B", "R9B", "R10B", "R11B", "R12B", "R13B", "R14B", "R15B"}
 	for _, reg := range eightBitRegs {
-		if strings.HasSuffix(s, ", "+reg) || strings.HasSuffix(s, " "+reg) {
+		if strings.Contains(s, " "+reg+",") || strings.HasSuffix(s, ", "+reg) || strings.HasSuffix(s, " "+reg) {
 			if strings.HasPrefix(s, "TESTL ") {
 				s = "TESTB " + s[6:]
 			} else if strings.HasPrefix(s, "CMPL ") {
@@ -154,6 +154,16 @@ func cleanPlan9Syntax(s string) string {
 				s = "ORB " + s[4:]
 			} else if strings.HasPrefix(s, "XORL ") {
 				s = "XORB " + s[5:]
+			} else if strings.HasPrefix(s, "ADDL ") {
+				s = "ADDB " + s[5:]
+			} else if strings.HasPrefix(s, "SUBL ") {
+				s = "SUBB " + s[5:]
+			} else if strings.HasPrefix(s, "SHRL ") {
+				s = "SHRB " + s[5:]
+			} else if strings.HasPrefix(s, "SHLL ") {
+				s = "SHLB " + s[5:]
+			} else if strings.HasPrefix(s, "SARL ") {
+				s = "SARB " + s[5:]
 			}
 		}
 	}
@@ -181,6 +191,10 @@ func cleanPlan9Syntax(s string) string {
 		s = "CMOVLLT " + s[6:]
 	} else if strings.HasPrefix(s, "CMOVLE ") {
 		s = "CMOVLLE " + s[7:]
+	} else if strings.HasPrefix(s, "CMOVNS ") {
+		s = "CMOVLPL " + s[7:]
+	} else if strings.HasPrefix(s, "CMOVS ") {
+		s = "CMOVLMI " + s[6:]
 	} else if strings.HasPrefix(s, "TZCNT ") {
 		s = "TZCNTL " + s[6:]
 	} else if strings.HasPrefix(s, "BSF ") {
@@ -191,6 +205,20 @@ func cleanPlan9Syntax(s string) string {
 		s = "LZCNTL " + s[6:]
 	} else if strings.HasPrefix(s, "POPCNT ") {
 		s = "POPCNTL " + s[7:]
+	} else if strings.HasPrefix(s, "SETNS ") {
+		s = "SETPL " + s[6:]
+	} else if strings.HasPrefix(s, "SETS ") {
+		s = "SETMI " + s[5:]
+	} else if strings.HasPrefix(s, "SETE ") {
+		s = "SETEQ " + s[5:]
+	} else if strings.HasPrefix(s, "SETAE ") {
+		s = "SETCC " + s[6:]
+	} else if strings.HasPrefix(s, "SETB ") {
+		s = "SETCS " + s[5:]
+	} else if strings.HasPrefix(s, "SETA ") {
+		s = "SETHI " + s[5:]
+	} else if strings.HasPrefix(s, "SETBE ") {
+		s = "SETLS " + s[6:]
 	}
 
 	return s

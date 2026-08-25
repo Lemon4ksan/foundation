@@ -99,19 +99,42 @@ func BenchmarkStdHexEncode16(b *testing.B) {
 
 func BenchmarkSiliconHexDecode32(b *testing.B) {
 	s := "0102030405060708090a0b0c0d0e0f10"
-	var dst [16]byte
+	var out [16]byte
+	b.ResetTimer()
 	b.ReportAllocs()
-	for b.Loop() {
-		_ = hex.Decode32(&dst, s)
+	for i := 0; i < b.N; i++ {
+		hex.Decode32(&out, s)
 	}
 }
 
 func BenchmarkStdHexDecode32(b *testing.B) {
 	s := "0102030405060708090a0b0c0d0e0f10"
-	var dst [16]byte
-	src := []byte(s)
+	var out [16]byte
+	b.ResetTimer()
 	b.ReportAllocs()
-	for b.Loop() {
-		_, _ = stdhex.Decode(dst[:], src)
+	for i := 0; i < b.N; i++ {
+		stdhex.Decode(out[:], []byte(s))
+	}
+}
+
+func BenchmarkSiliconHexEncode1KB(b *testing.B) {
+	data := make([]byte, 1024)
+	out := make([]byte, 2048)
+	b.SetBytes(1024)
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		hex.Encode(out, data)
+	}
+}
+
+func BenchmarkStdHexEncode1KB(b *testing.B) {
+	data := make([]byte, 1024)
+	out := make([]byte, 2048)
+	b.SetBytes(1024)
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		stdhex.Encode(out, data)
 	}
 }

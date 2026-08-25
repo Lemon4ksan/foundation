@@ -26,6 +26,10 @@ var (
 //
 //go:inline
 func skipWhitespace(data []byte, cursor int) int {
+	return skipWhitespaceVector(data, cursor)
+}
+
+func skipWhitespaceScalar(data []byte, cursor int) int {
 	n := len(data)
 	for cursor < n {
 		b := data[cursor]
@@ -38,6 +42,14 @@ func skipWhitespace(data []byte, cursor int) int {
 	}
 
 	return cursor
+}
+
+func scanStringSpecialScalar(data []byte, cursor int) int {
+	idx := simd.IndexByteTwoSWAR(data[cursor:], '"', '\\')
+	if idx == -1 {
+		return -1
+	}
+	return cursor + idx
 }
 
 // scanString extracts a JSON string token starting at cursor (which must be '"').
@@ -53,12 +65,11 @@ func scanString(data []byte, cursor int) (raw []byte, newCursor int, hasEscape b
 	n := len(data)
 
 	for i < n {
-		idx := simd.IndexByteTwoSWAR(data[i:], '"', '\\')
-		if idx == -1 {
+		pos := scanStringSpecialVector(data, i)
+		if pos == -1 {
 			return nil, n, false, errUnexpectedEnd
 		}
 
-		pos := i + idx
 		if data[pos] == '"' {
 			return data[start:pos], pos + 1, hasEscape, nil
 		}

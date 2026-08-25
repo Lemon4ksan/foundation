@@ -10,4 +10,3 @@ var _ = unsafe.Pointer(nil)
 
 //go:noescape
 func hash64_avx2(arg0 uint64, arg1 uint64, arg2 uint64, arg3 uint64, arg4 uint64, arg5 uint64) uint64
-

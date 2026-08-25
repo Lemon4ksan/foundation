@@ -84,41 +84,39 @@ func IsValid(s string) bool {
 // Parse parses a standard 36-character "8-4-4-4-12" hex-and-dash UUID string (RFC 9562 §4)
 // into a 16-byte [UUID] value. It accepts lowercase, uppercase, and mixed-case hexadecimal characters.
 func Parse(s string) (UUID, error) {
-	var u UUID
 	if len(s) != StringLength {
-		return u, ErrInvalidLength
+		return Nil, ErrInvalidLength
 	}
-
-	if s[8] != '-' || s[13] != '-' || s[18] != '-' || s[23] != '-' {
-		return u, ErrInvalidFormat
+	u, ok := parseVector(s)
+	if !ok {
+		return Nil, ErrInvalidFormat
 	}
-
-	// Decode 8 hex chars (4 bytes)
-	if _, err := hex.Decode(u[0:4], []byte(s[0:8])); err != nil {
-		return u, ErrInvalidFormat
-	}
-
-	// Decode 4 hex chars (2 bytes)
-	if _, err := hex.Decode(u[4:6], []byte(s[9:13])); err != nil {
-		return u, ErrInvalidFormat
-	}
-
-	// Decode 4 hex chars (2 bytes)
-	if _, err := hex.Decode(u[6:8], []byte(s[14:18])); err != nil {
-		return u, ErrInvalidFormat
-	}
-
-	// Decode 4 hex chars (2 bytes)
-	if _, err := hex.Decode(u[8:10], []byte(s[19:23])); err != nil {
-		return u, ErrInvalidFormat
-	}
-
-	// Decode 12 hex chars (6 bytes)
-	if _, err := hex.Decode(u[10:16], []byte(s[24:36])); err != nil {
-		return u, ErrInvalidFormat
-	}
-
 	return u, nil
+}
+
+func parseScalar(s string) (UUID, bool) {
+	var u UUID
+	if s[8] != '-' || s[13] != '-' || s[18] != '-' || s[23] != '-' {
+		return u, false
+	}
+
+	if _, err := hex.Decode(u[0:4], []byte(s[0:8])); err != nil {
+		return u, false
+	}
+	if _, err := hex.Decode(u[4:6], []byte(s[9:13])); err != nil {
+		return u, false
+	}
+	if _, err := hex.Decode(u[6:8], []byte(s[14:18])); err != nil {
+		return u, false
+	}
+	if _, err := hex.Decode(u[8:10], []byte(s[19:23])); err != nil {
+		return u, false
+	}
+	if _, err := hex.Decode(u[10:16], []byte(s[24:36])); err != nil {
+		return u, false
+	}
+
+	return u, true
 }
 
 // MustParse parses a UUID string, panicking if the string cannot be parsed.
@@ -157,15 +155,14 @@ func MustNewV4() UUID {
 	return u
 }
 
-// NewV7 generates a time-ordered Unix Epoch millisecond UUID version 7 conforming to RFC 9562 §5.7.
-// It encodes the current UTC millisecond timestamp in the top 48 bits and CSPRNG entropy in the remaining 74 bits.
+// NewV7 generates a time-ordered UUID version 7 conforming to RFC 9562 §5.7.
 func NewV7(t ...time.Time) (UUID, error) {
+	var u UUID
 	now := time.Now().UTC()
-	if len(t) > 0 && !t[0].IsZero() {
+	if len(t) > 0 {
 		now = t[0].UTC()
 	}
 
-	var u UUID
 	if _, err := rand.Read(u[6:]); err != nil {
 		return u, fmt.Errorf("foundation/uuid: uuidv7 entropy generation failed: %w", err)
 	}
@@ -194,19 +191,27 @@ func MustNewV7(t ...time.Time) UUID {
 	return u
 }
 
+func formatScalar(u *UUID, dst *[StringLength]byte) {
+	hex.Encode(dst[0:8], u[0:4])
+	dst[8] = '-'
+	hex.Encode(dst[9:13], u[4:6])
+	dst[13] = '-'
+	hex.Encode(dst[14:18], u[6:8])
+	dst[18] = '-'
+	hex.Encode(dst[19:23], u[8:10])
+	dst[23] = '-'
+	hex.Encode(dst[24:36], u[10:16])
+}
+
+// Format formats the UUID into standard 36-character hex-and-dash format directly in dst.
+func (u UUID) Format(dst *[StringLength]byte) {
+	formatVector(&u, dst)
+}
+
 // String returns the canonical lowercase 36-character "8-4-4-4-12" hex-and-dash string representation (RFC 9562 §4).
 func (u UUID) String() string {
 	var buf [StringLength]byte
-	hex.Encode(buf[0:8], u[0:4])
-	buf[8] = '-'
-	hex.Encode(buf[9:13], u[4:6])
-	buf[13] = '-'
-	hex.Encode(buf[14:18], u[6:8])
-	buf[18] = '-'
-	hex.Encode(buf[19:23], u[8:10])
-	buf[23] = '-'
-	hex.Encode(buf[24:36], u[10:16])
-
+	formatVector(&u, &buf)
 	return string(buf[:])
 }
 
@@ -214,16 +219,7 @@ func (u UUID) String() string {
 // to dst with 0 heap allocations and returns the resulting slice.
 func (u UUID) Append(dst []byte) []byte {
 	var buf [StringLength]byte
-	hex.Encode(buf[0:8], u[0:4])
-	buf[8] = '-'
-	hex.Encode(buf[9:13], u[4:6])
-	buf[13] = '-'
-	hex.Encode(buf[14:18], u[6:8])
-	buf[18] = '-'
-	hex.Encode(buf[19:23], u[8:10])
-	buf[23] = '-'
-	hex.Encode(buf[24:36], u[10:16])
-
+	formatVector(&u, &buf)
 	return append(dst, buf[:]...)
 }
 
