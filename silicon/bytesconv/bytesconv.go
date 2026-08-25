@@ -99,6 +99,21 @@ func EqualFoldASCII(a, b string) bool {
 	return true
 }
 
+func toLowerScalar(dst, src []byte) {
+	for i, c := range src {
+		dst[i] = toLowerTable[c]
+	}
+}
+
+func toUpperScalar(dst, src []byte) {
+	for i, c := range src {
+		if c >= 'a' && c <= 'z' {
+			c -= 32
+		}
+		dst[i] = c
+	}
+}
+
 // AppendToLower appends the ASCII lowercased version of src to dst with zero heap allocations when capacity allows.
 func AppendToLower(dst, src []byte) []byte {
 	n := len(src)
@@ -108,19 +123,33 @@ func AppendToLower(dst, src []byte) []byte {
 
 	start := len(dst)
 	dst = slices.Grow(dst, n)[:start+n]
-
 	out := dst[start : start+n]
+	toLowerVector(out, src)
+	return dst
+}
 
-	// BCE hints: prove boundaries to SSA compiler to enable auto-vectorization
-	_ = src[n-1]
-	_ = out[n-1]
-	_ = toLowerTable[255]
-
-	for i := 0; i < n; i++ {
-		out[i] = toLowerTable[src[i]]
+// AppendToUpper appends the ASCII uppercased version of src to dst with zero heap allocations when capacity allows.
+func AppendToUpper(dst, src []byte) []byte {
+	n := len(src)
+	if n == 0 {
+		return dst
 	}
 
+	start := len(dst)
+	dst = slices.Grow(dst, n)[:start+n]
+	out := dst[start : start+n]
+	toUpperVector(out, src)
 	return dst
+}
+
+// Base64Encode encodes src into dst using hardware vector acceleration.
+func Base64Encode(dst, src []byte) int {
+	return base64EncodeVector(dst, src)
+}
+
+// Base64Decode decodes Base64 data from src into dst using hardware vector acceleration.
+func Base64Decode(dst, src []byte) (int, error) {
+	return base64DecodeVector(dst, src)
 }
 
 // TrimQuotes strips leading and trailing JSON double-quote characters from b with zero allocations and BCE hints.

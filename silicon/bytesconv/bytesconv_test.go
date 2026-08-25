@@ -232,3 +232,42 @@ func TestScannerRoutines(t *testing.T) {
 	}
 	assert.Equal(t, map[string]string{"k1": "v1", "k2": "v2"}, pairBytes)
 }
+
+func TestBase64EncodeDecode(t *testing.T) {
+	raw := []byte("Hello, High-Performance Zero-Allocation Silicon World 12345!")
+	dst := make([]byte, 128)
+	n := Base64Encode(dst, raw)
+	encoded := dst[:n]
+
+	decDst := make([]byte, 128)
+	decN, err := Base64Decode(decDst, encoded)
+	assert.NoError(t, err)
+	assert.Equal(t, raw, decDst[:decN])
+}
+
+func BenchmarkAppendToLower1KB(b *testing.B) {
+	src := bytes.Repeat([]byte("The Quick Brown Fox Jumps Over The Lazy Dog. "), 23) // ~1KB
+	dst := make([]byte, 0, len(src))
+	b.SetBytes(int64(len(src)))
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		_ = AppendToLower(dst[:0], src)
+	}
+}
+
+func BenchmarkBase64Encode1KB(b *testing.B) {
+	src := make([]byte, 1024)
+	for i := range src {
+		src[i] = byte(i)
+	}
+	dst := make([]byte, 2048)
+	b.SetBytes(1024)
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		_ = Base64Encode(dst, src)
+	}
+}

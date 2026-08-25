@@ -77,6 +77,7 @@ func Compile(opts CompileOptions) (string, error) {
 			"-fno-rtti",
 			"-fno-stack-protector",
 			"-fomit-frame-pointer",
+			"-fno-jump-tables",
 			"-mno-red-zone",
 			"-mavx2",
 			"-mpclmul",
@@ -103,6 +104,7 @@ func Compile(opts CompileOptions) (string, error) {
 		"-fno-rtti",
 		"-fno-stack-protector",
 		"-fomit-frame-pointer",
+		"-fno-jump-tables",
 	}
 
 	if opts.TargetArch == "" || opts.TargetArch == "amd64" {

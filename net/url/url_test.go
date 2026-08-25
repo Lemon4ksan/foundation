@@ -117,3 +117,34 @@ func TestResolve(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "https://api.example.com/users/42", u.String())
 }
+
+func TestUnescape(t *testing.T) {
+	unescaped, err := url.Unescape("Hello%20World%21+From+Silicon%2FEngine")
+	require.NoError(t, err)
+	assert.Equal(t, "Hello World! From Silicon/Engine", unescaped)
+
+	// Clean string fast-path
+	clean, err := url.Unescape("clean_alphanumeric_string_without_escapes_12345")
+	require.NoError(t, err)
+	assert.Equal(t, "clean_alphanumeric_string_without_escapes_12345", clean)
+
+	// Invalid escape
+	_, err = url.Unescape("invalid%2")
+	assert.Error(t, err)
+}
+
+func BenchmarkUnescape1KB(b *testing.B) {
+	s := "query=hello%20world&tag=fast+engine&path=%2Fapi%2Fv1%2Fresource%3Ffilter%3Dactive"
+	for len(s) < 1024 {
+		s += "&" + s
+	}
+	s = s[:1024]
+
+	b.SetBytes(1024)
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		_, _ = url.Unescape(s)
+	}
+}

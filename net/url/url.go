@@ -383,3 +383,80 @@ func AppendQueryEscapeString(dst []byte, src string) []byte {
 
 	return dst
 }
+
+// Unescape unescapes URL percent-encoded characters (%XX) and replaces '+' with ' '
+// using hardware vector acceleration.
+func Unescape(s string) (string, error) {
+	if len(s) == 0 {
+		return "", nil
+	}
+	src := bytesconv.S2B(s)
+	buf := make([]byte, len(src))
+	n, err := unescapeVector(buf, src)
+	if err != nil {
+		return "", err
+	}
+	return string(buf[:n]), nil
+}
+
+// UnescapeBytes unescapes URL percent-encoded characters from src into dst.
+func UnescapeBytes(dst, src []byte) ([]byte, error) {
+	if len(src) == 0 {
+		return dst, nil
+	}
+	start := len(dst)
+	if cap(dst)-start < len(src) {
+		newDst := make([]byte, start+len(src))
+		copy(newDst, dst)
+		dst = newDst
+	} else {
+		dst = dst[:start+len(src)]
+	}
+	n, err := unescapeVector(dst[start:], src)
+	if err != nil {
+		return nil, err
+	}
+	return dst[:start+n], nil
+}
+
+func unescapeScalar(dst, src []byte) (int, error) {
+	out := 0
+	for i := 0; i < len(src); {
+		c := src[i]
+		if c == '%' {
+			if i+2 >= len(src) {
+				return 0, ErrInvalidEscape
+			}
+			hi := fromHexChar(src[i+1])
+			lo := fromHexChar(src[i+2])
+			if hi < 0 || lo < 0 {
+				return 0, ErrInvalidEscape
+			}
+			dst[out] = byte((hi << 4) | lo)
+			out++
+			i += 3
+		} else if c == '+' {
+			dst[out] = ' '
+			out++
+			i++
+		} else {
+			dst[out] = c
+			out++
+			i++
+		}
+	}
+	return out, nil
+}
+
+func fromHexChar(c byte) int {
+	if c >= '0' && c <= '9' {
+		return int(c - '0')
+	}
+	if c >= 'a' && c <= 'f' {
+		return int(c - 'a' + 10)
+	}
+	if c >= 'A' && c <= 'F' {
+		return int(c - 'A' + 10)
+	}
+	return -1
+}
