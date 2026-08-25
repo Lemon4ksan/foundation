@@ -7,9 +7,11 @@
 package trie
 
 import (
+	"math/bits"
 	"slices"
 	"strings"
 	"sync"
+	"unsafe"
 )
 
 // RadixTree is a thread-safe, generic edge-compressed prefix tree (Patricia trie).
@@ -362,8 +364,16 @@ func (t *RadixTree[V]) deleteNode(curr *node[V], search string) (V, bool) {
 }
 
 func (n *node[V]) findEdge(b byte) int {
-	for i := 0; i < len(n.edges); i++ {
-		if n.edges[i].label == b {
+	edges := n.edges
+	numEdges := len(edges)
+	if numEdges == 0 {
+		return -1
+	}
+
+	_ = edges[numEdges-1]
+
+	for i := 0; i < numEdges; i++ {
+		if edges[i].label == b {
 			return i
 		}
 	}
@@ -378,7 +388,25 @@ func (n *node[V]) addEdge(b byte, child *node[V]) {
 //go:inline
 func commonPrefixLength(a, b string) int {
 	maxLen := min(len(a), len(b))
-	for i := 0; i < maxLen; i++ {
+	if maxLen == 0 {
+		return 0
+	}
+
+	_ = a[maxLen-1]
+	_ = b[maxLen-1]
+
+	i := 0
+	for i+8 <= maxLen {
+		wa := *(*uint64)(unsafe.Pointer(uintptr(unsafe.Pointer(unsafe.StringData(a))) + uintptr(i)))
+		wb := *(*uint64)(unsafe.Pointer(uintptr(unsafe.Pointer(unsafe.StringData(b))) + uintptr(i)))
+		if wa != wb {
+			diff := wa ^ wb
+			return i + (bits.TrailingZeros64(diff) >> 3)
+		}
+		i += 8
+	}
+
+	for ; i < maxLen; i++ {
 		if a[i] != b[i] {
 			return i
 		}

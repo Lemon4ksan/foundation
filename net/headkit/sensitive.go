@@ -17,23 +17,40 @@ const DefaultRedactedMask = "[REDACTED]"
 // IsSensitive reports whether headerName contains authentication credentials,
 // session tokens, or private identity data per RFC 9110 §15.
 func IsSensitive(headerName string) bool {
-	switch strings.ToLower(strings.TrimSpace(headerName)) {
-	case "authorization",
-		"cookie",
-		"set-cookie",
-		"proxy-authorization",
-		"proxy-authenticate",
-		"www-authenticate",
-		"x-api-key",
-		"x-auth-token",
-		"x-access-token",
-		"x-secret",
-		"x-client-secret",
-		"api-key",
-		"token",
-		"secret",
-		"private-key":
-		return true
+	h := strings.TrimSpace(headerName)
+	if len(h) == 0 {
+		return false
+	}
+
+	switch len(h) {
+	case 5: // token
+		return bytesconv.EqualFoldASCII(h, "token")
+	case 6: // cookie, secret
+		return bytesconv.EqualFoldASCII(h, "cookie") || bytesconv.EqualFoldASCII(h, "secret")
+	case 7: // api-key
+		return bytesconv.EqualFoldASCII(h, "api-key")
+	case 8: // x-secret
+		return bytesconv.EqualFoldASCII(h, "x-secret")
+	case 9: // x-api-key
+		return bytesconv.EqualFoldASCII(h, "x-api-key")
+	case 10: // set-cookie
+		return bytesconv.EqualFoldASCII(h, "set-cookie")
+	case 11: // private-key
+		return bytesconv.EqualFoldASCII(h, "private-key")
+	case 12: // x-auth-token
+		return bytesconv.EqualFoldASCII(h, "x-auth-token")
+	case 13: // authorization
+		return bytesconv.EqualFoldASCII(h, "authorization")
+	case 14: // x-access-token
+		return bytesconv.EqualFoldASCII(h, "x-access-token")
+	case 15: // x-client-secret
+		return bytesconv.EqualFoldASCII(h, "x-client-secret")
+	case 16: // www-authenticate
+		return bytesconv.EqualFoldASCII(h, "www-authenticate")
+	case 18: // proxy-authenticate
+		return bytesconv.EqualFoldASCII(h, "proxy-authenticate")
+	case 19: // proxy-authorization
+		return bytesconv.EqualFoldASCII(h, "proxy-authorization")
 	default:
 		return false
 	}

@@ -13,7 +13,6 @@ import (
 	"sync"
 
 	"github.com/lemon4ksan/foundation/silicon/bytesconv"
-	"github.com/lemon4ksan/foundation/silicon/simd"
 )
 
 // fastHash computes a hardware CRC32 hash of string s to select a cache shard index.
@@ -61,6 +60,7 @@ func Parse(rawURL string) (*url.URL, error) {
 	}
 
 	idx := fastHash(rawURL) & 15
+	_ = globalURLCache.shards[15]
 	sh := &globalURLCache.shards[idx]
 
 	sh.mu.RLock()
@@ -207,7 +207,7 @@ func FastAppendQuery(targetURL, key, value string) string {
 	buf := (*bufPtr)[:0]
 
 	buf = append(buf, targetURL...)
-	if simd.IndexByteVector([]byte(targetURL), '?') >= 0 {
+	if strings.IndexByte(targetURL, '?') >= 0 {
 		buf = append(buf, '&')
 	} else {
 		buf = append(buf, '?')
@@ -235,7 +235,7 @@ func AppendRawQuery(targetURL, rawQuery string) string {
 	buf := (*bufPtr)[:0]
 
 	buf = append(buf, targetURL...)
-	if simd.IndexByteVector([]byte(targetURL), '?') >= 0 {
+	if strings.IndexByte(targetURL, '?') >= 0 {
 		buf = append(buf, '&')
 	} else {
 		buf = append(buf, '?')
@@ -274,10 +274,10 @@ func IsCrossOrigin(u1, u2 *url.URL) bool {
 		return true
 	}
 
-	h1 := strings.ToLower(strings.TrimSuffix(u1.Hostname(), "."))
-	h2 := strings.ToLower(strings.TrimSuffix(u2.Hostname(), "."))
+	h1 := strings.TrimSuffix(u1.Hostname(), ".")
+	h2 := strings.TrimSuffix(u2.Hostname(), ".")
 
-	if h1 != h2 {
+	if !bytesconv.EqualFoldASCII(h1, h2) {
 		return true
 	}
 

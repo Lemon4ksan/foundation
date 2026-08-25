@@ -40,6 +40,11 @@ func MatchCRLFCRLF(buf []byte) bool {
 	return *(*uint32)(unsafe.Pointer(&buf[0])) == CRLFCRLFUint32
 }
 
+var (
+	crlfCrlfBytes = []byte("\r\n\r\n")
+	lflfBytes     = []byte("\n\n")
+)
+
 // IsCompleteFast performs an early boundary check for HTTP/1.x headers.
 //
 // Ported from hyper's is_complete_fast:
@@ -60,6 +65,8 @@ func IsCompleteFast(buf []byte, prevLen int) bool {
 	if n < 2 {
 		return false
 	}
+
+	_ = tail[n-1]
 
 	for i := 0; i < n; i++ {
 		b := tail[i]
@@ -83,11 +90,11 @@ func IsCompleteFast(buf []byte, prevLen int) bool {
 // IndexCRLFCRLF searches for the position immediately after "\r\n\r\n" in buf.
 // Returns the index of the first body byte, or -1 if headers are incomplete.
 func IndexCRLFCRLF(buf []byte) int {
-	idx := bytes.Index(buf, []byte("\r\n\r\n"))
+	idx := bytes.Index(buf, crlfCrlfBytes)
 	if idx >= 0 {
 		return idx + 4
 	}
-	idx = bytes.Index(buf, []byte("\n\n"))
+	idx = bytes.Index(buf, lflfBytes)
 	if idx >= 0 {
 		return idx + 2
 	}

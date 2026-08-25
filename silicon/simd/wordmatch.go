@@ -20,7 +20,7 @@ func PackWord64(s string) uint64 {
 		return binary.LittleEndian.Uint64(buf[:])
 	}
 
-	return binary.LittleEndian.Uint64([]byte(s[:8]))
+	return *(*uint64)(unsafe.Pointer(unsafe.StringData(s)))
 }
 
 // PackWord32 converts the first 4 bytes of string s into a Little-Endian uint32.
@@ -34,7 +34,7 @@ func PackWord32(s string) uint32 {
 		return binary.LittleEndian.Uint32(buf[:])
 	}
 
-	return binary.LittleEndian.Uint32([]byte(s[:4]))
+	return *(*uint32)(unsafe.Pointer(unsafe.StringData(s)))
 }
 
 // MatchWord64 compares the first 8 bytes of buf against a target uint64 word in a single CPU instruction.

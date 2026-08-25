@@ -13,7 +13,7 @@ import (
 // Unescape converts HTML entities within src into their unescaped UTF-8 byte representation.
 // If src contains no '&' character, it returns src unchanged with zero allocations.
 func Unescape(src []byte) []byte {
-	if !bytes.Contains(src, []byte{'&'}) {
+	if bytes.IndexByte(src, '&') == -1 {
 		return src
 	}
 

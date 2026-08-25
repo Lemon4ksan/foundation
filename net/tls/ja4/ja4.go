@@ -434,7 +434,17 @@ func computeCipherHash(ciphers []uint16) string {
 }
 
 func computeExtHash(extensions, sigAlgorithms []uint16) string {
-	filteredExts := make([]uint16, 0, len(extensions))
+	var (
+		stackExts    [64]uint16
+		filteredExts []uint16
+	)
+
+	if len(extensions) <= cap(stackExts) {
+		filteredExts = stackExts[:0]
+	} else {
+		filteredExts = make([]uint16, 0, len(extensions))
+	}
+
 	for _, e := range extensions {
 		if e != extSNI && e != extALPN {
 			filteredExts = append(filteredExts, e)
@@ -514,5 +524,9 @@ func computeALPN(protocols []string) string {
 		return "00"
 	}
 
-	return string(first[0]) + string(first[len(first)-1])
+	var buf [2]byte
+	buf[0] = first[0]
+	buf[1] = first[len(first)-1]
+
+	return bytesconv.B2S(buf[:])
 }

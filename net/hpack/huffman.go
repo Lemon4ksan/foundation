@@ -42,6 +42,12 @@ func HuffmanDecodeToString(v []byte) (string, error) {
 // AppendHuffmanDecode decodes the Huffman-encoded data in v, appends the decoded bytes
 // to dst, and returns the resulting slice with zero allocations if dst has enough capacity.
 func AppendHuffmanDecode(dst []byte, v []byte) ([]byte, error) {
+	if len(v) == 0 {
+		return dst, nil
+	}
+
+	_ = v[len(v)-1]
+
 	rootHuffmanNode := getRootHuffmanNode()
 	n := rootHuffmanNode
 	cur, cbits, sbits := uint(0), uint8(0), uint8(0)

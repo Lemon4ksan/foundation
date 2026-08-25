@@ -18,14 +18,14 @@ type Matcher interface {
 type anyMatcher struct{}
 
 // Any returns a matcher matching anything.
-func Any() Matcher { return anyMatcher{} }
+func Any() Matcher                  { return anyMatcher{} }
 func (anyMatcher) Matches(any) bool { return true }
 func (anyMatcher) String() string   { return "is anything" }
 
 type eqMatcher struct{ x any }
 
 // Eq returns a matcher matching by deep equality.
-func Eq(x any) Matcher { return eqMatcher{x: x} }
+func Eq(x any) Matcher                 { return eqMatcher{x: x} }
 func (m eqMatcher) Matches(x any) bool { return reflect.DeepEqual(m.x, x) }
 func (m eqMatcher) String() string     { return fmt.Sprintf("is equal to %v", m.x) }
 

@@ -17,9 +17,9 @@ type nopTB struct {
 	testing.TB
 }
 
-func (n nopTB) Helper()                          {}
+func (n nopTB) Helper()                           {}
 func (n nopTB) Errorf(format string, args ...any) {}
-func (n nopTB) FailNow()                         {}
+func (n nopTB) FailNow()                          {}
 
 type sampleStruct struct {
 	ID    int

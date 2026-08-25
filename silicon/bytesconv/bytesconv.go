@@ -183,6 +183,8 @@ func ParseUintFast(b []byte) (int64, bool) {
 		return 0, false
 	}
 
+	_ = b[n-1]
+
 	var val int64
 	for i := 0; i < n; i++ {
 		ch := b[i]

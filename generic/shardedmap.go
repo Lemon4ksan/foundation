@@ -43,6 +43,8 @@ func NewShardedMap[K comparable, V any]() *ShardedMap[K, V] {
 
 func (m *ShardedMap[K, V]) getShard(key K) *paddedShard[K, V] {
 	idx := int(maphash.Comparable(m.seed, key) & shardMask)
+	_ = m.shards[ShardCount-1]
+
 	return &m.shards[idx]
 }
 
