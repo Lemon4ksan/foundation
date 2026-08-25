@@ -21,13 +21,20 @@ type DisassembledInst struct {
 	IsRet    bool
 }
 
+// DisassemblyResult contains disassembled instructions and detected stack frame size.
+type DisassemblyResult struct {
+	Insts     []DisassembledInst
+	FrameSize uint64
+}
+
 // DisassembleAMD64 disassembles raw x86-64 machine code into Plan 9 assembly lines.
-func DisassembleAMD64(code []byte, baseOffset uint64) ([]DisassembledInst, error) {
+func DisassembleAMD64(code []byte, baseOffset uint64, relocs []Relocation) (DisassemblyResult, error) {
 	var (
 		insts       []DisassembledInst
 		jumpTargets = make(map[uint64]string)
 		offset      = 0
 		n           = len(code)
+		frameSize   uint64
 	)
 
 	// Pass 1: Discover all branch targets and assign clean label names
@@ -91,8 +98,32 @@ func DisassembleAMD64(code []byte, baseOffset uint64) ([]DisassembledInst, error
 		}
 
 		raw := code[offset : offset+inst.Len]
-		text := x86asm.GoSyntax(inst, pc, symLookup)
+		var curSymLookup x86asm.SymLookup
+		if isBranchOp(inst.Op) {
+			curSymLookup = symLookup
+		}
+		text := x86asm.GoSyntax(inst, pc, curSymLookup)
 		text = cleanPlan9Syntax(text)
+
+		// Check for .rodata relocation on memory access
+		var matchedReloc *Relocation
+		for i := range relocs {
+			r := &relocs[i]
+			if r.Offset >= pc+baseOffset && r.Offset < pc+baseOffset+uint64(inst.Len) {
+				matchedReloc = r
+				break
+			}
+		}
+
+		if matchedReloc != nil && (matchedReloc.IsROData || strings.HasPrefix(matchedReloc.SymName, ".rodata") || strings.HasPrefix(matchedReloc.SymName, ".LC")) {
+			text = replaceIPWithROData(text, matchedReloc.Addend)
+		} else if strings.Contains(text, "(IP)") || strings.Contains(text, "(RIP)") {
+			for _, arg := range inst.Args {
+				if mem, ok := arg.(x86asm.Mem); ok && mem.Base == x86asm.RIP {
+					text = replaceIPWithROData(text, int64(mem.Disp))
+				}
+			}
+		}
 
 		if inst.Op == x86asm.BSWAP && strings.HasPrefix(text, "BSWAP") {
 			hasRexW := len(raw) >= 3 && (raw[0]&0xF8 == 0x48)
@@ -121,10 +152,90 @@ func DisassembleAMD64(code []byte, baseOffset uint64) ([]DisassembledInst, error
 						text = "MOVB " + text[5:]
 					} else if strings.HasPrefix(text, "ANDL ") {
 						text = "ANDB " + text[5:]
+					} else if strings.HasPrefix(text, "ADDL ") {
+						text = "ADDB " + text[5:]
+					} else if strings.HasPrefix(text, "SUBL ") {
+						text = "SUBB " + text[5:]
+					} else if strings.HasPrefix(text, "ORL ") {
+						text = "ORB " + text[4:]
+					} else if strings.HasPrefix(text, "XORL ") {
+						text = "XORB " + text[5:]
 					}
-					text = strings.ReplaceAll(text, " "+baseReg+",", " "+regStr+",")
-					text = strings.ReplaceAll(text, ", "+baseReg, ", "+regStr)
+					if !strings.Contains(text, regStr) {
+						text = strings.ReplaceAll(text, " "+baseReg+",", " "+regStr+",")
+						text = strings.ReplaceAll(text, ", "+baseReg, ", "+regStr)
+					}
 				}
+			}
+		}
+
+		// Normalize MOVBLZX/MOVBQZX destination register (destination is 32/64-bit, not 8-bit)
+		if strings.HasPrefix(text, "MOVBLZX ") || strings.HasPrefix(text, "MOVBQZX ") {
+			parts := strings.Split(text, ",")
+			if len(parts) == 2 {
+				dstPart := strings.TrimSpace(parts[1])
+				if is8BitRegStr(dstPart) {
+					cleanDst := strings.TrimSuffix(dstPart, "B")
+					text = parts[0] + ", " + cleanDst
+				}
+			}
+		}
+
+		// Normalize any possible duplicate 'B' suffixes (e.g. R11BB -> R11B)
+		doubleRegs := []string{"R8BB", "R9BB", "R10BB", "R11BB", "R12BB", "R13BB", "R14BB", "R15BB", "ALB", "BLB", "CLB", "DLB"}
+		for _, dr := range doubleRegs {
+			text = strings.ReplaceAll(text, dr, strings.TrimSuffix(dr, "B"))
+		}
+
+		// Detect stack frame allocation in prologue (e.g. SUBQ $N, SP)
+		if (inst.Op == x86asm.SUB) && (strings.HasPrefix(text, "SUBQ $") || strings.HasPrefix(text, "SUBL $")) && strings.HasSuffix(text, ", SP") {
+			if len(inst.Args) >= 2 {
+				if imm, isImm := inst.Args[1].(x86asm.Imm); isImm && imm > 0 {
+					frameSize = uint64(imm)
+				}
+			}
+			if jumpTargets[pc] != "" {
+				insts = append(insts, DisassembledInst{
+					Offset:   pc,
+					Length:   inst.Len,
+					RawBytes: raw,
+					Text:     "NOP",
+					Label:    jumpTargets[pc],
+				})
+			}
+			offset += inst.Len
+			continue
+		}
+
+		// Detect stack frame deallocation in epilogue (e.g. ADDQ $N, SP)
+		if (inst.Op == x86asm.ADD) && (strings.HasPrefix(text, "ADDQ $") || strings.HasPrefix(text, "ADDL $")) && strings.HasSuffix(text, ", SP") {
+			if jumpTargets[pc] != "" {
+				insts = append(insts, DisassembledInst{
+					Offset:   pc,
+					Length:   inst.Len,
+					RawBytes: raw,
+					Text:     "NOP",
+					Label:    jumpTargets[pc],
+				})
+			}
+			offset += inst.Len
+			continue
+		}
+
+		// Omit SysV callee-saved register PUSH/POP in Go leaf functions
+		if (inst.Op == x86asm.PUSH || inst.Op == x86asm.POP) && len(inst.Args) > 0 {
+			if _, isReg := inst.Args[0].(x86asm.Reg); isReg {
+				if jumpTargets[pc] != "" {
+					insts = append(insts, DisassembledInst{
+						Offset:   pc,
+						Length:   inst.Len,
+						RawBytes: raw,
+						Text:     "NOP",
+						Label:    jumpTargets[pc],
+					})
+				}
+				offset += inst.Len
+				continue
 			}
 		}
 
@@ -140,7 +251,10 @@ func DisassembleAMD64(code []byte, baseOffset uint64) ([]DisassembledInst, error
 		offset += inst.Len
 	}
 
-	return insts, nil
+	return DisassemblyResult{
+		Insts:     insts,
+		FrameSize: frameSize,
+	}, nil
 }
 
 // cleanPlan9Syntax standardizes register and instruction syntax for Go's assembler.
@@ -372,4 +486,39 @@ func is8BitRegStr(r string) bool {
 		return true
 	}
 	return false
+}
+
+func isBranchOp(op x86asm.Op) bool {
+	switch op {
+	case x86asm.CALL, x86asm.JMP,
+		x86asm.JA, x86asm.JAE, x86asm.JB, x86asm.JBE,
+		x86asm.JCXZ, x86asm.JECXZ, x86asm.JRCXZ,
+		x86asm.JE, x86asm.JG, x86asm.JGE, x86asm.JL, x86asm.JLE,
+		x86asm.JNE, x86asm.JNO, x86asm.JNP, x86asm.JNS, x86asm.JO,
+		x86asm.JP, x86asm.JS, x86asm.LOOP, x86asm.LOOPE, x86asm.LOOPNE:
+		return true
+	}
+	return false
+}
+
+func replaceIPWithROData(text string, addend int64) string {
+	roTarget := fmt.Sprintf("·rodata<>+%d(SB)", addend)
+	if addend == 0 {
+		roTarget = "·rodata<>(SB)"
+	}
+
+	parts := strings.Split(text, " ")
+	if len(parts) >= 2 {
+		op := parts[0]
+		argsStr := strings.Join(parts[1:], " ")
+		args := strings.Split(argsStr, ",")
+		for i, arg := range args {
+			a := strings.TrimSpace(arg)
+			if strings.Contains(a, "(IP)") || strings.Contains(a, "(RIP)") {
+				args[i] = " " + roTarget
+			}
+		}
+		return op + strings.Join(args, ",")
+	}
+	return text
 }

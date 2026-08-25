@@ -71,7 +71,7 @@ func main() {
 	}
 
 	fmt.Printf("[c2plan9] Disassembling %d symbol(s) into Plan 9 assembly...\n", len(obj.Symbols))
-	asmBytes, err := EmitPlan9Assembly(*pkgName, obj.Symbols, nil)
+	asmBytes, err := EmitPlan9Assembly(*pkgName, obj.Symbols, nil, obj.ROData, obj.Relocations)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "[c2plan9] Assembly generation error: %v\n", err)
 		os.Exit(1)

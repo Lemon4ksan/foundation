@@ -5,12 +5,15 @@
 package main
 
 import (
+	"bytes"
 	"debug/elf"
 	"debug/macho"
 	"debug/pe"
+	"encoding/binary"
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 )
 
 // Symbol represents an extracted function symbol with its byte slice.
@@ -22,12 +25,21 @@ type Symbol struct {
 	IsLocal bool
 }
 
+// Relocation represents a relocation entry in the code referencing rodata or external symbols.
+type Relocation struct {
+	Offset   uint64 // byte offset in .text section
+	SymName  string // referenced symbol name
+	IsROData bool   // true if referencing .rodata section
+	Addend   int64  // relocation addend
+}
+
 // ParsedObject contains the extracted machine code and symbol metadata.
 type ParsedObject struct {
-	Arch      string
-	Symbols   []Symbol
-	TextBytes []byte
-	ROData    []byte
+	Arch        string
+	Symbols     []Symbol
+	TextBytes   []byte
+	ROData      []byte
+	Relocations []Relocation
 }
 
 // ParseObject parses a binary object file (.o) across ELF, PE, or Mach-O formats.
@@ -73,8 +85,13 @@ func parseELF(data []byte) (*ParsedObject, error) {
 	}
 
 	var rodataBytes []byte
-	if roSec := f.Section(".rodata"); roSec != nil {
-		rodataBytes, _ = roSec.Data()
+	for _, sec := range f.Sections {
+		if strings.HasPrefix(sec.Name, ".rodata") {
+			data, dErr := sec.Data()
+			if dErr == nil {
+				rodataBytes = append(rodataBytes, data...)
+			}
+		}
 	}
 
 	syms, err := f.Symbols()
@@ -136,16 +153,62 @@ func parseELF(data []byte) (*ParsedObject, error) {
 		}
 	}
 
+	var relocs []Relocation
+	for _, sec := range f.Sections {
+		if sec.Type == elf.SHT_RELA && sec.Info < uint32(len(f.Sections)) && f.Sections[sec.Info].Name == ".text" {
+			relaData, rErr := sec.Data()
+			if rErr == nil && len(relaData)%24 == 0 {
+				r := bytes.NewReader(relaData)
+				for i := 0; i < len(relaData)/24; i++ {
+					var rOffset, rInfo uint64
+					var rAddend int64
+					_ = binary.Read(r, f.ByteOrder, &rOffset)
+					_ = binary.Read(r, f.ByteOrder, &rInfo)
+					_ = binary.Read(r, f.ByteOrder, &rAddend)
+
+					symIdx := int(rInfo >> 32)
+					var symName string
+					isRO := false
+
+					if symIdx >= 0 && symIdx < len(syms) {
+						s := syms[symIdx]
+						symName = s.Name
+						if int(s.Section) < len(f.Sections) {
+							targetSecName := f.Sections[s.Section].Name
+							if strings.HasPrefix(targetSecName, ".rodata") {
+								isRO = true
+							}
+						}
+					}
+
+					if !isRO && symIdx < len(f.Sections) {
+						if strings.HasPrefix(f.Sections[symIdx].Name, ".rodata") {
+							isRO = true
+						}
+					}
+
+					relocs = append(relocs, Relocation{
+						Offset:   rOffset,
+						SymName:  symName,
+						IsROData: isRO,
+						Addend:   rAddend,
+					})
+				}
+			}
+		}
+	}
+
 	arch := "amd64"
 	if f.Machine == elf.EM_AARCH64 {
 		arch = "arm64"
 	}
 
 	return &ParsedObject{
-		Arch:      arch,
-		Symbols:   funcSyms,
-		TextBytes: textBytes,
-		ROData:    rodataBytes,
+		Arch:        arch,
+		Symbols:     funcSyms,
+		TextBytes:   textBytes,
+		ROData:      rodataBytes,
+		Relocations: relocs,
 	}, nil
 }
 
@@ -199,15 +262,47 @@ func parsePE(data []byte) (*ParsedObject, error) {
 		}
 	}
 
+	var rodataBytes []byte
+	if roSec := f.Section(".rdata"); roSec != nil {
+		rodataBytes, _ = roSec.Data()
+	} else if roSec := f.Section(".rodata"); roSec != nil {
+		rodataBytes, _ = roSec.Data()
+	}
+
+	var relocs []Relocation
+	for _, rel := range textSec.Relocs {
+		symIdx := int(rel.SymbolTableIndex)
+		var symName string
+		isRO := false
+		if symIdx >= 0 && symIdx < len(f.Symbols) {
+			s := f.Symbols[symIdx]
+			symName = s.Name
+			if s.SectionNumber > 0 && int(s.SectionNumber) <= len(f.Sections) {
+				secName := f.Sections[s.SectionNumber-1].Name
+				if strings.HasPrefix(secName, ".rdata") || strings.HasPrefix(secName, ".rodata") {
+					isRO = true
+				}
+			}
+		}
+		relocs = append(relocs, Relocation{
+			Offset:   uint64(rel.VirtualAddress),
+			SymName:  symName,
+			IsROData: isRO,
+			Addend:   0,
+		})
+	}
+
 	arch := "amd64"
 	if f.Machine == pe.IMAGE_FILE_MACHINE_ARM64 {
 		arch = "arm64"
 	}
 
 	return &ParsedObject{
-		Arch:      arch,
-		Symbols:   funcSyms,
-		TextBytes: textBytes,
+		Arch:        arch,
+		Symbols:     funcSyms,
+		TextBytes:   textBytes,
+		ROData:      rodataBytes,
+		Relocations: relocs,
 	}, nil
 }
 
@@ -226,6 +321,13 @@ func parseMachO(data []byte) (*ParsedObject, error) {
 	textBytes, err := textSec.Data()
 	if err != nil {
 		return nil, fmt.Errorf("failed to read Mach-O __text data: %w", err)
+	}
+
+	var rodataBytes []byte
+	if roSec := f.Section("__rodata"); roSec != nil {
+		rodataBytes, _ = roSec.Data()
+	} else if roSec := f.Section("__const"); roSec != nil {
+		rodataBytes, _ = roSec.Data()
 	}
 
 	arch := "amd64"
@@ -251,6 +353,7 @@ func parseMachO(data []byte) (*ParsedObject, error) {
 		Arch:      arch,
 		Symbols:   funcSyms,
 		TextBytes: textBytes,
+		ROData:    rodataBytes,
 	}, nil
 }
 
