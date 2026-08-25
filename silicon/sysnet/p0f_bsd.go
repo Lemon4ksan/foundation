@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-//go:build darwin || freebsd || openbsd
+//go:build darwin || freebsd || openbsd || netbsd || dragonfly
 
 package sysnet
 
@@ -26,7 +26,7 @@ func ApplyP0fSignature(raw syscall.RawConn, ttl, windowSize int, setWindow, hasD
 				syscall.SYS_SETSOCKOPT,
 				fd,
 				uintptr(syscall.IPPROTO_IP),
-				uintptr(27), // IP_DONTFRAG on macOS
+				uintptr(27), // IP_DONTFRAG on macOS / BSD
 				uintptr(unsafe.Pointer(&val)),
 				unsafe.Sizeof(int32(0)),
 				0,
