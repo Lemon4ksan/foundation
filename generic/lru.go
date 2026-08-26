@@ -9,10 +9,10 @@ import (
 )
 
 type lruNode[K comparable, V any] struct {
-	key   K
-	val   V
-	prev  *lruNode[K, V]
-	next  *lruNode[K, V]
+	key  K
+	val  V
+	prev *lruNode[K, V]
+	next *lruNode[K, V]
 }
 
 // LRU implements a thread-safe, generic Least-Recently-Used (LRU) cache with O(1) Get and Put.

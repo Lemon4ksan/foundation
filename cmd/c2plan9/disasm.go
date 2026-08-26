@@ -360,8 +360,6 @@ func cleanPlan9Syntax(s string) string {
 		}
 	}
 
-
-
 	sixtyFourBitRegs := []string{"AX", "BX", "CX", "DX", "SI", "DI", "BP", "SP", "R8", "R9", "R10", "R11", "R12", "R13", "R14", "R15"}
 	is64Dest := func(str string) bool {
 		parts := strings.Split(str, ",")

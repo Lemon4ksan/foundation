@@ -1,56 +1,56 @@
 # Foundation
 
-### Silicon Substrate & Tactical Concurrency Runtime for Go
+### Silicon Substrate & Tactical Concurrency Runtime for Go (Go 1.27+)
 
 [![Go Reference](https://img.shields.io/badge/go-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/lemon4ksan/foundation)
 [![License](https://img.shields.io/github/license/lemon4ksan/foundation?style=flat-square)](LICENSE)
 
-`foundation` is a high-performance substrate and concurrency runtime for Go. It consolidates hardware-accelerated memory primitives, LLVM-compiled SIMD kernels, and zero-allocation concurrency orchestration into a unified architecture.
+`foundation` is a high-performance substrate and concurrency runtime for Go 1.27+. It consolidates hardware-accelerated memory primitives, native `simd/archsimd` compiler intrinsics, LLVM-compiled SIMD kernels, and zero-allocation concurrency orchestration into a unified architecture.
 
 ```bash
 go get github.com/lemon4ksan/foundation
 ```
 
-## ⚡ Benchmarks (Intel Core i5-12400F)
+## ⚡ Benchmarks (Intel Core i5-12400F, Go 1.27)
 
-`foundation` uses a pure C/LLVM to Plan 9 Go Assembler compiler pipeline (`cmd/c2plan9`), eliminating CGO overhead and running vector instructions directly on hardware registers with 0 memory allocations:
+`foundation` combines native **Go 1.27 `simd/archsimd` inlined compiler intrinsics** (with 4-way loop unrolling) and a pure C/LLVM to Plan 9 Go Assembler compiler pipeline (`cmd/c2plan9`), eliminating CGO overhead and running vector instructions directly on hardware registers with 0 memory allocations:
 
 ### 1. Protocol Scanning & SIMD Primitives (`silicon/simd`)
 
 | Kernel | Description | Execution Time | Memory Throughput | Allocations |
 | :--- | :--- | :--- | :--- | :--- |
-| `IndexCRLFCRLFVector` | HTTP header boundary scan (`\r\n\r\n`) | 7.23 ns/op | 141.57 GB/s | 0 allocs |
-| `FindMatchLengthVector` | LZ77 long-match scanner (Brotli / Zstd) | 6.65 ns/op | 38.45 GB/s | 0 allocs |
-| `ScanByteVector` | 256-bit single-byte scanner (`:`, `,`, `"`) | 16.01 ns/op | 63.97 GB/s | 0 allocs |
-| `Hash64Vector` | 64-bit AVX2 bulk hashing | 64.29 ns/op | 15.92 GB/s | 0 allocs |
-| `ValidUTF8_SWAR` | 64-bit SWAR UTF-8 validator | 6.89 ns/op | 10.58 GB/s | 0 allocs |
+| `IndexCRLFCRLFVector` | HTTP header boundary scan (`\r\n\r\n` inlined `archsimd`) | 4.82 ns/op | 212.49 GB/s | 0 allocs |
+| `FindMatchLengthVector` | LZ77 long-match scanner (Brotli / Zstd) | 6.14 ns/op | 41.66 GB/s | 0 allocs |
+| `ScanByteVector` | 256-bit unrolled single-byte scanner (`:`, `,`, `"`) | 16.33 ns/op | 62.70 GB/s | 0 allocs |
+| `Hash64Vector` | 64-bit AVX2 bulk hashing | 59.69 ns/op | 17.16 GB/s | 0 allocs |
+| `ValidUTF8_SWAR` | 64-bit SWAR UTF-8 validator | 5.78 ns/op | 12.63 GB/s | 0 allocs |
 
 ### 2. Hex & Base64 Codecs vs Go Standard Library
 
 | Operation | `foundation` (AVX2) | Standard Library | Speedup / Throughput |
 | :--- | :--- | :--- | :--- |
-| `Hex.Encode1KB` | 78.77 ns/op | 416.40 ns/op | 5.3x faster (13.00 GB/s) |
-| `Hex.Encode16` | 5.17 ns/op | 7.83 ns/op | 1.5x faster (0 allocs) |
-| `AppendToLower1KB` | 32.50 ns/op | 412.10 ns/op | 12.6x faster (31.85 GB/s) |
+| `Hex.Encode1KB` | 78.58 ns/op | 408.20 ns/op | 5.2x faster (13.03 GB/s) |
+| `Hex.Encode16` | 4.86 ns/op | 7.10 ns/op | 1.5x faster (0 allocs) |
+| `AppendToLower1KB` | 29.93 ns/op | 412.10 ns/op | 13.8x faster (34.58 GB/s) |
 | `URL.Unescape1KB` | 804.80 ns/op | 3210.00 ns/op | 4.0x faster (1.27 GB/s) |
 
 ### 3. High-Throughput JSON Parsing (`codec/json`)
 
 | Benchmark | `foundation` (SIMD) | `encoding/json` | Allocated Memory | Speedup |
 | :--- | :--- | :--- | :--- | :--- |
-| `UnmarshalNoCopy` | 862.7 ns/op | 2028.0 ns/op | 347 B/op (12 allocs) | 2.35x faster |
-| `Unmarshal` | 995.1 ns/op | 2028.0 ns/op | 392 B/op (17 allocs) | 2.04x faster |
-| `MarshalTo` | 405.3 ns/op | 433.1 ns/op | 192 B/op (2 allocs) | 1.07x faster |
+| `UnmarshalNoCopy` | 916.4 ns/op | 2028.0 ns/op | 347 B/op (12 allocs) | 2.21x faster |
+| `Unmarshal` | 1041.0 ns/op | 2028.0 ns/op | 392 B/op (17 allocs) | 1.95x faster |
+| `MarshalTo` | 417.7 ns/op | 433.1 ns/op | 192 B/op (2 allocs) | 1.04x faster |
 
 ### 4. UUID Formatting & Parsing (`types/uuid`)
 
 | Operation | Time per Op | Allocations | Details |
 | :--- | :--- | :--- | :--- |
-| `UUID.Format` | 20.68 ns/op | 0 allocs | 36-char hex+dash buffer formatting |
-| `UUID.Append` | 21.18 ns/op | 0 allocs | Direct `[]byte` appending |
-| `uuid.Parse` | 34.70 ns/op | 0 allocs | Vectorized hex validation & decoding |
+| `UUID.Format` | 19.48 ns/op | 0 allocs | 36-char hex+dash buffer formatting |
+| `UUID.Append` | 19.81 ns/op | 0 allocs | Direct `[]byte` appending |
+| `uuid.Parse` | 31.96 ns/op | 0 allocs | Vectorized hex validation & decoding |
 
-## c2plan9 Architecture
+## Native SIMD & c2plan9 Architecture
 
 `foundation` compiles performance-critical C kernels using Clang/LLVM and translates ELF64 machine code into native Plan 9 Go Assembler (`.s`):
 

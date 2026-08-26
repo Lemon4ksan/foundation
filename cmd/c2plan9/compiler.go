@@ -83,30 +83,30 @@ func Compile(opts CompileOptions) (string, error) {
 			"-mpclmul",
 			"-mfma",
 		}
-	if opts.TargetArch == "arm64" {
-		wslArgs = []string{
-			"clang", "-c", wslSrc, "-o", wslOut,
-			"-O3",
-			"-ffreestanding",
-			"-fno-asynchronous-unwind-tables",
-			"-fno-exceptions",
-			"-fno-rtti",
-			"-fno-stack-protector",
-			"-fomit-frame-pointer",
-			"-fno-jump-tables",
-			"-target", "aarch64-unknown-linux-gnu",
-			"-march=armv8-a+simd+crypto",
+		if opts.TargetArch == "arm64" {
+			wslArgs = []string{
+				"clang", "-c", wslSrc, "-o", wslOut,
+				"-O3",
+				"-ffreestanding",
+				"-fno-asynchronous-unwind-tables",
+				"-fno-exceptions",
+				"-fno-rtti",
+				"-fno-stack-protector",
+				"-fomit-frame-pointer",
+				"-fno-jump-tables",
+				"-target", "aarch64-unknown-linux-gnu",
+				"-march=armv8-a+simd+crypto",
+			}
 		}
+		wslArgs = append(wslArgs, opts.ExtraFlags...)
+		cmd := exec.Command("wsl", wslArgs...)
+		var stderr bytes.Buffer
+		cmd.Stderr = &stderr
+		if err := cmd.Run(); err != nil {
+			return "", fmt.Errorf("wsl clang compilation failed (%w): %s", err, stderr.String())
+		}
+		return out, nil
 	}
-	wslArgs = append(wslArgs, opts.ExtraFlags...)
-	cmd := exec.Command("wsl", wslArgs...)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("wsl clang compilation failed (%w): %s", err, stderr.String())
-	}
-	return out, nil
-}
 
 	args := []string{
 		"-c",

@@ -41,12 +41,12 @@ func EmitPlan9Assembly(pkg string, syms []Symbol, sigs map[string]FuncSignature,
 		}
 
 		var (
-			res       DisassemblyResult
-			err       error
-			regNames  []string
-			loadOp    string
-			storeRet  string
-			retReg    string
+			res      DisassemblyResult
+			err      error
+			regNames []string
+			loadOp   string
+			storeRet string
+			retReg   string
 		)
 
 		if arch == "arm64" {
