@@ -231,6 +231,12 @@ func TestScenario_PipelineDeadlockAndResilience(t *testing.T) {
 
 	wg.Wait()
 
+	// Wait briefly for all published events to be processed by the subscriber.
+	deadline := time.Now().Add(2 * time.Second)
+	for processedCount.Load()+cancelledCount.Load()+failedCount.Load() < uint64(numRequests) && time.Now().Before(deadline) {
+		time.Sleep(5 * time.Millisecond)
+	}
+
 	// Stop background churn goroutines.
 	stopSemaphoreChurn.Store(true)
 	stopBreakerChurn.Store(true)

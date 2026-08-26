@@ -7,6 +7,7 @@ package refkit
 import (
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 )
 
@@ -16,20 +17,53 @@ type Tag struct {
 	Options []string // Subsequent comma-separated directive flags
 }
 
-// ParseTag parses a standard comma-separated tag string into a structured [Tag].
+// ParseTag parses a struct tag string into a structured [Tag], respecting nested brackets and quotes.
 func ParseTag(tagStr string) Tag {
 	if tagStr == "" {
 		return Tag{}
 	}
 
-	parts := strings.Split(tagStr, ",")
-	name := strings.TrimSpace(parts[0])
+	var parts []string
+	var start int
+	var depth int
+	var inQuotes bool
+	var quoteChar rune
 
+	runes := []rune(tagStr)
+	for i, r := range runes {
+		switch r {
+		case '"', '\'':
+			if !inQuotes {
+				inQuotes = true
+				quoteChar = r
+			} else if quoteChar == r {
+				inQuotes = false
+			}
+		case '{', '(', '[':
+			if !inQuotes {
+				depth++
+			}
+		case '}', ')', ']':
+			if !inQuotes && depth > 0 {
+				depth--
+			}
+		case ',':
+			if !inQuotes && depth == 0 {
+				parts = append(parts, string(runes[start:i]))
+				start = i + 1
+			}
+		}
+	}
+	parts = append(parts, string(runes[start:]))
+
+	name := strings.TrimSpace(parts[0])
 	var options []string
 	if len(parts) > 1 {
 		options = make([]string, 0, len(parts)-1)
 		for _, opt := range parts[1:] {
-			options = append(options, strings.TrimSpace(opt))
+			if opt = strings.TrimSpace(opt); opt != "" {
+				options = append(options, opt)
+			}
 		}
 	}
 
@@ -44,15 +78,67 @@ func (t Tag) Has(option string) bool {
 	return slices.Contains(t.Options, option)
 }
 
-// IsIgnored reports whether the tag specifies that the field should be skipped (name is "-").
+// Get extracts the value of a key-value directive flag (e.g. `default=10` -> "10", `min=5` -> "5").
+func (t Tag) Get(key string) string {
+	prefix := key + "="
+	for _, opt := range t.Options {
+		if strings.HasPrefix(opt, prefix) {
+			return strings.TrimPrefix(opt, prefix)
+		}
+	}
+	return ""
+}
+
+// GetInt extracts a numeric option parsed as int.
+func (t Tag) GetInt(key string) (int, bool) {
+	val := t.Get(key)
+	if val == "" {
+		return 0, false
+	}
+	n, err := strconv.Atoi(val)
+	return n, err == nil
+}
+
+// GetFloat extracts a numeric option parsed as float64.
+func (t Tag) GetFloat(key string) (float64, bool) {
+	val := t.Get(key)
+	if val == "" {
+		return 0, false
+	}
+	f, err := strconv.ParseFloat(val, 64)
+	return f, err == nil
+}
+
+// SplitOption splits a key-value option by delim (e.g. `enum=admin|user` with "|" -> ["admin", "user"]).
+func (t Tag) SplitOption(key, delim string) []string {
+	val := t.Get(key)
+	if val == "" {
+		return nil
+	}
+	items := strings.Split(val, delim)
+	var res []string
+	for _, item := range items {
+		if item = strings.TrimSpace(item); item != "" {
+			res = append(res, item)
+		}
+	}
+	return res
+}
+
+// IsEmpty reports whether the tag contains no name or options.
+func (t Tag) IsEmpty() bool {
+	return t.Name == "" && len(t.Options) == 0
+}
+
+// IsIgnored reports whether the tag explicitly ignores the field via `"-"`.
 func (t Tag) IsIgnored() bool {
 	return t.Name == "-"
 }
 
-// GetTag inspects field for the first non-empty tag matching candidate keys in priority order.
+// GetTag retrieves and parses the first matching struct tag for keys from field.
 func GetTag(field reflect.StructField, keys ...string) Tag {
-	for _, k := range keys {
-		if raw := field.Tag.Get(k); raw != "" {
+	for _, key := range keys {
+		if raw, ok := field.Tag.Lookup(key); ok {
 			return ParseTag(raw)
 		}
 	}
