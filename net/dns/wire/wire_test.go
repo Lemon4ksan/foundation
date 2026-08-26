@@ -11,8 +11,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/lemon4ksan/foundation/testkit/assert"
+	"github.com/lemon4ksan/foundation/testkit/require"
 )
 
 func buildMockDNSHeader(id, flags, qdCount, anCount, nsCount, arCount uint16) []byte {
@@ -54,7 +54,7 @@ func TestPackDNSQueryExtended_PaddingAndECS(t *testing.T) {
 
 		query, err := PackDNSQuery(0x1234, "example.com", TypeA)
 		require.NoError(t, err)
-		assert.Equal(t, 0, len(query)%128, "Packet length %d should be padded to multiple of 128", len(query))
+		assert.Equalf(t, 0, len(query)%128, "Packet length %d should be padded to multiple of 128", len(query))
 	})
 
 	t.Run("edns0_client_subnet_ipv4", func(t *testing.T) {

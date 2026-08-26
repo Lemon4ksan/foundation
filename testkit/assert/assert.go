@@ -834,6 +834,24 @@ func Samef(t testing.TB, expected, actual any, format string, args ...any) bool 
 	return Same(t, expected, actual, fmt.Sprintf(format, args...))
 }
 
+// NotSame asserts that two pointers do not reference the same object.
+func NotSame(t testing.TB, expected, actual any, msgAndArgs ...any) bool {
+	t.Helper()
+
+	if expected != actual {
+		return true
+	}
+
+	return fail(t, fmt.Sprintf("Expected and actual reference the same pointer: %p", expected), msgAndArgs...)
+}
+
+// NotSamef asserts that two pointers do not reference the same object with format.
+func NotSamef(t testing.TB, expected, actual any, format string, args ...any) bool {
+	t.Helper()
+	return NotSame(t, expected, actual, fmt.Sprintf(format, args...))
+}
+
+
 // WithinDuration asserts that two times are within delta of each other.
 func WithinDuration(t testing.TB, expected, actual time.Time, delta time.Duration, msgAndArgs ...any) bool {
 	t.Helper()
@@ -1061,3 +1079,52 @@ func Neverf(t testing.TB, condition func() bool, waitFor, tick time.Duration, fo
 	t.Helper()
 	return Never(t, condition, waitFor, tick, fmt.Sprintf(format, args...))
 }
+
+// ElementsMatch asserts that the specified listA (array or slice) contains the same elements as listB.
+// The order of elements is ignored.
+func ElementsMatch(t testing.TB, listA, listB any, msgAndArgs ...any) bool {
+	t.Helper()
+
+	if isNil(listA) && isNil(listB) {
+		return true
+	}
+	if isNil(listA) || isNil(listB) {
+		return fail(t, fmt.Sprintf("elements mismatch:\nexpected: %#v\nactual: %#v", listA, listB), msgAndArgs...)
+	}
+
+	valA := reflect.ValueOf(listA)
+	valB := reflect.ValueOf(listB)
+	if (valA.Kind() != reflect.Array && valA.Kind() != reflect.Slice) ||
+		(valB.Kind() != reflect.Array && valB.Kind() != reflect.Slice) {
+		return fail(t, fmt.Sprintf("%#v and %#v are not both slices or arrays", listA, listB), msgAndArgs...)
+	}
+
+	if valA.Len() != valB.Len() {
+		return fail(t, fmt.Sprintf("elements lengths differ: %d != %d\nexpected: %#v\nactual: %#v", valA.Len(), valB.Len(), listA, listB), msgAndArgs...)
+	}
+
+	visited := make([]bool, valB.Len())
+	for i := 0; i < valA.Len(); i++ {
+		elemA := valA.Index(i).Interface()
+		found := false
+		for j := 0; j < valB.Len(); j++ {
+			if !visited[j] && reflect.DeepEqual(elemA, valB.Index(j).Interface()) {
+				visited[j] = true
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fail(t, fmt.Sprintf("element %#v from listA not found in listB:\nexpected: %#v\nactual: %#v", elemA, listA, listB), msgAndArgs...)
+		}
+	}
+
+	return true
+}
+
+// ElementsMatchf asserts that listA contains the same elements as listB with formatted message.
+func ElementsMatchf(t testing.TB, listA, listB any, format string, args ...any) bool {
+	t.Helper()
+	return ElementsMatch(t, listA, listB, fmt.Sprintf(format, args...))
+}
+

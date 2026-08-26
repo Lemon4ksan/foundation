@@ -11,7 +11,7 @@
 go get github.com/lemon4ksan/foundation
 ```
 
-## ⚡ Benchmarks (Intel Core i5-12400F, Go 1.27)
+## Benchmarks (Intel Core i5-12400F, Go 1.27)
 
 `foundation` combines native **Go 1.27 `simd/archsimd` inlined compiler intrinsics** (with 4-way loop unrolling) and a pure C/LLVM to Plan 9 Go Assembler compiler pipeline (`cmd/c2plan9`), eliminating CGO overhead and running vector instructions directly on hardware registers with 0 memory allocations:
 
@@ -52,7 +52,7 @@ go get github.com/lemon4ksan/foundation
 
 ## Native SIMD & c2plan9 Architecture
 
-`foundation` compiles performance-critical C kernels using Clang/LLVM and translates ELF64 machine code into native Plan 9 Go Assembler (`.s`):
+`foundation` compiles performance-critical C kernels using Clang/LLVM and translates ELF64 machine code into native Plan 9 Go Assembler (`.s`) supporting both x86-64 (AVX2/BMI2) and ARM64 (NEON):
 
 ```text
 foundation/
@@ -68,7 +68,7 @@ foundation/
 │   ├── base64.c                    # Hardware Base64 codec
 │   └── urlencode.c                 # Vector URL percent-unescape scanner
 │
-└── cmd/c2plan9/                    # Automatic C/LLVM -> Plan 9 Assembler tool
+└── cmd/c2plan9/                    # Automatic C/LLVM -> Plan 9 Assembler tool (AMD64 / ARM64)
 ```
 
 ### Adding or Recompiling Kernels
@@ -97,7 +97,22 @@ go generate ./...
 * **`clock` & `rand`**: Monotonic fast-clock without syscalls, lock-free PRNG, and UUIDv7.
 * **`trie`**: Compressed radix search trees for high-speed prefix routing.
 
-### 2. Concurrency & Runtime Orchestration (`async/`)
+### 2. High-Performance Buffers (`bufkit/`)
+* **`AlignedBuffer`**: Cacheline-aligned (64B) and page-aligned (4KB) memory buffers for SIMD and DMA.
+* **`BufferChain`**: Scatter-gather chunked buffer chaining fixed-size blocks with zero-copy splicing.
+* **`RingBuffer`**: Lock-free circular ring buffer optimized for single-producer single-consumer streaming.
+
+### 3. High-Throughput Time & Dates (`timekit/`)
+* **`CoarseNow`**: Atomic monotonic fast-clock continuously refreshed in background goroutines.
+* **`AppendHTTPDate`**: Zero-allocation RFC 7231 / RFC 9110 HTTP-date parser and formatter.
+* **`AppendRFC3339` / `AppendISO8601`**: Zero-allocation ISO 8601 timestamp generator.
+* **`Stopwatch`**: High-precision monotonic stopwatch for micro-benchmarking and request timing.
+
+### 4. Struct & Type Reflection Helpers (`refkit/`)
+* **`tag`**: High-speed struct tag parser with caching, flag inspection, and type conversion.
+* **`check`**: Zero-allocation reflection introspection helpers (`IsNil`, `IsZero`, `IsStruct`, `IsCollection`).
+
+### 5. Concurrency & Runtime Orchestration (`async/`)
 * **`context`**: Flat-array, L1-cache resident `context.Context` with zero allocations.
 * **`lifecycle`**: Topologically sorted DAG service boot, health monitoring, and graceful teardown.
 * **`event`**: Type-safe, non-blocking asynchronous event bus.
@@ -109,19 +124,20 @@ go generate ./...
 * **`scheduler`**: Microsecond-precision recurring task schedulers and cron runners.
 * **`log`**: Zero-allocation structured logging facade with asynchronous flushing.
 
-### 3. Tactical Synchronization & Resilience (`sync/`)
+### 6. Tactical Synchronization & Resilience (`sync/`)
 * **`sync`**: Striped key-based locks, Vegas adaptive limiters, circuit breakers, and jittered backoff.
 
-### 4. Type-Safe Generics & Collections (`generic/`)
-* **`generic`**: Thread-safe `Safe[T]`, in-memory TTL `Cache[K, V]`, monadic `Optional`/`Result`, and lazy `iter.Seq` streams.
+### 7. Type-Safe Generics & Collections (`generic/`)
+* **`generic`**: Thread-safe `Safe[T]`, `LRU[K, V]` cache, `ResourcePool[T]`, in-memory TTL `Cache[K, V]`, monadic `Optional`/`Result`, and lazy `Stream[T]` (`iter.Seq`) pipelines.
 
-### 5. Streaming I/O & Replayable Buffers (`io/`)
+### 8. Streaming I/O & Replayable Buffers (`io/`)
 * **`io`**: Replayable body buffers, allocation-free `BytesReader`, and pooled stream copy helpers.
 
-### 6. Low-Level Network Protocol Primitives (`net/`)
+### 9. Low-Level Network Protocol Primitives (`net/`)
+* **`net/http/header`**: Canonical HTTP header constants, pseudo-headers, MIME media types, and zero-allocation header map parser.
 * **`net`**: HPACK compression, gRPC-Web framing, RFC 9211 Cache-Status, DoH/DoQ/DoT DNS, and Proxy connectors.
 
-### 7. Codecs & Types (`codec/`, `types/`)
+### 10. Codecs & Types (`codec/`, `types/`)
 * **`codec/json`**: High-performance JSON serializer with AVX2 whitespace/escape scanners.
 * **`types/uuid`**: RFC 9562 UUIDv4 and UUIDv7 generators with SIMD formatting and parsing.
 

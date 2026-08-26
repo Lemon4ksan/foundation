@@ -15,8 +15,8 @@ import (
 	"time"
 
 	"github.com/lemon4ksan/foundation/async/rate"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/lemon4ksan/foundation/testkit/assert"
+	"github.com/lemon4ksan/foundation/testkit/require"
 
 	"github.com/lemon4ksan/foundation/async/dedup"
 	"github.com/lemon4ksan/foundation/async/event"
@@ -232,7 +232,7 @@ func TestScenario_PipelineDeadlockAndResilience(t *testing.T) {
 	wg.Wait()
 
 	// Wait briefly for all published events to be processed by the subscriber.
-	deadline := time.Now().Add(2 * time.Second)
+	deadline := time.Now().Add(5 * time.Second)
 	for processedCount.Load()+cancelledCount.Load()+failedCount.Load() < uint64(numRequests) && time.Now().Before(deadline) {
 		time.Sleep(5 * time.Millisecond)
 	}

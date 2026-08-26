@@ -513,6 +513,23 @@ func Samef(t testing.TB, expected, actual any, format string, args ...any) {
 	}
 }
 
+// NotSame asserts two pointers do not reference the same object, failing immediately if they do.
+func NotSame(t testing.TB, expected, actual any, msgAndArgs ...any) {
+	t.Helper()
+	if !assert.NotSame(t, expected, actual, msgAndArgs...) {
+		t.FailNow()
+	}
+}
+
+// NotSamef asserts two pointers do not reference the same object with format, failing immediately if they do.
+func NotSamef(t testing.TB, expected, actual any, format string, args ...any) {
+	t.Helper()
+	if !assert.NotSamef(t, expected, actual, format, args...) {
+		t.FailNow()
+	}
+}
+
+
 // WithinDuration asserts two times are within delta of each other, failing immediately if not.
 func WithinDuration(t testing.TB, expected, actual time.Time, delta time.Duration, msgAndArgs ...any) {
 	t.Helper()
@@ -656,3 +673,20 @@ func Neverf(t testing.TB, condition func() bool, waitFor, tick time.Duration, fo
 		t.FailNow()
 	}
 }
+
+// ElementsMatch asserts that listA contains the same elements as listB, failing immediately if not.
+func ElementsMatch(t testing.TB, listA, listB any, msgAndArgs ...any) {
+	t.Helper()
+	if !assert.ElementsMatch(t, listA, listB, msgAndArgs...) {
+		t.FailNow()
+	}
+}
+
+// ElementsMatchf asserts that listA contains the same elements as listB with format, failing immediately if not.
+func ElementsMatchf(t testing.TB, listA, listB any, format string, args ...any) {
+	t.Helper()
+	if !assert.ElementsMatchf(t, listA, listB, format, args...) {
+		t.FailNow()
+	}
+}
+

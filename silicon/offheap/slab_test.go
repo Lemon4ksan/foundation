@@ -9,8 +9,8 @@ import (
 	"testing"
 	"unsafe"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/lemon4ksan/foundation/testkit/assert"
+	"github.com/lemon4ksan/foundation/testkit/require"
 
 	"github.com/lemon4ksan/foundation/silicon/offheap"
 )
@@ -90,7 +90,7 @@ func TestSlabAllocator_FullCapacity_ReturnsNil(t *testing.T) {
 
 	for i := range cap {
 		p := slab.Alloc()
-		require.NotNil(t, p, "allocation %d must succeed", i)
+		require.NotNilf(t, p, "allocation %d must succeed", i)
 		p.StreamID = uint32(i)
 		ptrs = append(ptrs, p)
 	}
@@ -141,11 +141,11 @@ func TestSlabAllocator_AlignmentCorrectness(t *testing.T) {
 
 	for i := range 128 {
 		p := slab.Alloc()
-		require.NotNil(t, p, "slot %d must be allocatable", i)
+		require.NotNilf(t, p, "slot %d must be allocatable", i)
 
 		align := unsafe.Alignof(*p)
 		addr := uintptr(unsafe.Pointer(p))
-		assert.Equal(t, uintptr(0), addr%align, "slot %d must be naturally aligned", i)
+		assert.Equalf(t, uintptr(0), addr%align, "slot %d must be naturally aligned", i)
 	}
 }
 
@@ -211,7 +211,7 @@ func TestCastBytes_Float32(t *testing.T) {
 	require.Len(t, cast, 4)
 
 	for i, v := range orig {
-		assert.Equal(t, v, cast[i], "element %d mismatch", i)
+		assert.Equalf(t, v, cast[i], "element %d mismatch", i)
 	}
 }
 

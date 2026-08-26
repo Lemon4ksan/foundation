@@ -15,6 +15,15 @@ foundation/
 │   ├── CLOCK_AND_RAND.md     // Monotonic fast-clock, lock-free fastrand, UUID v7
 │   └── TRIE.md               // Compressed radix search trees
 │
+├── bufkit/                   // High-Performance Memory Buffers
+│   └── BUFKIT.md             // Cache-aligned buffers, BufferChain, RingBuffer
+│
+├── timekit/                  // High-Throughput Time & Dates
+│   └── TIMEKIT.md            // CoarseNow, zero-alloc HTTP-date & ISO 8601, Stopwatch
+│
+├── refkit/                   // Struct & Type Reflection Helpers
+│   └── REFKIT.md             // Tag parsing with cache, panic-safe reflection checks
+│
 ├── async/                    // Concurrency & Runtime Orchestration
 │   ├── LIFECYCLE.md          // DAG DFS topological service boot & BehaviorRunner
 │   ├── EVENT.md              // Type-safe non-blocking event bus
@@ -31,13 +40,13 @@ foundation/
 │   └── SYNC.md               // KeyLock, Limiter (Vegas/Keyed), Breaker, Backoff, Semaphore, Lazy, SpinLock
 │
 ├── generic/                  // Type-Safe Generics & Collections
-│   └── GENERIC.md            // Safe[T], Cache[K,V], Optional/Result, Slices, Maps, ApplyOptions
+│   └── GENERIC.md            // Safe[T], Cache[K,V], LRU, Pool, Optional/Result, Slices, Maps, Stream
 │
 ├── io/                       // Streaming I/O & Replayable Buffers
 │   └── IO.md                 // ReplayableBody, BytesReader, Stream Limits, Copy Pools
 │
 └── net/                      // Low-Level Network Protocol Primitives
-    └── NET.md                // HPACK, gRPC-Web, Cache-Status, DoH/DoQ, Proxy, Cookie, PSL
+    └── NET.md                // Header, HPACK, gRPC-Web, Cache-Status, DoH/DoQ, Proxy, Cookie, PSL
 ```
 
 ## Module Index
@@ -53,6 +62,24 @@ foundation/
 | `ringbuf` | [`docs/silicon/RINGBUF.md`](silicon/RINGBUF.md) | Lock-free SPSC / MPMC ring buffers eliminating channel mutex overhead. |
 | `clock`/`rand` | [`docs/silicon/CLOCK_AND_RAND.md`](silicon/CLOCK_AND_RAND.md) | Monotonic clock without syscalls and lock-free sortable UUID v7. |
 | `trie` | [`docs/silicon/TRIE.md`](silicon/TRIE.md) | Compressed radix prefix trees for URL routing and domain lookup. |
+
+### High-Performance Buffers (`bufkit/`)
+
+| Module | Documentation | Focus Area |
+| :--- | :--- | :--- |
+| `bufkit` | [`docs/bufkit/BUFKIT.md`](bufkit/BUFKIT.md) | Cacheline-aligned buffers, scatter-gather BufferChain, and SPSC RingBuffer. |
+
+### High-Throughput Time & Dates (`timekit/`)
+
+| Module | Documentation | Focus Area |
+| :--- | :--- | :--- |
+| `timekit` | [`docs/timekit/TIMEKIT.md`](timekit/TIMEKIT.md) | Coarse atomic clock, zero-alloc HTTP-date / ISO 8601 formatting, stopwatch. |
+
+### Struct & Type Reflection Helpers (`refkit/`)
+
+| Module | Documentation | Focus Area |
+| :--- | :--- | :--- |
+| `refkit` | [`docs/refkit/REFKIT.md`](refkit/REFKIT.md) | High-speed struct tag parsing with cache and panic-safe zero-alloc type checks. |
 
 ### Concurrency & Runtime Orchestration (`async/`)
 
@@ -79,7 +106,7 @@ foundation/
 
 | Module | Documentation | Focus Area |
 | :--- | :--- | :--- |
-| `generic` | [`docs/generic/GENERIC.md`](generic/GENERIC.md) | Thread-safe `Safe[T]`, in-memory TTL `Cache[K, V]`, monadic `Optional`/`Result`, and lazy iterators. |
+| `generic` | [`docs/generic/GENERIC.md`](generic/GENERIC.md) | Thread-safe `Safe[T]`, `LRU[K, V]`, `ResourcePool[T]`, in-memory `Cache[K, V]`, monadic `Optional`/`Result`, and lazy `Stream[T]` iterators. |
 
 ### Streaming I/O & Replay Buffers (`io/`)
 
@@ -91,4 +118,4 @@ foundation/
 
 | Module | Documentation | Focus Area |
 | :--- | :--- | :--- |
-| `net` | [`docs/net/NET.md`](net/NET.md) | HPACK compression, gRPC-Web framing, RFC 9211 Cache-Status, DoH/DoQ/DoT DNS, and Proxy engines. |
+| `net` | [`docs/net/NET.md`](net/NET.md) | Canonical HTTP headers, HPACK compression, gRPC-Web framing, RFC 9211 Cache-Status, DoH/DoQ/DoT DNS, and Proxy engines. |

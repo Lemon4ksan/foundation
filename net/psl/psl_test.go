@@ -7,8 +7,8 @@ package psl_test
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/lemon4ksan/foundation/testkit/assert"
+	"github.com/lemon4ksan/foundation/testkit/require"
 
 	"github.com/lemon4ksan/foundation/net/psl"
 )
@@ -40,8 +40,8 @@ func TestPublicSuffix(t *testing.T) {
 
 	for _, tc := range testCases {
 		gotPS, gotICANN := psl.PublicSuffix(tc.domain)
-		assert.Equal(t, tc.wantPS, gotPS, "domain: %s", tc.domain)
-		assert.Equal(t, tc.wantICANN, gotICANN, "domain: %s", tc.domain)
+		assert.Equalf(t, tc.wantPS, gotPS, "domain: %s", tc.domain)
+		assert.Equalf(t, tc.wantICANN, gotICANN, "domain: %s", tc.domain)
 	}
 }
 
@@ -50,8 +50,8 @@ func TestPublicSuffixBytes(t *testing.T) {
 
 	for _, tc := range testCases {
 		gotPS, gotICANN := psl.PublicSuffixBytes([]byte(tc.domain))
-		assert.Equal(t, tc.wantPS, string(gotPS), "domain: %s", tc.domain)
-		assert.Equal(t, tc.wantICANN, gotICANN, "domain: %s", tc.domain)
+		assert.Equalf(t, tc.wantPS, string(gotPS), "domain: %s", tc.domain)
+		assert.Equalf(t, tc.wantICANN, gotICANN, "domain: %s", tc.domain)
 	}
 }
 

@@ -8,9 +8,7 @@ import (
 	"bytes"
 	"testing"
 
-	testifyAssert "github.com/stretchr/testify/assert"
-
-	ourAssert "github.com/lemon4ksan/foundation/testkit/assert"
+	"github.com/lemon4ksan/foundation/testkit/assert"
 )
 
 type nopTB struct {
@@ -50,72 +48,37 @@ var (
 	intSlice = []int{10, 20, 30, 40, 50, 60, 70, 80, 90, 100}
 )
 
-func BenchmarkAssert_NoError_Testify(b *testing.B) {
-	b.ReportAllocs()
-	for b.Loop() {
-		testifyAssert.NoError(tb, nil)
-	}
-}
-
 func BenchmarkAssert_NoError_Testkit(b *testing.B) {
 	b.ReportAllocs()
 	for b.Loop() {
-		ourAssert.NoError(tb, nil)
-	}
-}
-
-func BenchmarkAssert_Equal_Int_Testify(b *testing.B) {
-	b.ReportAllocs()
-	for b.Loop() {
-		testifyAssert.Equal(tb, 42, 42)
+		assert.NoError(tb, nil)
 	}
 }
 
 func BenchmarkAssert_Equal_Int_Testkit(b *testing.B) {
 	b.ReportAllocs()
 	for b.Loop() {
-		ourAssert.Equal(tb, 42, 42)
-	}
-}
-
-func BenchmarkAssert_Equal_Bytes_Testify(b *testing.B) {
-	b.ReportAllocs()
-	for b.Loop() {
-		testifyAssert.Equal(tb, byteSliceA, byteSliceB)
+		assert.Equal(tb, 42, 42)
 	}
 }
 
 func BenchmarkAssert_Equal_Bytes_Testkit(b *testing.B) {
 	b.ReportAllocs()
 	for b.Loop() {
-		ourAssert.Equal(tb, byteSliceA, byteSliceB)
-	}
-}
-
-func BenchmarkAssert_Equal_Struct_Testify(b *testing.B) {
-	b.ReportAllocs()
-	for b.Loop() {
-		testifyAssert.Equal(tb, sampleA, sampleB)
+		assert.Equal(tb, byteSliceA, byteSliceB)
 	}
 }
 
 func BenchmarkAssert_Equal_Struct_Testkit(b *testing.B) {
 	b.ReportAllocs()
 	for b.Loop() {
-		ourAssert.Equal(tb, sampleA, sampleB)
-	}
-}
-
-func BenchmarkAssert_Contains_Slice_Testify(b *testing.B) {
-	b.ReportAllocs()
-	for b.Loop() {
-		testifyAssert.Contains(tb, intSlice, 80)
+		assert.Equal(tb, sampleA, sampleB)
 	}
 }
 
 func BenchmarkAssert_Contains_Slice_Testkit(b *testing.B) {
 	b.ReportAllocs()
 	for b.Loop() {
-		ourAssert.Contains(tb, intSlice, 80)
+		assert.Contains(tb, intSlice, 80)
 	}
 }
