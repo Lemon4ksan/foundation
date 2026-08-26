@@ -93,7 +93,7 @@ func ScanByteVector(data []byte, target byte) int {
 
 // IndexCRLFCRLFVector searches for "\r\n\r\n" in data.
 func IndexCRLFCRLFVector(data []byte) int {
-	return IndexDoubleCRLF(data)
+	return IndexCRLFCRLF(data)
 }
 
 // FindMatchLengthVector falls back to byte comparison on non-amd64 architectures.
