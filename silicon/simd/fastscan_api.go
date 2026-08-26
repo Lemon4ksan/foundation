@@ -6,43 +6,111 @@
 
 package simd
 
-import "unsafe"
+import (
+	"bytes"
+	"math/bits"
+	"simd/archsimd"
+	"unsafe"
+)
 
-// ScanByteVector scans data for target byte using AVX2 SIMD instructions (32 bytes per cycle).
+// ScanByteVector scans data for target byte using 256-bit AVX2 SIMD instructions with 4-way loop unrolling.
 func ScanByteVector(data []byte, target byte) int {
-	if len(data) == 0 {
+	n := len(data)
+	if n == 0 {
 		return -1
 	}
-	if len(data) >= 32 && hasAVX2 {
-		idx := int64(scan_byte_avx2(
-			uint64(uintptr(unsafe.Pointer(&data[0]))),
-			uint64(len(data)),
-			uint64(target),
-			0, 0, 0,
-		))
-		return int(idx)
+
+	if n >= 32 && hasAVX2 {
+		targetVec := archsimd.BroadcastUint8x32(target)
+		i := 0
+
+		// 4-way loop unrolling (128 bytes per iteration) for high throughput on large buffers
+		for i+128 <= n {
+			c0 := archsimd.LoadUint8x32(data[i : i+32])
+			c1 := archsimd.LoadUint8x32(data[i+32 : i+64])
+			c2 := archsimd.LoadUint8x32(data[i+64 : i+96])
+			c3 := archsimd.LoadUint8x32(data[i+96 : i+128])
+
+			m0 := c0.Equal(targetVec).ToBits()
+			m1 := c1.Equal(targetVec).ToBits()
+			m2 := c2.Equal(targetVec).ToBits()
+			m3 := c3.Equal(targetVec).ToBits()
+
+			if (m0 | m1 | m2 | m3) != 0 {
+				if m0 != 0 {
+					return i + bits.TrailingZeros32(m0)
+				}
+				if m1 != 0 {
+					return i + 32 + bits.TrailingZeros32(m1)
+				}
+				if m2 != 0 {
+					return i + 64 + bits.TrailingZeros32(m2)
+				}
+				return i + 96 + bits.TrailingZeros32(m3)
+			}
+			i += 128
+		}
+
+		// 32-byte chunk processing
+		for i+32 <= n {
+			chunk := archsimd.LoadUint8x32(data[i : i+32])
+			mask := chunk.Equal(targetVec).ToBits()
+			if mask != 0 {
+				return i + bits.TrailingZeros32(mask)
+			}
+			i += 32
+		}
+
+		// Tail scalar processing
+		if i < n {
+			if idx := bytes.IndexByte(data[i:], target); idx >= 0 {
+				return i + idx
+			}
+		}
+		return -1
 	}
 
-	for i, b := range data {
-		if b == target {
-			return i
-		}
-	}
-	return -1
+	return bytes.IndexByte(data, target)
 }
 
-// IndexCRLFCRLFVector searches for "\r\n\r\n" in data and returns the index after the sequence.
+// IndexCRLFCRLFVector searches for "\r\n\r\n" in data and returns the index of the first byte after the sequence.
 func IndexCRLFCRLFVector(data []byte) int {
-	if len(data) < 4 {
+	n := len(data)
+	if n < 4 {
 		return -1
 	}
-	if len(data) >= 32 && hasAVX2 {
-		idx := int64(scan_crlfcrlf_avx2(
-			uint64(uintptr(unsafe.Pointer(&data[0]))),
-			uint64(len(data)),
-			0, 0, 0, 0,
-		))
-		return int(idx)
+
+	if n >= 32 && hasAVX2 {
+		crVec := archsimd.BroadcastUint8x32('\r')
+		i := 0
+
+		for i+32 <= n {
+			chunk := archsimd.LoadUint8x32(data[i : i+32])
+			mask := chunk.Equal(crVec).ToBits()
+
+			for mask != 0 {
+				bit := bits.TrailingZeros32(mask)
+				pos := i + bit
+				if pos+3 < n {
+					val := *(*uint32)(unsafe.Pointer(&data[pos]))
+					if val == CRLFCRLFUint32 {
+						return pos + 4
+					}
+				}
+				mask &= mask - 1
+			}
+			i += 32
+		}
+
+		for ; i < n; i++ {
+			if data[i] == '\r' && i+3 < n {
+				val := *(*uint32)(unsafe.Pointer(&data[i]))
+				if val == CRLFCRLFUint32 {
+					return i + 4
+				}
+			}
+		}
+		return -1
 	}
 
 	return IndexDoubleCRLF(data)

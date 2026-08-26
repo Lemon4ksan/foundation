@@ -1,6 +1,6 @@
 module github.com/lemon4ksan/foundation
 
-go 1.25.4
+go 1.27.0
 
 require (
 	github.com/stretchr/testify v1.11.1

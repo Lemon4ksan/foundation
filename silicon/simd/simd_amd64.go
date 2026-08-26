@@ -7,7 +7,8 @@
 package simd
 
 import (
-	"bytes"
+	"math/bits"
+	"simd/archsimd"
 	"unsafe"
 
 	"golang.org/x/sys/cpu"
@@ -16,12 +17,6 @@ import (
 var hasAVX2 = cpu.X86.HasAVX2
 
 var hasBMI2 = cpu.X86.HasBMI2
-
-//go:noescape
-func indexByteAVX2(b []byte, c byte) int
-
-//go:noescape
-func indexTwoBytesAVX2(b []byte, c1, c2 byte) int
 
 //go:noescape
 func applyFastMaskAVX2(b []byte, mask uint32)
@@ -82,37 +77,37 @@ func StreamCopy256(dst, src []byte) int {
 	return copy(dst, src)
 }
 
-// IndexByteVector scans slice b for byte c using 256-bit AVX2 SIMD hardware assembly instructions.
+// IndexByteVector scans slice b for byte c using 256-bit AVX2 SIMD hardware intrinsics.
 func IndexByteVector(b []byte, c byte) int {
-	if len(b) >= 32 && hasAVX2 {
-		if idx := indexByteAVX2(b, c); idx >= 0 {
-			return idx
-		}
+	return ScanByteVector(b, c)
+}
 
-		rem := len(b) &^ 31
-		if rem < len(b) {
-			if idx := bytes.IndexByte(b[rem:], c); idx >= 0 {
-				return rem + idx
-			}
-		}
-
+// IndexTwoBytesVector searches for the first occurrence of c1 or c2 using 256-bit AVX2 SIMD hardware intrinsics.
+func IndexTwoBytesVector(b []byte, c1, c2 byte) int {
+	n := len(b)
+	if n == 0 {
 		return -1
 	}
 
-	return IndexByteSWAR(b, c)
-}
+	if n >= 32 && hasAVX2 {
+		v1 := archsimd.BroadcastUint8x32(c1)
+		v2 := archsimd.BroadcastUint8x32(c2)
+		i := 0
 
-// IndexTwoBytesVector searches for the first occurrence of c1 or c2 using 256-bit AVX2 SIMD hardware assembly.
-func IndexTwoBytesVector(b []byte, c1, c2 byte) int {
-	if len(b) >= 32 && hasAVX2 {
-		if idx := indexTwoBytesAVX2(b, c1, c2); idx >= 0 {
-			return idx
+		for i+32 <= n {
+			chunk := archsimd.LoadUint8x32(b[i : i+32])
+			m1 := chunk.Equal(v1).ToBits()
+			m2 := chunk.Equal(v2).ToBits()
+			mask := m1 | m2
+			if mask != 0 {
+				return i + bits.TrailingZeros32(mask)
+			}
+			i += 32
 		}
 
-		rem := len(b) &^ 31
-		if rem < len(b) {
-			if idx := IndexByteTwoSWAR(b[rem:], c1, c2); idx >= 0 {
-				return rem + idx
+		if i < n {
+			if idx := IndexByteTwoSWAR(b[i:], c1, c2); idx >= 0 {
+				return i + idx
 			}
 		}
 
