@@ -454,10 +454,11 @@ func buildIsZero(t reflect.Type) func(p unsafe.Pointer) bool {
 
 func compilePtrEncoder(t reflect.Type) (encoderFunc, error) {
 	elemType := t.Elem()
-	elemEnc, err := getEncoder(elemType)
-	if err != nil {
-		return nil, err
-	}
+	var (
+		once    sync.Once
+		elemEnc encoderFunc
+		elemErr error
+	)
 
 	return func(e *encodeState, p unsafe.Pointer) error {
 		ptr := *(*unsafe.Pointer)(p)
@@ -466,22 +467,37 @@ func compilePtrEncoder(t reflect.Type) (encoderFunc, error) {
 			return nil
 		}
 
+		once.Do(func() {
+			elemEnc, elemErr = getEncoder(elemType)
+		})
+		if elemErr != nil {
+			return elemErr
+		}
+
 		return elemEnc(e, ptr)
 	}, nil
 }
 
 func compileSliceEncoder(t reflect.Type) (encoderFunc, error) {
 	elemType := t.Elem()
-	elemEnc, err := getEncoder(elemType)
-	if err != nil {
-		return nil, err
-	}
+	var (
+		once    sync.Once
+		elemEnc encoderFunc
+		elemErr error
+	)
 
 	return func(e *encodeState, p unsafe.Pointer) error {
 		sliceVal := reflect.NewAt(t, p).Elem()
 		if sliceVal.IsNil() {
 			e.buf = append(e.buf, "null"...)
 			return nil
+		}
+
+		once.Do(func() {
+			elemEnc, elemErr = getEncoder(elemType)
+		})
+		if elemErr != nil {
+			return elemErr
 		}
 
 		e.buf = append(e.buf, '[')

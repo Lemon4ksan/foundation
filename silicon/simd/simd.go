@@ -195,12 +195,12 @@ func StreamCopy256(dst, src []byte) int {
 	return copy(dst, src)
 }
 
-// IndexByteVector finds the first instance of c in b using vector/SIMD algorithms.
+// IndexByteVector finds the first instance of c in b using SIMD/vector algorithms.
 func IndexByteVector(b []byte, c byte) int {
 	return bytes.IndexByte(b, c)
 }
 
-// IndexTwoBytesVector finds the first instance of c1 or c2 in b using vector/SIMD algorithms.
+// IndexTwoBytesVector finds the first instance of c1 or c2 in b using SIMD/vector algorithms.
 func IndexTwoBytesVector(b []byte, c1, c2 byte) int {
 	return IndexByteTwoSWAR(b, c1, c2)
 }
