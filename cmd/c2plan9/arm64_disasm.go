@@ -180,6 +180,77 @@ func cleanPlan9ARM64Syntax(s string) string {
 		s = strings.ReplaceAll(s, "(SB)", "")
 	}
 
+	// Translate unscaled loads, stores, vector reductions, and barriers
+	parts := strings.SplitN(s, " ", 2)
+	if len(parts) >= 1 {
+		op := parts[0]
+		args := ""
+
+		if len(parts) == 2 {
+			args = parts[1]
+		}
+
+		switch op {
+		// Unscaled Loads (LDUR -> MOV)
+		case "LDURBW", "LDURB":
+			return "MOVBU " + args
+		case "LDURSBW", "LDURSB":
+			return "MOVB " + args
+		case "LDURHW", "LDURH":
+			return "MOVHU " + args
+		case "LDURSHW", "LDURSH":
+			return "MOVH " + args
+		case "LDURW", "LDURSW":
+			return "MOVW " + args
+		case "LDUR":
+			if strings.Contains(args, "F") || strings.Contains(args, "V") || strings.Contains(args, "Q") {
+				return "FMOVQ " + args
+			}
+
+			return "MOVD " + args
+		case "LDURD":
+			return "FMOVD " + args
+		case "LDURS":
+			return "FMOVS " + args
+		case "LDURQ":
+			return "FMOVQ " + args
+
+		// Unscaled Stores (STUR -> MOV)
+		case "STURBW", "STURB":
+			return "MOVB " + args
+		case "STURHW", "STURH":
+			return "MOVH " + args
+		case "STURW":
+			return "MOVW " + args
+		case "STUR":
+			if strings.Contains(args, "F") || strings.Contains(args, "V") || strings.Contains(args, "Q") {
+				return "FMOVQ " + args
+			}
+
+			return "MOVD " + args
+		case "STURD":
+			return "FMOVD " + args
+		case "STURS":
+			return "FMOVS " + args
+		case "STURQ":
+			return "FMOVQ " + args
+
+		// Vector reductions / NEON across-vector operations
+		case "VMAXV":
+			return "UMAXV " + args
+		case "VMINV":
+			return "UMINV " + args
+		case "VADDV":
+			return "ADDV " + args
+
+		// Barrier cleanups
+		case "ISB":
+			if args == "$15" || args == "$0xf" || args == "15" {
+				return "ISB"
+			}
+		}
+	}
+
 	return s
 }
 
