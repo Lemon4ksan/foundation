@@ -63,7 +63,7 @@ func TestC2Plan9StackSpillEndToEnd(t *testing.T) {
 		},
 	}
 
-	asmBytes, err := EmitPlan9Assembly("spilltest", obj.Symbols, sigs, obj.ROData, obj.Relocations, "amd64")
+	asmBytes, err := EmitPlan9Assembly("testspill", obj.Symbols, sigs, obj.ROData, obj.Relocations, "amd64")
 	if err != nil {
 		t.Fatalf("failed to emit Plan 9 assembly: %v", err)
 	}
@@ -91,7 +91,7 @@ func TestC2Plan9StackSpillEndToEnd(t *testing.T) {
 
 	stubCode := `//go:build amd64 && !purego
 
-package main
+package testspill
 
 //go:noescape
 func FastStackSpillKernel(a, b, c, d uint64) uint64
@@ -102,7 +102,7 @@ func FastStackSpillKernel(a, b, c, d uint64) uint64
 
 	testCode := `//go:build amd64 && !purego
 
-package main
+package testspill
 
 import (
 	"testing"

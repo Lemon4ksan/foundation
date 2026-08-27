@@ -82,11 +82,3 @@ func ParallelExtract64(val, mask uint64) uint64 {
 func TrailingZeros32(x uint32) int {
 	return bits.TrailingZeros32(x)
 }
-
-func extractBitsHW(val, mask uint64) uint64 {
-	return ParallelExtract64(val, mask)
-}
-
-func depositBitsHW(val, mask uint64) uint64 {
-	return depositBitsSWAR(val, mask)
-}

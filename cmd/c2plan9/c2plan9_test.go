@@ -73,7 +73,7 @@ func TestC2Plan9EndToEnd(t *testing.T) {
 		},
 	}
 
-	asmBytes, err := EmitPlan9Assembly("simd", obj.Symbols, sigs, obj.ROData, obj.Relocations, "amd64")
+	asmBytes, err := EmitPlan9Assembly("testkernel", obj.Symbols, sigs, obj.ROData, obj.Relocations, "amd64")
 	if err != nil {
 		t.Fatalf("failed to emit Plan 9 assembly: %v", err)
 	}
@@ -97,7 +97,7 @@ func TestC2Plan9EndToEnd(t *testing.T) {
 
 	stubCode := `//go:build amd64 && !purego
 
-package main
+package testkernel
 
 import "unsafe"
 
@@ -110,7 +110,7 @@ func FastAddAccumulate(a, b unsafe.Pointer, n uint64) uint64
 
 	testCode := `//go:build amd64 && !purego
 
-package main
+package testkernel
 
 import (
 	"testing"

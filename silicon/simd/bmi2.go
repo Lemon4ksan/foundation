@@ -8,12 +8,12 @@ import "math/bits"
 
 // ExtractBits extracts contiguous bits from val according to mask (BMI2 PEXT hardware or SWAR fallback).
 func ExtractBits(val, mask uint64) uint64 {
-	return extractBitsHW(val, mask)
+	return ParallelExtract64(val, mask)
 }
 
 // DepositBits deposits contiguous bits from val into mask locations (BMI2 PDEP hardware or SWAR fallback).
 func DepositBits(val, mask uint64) uint64 {
-	return depositBitsHW(val, mask)
+	return depositBitsSWAR(val, mask)
 }
 
 // CountTrailingZeros returns the number of trailing zero bits in x (TZCNT).

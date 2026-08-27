@@ -67,7 +67,7 @@ func TestC2Plan9RODataEndToEnd(t *testing.T) {
 		},
 	}
 
-	asmBytes, err := EmitPlan9Assembly("hexlut", obj.Symbols, sigs, obj.ROData, obj.Relocations, "amd64")
+	asmBytes, err := EmitPlan9Assembly("testhex", obj.Symbols, sigs, obj.ROData, obj.Relocations, "amd64")
 	if err != nil {
 		t.Fatalf("failed to emit Plan 9 assembly: %v", err)
 	}
@@ -91,7 +91,7 @@ func TestC2Plan9RODataEndToEnd(t *testing.T) {
 
 	stubCode := `//go:build amd64 && !purego
 
-package main
+package testhex
 
 //go:noescape
 func FastHexEncodeByte(val uint64) uint64
@@ -102,7 +102,7 @@ func FastHexEncodeByte(val uint64) uint64
 
 	testCode := `//go:build amd64 && !purego
 
-package main
+package testhex
 
 import (
 	"testing"
