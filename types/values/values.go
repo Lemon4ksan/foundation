@@ -22,10 +22,8 @@ var (
 	bNull = []byte("null")
 )
 
-var (
-	// ErrInvalidFormat is returned when a raw string representation fails parsing into a structured type.
-	ErrInvalidFormat = errors.New("values: invalid value format")
-)
+// ErrInvalidFormat is returned when a raw string representation fails parsing into a structured type.
+var ErrInvalidFormat = errors.New("values: invalid value format")
 
 // ValueError describes an error encountered during structure reflection or value unmarshaling.
 type ValueError struct {

@@ -250,7 +250,12 @@ func (lim *Limiter) WaitN(ctx context.Context, n int) (err error) {
 }
 
 // wait is the internal implementation of WaitN.
-func (lim *Limiter) wait(ctx context.Context, n int, t time.Time, newTimer func(d time.Duration) (<-chan time.Time, func() bool, func())) error {
+func (lim *Limiter) wait(
+	ctx context.Context,
+	n int,
+	t time.Time,
+	newTimer func(d time.Duration) (<-chan time.Time, func() bool, func()),
+) error {
 	lim.mu.Lock()
 	burst := lim.burst
 	limit := lim.limit

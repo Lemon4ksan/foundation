@@ -12,10 +12,8 @@ import (
 	"strings"
 )
 
-var (
-	// ErrInvalidFileURI indicates that a URI cannot be converted to a local OS file path.
-	ErrInvalidFileURI = errors.New("pathkit: invalid file:// URI")
-)
+// ErrInvalidFileURI indicates that a URI cannot be converted to a local OS file path.
+var ErrInvalidFileURI = errors.New("pathkit: invalid file:// URI")
 
 // PathToURI converts a local OS file path into an RFC 8089 compliant file:// URI.
 // On Windows, drive paths like "C:\foo\bar" become "file:///C:/foo/bar".

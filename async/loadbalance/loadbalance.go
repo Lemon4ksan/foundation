@@ -46,8 +46,7 @@ type Target[T any] struct {
 	activeConns atomic.Int64
 	failCount   atomic.Uint32
 	unhealthy   atomic.Bool
-	lastFailed  atomic.Int64  // UnixNano
-	latencyEWMA atomic.Uint64 // nanoseconds
+	lastFailed  atomic.Int64 // UnixNano
 }
 
 // NewTarget constructs a new [Target] wrapper with weight >= 1.

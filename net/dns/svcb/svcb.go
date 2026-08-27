@@ -105,9 +105,11 @@ func ParseParamKey(name string) (SvcParamKey, error) {
 
 // Standard parsing and validation errors for SVCB/HTTPS resource records.
 var (
-	ErrTruncatedRDATA     = errors.New("svcb: truncated RDATA wire format payload")
-	ErrMalformedDomain    = errors.New("svcb: malformed TargetName domain wire format")
-	ErrUnsortedParamKeys  = errors.New("svcb: SvcParamKeys are not in strictly increasing numeric order (RFC 9460 §2.2)")
+	ErrTruncatedRDATA    = errors.New("svcb: truncated RDATA wire format payload")
+	ErrMalformedDomain   = errors.New("svcb: malformed TargetName domain wire format")
+	ErrUnsortedParamKeys = errors.New(
+		"svcb: SvcParamKeys are not in strictly increasing numeric order (RFC 9460 §2.2)",
+	)
 	ErrDuplicateParamKey  = errors.New("svcb: duplicate SvcParamKey in RR (RFC 9460 §2.2)")
 	ErrMalformedParam     = errors.New("svcb: malformed SvcParam value length or payload")
 	ErrIncompatibleRecord = errors.New("svcb: client missing required mandatory SvcParamKeys (RFC 9460 §8)")

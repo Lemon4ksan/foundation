@@ -58,7 +58,7 @@ func (e *GRPCWebError) Error() string {
 			return fmt.Sprintf("grpc-web status %s: %s", e.StatusCode, e.StatusMsg)
 		}
 
-		return fmt.Sprintf("grpc-web status %s", e.StatusCode)
+		return "grpc-web status " + e.StatusCode
 	}
 
 	if e.Op != "" {

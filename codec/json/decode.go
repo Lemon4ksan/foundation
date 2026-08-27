@@ -99,7 +99,7 @@ func compileDecoder(t reflect.Type) (decodeFunc, error) {
 		return decodeFloat64, nil
 	case reflect.String:
 		return decodeString, nil
-	case reflect.Ptr:
+	case reflect.Pointer:
 		return compilePtrDecoder(t)
 	case reflect.Slice:
 		if t.Elem().Kind() == reflect.Uint8 {
@@ -627,6 +627,9 @@ func compileStructDecoder(t reflect.Type) (decodeFunc, error) {
 			}
 
 			if !first {
+				if cursor >= len(data) {
+					return cursor, errUnexpectedEnd
+				}
 				if data[cursor] != ',' {
 					return cursor, fmt.Errorf("json: expected ',', got %q", data[cursor])
 				}
@@ -634,6 +637,10 @@ func compileStructDecoder(t reflect.Type) (decodeFunc, error) {
 				cursor = skipWhitespace(data, cursor)
 			}
 			first = false
+
+			if cursor >= len(data) {
+				return cursor, errUnexpectedEnd
+			}
 
 			keyRaw, newCursor, hasEscape, err := scanString(data, cursor)
 			if err != nil {
@@ -651,7 +658,10 @@ func compileStructDecoder(t reflect.Type) (decodeFunc, error) {
 			}
 
 			cursor = skipWhitespace(data, cursor)
-			if cursor >= len(data) || data[cursor] != ':' {
+			if cursor >= len(data) {
+				return cursor, errUnexpectedEnd
+			}
+			if data[cursor] != ':' {
 				return cursor, fmt.Errorf("json: expected ':', got %q", data[cursor])
 			}
 			cursor++
@@ -770,6 +780,9 @@ func compileSliceDecoder(t reflect.Type) (decodeFunc, error) {
 			}
 
 			if !first {
+				if cursor >= len(data) {
+					return cursor, errUnexpectedEnd
+				}
 				if data[cursor] != ',' {
 					return cursor, fmt.Errorf("json: expected ',', got %q", data[cursor])
 				}
@@ -824,6 +837,9 @@ func compileArrayDecoder(t reflect.Type) (decodeFunc, error) {
 			}
 
 			if !first {
+				if cursor >= len(data) {
+					return cursor, errUnexpectedEnd
+				}
 				if data[cursor] != ',' {
 					return cursor, fmt.Errorf("json: expected ',', got %q", data[cursor])
 				}
@@ -923,6 +939,9 @@ func compileMapDecoder(t reflect.Type) (decodeFunc, error) {
 			}
 
 			if !first {
+				if cursor >= len(data) {
+					return cursor, errUnexpectedEnd
+				}
 				if data[cursor] != ',' {
 					return cursor, fmt.Errorf("json: expected ',', got %q", data[cursor])
 				}
@@ -930,6 +949,10 @@ func compileMapDecoder(t reflect.Type) (decodeFunc, error) {
 				cursor = skipWhitespace(data, cursor)
 			}
 			first = false
+
+			if cursor >= len(data) {
+				return cursor, errUnexpectedEnd
+			}
 
 			keyRaw, newCursor, hasEscape, err := scanString(data, cursor)
 			if err != nil {
@@ -947,7 +970,10 @@ func compileMapDecoder(t reflect.Type) (decodeFunc, error) {
 			}
 
 			cursor = skipWhitespace(data, cursor)
-			if cursor >= len(data) || data[cursor] != ':' {
+			if cursor >= len(data) {
+				return cursor, errUnexpectedEnd
+			}
+			if data[cursor] != ':' {
 				return cursor, fmt.Errorf("json: expected ':', got %q", data[cursor])
 			}
 			cursor++

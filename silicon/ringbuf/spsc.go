@@ -60,7 +60,7 @@ func (s *SPSCRingBuffer[T]) Push(item *T) bool {
 	}
 
 	idx := head & s.mask
-	_ = s.buffer[idx]
+	_ = &s.buffer[idx]
 	s.buffer[idx].Store(item)
 	s.head.Store(head + 1)
 
@@ -80,7 +80,7 @@ func (s *SPSCRingBuffer[T]) Pop() *T {
 	}
 
 	idx := tail & s.mask
-	_ = s.buffer[idx]
+	_ = &s.buffer[idx]
 	item := s.buffer[idx].Load()
 	s.buffer[idx].Store(nil)
 	s.tail.Store(tail + 1)

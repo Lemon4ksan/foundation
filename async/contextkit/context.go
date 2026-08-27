@@ -114,7 +114,7 @@ func (c *Context) Value(key any) any {
 // Set attaches or updates key and val in-place within the current [Context].
 //
 // This provides true zero-allocation context enrichment in single-goroutine request pipelines.
-func (c *Context) Set(key any, val any) *Context {
+func (c *Context) Set(key, val any) *Context {
 	if c == nil || key == nil {
 		return c
 	}
@@ -144,7 +144,7 @@ func (c *Context) Set(key any, val any) *Context {
 }
 
 // WithValue returns a copy of parent carrying key and val in a flat structure.
-func WithValue(parent context.Context, key any, val any) *Context {
+func WithValue(parent context.Context, key, val any) *Context {
 	if parent == nil {
 		parent = context.Background()
 	}

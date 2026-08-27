@@ -69,12 +69,12 @@ func IsCompleteFast(buf []byte, prevLen int) bool {
 	_ = tail[n-1]
 
 	for i := 0; i < n; i++ {
-		b := tail[i]
-		if b == '\r' {
+		switch tail[i] {
+		case '\r':
 			if i+3 < n && *(*uint32)(unsafe.Pointer(&tail[i])) == CRLFCRLFUint32 {
 				return true
 			}
-		} else if b == '\n' {
+		case '\n':
 			if i+1 < n && tail[i+1] == '\n' {
 				return true
 			}

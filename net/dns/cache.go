@@ -211,7 +211,8 @@ func (c *InMemoryDNSCache) LookupIPAddr(ctx context.Context, host string) ([]net
 		}
 
 		// Fast-path for failure recheck window (RFC 8767 §5)
-		if c.serveStale && !entry.isNegative && now.Before(entry.staleUntil) && !entry.lastFailure.IsZero() && now.Sub(entry.lastFailure) < FailureRecheckInterval {
+		if c.serveStale && !entry.isNegative && now.Before(entry.staleUntil) && !entry.lastFailure.IsZero() &&
+			now.Sub(entry.lastFailure) < FailureRecheckInterval {
 			return entry.ips, nil
 		}
 	}
@@ -245,7 +246,8 @@ func (c *InMemoryDNSCache) LookupIPAddr(ctx context.Context, host string) ([]net
 		// Perform upstream lookup with client response timer (RFC 8767 §5)
 		var cancel context.CancelFunc
 		resolveCtx := ctx
-		if c.serveStale && cachedOK && !cachedEntry.isNegative && currentNow.Before(cachedEntry.staleUntil) && c.clientResponseTimeout > 0 {
+		if c.serveStale && cachedOK && !cachedEntry.isNegative && currentNow.Before(cachedEntry.staleUntil) &&
+			c.clientResponseTimeout > 0 {
 			resolveCtx, cancel = context.WithTimeout(ctx, c.clientResponseTimeout)
 		}
 		if cancel != nil {
@@ -259,7 +261,8 @@ func (c *InMemoryDNSCache) LookupIPAddr(ctx context.Context, host string) ([]net
 			if extErr == nil && len(records) > 0 {
 				return c.storeRecords(host, records)
 			}
-			if extErr != nil && c.serveStale && cachedOK && !cachedEntry.isNegative && currentNow.Before(cachedEntry.staleUntil) {
+			if extErr != nil && c.serveStale && cachedOK && !cachedEntry.isNegative &&
+				currentNow.Before(cachedEntry.staleUntil) {
 				cachedEntry.lastFailure = currentNow
 				c.cache.Store(host, cachedEntry)
 				return cachedEntry.ips, nil

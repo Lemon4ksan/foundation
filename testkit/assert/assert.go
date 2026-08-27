@@ -20,7 +20,7 @@ import (
 )
 
 // AnError is an error value suitable for testing error handling.
-var AnError = errors.New("assert.AnError general error for testing")
+var AnError = errors.New("assert.AnError general error for testing") //nolint:staticcheck,revive
 
 // formatMessage formats optional message arguments.
 func formatMessage(msgAndArgs ...any) string {
@@ -252,7 +252,13 @@ func isNil(object any) bool {
 
 	val := reflect.ValueOf(object)
 	switch val.Kind() {
-	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice, reflect.UnsafePointer:
+	case reflect.Chan,
+		reflect.Func,
+		reflect.Interface,
+		reflect.Map,
+		reflect.Pointer,
+		reflect.Slice,
+		reflect.UnsafePointer:
 		return val.IsNil()
 	default:
 		return false
@@ -298,18 +304,24 @@ func EqualError(t testing.TB, err error, errString string, msgAndArgs ...any) bo
 	t.Helper()
 
 	if err == nil {
-		return fail(t, fmt.Sprintf("An error is expected but got nil (expected error string: %q)", errString), msgAndArgs...)
+		return fail(
+			t,
+			fmt.Sprintf("An error is expected but got nil (expected error string: %q)", errString),
+			msgAndArgs...)
 	}
 
 	if err.Error() == errString {
 		return true
 	}
 
-	return fail(t, fmt.Sprintf("Error line does not match:\nexpected: %q\nactual  : %q", errString, err.Error()), msgAndArgs...)
+	return fail(
+		t,
+		fmt.Sprintf("Error line does not match:\nexpected: %q\nactual  : %q", errString, err.Error()),
+		msgAndArgs...)
 }
 
 // EqualErrorf asserts that err is not nil and has exact error string with format.
-func EqualErrorf(t testing.TB, err error, errString string, format string, args ...any) bool {
+func EqualErrorf(t testing.TB, err error, errString, format string, args ...any) bool {
 	t.Helper()
 	return EqualError(t, err, errString, fmt.Sprintf(format, args...))
 }
@@ -322,7 +334,10 @@ func ErrorIs(t testing.TB, err, target error, msgAndArgs ...any) bool {
 		return true
 	}
 
-	return fail(t, fmt.Sprintf("Target error should be in err chain:\nexpected: %q\nin chain: %+v", target, err), msgAndArgs...)
+	return fail(
+		t,
+		fmt.Sprintf("Target error should be in err chain:\nexpected: %q\nin chain: %+v", target, err),
+		msgAndArgs...)
 }
 
 // ErrorIsf asserts that target is in err's chain with format.
@@ -370,7 +385,10 @@ func ErrorContains(t testing.TB, err error, contains string, msgAndArgs ...any) 
 	t.Helper()
 
 	if err == nil {
-		return fail(t, fmt.Sprintf("An error is expected but got nil (expected substring: %q)", contains), msgAndArgs...)
+		return fail(
+			t,
+			fmt.Sprintf("An error is expected but got nil (expected substring: %q)", contains),
+			msgAndArgs...)
 	}
 
 	if strings.Contains(err.Error(), contains) {
@@ -381,7 +399,7 @@ func ErrorContains(t testing.TB, err error, contains string, msgAndArgs ...any) 
 }
 
 // ErrorContainsf asserts that err contains the given substring with format.
-func ErrorContainsf(t testing.TB, err error, contains string, format string, args ...any) bool {
+func ErrorContainsf(t testing.TB, err error, contains, format string, args ...any) bool {
 	t.Helper()
 	return ErrorContains(t, err, contains, fmt.Sprintf(format, args...))
 }
@@ -722,7 +740,10 @@ func InDelta(t testing.TB, expected, actual any, delta float64, msgAndArgs ...an
 	actF, ok2 := toFloat64(actual)
 
 	if !ok1 || !ok2 {
-		return fail(t, fmt.Sprintf("Parameters must be numerical: expected=%#v, actual=%#v", expected, actual), msgAndArgs...)
+		return fail(
+			t,
+			fmt.Sprintf("Parameters must be numerical: expected=%#v, actual=%#v", expected, actual),
+			msgAndArgs...)
 	}
 
 	if math.IsNaN(expF) || math.IsNaN(actF) {
@@ -776,7 +797,7 @@ func JSONEq(t testing.TB, expected, actual string, msgAndArgs ...any) bool {
 }
 
 // JSONEqf asserts that two JSON strings are equivalent with format.
-func JSONEqf(t testing.TB, expected, actual string, format string, args ...any) bool {
+func JSONEqf(t testing.TB, expected, actual, format string, args ...any) bool {
 	t.Helper()
 	return JSONEq(t, expected, actual, fmt.Sprintf(format, args...))
 }
@@ -851,7 +872,6 @@ func NotSamef(t testing.TB, expected, actual any, format string, args ...any) bo
 	return NotSame(t, expected, actual, fmt.Sprintf(format, args...))
 }
 
-
 // WithinDuration asserts that two times are within delta of each other.
 func WithinDuration(t testing.TB, expected, actual time.Time, delta time.Duration, msgAndArgs ...any) bool {
 	t.Helper()
@@ -865,7 +885,16 @@ func WithinDuration(t testing.TB, expected, actual time.Time, delta time.Duratio
 		return true
 	}
 
-	return fail(t, fmt.Sprintf("Max difference between %v and %v allowed is %v, but difference was %v", expected, actual, delta, diff), msgAndArgs...)
+	return fail(
+		t,
+		fmt.Sprintf(
+			"Max difference between %v and %v allowed is %v, but difference was %v",
+			expected,
+			actual,
+			delta,
+			diff,
+		),
+		msgAndArgs...)
 }
 
 // WithinDurationf asserts that two times are within delta of each other with format.
@@ -887,7 +916,7 @@ func FileExists(t testing.TB, filepath string, msgAndArgs ...any) bool {
 }
 
 // FileExistsf asserts that a file exists with format.
-func FileExistsf(t testing.TB, filepath string, format string, args ...any) bool {
+func FileExistsf(t testing.TB, filepath, format string, args ...any) bool {
 	t.Helper()
 	return FileExists(t, filepath, fmt.Sprintf(format, args...))
 }
@@ -905,7 +934,7 @@ func NoFileExists(t testing.TB, filepath string, msgAndArgs ...any) bool {
 }
 
 // NoFileExistsf asserts that a file does not exist with format.
-func NoFileExistsf(t testing.TB, filepath string, format string, args ...any) bool {
+func NoFileExistsf(t testing.TB, filepath, format string, args ...any) bool {
 	t.Helper()
 	return NoFileExists(t, filepath, fmt.Sprintf(format, args...))
 }
@@ -923,7 +952,7 @@ func NoDirExists(t testing.TB, dirpath string, msgAndArgs ...any) bool {
 }
 
 // NoDirExistsf asserts that a directory does not exist with format.
-func NoDirExistsf(t testing.TB, dirpath string, format string, args ...any) bool {
+func NoDirExistsf(t testing.TB, dirpath, format string, args ...any) bool {
 	t.Helper()
 	return NoDirExists(t, dirpath, fmt.Sprintf(format, args...))
 }
@@ -1100,7 +1129,16 @@ func ElementsMatch(t testing.TB, listA, listB any, msgAndArgs ...any) bool {
 	}
 
 	if valA.Len() != valB.Len() {
-		return fail(t, fmt.Sprintf("elements lengths differ: %d != %d\nexpected: %#v\nactual: %#v", valA.Len(), valB.Len(), listA, listB), msgAndArgs...)
+		return fail(
+			t,
+			fmt.Sprintf(
+				"elements lengths differ: %d != %d\nexpected: %#v\nactual: %#v",
+				valA.Len(),
+				valB.Len(),
+				listA,
+				listB,
+			),
+			msgAndArgs...)
 	}
 
 	visited := make([]bool, valB.Len())
@@ -1115,7 +1153,15 @@ func ElementsMatch(t testing.TB, listA, listB any, msgAndArgs ...any) bool {
 			}
 		}
 		if !found {
-			return fail(t, fmt.Sprintf("element %#v from listA not found in listB:\nexpected: %#v\nactual: %#v", elemA, listA, listB), msgAndArgs...)
+			return fail(
+				t,
+				fmt.Sprintf(
+					"element %#v from listA not found in listB:\nexpected: %#v\nactual: %#v",
+					elemA,
+					listA,
+					listB,
+				),
+				msgAndArgs...)
 		}
 	}
 
@@ -1127,4 +1173,3 @@ func ElementsMatchf(t testing.TB, listA, listB any, format string, args ...any) 
 	t.Helper()
 	return ElementsMatch(t, listA, listB, fmt.Sprintf(format, args...))
 }
-

@@ -26,7 +26,7 @@ replayable := iokit.NewReplayableBody(resp.Body, iokit.ReplayConfig{
 })
 
 // Read 1st time (e.g. calculating checksum):
-hash := sha256.Sum256(fio.ReadAll(replayable))
+hash := sha256.Sum256(iokit.ReadAll(replayable))
 
 // Rewind and read 2nd time (e.g. unmarshaling JSON):
 replayable.Rewind()

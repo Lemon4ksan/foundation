@@ -335,7 +335,7 @@ func ValidatePublicName(name string) error {
 
 // CalculatePadding computes the recommended padding bytes for EncodedClientHelloInner (draft-ietf-tls-esni-22 §6.1.3).
 // maxNameLen is ECHConfigContents.maximum_name_length.
-func CalculatePadding(innerLen int, sniLen int, maxNameLen uint8) int {
+func CalculatePadding(innerLen, sniLen int, maxNameLen uint8) int {
 	padding := 0
 	lMax := int(maxNameLen)
 

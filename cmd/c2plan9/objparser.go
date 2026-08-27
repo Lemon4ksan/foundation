@@ -10,6 +10,7 @@ import (
 	"debug/macho"
 	"debug/pe"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -76,7 +77,7 @@ func parseELF(data []byte) (*ParsedObject, error) {
 
 	textSec := f.Section(".text")
 	if textSec == nil {
-		return nil, fmt.Errorf("ELF object missing .text section")
+		return nil, errors.New("ELF object missing .text section")
 	}
 
 	textBytes, err := textSec.Data()
@@ -221,7 +222,7 @@ func parsePE(data []byte) (*ParsedObject, error) {
 
 	textSec := f.Section(".text")
 	if textSec == nil {
-		return nil, fmt.Errorf("PE object missing .text section")
+		return nil, errors.New("PE object missing .text section")
 	}
 
 	textBytes, err := textSec.Data()
@@ -315,7 +316,7 @@ func parseMachO(data []byte) (*ParsedObject, error) {
 
 	textSec := f.Section("__text")
 	if textSec == nil {
-		return nil, fmt.Errorf("Mach-O object missing __text section")
+		return nil, errors.New("Mach-O object missing __text section")
 	}
 
 	textBytes, err := textSec.Data()
@@ -361,7 +362,7 @@ type readerAtBytes []byte
 
 func (r readerAtBytes) ReadAt(p []byte, off int64) (n int, err error) {
 	if off >= int64(len(r)) {
-		return 0, fmt.Errorf("offset out of bounds")
+		return 0, errors.New("offset out of bounds")
 	}
 	n = copy(p, r[off:])
 	return n, nil

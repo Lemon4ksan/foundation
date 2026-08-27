@@ -8,10 +8,10 @@ package simd
 
 import (
 	"math/bits"
-	"simd/archsimd"
 	"unsafe"
 
 	"golang.org/x/sys/cpu"
+	"simd/archsimd"
 )
 
 var hasAVX2 = cpu.X86.HasAVX2

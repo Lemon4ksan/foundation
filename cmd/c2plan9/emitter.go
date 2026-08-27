@@ -20,7 +20,14 @@ type FuncSignature struct {
 }
 
 // EmitPlan9Assembly formats disassembled functions into a complete Plan 9 .s file.
-func EmitPlan9Assembly(pkg string, syms []Symbol, sigs map[string]FuncSignature, rodata []byte, relocs []Relocation, arch string) ([]byte, error) {
+func EmitPlan9Assembly(
+	pkg string,
+	syms []Symbol,
+	sigs map[string]FuncSignature,
+	rodata []byte,
+	relocs []Relocation,
+	arch string,
+) ([]byte, error) {
 	if arch == "" {
 		arch = "amd64"
 	}
@@ -153,19 +160,20 @@ func EmitROData(rodata []byte) string {
 	n := len(rodata)
 	for off < n {
 		rem := n - off
-		if rem >= 8 {
+		switch {
+		case rem >= 8:
 			v := binary.LittleEndian.Uint64(rodata[off : off+8])
 			fmt.Fprintf(&b, "DATA ·rodata<>+%d(SB)/8, $0x%016x\n", off, v)
 			off += 8
-		} else if rem >= 4 {
+		case rem >= 4:
 			v := binary.LittleEndian.Uint32(rodata[off : off+4])
 			fmt.Fprintf(&b, "DATA ·rodata<>+%d(SB)/4, $0x%08x\n", off, v)
 			off += 4
-		} else if rem >= 2 {
+		case rem >= 2:
 			v := binary.LittleEndian.Uint16(rodata[off : off+2])
 			fmt.Fprintf(&b, "DATA ·rodata<>+%d(SB)/2, $0x%04x\n", off, v)
 			off += 2
-		} else {
+		default:
 			v := rodata[off]
 			fmt.Fprintf(&b, "DATA ·rodata<>+%d(SB)/1, $0x%02x\n", off, v)
 			off++

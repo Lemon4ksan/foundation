@@ -18,11 +18,11 @@ func SOCKS5(network, address string, auth *Auth, forward Dialer) (Dialer, error)
 	d := socks.NewDialer(network, address)
 	if forward != nil {
 		if f, ok := forward.(ContextDialer); ok {
-			d.ProxyDial = func(ctx context.Context, network string, address string) (net.Conn, error) {
+			d.ProxyDial = func(ctx context.Context, network, address string) (net.Conn, error) {
 				return f.DialContext(ctx, network, address)
 			}
 		} else {
-			d.ProxyDial = func(ctx context.Context, network string, address string) (net.Conn, error) {
+			d.ProxyDial = func(ctx context.Context, network, address string) (net.Conn, error) {
 				return dialContext(ctx, forward, network, address)
 			}
 		}

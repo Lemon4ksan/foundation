@@ -6,6 +6,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -23,23 +24,10 @@ type CompileOptions struct {
 	TargetOS   string // linux, windows, darwin (defaults to sysv-compatible)
 	ExtraFlags []string
 	TargetSysV bool // Force System V ABI (standard for Go AMD64 ASM)
-	UseWSL     bool // Execute Clang inside WSL
+	UseWSL     bool // Compile via WSL clang
 }
 
-func toWSLPath(p string) string {
-	abs, err := filepath.Abs(p)
-	if err == nil {
-		p = abs
-	}
-	p = filepath.ToSlash(p)
-	if len(p) >= 2 && p[1] == ':' {
-		drive := strings.ToLower(string(p[0]))
-		return "/mnt/" + drive + p[2:]
-	}
-	return p
-}
-
-// Compile compiles the given source file using Clang into an object file.
+// Compile compiles a C/LLVM IR source file into a temporary object file using Clang.
 func Compile(opts CompileOptions) (string, error) {
 	clang := opts.ClangPath
 	if clang == "" {
@@ -48,43 +36,25 @@ func Compile(opts CompileOptions) (string, error) {
 
 	out := opts.OutputFile
 	if out == "" {
-		tmpDir, err := os.MkdirTemp("", "c2plan9-*")
-		if err != nil {
-			return "", fmt.Errorf("failed to create temp dir: %w", err)
-		}
-		out = filepath.Join(tmpDir, "kernel.o")
+		tmpDir := os.TempDir()
+		base := strings.TrimSuffix(filepath.Base(opts.SourceFile), filepath.Ext(opts.SourceFile))
+		out = filepath.Join(tmpDir, fmt.Sprintf("%s_%s_%d.o", base, opts.TargetArch, os.Getpid()))
 	}
 
-	useWSL := opts.UseWSL && runtime.GOOS == "windows"
-	if !useWSL && runtime.GOOS == "windows" {
-		// On Windows, if native clang is not found, automatically fallback to WSL
-		if _, err := exec.LookPath(clang); err != nil {
-			if _, err := exec.LookPath("wsl"); err == nil {
-				useWSL = true
-			}
+	useWSL := opts.UseWSL
+	if !useWSL && runtime.GOOS == "windows" && opts.TargetArch == "arm64" {
+		// Native Windows clang often lacks aarch64 target headers, check if WSL is requested
+		if opts.UseWSL {
+			useWSL = true
 		}
 	}
 
 	if useWSL {
 		wslSrc := toWSLPath(opts.SourceFile)
 		wslOut := toWSLPath(out)
-		wslArgs := []string{
-			"clang", "-c", wslSrc, "-o", wslOut,
-			"-O3",
-			"-ffreestanding",
-			"-fno-asynchronous-unwind-tables",
-			"-fno-exceptions",
-			"-fno-rtti",
-			"-fno-stack-protector",
-			"-fomit-frame-pointer",
-			"-fno-jump-tables",
-			"-mno-red-zone",
-			"-mavx2",
-			"-mpclmul",
-			"-mfma",
-		}
+		wslArgs := make([]string, 0, 18+len(opts.ExtraFlags))
 		if opts.TargetArch == "arm64" {
-			wslArgs = []string{
+			wslArgs = append(wslArgs,
 				"clang", "-c", wslSrc, "-o", wslOut,
 				"-O3",
 				"-ffreestanding",
@@ -96,10 +66,26 @@ func Compile(opts CompileOptions) (string, error) {
 				"-fno-jump-tables",
 				"-target", "aarch64-unknown-linux-gnu",
 				"-march=armv8-a+simd+crypto",
-			}
+			)
+		} else {
+			wslArgs = append(wslArgs,
+				"clang", "-c", wslSrc, "-o", wslOut,
+				"-O3",
+				"-ffreestanding",
+				"-fno-asynchronous-unwind-tables",
+				"-fno-exceptions",
+				"-fno-rtti",
+				"-fno-stack-protector",
+				"-fomit-frame-pointer",
+				"-fno-jump-tables",
+				"-mno-red-zone",
+				"-mavx2",
+				"-mpclmul",
+				"-mfma",
+			)
 		}
 		wslArgs = append(wslArgs, opts.ExtraFlags...)
-		cmd := exec.Command("wsl", wslArgs...)
+		cmd := exec.CommandContext(context.Background(), "wsl", wslArgs...)
 		var stderr bytes.Buffer
 		cmd.Stderr = &stderr
 		if err := cmd.Run(); err != nil {
@@ -122,7 +108,8 @@ func Compile(opts CompileOptions) (string, error) {
 		"-fno-jump-tables",
 	}
 
-	if opts.TargetArch == "" || opts.TargetArch == "amd64" {
+	switch opts.TargetArch {
+	case "", "amd64":
 		args = append(args,
 			"-mno-red-zone",
 			"-mavx2",
@@ -134,7 +121,7 @@ func Compile(opts CompileOptions) (string, error) {
 		if opts.TargetSysV || runtime.GOOS == "windows" {
 			args = append(args, "-target", "x86_64-unknown-linux-gnu")
 		}
-	} else if opts.TargetArch == "arm64" {
+	case "arm64":
 		args = append(args,
 			"-target", "aarch64-unknown-linux-gnu",
 			"-march=armv8-a+simd+crypto",
@@ -143,7 +130,7 @@ func Compile(opts CompileOptions) (string, error) {
 
 	args = append(args, opts.ExtraFlags...)
 
-	cmd := exec.Command(clang, args...)
+	cmd := exec.CommandContext(context.Background(), clang, args...)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 
@@ -153,4 +140,14 @@ func Compile(opts CompileOptions) (string, error) {
 	}
 
 	return out, nil
+}
+
+func toWSLPath(winPath string) string {
+	cleaned := filepath.Clean(winPath)
+	if len(cleaned) >= 2 && cleaned[1] == ':' {
+		drive := strings.ToLower(string(cleaned[0]))
+		rest := filepath.ToSlash(cleaned[2:])
+		return "/mnt/" + drive + rest
+	}
+	return filepath.ToSlash(cleaned)
 }

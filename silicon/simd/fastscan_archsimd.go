@@ -9,8 +9,9 @@ package simd
 import (
 	"bytes"
 	"math/bits"
-	"simd/archsimd"
 	"unsafe"
+
+	"simd/archsimd"
 )
 
 // ScanByteVector scans data for target byte using 256-bit AVX2 SIMD instructions with 4-way loop unrolling.

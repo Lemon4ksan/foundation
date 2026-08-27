@@ -178,7 +178,7 @@ type DNSRecord struct {
 // - Clamps the resulting duration to the standard 7-day cap (604,800s / MaxTTLCap per RFC 8767 §4).
 func NormalizeTTL(rawTTL uint32) time.Duration {
 	if (rawTTL & 0x80000000) != 0 {
-		rawTTL = rawTTL & MaxRFC2181TTL
+		rawTTL &= MaxRFC2181TTL
 	}
 
 	maxSeconds := uint32(MaxTTLCap / time.Second)

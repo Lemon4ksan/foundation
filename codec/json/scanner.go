@@ -16,10 +16,9 @@ import (
 )
 
 var (
-	errUnexpectedEnd  = errors.New("json: unexpected end of JSON input")
-	errInvalidChar    = errors.New("json: invalid character in input")
-	errInvalidEscape  = errors.New("json: invalid escape sequence in string")
-	errInvalidUnicode = errors.New("json: invalid unicode surrogate pair")
+	errUnexpectedEnd = errors.New("json: unexpected end of JSON input")
+	errInvalidChar   = errors.New("json: invalid character in input")
+	errInvalidEscape = errors.New("json: invalid escape sequence in string")
 )
 
 // skipWhitespace advances cursor past any ASCII whitespace characters (' ', '\t', '\n', '\r').
@@ -95,7 +94,7 @@ func scanString(data []byte, cursor int) (raw []byte, newCursor int, hasEscape b
 }
 
 // unescapeString decodes JSON escape sequences from src into dst.
-func unescapeString(dst []byte, src []byte) ([]byte, error) {
+func unescapeString(dst, src []byte) ([]byte, error) {
 	n := len(src)
 	for i := 0; i < n; {
 		if src[i] != '\\' {

@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2026 Lemon4ksan All rights reserved.
+// Copyright (c) 2026 Lemon4ksan All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -13,10 +13,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lemon4ksan/foundation/net/tls/cert"
 	"github.com/lemon4ksan/foundation/testkit/assert"
 	"github.com/lemon4ksan/foundation/testkit/require"
-
-	"github.com/lemon4ksan/foundation/net/tls/cert"
 )
 
 func generateTestCert(t *testing.T) *x509.Certificate {
@@ -60,7 +59,7 @@ func TestSPKIFingerprint(t *testing.T) {
 	err = cert.ValidateChainSPKI([]*x509.Certificate{c}, [][32]byte{fp})
 	assert.NoError(t, err)
 
-	err = cert.ValidateChainSPKI([]*x509.Certificate{c}, [][32]byte{[32]byte{0xFF}})
+	err = cert.ValidateChainSPKI([]*x509.Certificate{c}, [][32]byte{{0xFF}})
 	assert.ErrorIs(t, err, cert.ErrNoMatchingPin)
 }
 

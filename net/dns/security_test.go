@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2026 Lemon4ksan All rights reserved.
+// Copyright (c) 2026 Lemon4ksan All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -7,11 +7,10 @@ package dns_test
 import (
 	"testing"
 
-	"github.com/lemon4ksan/foundation/testkit/assert"
-	"github.com/lemon4ksan/foundation/testkit/require"
-
 	"github.com/lemon4ksan/foundation/net/dns"
 	"github.com/lemon4ksan/foundation/net/dns/wire"
+	"github.com/lemon4ksan/foundation/testkit/assert"
+	"github.com/lemon4ksan/foundation/testkit/require"
 )
 
 func TestSecurity_GenerateQueryID_RFC5452(t *testing.T) {

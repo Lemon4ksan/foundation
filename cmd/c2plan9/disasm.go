@@ -115,9 +115,11 @@ func DisassembleAMD64(code []byte, baseOffset uint64, relocs []Relocation) (Disa
 			}
 		}
 
-		if matchedReloc != nil && (matchedReloc.IsROData || strings.HasPrefix(matchedReloc.SymName, ".rodata") || strings.HasPrefix(matchedReloc.SymName, ".LC")) {
+		if matchedReloc != nil &&
+			(matchedReloc.IsROData || strings.HasPrefix(matchedReloc.SymName, ".rodata") || strings.HasPrefix(matchedReloc.SymName, ".LC")) {
 			text = replaceIPWithROData(text, matchedReloc.Addend)
-		} else if strings.Contains(text, "(IP)") || strings.Contains(text, "(RIP)") {
+		} else if strings.Contains(text, "(IP)") ||
+			strings.Contains(text, "(RIP)") {
 			for _, arg := range inst.Args {
 				if mem, ok := arg.(x86asm.Mem); ok && mem.Base == x86asm.RIP {
 					text = replaceIPWithROData(text, int64(mem.Disp))
@@ -144,21 +146,22 @@ func DisassembleAMD64(code []byte, baseOffset uint64, relocs []Relocation) (Disa
 				regStr := reg.String()
 				if is8BitRegStr(regStr) {
 					baseReg := strings.TrimSuffix(regStr, "B")
-					if strings.HasPrefix(text, "CMPL ") {
+					switch {
+					case strings.HasPrefix(text, "CMPL "):
 						text = "CMPB " + text[5:]
-					} else if strings.HasPrefix(text, "TESTL ") {
+					case strings.HasPrefix(text, "TESTL "):
 						text = "TESTB " + text[6:]
-					} else if strings.HasPrefix(text, "MOVL ") {
+					case strings.HasPrefix(text, "MOVL "):
 						text = "MOVB " + text[5:]
-					} else if strings.HasPrefix(text, "ANDL ") {
+					case strings.HasPrefix(text, "ANDL "):
 						text = "ANDB " + text[5:]
-					} else if strings.HasPrefix(text, "ADDL ") {
+					case strings.HasPrefix(text, "ADDL "):
 						text = "ADDB " + text[5:]
-					} else if strings.HasPrefix(text, "SUBL ") {
+					case strings.HasPrefix(text, "SUBL "):
 						text = "SUBB " + text[5:]
-					} else if strings.HasPrefix(text, "ORL ") {
+					case strings.HasPrefix(text, "ORL "):
 						text = "ORB " + text[4:]
-					} else if strings.HasPrefix(text, "XORL ") {
+					case strings.HasPrefix(text, "XORL "):
 						text = "XORB " + text[5:]
 					}
 					if !strings.Contains(text, regStr) {
@@ -182,13 +185,27 @@ func DisassembleAMD64(code []byte, baseOffset uint64, relocs []Relocation) (Disa
 		}
 
 		// Normalize any possible duplicate 'B' suffixes (e.g. R11BB -> R11B)
-		doubleRegs := []string{"R8BB", "R9BB", "R10BB", "R11BB", "R12BB", "R13BB", "R14BB", "R15BB", "ALB", "BLB", "CLB", "DLB"}
+		doubleRegs := []string{
+			"R8BB",
+			"R9BB",
+			"R10BB",
+			"R11BB",
+			"R12BB",
+			"R13BB",
+			"R14BB",
+			"R15BB",
+			"ALB",
+			"BLB",
+			"CLB",
+			"DLB",
+		}
 		for _, dr := range doubleRegs {
 			text = strings.ReplaceAll(text, dr, strings.TrimSuffix(dr, "B"))
 		}
 
 		// Detect stack frame allocation in prologue (e.g. SUBQ $N, SP)
-		if (inst.Op == x86asm.SUB) && (strings.HasPrefix(text, "SUBQ $") || strings.HasPrefix(text, "SUBL $")) && strings.HasSuffix(text, ", SP") {
+		if (inst.Op == x86asm.SUB) && (strings.HasPrefix(text, "SUBQ $") || strings.HasPrefix(text, "SUBL $")) &&
+			strings.HasSuffix(text, ", SP") {
 			if len(inst.Args) >= 2 {
 				if imm, isImm := inst.Args[1].(x86asm.Imm); isImm && imm > 0 {
 					frameSize = uint64(imm)
@@ -208,7 +225,8 @@ func DisassembleAMD64(code []byte, baseOffset uint64, relocs []Relocation) (Disa
 		}
 
 		// Detect stack frame deallocation in epilogue (e.g. ADDQ $N, SP)
-		if (inst.Op == x86asm.ADD) && (strings.HasPrefix(text, "ADDQ $") || strings.HasPrefix(text, "ADDL $")) && strings.HasSuffix(text, ", SP") {
+		if (inst.Op == x86asm.ADD) && (strings.HasPrefix(text, "ADDQ $") || strings.HasPrefix(text, "ADDL $")) &&
+			strings.HasSuffix(text, ", SP") {
 			if jumpTargets[pc] != "" {
 				insts = append(insts, DisassembledInst{
 					Offset:   pc,
@@ -266,10 +284,22 @@ func cleanPlan9Syntax(s string) string {
 		old string
 		new string
 	}{
-		{"%rax", "AX"}, {"%rbx", "BX"}, {"%rcx", "CX"}, {"%rdx", "DX"},
-		{"%rsi", "SI"}, {"%rdi", "DI"}, {"%rbp", "BP"}, {"%rsp", "SP"},
-		{"%r8", "R8"}, {"%r9", "R9"}, {"%r10", "R10"}, {"%r11", "R11"},
-		{"%r12", "R12"}, {"%r13", "R13"}, {"%r14", "R14"}, {"%r15", "R15"},
+		{"%rax", "AX"},
+		{"%rbx", "BX"},
+		{"%rcx", "CX"},
+		{"%rdx", "DX"},
+		{"%rsi", "SI"},
+		{"%rdi", "DI"},
+		{"%rbp", "BP"},
+		{"%rsp", "SP"},
+		{"%r8", "R8"},
+		{"%r9", "R9"},
+		{"%r10", "R10"},
+		{"%r11", "R11"},
+		{"%r12", "R12"},
+		{"%r13", "R13"},
+		{"%r14", "R14"},
+		{"%r15", "R15"},
 	}
 
 	for _, r := range replacements {
@@ -331,36 +361,71 @@ func cleanPlan9Syntax(s string) string {
 	}
 
 	// Fix 8-bit register suffixes/prefixes (e.g. CMPL DL, $160 -> CMPB DL, $160)
-	eightBitRegs := []string{"AL", "BL", "CL", "DL", "SIL", "DIL", "BPL", "SPL", "R8B", "R9B", "R10B", "R11B", "R12B", "R13B", "R14B", "R15B"}
+	eightBitRegs := []string{
+		"AL",
+		"BL",
+		"CL",
+		"DL",
+		"SIL",
+		"DIL",
+		"BPL",
+		"SPL",
+		"R8B",
+		"R9B",
+		"R10B",
+		"R11B",
+		"R12B",
+		"R13B",
+		"R14B",
+		"R15B",
+	}
 	for _, reg := range eightBitRegs {
 		if strings.Contains(s, " "+reg+",") || strings.HasSuffix(s, ", "+reg) || strings.HasSuffix(s, " "+reg) {
-			if strings.HasPrefix(s, "TESTL ") {
+			switch {
+			case strings.HasPrefix(s, "TESTL "):
 				s = "TESTB " + s[6:]
-			} else if strings.HasPrefix(s, "CMPL ") {
+			case strings.HasPrefix(s, "CMPL "):
 				s = "CMPB " + s[5:]
-			} else if strings.HasPrefix(s, "MOVL ") {
+			case strings.HasPrefix(s, "MOVL "):
 				s = "MOVB " + s[5:]
-			} else if strings.HasPrefix(s, "ANDL ") {
+			case strings.HasPrefix(s, "ANDL "):
 				s = "ANDB " + s[5:]
-			} else if strings.HasPrefix(s, "ORL ") {
+			case strings.HasPrefix(s, "ORL "):
 				s = "ORB " + s[4:]
-			} else if strings.HasPrefix(s, "XORL ") {
+			case strings.HasPrefix(s, "XORL "):
 				s = "XORB " + s[5:]
-			} else if strings.HasPrefix(s, "ADDL ") {
+			case strings.HasPrefix(s, "ADDL "):
 				s = "ADDB " + s[5:]
-			} else if strings.HasPrefix(s, "SUBL ") {
+			case strings.HasPrefix(s, "SUBL "):
 				s = "SUBB " + s[5:]
-			} else if strings.HasPrefix(s, "SHRL ") {
+			case strings.HasPrefix(s, "SHRL "):
 				s = "SHRB " + s[5:]
-			} else if strings.HasPrefix(s, "SHLL ") {
+			case strings.HasPrefix(s, "SHLL "):
 				s = "SHLB " + s[5:]
-			} else if strings.HasPrefix(s, "SARL ") {
+			case strings.HasPrefix(s, "SARL "):
 				s = "SARB " + s[5:]
 			}
 		}
 	}
 
-	sixtyFourBitRegs := []string{"AX", "BX", "CX", "DX", "SI", "DI", "BP", "SP", "R8", "R9", "R10", "R11", "R12", "R13", "R14", "R15"}
+	sixtyFourBitRegs := []string{
+		"AX",
+		"BX",
+		"CX",
+		"DX",
+		"SI",
+		"DI",
+		"BP",
+		"SP",
+		"R8",
+		"R9",
+		"R10",
+		"R11",
+		"R12",
+		"R13",
+		"R14",
+		"R15",
+	}
 	is64Dest := func(str string) bool {
 		parts := strings.Split(str, ",")
 		if len(parts) >= 2 {
@@ -375,101 +440,102 @@ func cleanPlan9Syntax(s string) string {
 	}
 
 	// Mnemonic translations for Go's Plan 9 assembler
-	if strings.HasPrefix(s, "MOVZX ") {
+	switch {
+	case strings.HasPrefix(s, "MOVZX "):
 		s = "MOVBLZX " + s[6:]
-	} else if strings.HasPrefix(s, "MOVSX ") {
+	case strings.HasPrefix(s, "MOVSX "):
 		s = "MOVBLSX " + s[6:]
-	} else if strings.HasPrefix(s, "MOVSXD ") {
+	case strings.HasPrefix(s, "MOVSXD "):
 		s = "MOVLQSX " + s[7:]
-	} else if strings.HasPrefix(s, "CMOVAE ") {
+	case strings.HasPrefix(s, "CMOVAE "):
 		if is64Dest(s) {
 			s = "CMOVQCC " + s[7:]
 		} else {
 			s = "CMOVLCC " + s[7:]
 		}
-	} else if strings.HasPrefix(s, "CMOVB ") {
+	case strings.HasPrefix(s, "CMOVB "):
 		if is64Dest(s) {
 			s = "CMOVQCS " + s[6:]
 		} else {
 			s = "CMOVLCS " + s[6:]
 		}
-	} else if strings.HasPrefix(s, "CMOVE ") {
+	case strings.HasPrefix(s, "CMOVE "):
 		if is64Dest(s) {
 			s = "CMOVQEQ " + s[6:]
 		} else {
 			s = "CMOVLEQ " + s[6:]
 		}
-	} else if strings.HasPrefix(s, "CMOVNE ") {
+	case strings.HasPrefix(s, "CMOVNE "):
 		if is64Dest(s) {
 			s = "CMOVQNE " + s[7:]
 		} else {
 			s = "CMOVLNE " + s[7:]
 		}
-	} else if strings.HasPrefix(s, "CMOVG ") {
+	case strings.HasPrefix(s, "CMOVG "):
 		if is64Dest(s) {
 			s = "CMOVQGT " + s[6:]
 		} else {
 			s = "CMOVLGT " + s[6:]
 		}
-	} else if strings.HasPrefix(s, "CMOVGE ") {
+	case strings.HasPrefix(s, "CMOVGE "):
 		if is64Dest(s) {
 			s = "CMOVQGE " + s[7:]
 		} else {
 			s = "CMOVLGE " + s[7:]
 		}
-	} else if strings.HasPrefix(s, "CMOVL ") {
+	case strings.HasPrefix(s, "CMOVL "):
 		if is64Dest(s) {
 			s = "CMOVQLT " + s[6:]
 		} else {
 			s = "CMOVLLT " + s[6:]
 		}
-	} else if strings.HasPrefix(s, "CMOVLE ") {
+	case strings.HasPrefix(s, "CMOVLE "):
 		if is64Dest(s) {
 			s = "CMOVQLE " + s[7:]
 		} else {
 			s = "CMOVLLE " + s[7:]
 		}
-	} else if strings.HasPrefix(s, "CMOVNS ") {
+	case strings.HasPrefix(s, "CMOVNS "):
 		if is64Dest(s) {
 			s = "CMOVQPL " + s[7:]
 		} else {
 			s = "CMOVLPL " + s[7:]
 		}
-	} else if strings.HasPrefix(s, "CMOVS ") {
+	case strings.HasPrefix(s, "CMOVS "):
 		if is64Dest(s) {
 			s = "CMOVQMI " + s[6:]
 		} else {
 			s = "CMOVLMI " + s[6:]
 		}
-	} else if strings.HasPrefix(s, "TZCNT ") {
+	case strings.HasPrefix(s, "TZCNT "):
 		s = "TZCNTL " + s[6:]
-	} else if strings.HasPrefix(s, "BSF ") {
+	case strings.HasPrefix(s, "BSF "):
 		s = "BSFL " + s[4:]
-	} else if strings.HasPrefix(s, "BSR ") {
+	case strings.HasPrefix(s, "BSR "):
 		s = "BSRL " + s[4:]
-	} else if strings.HasPrefix(s, "LZCNT ") {
+	case strings.HasPrefix(s, "LZCNT "):
 		s = "LZCNTL " + s[6:]
-	} else if strings.HasPrefix(s, "POPCNT ") {
+	case strings.HasPrefix(s, "POPCNT "):
 		s = "POPCNTL " + s[7:]
-	} else if strings.HasPrefix(s, "SETNS ") {
+	case strings.HasPrefix(s, "SETNS "):
 		s = "SETPL " + s[6:]
-	} else if strings.HasPrefix(s, "SETS ") {
+	case strings.HasPrefix(s, "SETS "):
 		s = "SETMI " + s[5:]
-	} else if strings.HasPrefix(s, "SETE ") {
+	case strings.HasPrefix(s, "SETE "):
 		s = "SETEQ " + s[5:]
-	} else if strings.HasPrefix(s, "SETAE ") {
+	case strings.HasPrefix(s, "SETAE "):
 		s = "SETCC " + s[6:]
-	} else if strings.HasPrefix(s, "SETB ") {
+	case strings.HasPrefix(s, "SETB "):
 		s = "SETCS " + s[5:]
-	} else if strings.HasPrefix(s, "SETA ") {
+	case strings.HasPrefix(s, "SETA "):
 		s = "SETHI " + s[5:]
-	} else if strings.HasPrefix(s, "SETBE ") {
+	case strings.HasPrefix(s, "SETBE "):
 		s = "SETLS " + s[6:]
-	} else if strings.HasPrefix(s, "SETL ") {
+	case strings.HasPrefix(s, "SETL "):
 		s = "SETLT " + s[5:]
-	} else if strings.HasPrefix(s, "SETG ") {
+	case strings.HasPrefix(s, "SETG "):
 		s = "SETGT " + s[5:]
-	} else if strings.HasPrefix(s, "SETNE ") {
+	case strings.HasPrefix(s, "SETNE "):
 		s = "SETNE " + s[6:]
 	}
 

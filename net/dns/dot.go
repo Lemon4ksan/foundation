@@ -34,7 +34,9 @@ const (
 // Standard DNS-over-(D)TLS errors defined in RFC 7858 and RFC 8310.
 var (
 	// ErrADNAuthenticationFailed indicates that the server's PKIX certificate does not match the Authentication Domain Name (RFC 8310 §8.1).
-	ErrADNAuthenticationFailed = errors.New("foundation/net/dns: authentication domain name verification failed (RFC 8310 §8.1)")
+	ErrADNAuthenticationFailed = errors.New(
+		"foundation/net/dns: authentication domain name verification failed (RFC 8310 §8.1)",
+	)
 
 	// ErrStrictPrivacyFailed indicates that a Strict Privacy profile connection could not be established or authenticated (RFC 8310 §6.6).
 	ErrStrictPrivacyFailed = errors.New("foundation/net/dns: strict privacy connection failed (RFC 8310 §6.6)")
@@ -211,7 +213,12 @@ func (d *DoTResolver) dialTLS(ctx context.Context) (net.Conn, error) {
 			if adn != "" && len(cs.PeerCertificates) > 0 {
 				leaf := cs.PeerCertificates[0]
 				if !verifyADNSAN(leaf, adn) {
-					return fmt.Errorf("%w: server SANs %v do not match expected ADN %q", ErrADNAuthenticationFailed, leaf.DNSNames, adn)
+					return fmt.Errorf(
+						"%w: server SANs %v do not match expected ADN %q",
+						ErrADNAuthenticationFailed,
+						leaf.DNSNames,
+						adn,
+					)
 				}
 			}
 

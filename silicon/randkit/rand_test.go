@@ -10,10 +10,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lemon4ksan/foundation/silicon/randkit"
 	"github.com/lemon4ksan/foundation/testkit/assert"
 	"github.com/lemon4ksan/foundation/testkit/require"
-
-	"github.com/lemon4ksan/foundation/silicon/randkit"
 )
 
 func TestGlobalRand_Basic(t *testing.T) {

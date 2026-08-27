@@ -273,5 +273,7 @@ func (c *Chain) Release() {
 	c.Reset()
 }
 
-var ErrBufferFull = errors.New("bufkit: buffer is full")
-var ErrBufferEmpty = errors.New("bufkit: buffer is empty")
+var (
+	ErrBufferFull  = errors.New("bufkit: buffer is full")
+	ErrBufferEmpty = errors.New("bufkit: buffer is empty")
+)

@@ -111,7 +111,8 @@ func DisassembleARM64(code []byte, baseOffset uint64, relocs []Relocation) (Disa
 		}
 
 		// Omit frame pointer / link register pushes (STP (R29, R30), -16(RSP)!) in Go functions
-		if (inst.Op == arm64asm.STP || inst.Op == arm64asm.LDP) && (strings.Contains(text, "R29") || strings.Contains(text, "R30")) {
+		if (inst.Op == arm64asm.STP || inst.Op == arm64asm.LDP) &&
+			(strings.Contains(text, "R29") || strings.Contains(text, "R30")) {
 			if jumpTargets[pc] != "" {
 				insts = append(insts, DisassembledInst{
 					Offset:   pc,

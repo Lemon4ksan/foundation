@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2026 Lemon4ksan All rights reserved.
+// Copyright (c) 2026 Lemon4ksan All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -8,9 +8,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/lemon4ksan/foundation/testkit/assert"
-
 	"github.com/lemon4ksan/foundation/silicon/trie"
+	"github.com/lemon4ksan/foundation/testkit/assert"
 )
 
 func TestRadixTree_BasicOperations(t *testing.T) {
@@ -173,7 +172,7 @@ func TestRadixTree_EdgeCases(t *testing.T) {
 
 	// WalkPrefix early termination
 	visited := 0
-	tree.WalkPrefix("rom", func(key string, val string) bool {
+	tree.WalkPrefix("rom", func(key, val string) bool {
 		visited++
 		return false // stop immediately
 	})
@@ -181,7 +180,7 @@ func TestRadixTree_EdgeCases(t *testing.T) {
 
 	// WalkPrefix on non-existent prefix
 	nonVisited := 0
-	tree.WalkPrefix("xyz", func(key string, val string) bool {
+	tree.WalkPrefix("xyz", func(key, val string) bool {
 		nonVisited++
 		return true
 	})

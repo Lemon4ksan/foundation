@@ -87,7 +87,7 @@ func IsLDH(label string) bool {
 
 	for i := range n {
 		c := label[i]
-		if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-') {
+		if (c < 'a' || c > 'z') && (c < 'A' || c > 'Z') && (c < '0' || c > '9') && c != '-' {
 			return false
 		}
 	}

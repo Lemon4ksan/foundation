@@ -145,7 +145,9 @@ func BenchmarkCompare_Encoding_WhatWG_Lookup(b *testing.B) {
 }
 
 func BenchmarkCompare_Encoding_Windows1251_Transcode(b *testing.B) {
-	sampleWin1251 := []byte("\xcf\xf0\xe8\xe2\xe5\xf2, \xcc\xe8\xf0! 1234567890 Тестирование производительности кремния")
+	sampleWin1251 := []byte(
+		"\xcf\xf0\xe8\xe2\xe5\xf2, \xcc\xe8\xf0! 1234567890 Тестирование производительности кремния",
+	)
 	dec := charmap.Windows1251.NewDecoder()
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -158,7 +160,9 @@ func BenchmarkCompare_Encoding_Windows1251_Transcode(b *testing.B) {
 }
 
 func BenchmarkCompare_Encoding_Windows1251_Transform_ZeroAlloc(b *testing.B) {
-	sampleWin1251 := []byte("\xcf\xf0\xe8\xe2\xe5\xf2, \xcc\xe8\xf0! 1234567890 Тестирование производительности кремния")
+	sampleWin1251 := []byte(
+		"\xcf\xf0\xe8\xe2\xe5\xf2, \xcc\xe8\xf0! 1234567890 Тестирование производительности кремния",
+	)
 	dec := charmap.Windows1251.NewDecoder()
 	dst := make([]byte, 256)
 	b.ReportAllocs()
@@ -192,7 +196,10 @@ func BenchmarkCompare_IDNA_ToASCII_Foundation(b *testing.B) {
 // 7. HPACK Huffman Decoding: Buffered vs Zero-Alloc Append
 // -----------------------------------------------------------------------------
 
-var sampleHuffman = hpack.AppendHuffmanString(nil, "https://api.gateway.internal:8443/v2/telemetry/events?session_id=9876543210")
+var sampleHuffman = hpack.AppendHuffmanString(
+	nil,
+	"https://api.gateway.internal:8443/v2/telemetry/events?session_id=9876543210",
+)
 
 func BenchmarkCompare_HPACK_Huffman_Decode_Buffered(b *testing.B) {
 	b.ReportAllocs()

@@ -173,11 +173,12 @@ func Indent(dst *bytes.Buffer, src []byte, prefix, indent string) error {
 		c := src[i]
 		if inString {
 			dst.WriteByte(c)
-			if escape {
+			switch {
+			case escape:
 				escape = false
-			} else if c == '\\' {
+			case c == '\\':
 				escape = true
-			} else if c == '"' {
+			case c == '"':
 				inString = false
 			}
 			continue

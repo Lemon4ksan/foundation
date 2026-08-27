@@ -170,7 +170,7 @@ func RandomALPNBytes() []byte {
 
 // ValidateServerNegotiation verifies that a server did not illegally negotiate or echo any GREASE values
 // in its ServerHello version, selected cipher suite, or extensions (RFC 8701 §3.1 & §4.1).
-func ValidateServerNegotiation(version uint16, cipherSuite uint16, extensions []uint16) error {
+func ValidateServerNegotiation(version, cipherSuite uint16, extensions []uint16) error {
 	if Is(version) || Is(cipherSuite) || slices.ContainsFunc(extensions, Is) {
 		return ErrNegotiatedGREASE
 	}

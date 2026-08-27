@@ -22,8 +22,10 @@ var benchUser = User{
 
 var benchUserData, _ = stdjson.Marshal(benchUser)
 
-var benchSinkBytes []byte
-var benchSinkUser User
+var (
+	benchSinkBytes []byte
+	benchSinkUser  User
+)
 
 func BenchmarkMarshal_StdJSON(b *testing.B) {
 	b.ReportAllocs()

@@ -24,7 +24,7 @@ type BytesReader interface {
 
 // InspectBytes attempts to extract contiguous payload bytes from r without allocations.
 // Returns the data slice, volatility flag, and a boolean indicating whether the reader supports contiguous byte inspection.
-func InspectBytes(r io.Reader) (data []byte, volatile bool, ok bool) {
+func InspectBytes(r io.Reader) (data []byte, volatile, ok bool) {
 	if r == nil {
 		return nil, false, false
 	}

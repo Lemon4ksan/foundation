@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2026 Lemon4ksan All rights reserved.
+// Copyright (c) 2026 Lemon4ksan All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -7,9 +7,8 @@ package bytesconv_test
 import (
 	"testing"
 
-	"github.com/lemon4ksan/foundation/testkit/assert"
-
 	"github.com/lemon4ksan/foundation/silicon/bytesconv"
+	"github.com/lemon4ksan/foundation/testkit/assert"
 )
 
 func TestPatternSlicer_Slice(t *testing.T) {
@@ -61,7 +60,11 @@ func TestPatternSlicer_Slice(t *testing.T) {
 		splitComma := bytesconv.NewPatternSlicer([]byte(","), 1)
 		data := []byte("a,b,c,d")
 		all := splitComma.SliceAll(data)
-		assert.Equal(t, []string{"a,", "b,", "c,", "d"}, []string{string(all[0]), string(all[1]), string(all[2]), string(all[3])})
+		assert.Equal(
+			t,
+			[]string{"a,", "b,", "c,", "d"},
+			[]string{string(all[0]), string(all[1]), string(all[2]), string(all[3])},
+		)
 
 		dst := make([][]byte, 0, 8)
 		allInto := splitComma.SliceAllInto(data, dst)

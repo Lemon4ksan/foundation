@@ -60,7 +60,7 @@ func Parse(rawURL string) (*url.URL, error) {
 	}
 
 	idx := fastHash(rawURL) & 15
-	_ = globalURLCache.shards[15]
+	_ = &globalURLCache.shards[15]
 	sh := &globalURLCache.shards[idx]
 
 	sh.mu.RLock()
@@ -423,7 +423,8 @@ func unescapeScalar(dst, src []byte) (int, error) {
 	out := 0
 	for i := 0; i < len(src); {
 		c := src[i]
-		if c == '%' {
+		switch c {
+		case '%':
 			if i+2 >= len(src) {
 				return 0, ErrInvalidEscape
 			}
@@ -435,11 +436,11 @@ func unescapeScalar(dst, src []byte) (int, error) {
 			dst[out] = byte((hi << 4) | lo)
 			out++
 			i += 3
-		} else if c == '+' {
+		case '+':
 			dst[out] = ' '
 			out++
 			i++
-		} else {
+		default:
 			dst[out] = c
 			out++
 			i++

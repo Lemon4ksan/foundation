@@ -123,7 +123,14 @@ func testPerHost(t *testing.T, config, addr string, wantMatch bool) {
 	perHostc.AddFromString(config)
 	perHostc.DialContext(context.Background(), "tcp", addr)
 	if !slices.Equal(def.addrs, defc.addrs) {
-		t.Errorf("%v: Dial default=%v, bypass=%v; DialContext default=%v, bypass=%v", name, def.addrs, bypass.addrs, defc.addrs, bypass.addrs)
+		t.Errorf(
+			"%v: Dial default=%v, bypass=%v; DialContext default=%v, bypass=%v",
+			name,
+			def.addrs,
+			bypass.addrs,
+			defc.addrs,
+			bypass.addrs,
+		)
 		return
 	}
 

@@ -9,10 +9,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lemon4ksan/foundation/async/contextkit"
 	"github.com/lemon4ksan/foundation/testkit/assert"
 	"github.com/lemon4ksan/foundation/testkit/require"
-
-	"github.com/lemon4ksan/foundation/async/contextkit"
 )
 
 type keyType string

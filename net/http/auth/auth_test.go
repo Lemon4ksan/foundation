@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2026 Lemon4ksan All rights reserved.
+// Copyright (c) 2026 Lemon4ksan All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -7,10 +7,9 @@ package auth_test
 import (
 	"testing"
 
+	"github.com/lemon4ksan/foundation/net/http/auth"
 	"github.com/lemon4ksan/foundation/testkit/assert"
 	"github.com/lemon4ksan/foundation/testkit/require"
-
-	"github.com/lemon4ksan/foundation/net/http/auth"
 )
 
 func TestBasicAuth_RFC7617(t *testing.T) {
@@ -47,7 +46,9 @@ func TestBearerAuth_RFC6750(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, token, parsed)
 
-	ch, ok := auth.ParseBearerChallenge(`Bearer realm="example", error="invalid_token", error_description="The access token expired"`)
+	ch, ok := auth.ParseBearerChallenge(
+		`Bearer realm="example", error="invalid_token", error_description="The access token expired"`,
+	)
 	require.True(t, ok)
 	assert.Equal(t, "example", ch.Realm)
 	assert.Equal(t, "invalid_token", ch.Error)

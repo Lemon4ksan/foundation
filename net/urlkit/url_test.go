@@ -7,10 +7,9 @@ package urlkit_test
 import (
 	"testing"
 
+	"github.com/lemon4ksan/foundation/net/urlkit"
 	"github.com/lemon4ksan/foundation/testkit/assert"
 	"github.com/lemon4ksan/foundation/testkit/require"
-
-	"github.com/lemon4ksan/foundation/net/urlkit"
 )
 
 func TestParse(t *testing.T) {

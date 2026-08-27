@@ -33,6 +33,7 @@ type nilMatcher struct{}
 
 // Nil returns a matcher matching nil pointers, slices, maps, or interfaces.
 func Nil() Matcher { return nilMatcher{} }
+
 func (nilMatcher) Matches(x any) bool {
 	if x == nil {
 		return true
@@ -71,6 +72,7 @@ func AssignableToTypeOf(x any) Matcher {
 
 	return assignableToTypeOfMatcher{target: reflect.TypeOf(x)}
 }
+
 func (a assignableToTypeOfMatcher) Matches(x any) bool {
 	if x == nil {
 		return false
@@ -78,6 +80,7 @@ func (a assignableToTypeOfMatcher) Matches(x any) bool {
 
 	return reflect.TypeOf(x).AssignableTo(a.target)
 }
+
 func (a assignableToTypeOfMatcher) String() string {
 	return fmt.Sprintf("is assignable to %v", a.target)
 }
@@ -86,6 +89,7 @@ type lenMatcher struct{ n int }
 
 // Len matches if arg has length n.
 func Len(n int) Matcher { return lenMatcher{n: n} }
+
 func (l lenMatcher) Matches(x any) bool {
 	if x == nil {
 		return false

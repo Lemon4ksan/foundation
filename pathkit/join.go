@@ -52,13 +52,14 @@ func JoinURL(base string, parts ...string) string {
 		currHasSlash := strings.HasSuffix(curr, "/")
 		partHasSlash := strings.HasPrefix(part, "/")
 
-		if curr == "" {
+		switch {
+		case curr == "":
 			curr = part
-		} else if currHasSlash && partHasSlash {
+		case currHasSlash && partHasSlash:
 			curr += strings.TrimPrefix(part, "/")
-		} else if !currHasSlash && !partHasSlash {
+		case !currHasSlash && !partHasSlash:
 			curr += "/" + part
-		} else {
+		default:
 			curr += part
 		}
 	}

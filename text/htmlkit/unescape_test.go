@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/lemon4ksan/foundation/testkit/assert"
-
 	"github.com/lemon4ksan/foundation/text/htmlkit"
 )
 

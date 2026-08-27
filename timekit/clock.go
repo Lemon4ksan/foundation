@@ -9,9 +9,7 @@ import (
 	"time"
 )
 
-var (
-	cachedUnixNano atomic.Int64
-)
+var cachedUnixNano atomic.Int64
 
 func init() {
 	cachedUnixNano.Store(time.Now().UnixNano())

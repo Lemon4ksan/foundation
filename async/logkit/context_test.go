@@ -9,9 +9,8 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/lemon4ksan/foundation/testkit/assert"
-
 	"github.com/lemon4ksan/foundation/async/logkit"
+	"github.com/lemon4ksan/foundation/testkit/assert"
 )
 
 func TestCorrelationID(t *testing.T) {

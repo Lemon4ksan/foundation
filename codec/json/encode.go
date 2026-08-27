@@ -65,7 +65,7 @@ func compileEncoder(t reflect.Type) (encoderFunc, error) {
 		return compileMarshalerEncoder(t), nil
 	}
 
-	if reflect.PointerTo(t).Implements(marshalerType) && t.Kind() != reflect.Ptr {
+	if reflect.PointerTo(t).Implements(marshalerType) && t.Kind() != reflect.Pointer {
 		return compileAddrMarshalerEncoder(t), nil
 	}
 
@@ -73,7 +73,7 @@ func compileEncoder(t reflect.Type) (encoderFunc, error) {
 		return compileTextMarshalerEncoder(t), nil
 	}
 
-	if reflect.PointerTo(t).Implements(textMarshalerType) && t.Kind() != reflect.Ptr {
+	if reflect.PointerTo(t).Implements(textMarshalerType) && t.Kind() != reflect.Pointer {
 		return compileAddrTextMarshalerEncoder(t), nil
 	}
 
@@ -106,7 +106,7 @@ func compileEncoder(t reflect.Type) (encoderFunc, error) {
 		return encodeFloat64, nil
 	case reflect.String:
 		return encodeString, nil
-	case reflect.Ptr:
+	case reflect.Pointer:
 		return compilePtrEncoder(t)
 	case reflect.Slice:
 		if t.Elem().Kind() == reflect.Uint8 {
@@ -445,7 +445,7 @@ func buildIsZero(t reflect.Type) func(p unsafe.Pointer) bool {
 		return func(p unsafe.Pointer) bool { return *(*float64)(p) == 0 }
 	case reflect.String:
 		return func(p unsafe.Pointer) bool { return *(*string)(p) == "" }
-	case reflect.Ptr, reflect.Slice, reflect.Map, reflect.Interface:
+	case reflect.Pointer, reflect.Slice, reflect.Map, reflect.Interface:
 		return func(p unsafe.Pointer) bool { return *(*unsafe.Pointer)(p) == nil }
 	default:
 		return func(p unsafe.Pointer) bool { return false }

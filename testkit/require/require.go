@@ -186,7 +186,7 @@ func EqualError(t testing.TB, err error, errString string, msgAndArgs ...any) {
 }
 
 // EqualErrorf asserts that err is not nil and matches errString with format.
-func EqualErrorf(t testing.TB, err error, errString string, format string, args ...any) {
+func EqualErrorf(t testing.TB, err error, errString, format string, args ...any) {
 	t.Helper()
 	if !assert.EqualErrorf(t, err, errString, format, args...) {
 		t.FailNow()
@@ -250,7 +250,7 @@ func ErrorContains(t testing.TB, err error, contains string, msgAndArgs ...any) 
 }
 
 // ErrorContainsf asserts that err contains substring with format.
-func ErrorContainsf(t testing.TB, err error, contains string, format string, args ...any) {
+func ErrorContainsf(t testing.TB, err error, contains, format string, args ...any) {
 	t.Helper()
 	if !assert.ErrorContainsf(t, err, contains, format, args...) {
 		t.FailNow()
@@ -474,7 +474,7 @@ func JSONEq(t testing.TB, expected, actual string, msgAndArgs ...any) {
 }
 
 // JSONEqf asserts two JSON strings are equivalent with format.
-func JSONEqf(t testing.TB, expected, actual string, format string, args ...any) {
+func JSONEqf(t testing.TB, expected, actual, format string, args ...any) {
 	t.Helper()
 	if !assert.JSONEqf(t, expected, actual, format, args...) {
 		t.FailNow()
@@ -529,7 +529,6 @@ func NotSamef(t testing.TB, expected, actual any, format string, args ...any) {
 	}
 }
 
-
 // WithinDuration asserts two times are within delta of each other, failing immediately if not.
 func WithinDuration(t testing.TB, expected, actual time.Time, delta time.Duration, msgAndArgs ...any) {
 	t.Helper()
@@ -555,7 +554,7 @@ func FileExists(t testing.TB, filepath string, msgAndArgs ...any) {
 }
 
 // FileExistsf asserts that file exists with format.
-func FileExistsf(t testing.TB, filepath string, format string, args ...any) {
+func FileExistsf(t testing.TB, filepath, format string, args ...any) {
 	t.Helper()
 	if !assert.FileExistsf(t, filepath, format, args...) {
 		t.FailNow()
@@ -571,7 +570,7 @@ func NoFileExists(t testing.TB, filepath string, msgAndArgs ...any) {
 }
 
 // NoFileExistsf asserts that file does not exist with format.
-func NoFileExistsf(t testing.TB, filepath string, format string, args ...any) {
+func NoFileExistsf(t testing.TB, filepath, format string, args ...any) {
 	t.Helper()
 	if !assert.NoFileExistsf(t, filepath, format, args...) {
 		t.FailNow()
@@ -587,7 +586,7 @@ func NoDirExists(t testing.TB, dirpath string, msgAndArgs ...any) {
 }
 
 // NoDirExistsf asserts that directory does not exist with format.
-func NoDirExistsf(t testing.TB, dirpath string, format string, args ...any) {
+func NoDirExistsf(t testing.TB, dirpath, format string, args ...any) {
 	t.Helper()
 	if !assert.NoDirExistsf(t, dirpath, format, args...) {
 		t.FailNow()
@@ -689,4 +688,3 @@ func ElementsMatchf(t testing.TB, listA, listB any, format string, args ...any) 
 		t.FailNow()
 	}
 }
-

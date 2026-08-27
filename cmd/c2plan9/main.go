@@ -5,6 +5,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -13,6 +14,13 @@ import (
 )
 
 func main() {
+	if err := run(); err != nil {
+		fmt.Fprintf(os.Stderr, "[c2plan9] Error: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+func run() error {
 	var (
 		cFile      = flag.String("c", "", "Path to input C / C++ / LLVM IR source file")
 		oFile      = flag.String("o", "", "Path to output Plan 9 assembly (.s) file")
@@ -27,9 +35,8 @@ func main() {
 	flag.Parse()
 
 	if *cFile == "" {
-		fmt.Fprintf(os.Stderr, "Usage: c2plan9 -c <source.c> -o <output_amd64.s> [-arch <amd64|arm64>] [-stub <output_amd64.go>] [-pkg <pkg>] [-wsl]\n")
-		flag.PrintDefaults()
-		os.Exit(1)
+		flag.Usage()
+		return errors.New("-c source file flag is required")
 	}
 
 	if *targetArch == "" {
@@ -67,28 +74,24 @@ func main() {
 		UseWSL:     *useWSL,
 	})
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[c2plan9] Compilation error: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("compilation failed: %w", err)
 	}
 	defer os.Remove(objPath)
 
 	fmt.Printf("[c2plan9] Parsing object file %s...\n", objPath)
 	obj, err := ParseObject(objPath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[c2plan9] Object parsing error: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("object parsing failed: %w", err)
 	}
 
 	fmt.Printf("[c2plan9] Disassembling %d symbol(s) into Plan 9 %s assembly...\n", len(obj.Symbols), *targetArch)
 	asmBytes, err := EmitPlan9Assembly(*pkgName, obj.Symbols, nil, obj.ROData, obj.Relocations, *targetArch)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[c2plan9] Assembly generation error: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("assembly generation failed: %w", err)
 	}
 
 	if err := os.WriteFile(*oFile, asmBytes, 0o644); err != nil {
-		fmt.Fprintf(os.Stderr, "[c2plan9] Failed to write %s: %v\n", *oFile, err)
-		os.Exit(1)
+		return fmt.Errorf("failed to write %s: %w", *oFile, err)
 	}
 	fmt.Printf("[c2plan9] Successfully emitted %s (%d bytes)\n", *oFile, len(asmBytes))
 
@@ -109,9 +112,10 @@ func main() {
 		}
 		stubBytes := EmitGoStub(*pkgName, sigs, *targetArch)
 		if err := os.WriteFile(*stubFile, stubBytes, 0o644); err != nil {
-			fmt.Fprintf(os.Stderr, "[c2plan9] Failed to write stub %s: %v\n", *stubFile, err)
-			os.Exit(1)
+			return fmt.Errorf("failed to write stub %s: %w", *stubFile, err)
 		}
 		fmt.Printf("[c2plan9] Successfully emitted Go stub %s\n", *stubFile)
 	}
+
+	return nil
 }

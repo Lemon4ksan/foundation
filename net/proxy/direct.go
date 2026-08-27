@@ -21,7 +21,8 @@ var (
 
 // Dial directly invokes net.Dial with the supplied parameters.
 func (direct) Dial(network, addr string) (net.Conn, error) {
-	return net.Dial(network, addr)
+	var d net.Dialer
+	return d.DialContext(context.Background(), network, addr)
 }
 
 // DialContext instantiates a net.Dialer and invokes its DialContext receiver with the supplied parameters.

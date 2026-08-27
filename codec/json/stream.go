@@ -6,6 +6,7 @@ package json
 
 import (
 	"bytes"
+	"errors"
 	"io"
 )
 
@@ -47,7 +48,7 @@ func (dec *Decoder) Decode(v any) error {
 
 	if len(dec.buf) == 0 || dec.cursor >= len(dec.buf) {
 		data, err := io.ReadAll(dec.r)
-		if err != nil && err != io.EOF {
+		if err != nil && !errors.Is(err, io.EOF) {
 			dec.err = err
 			return err
 		}
@@ -117,6 +118,8 @@ func (enc *Encoder) SetIndent(prefix, indent string) {
 }
 
 // Encode writes the JSON encoding of v to the stream, followed by a newline character.
+//
+//nolint:prealloc
 func (enc *Encoder) Encode(v any) error {
 	var data []byte
 	var err error

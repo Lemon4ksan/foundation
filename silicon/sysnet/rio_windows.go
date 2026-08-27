@@ -142,7 +142,7 @@ func RegisterBuffer(data []byte) (*BufferRegistration, error) {
 		uintptr(len(data)),
 	)
 	if r1 == 0 {
-		if err != nil && !errors.Is(err, syscall.Errno(0)) {
+		if !errors.Is(err, syscall.Errno(0)) {
 			return nil, err
 		}
 

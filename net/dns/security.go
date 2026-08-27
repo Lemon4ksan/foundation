@@ -38,7 +38,11 @@ func GenerateQueryID() uint16 {
 // Question attributes per RFC 5452 §9.1 (Query Matching Rules).
 //
 // A mismatch in any attribute causes the response to be rejected as invalid/spoofed.
-func ValidateQueryMatch(expectedID, actualID uint16, expectedQName, actualQName string, expectedQType, actualQType uint16, expectedQClass, actualQClass uint16) error {
+func ValidateQueryMatch(
+	expectedID, actualID uint16,
+	expectedQName, actualQName string,
+	expectedQType, actualQType, expectedQClass, actualQClass uint16,
+) error {
 	if expectedID != actualID {
 		return fmt.Errorf("%w: got %d, expected %d", ErrSpoofedID, actualID, expectedID)
 	}

@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2026 Lemon4ksan All rights reserved.
+// Copyright (c) 2026 Lemon4ksan All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -7,9 +7,8 @@ package contentdisposition_test
 import (
 	"testing"
 
-	"github.com/lemon4ksan/foundation/testkit/assert"
-
 	"github.com/lemon4ksan/foundation/net/http/contentdisposition"
+	"github.com/lemon4ksan/foundation/testkit/assert"
 )
 
 func TestContentDisposition_RFC6266_And_RFC8187(t *testing.T) {

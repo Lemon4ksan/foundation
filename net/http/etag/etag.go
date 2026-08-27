@@ -163,6 +163,8 @@ func (a *Automaton) GetETagOptional(key string) generic.Optional[string] {
 }
 
 // Reconstruct304Optional returns a reconstructed 200 OK http.Response wrapped in generic.Optional.
+//
+//nolint:bodyclose
 func (a *Automaton) Reconstruct304Optional(key string) generic.Optional[*http.Response] {
 	resp := a.Reconstruct304(key)
 	if resp == nil {

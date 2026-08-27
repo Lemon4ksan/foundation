@@ -25,7 +25,6 @@ type Transcoder interface {
 func TestEncoding(t *testing.T, e encoding.Encoding, encoded, utf8, prefix, suffix string) {
 	for _, direction := range []string{"Decode", "Encode"} {
 		t.Run(fmt.Sprintf("%v/%s", e, direction), func(t *testing.T) {
-
 			var coder Transcoder
 			var want, src, wPrefix, sPrefix, wSuffix, sSuffix string
 			if direction == "Decode" {

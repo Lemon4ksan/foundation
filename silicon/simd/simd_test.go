@@ -290,9 +290,21 @@ func TestEqualFoldVector(t *testing.T) {
 	}{
 		{"", "", true},
 		{"Content-Type", "content-type", true},
-		{"USER-AGENT: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0", "user-agent: mozilla/5.0 (windows nt 10.0; win64; x64) chrome/120.0", true},
-		{"A very long header value that exceeds 32 bytes for AVX2 SIMD testing", "a very long header value that exceeds 32 bytes for avx2 simd testing", true},
-		{"A very long header value that exceeds 32 bytes with a single difference X", "a very long header value that exceeds 32 bytes with a single difference Y", false},
+		{
+			"USER-AGENT: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0",
+			"user-agent: mozilla/5.0 (windows nt 10.0; win64; x64) chrome/120.0",
+			true,
+		},
+		{
+			"A very long header value that exceeds 32 bytes for AVX2 SIMD testing",
+			"a very long header value that exceeds 32 bytes for avx2 simd testing",
+			true,
+		},
+		{
+			"A very long header value that exceeds 32 bytes with a single difference X",
+			"a very long header value that exceeds 32 bytes with a single difference Y",
+			false,
+		},
 		{"Short", "LongerString", false},
 	}
 
@@ -303,8 +315,12 @@ func TestEqualFoldVector(t *testing.T) {
 }
 
 func BenchmarkEqualFold_AVX2(b *testing.B) {
-	str1 := []byte("User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-	str2 := []byte("user-agent: mozilla/5.0 (windows nt 10.0; win64; x64) applewebkit/537.36 (khtml, like gecko) chrome/120.0.0.0 safari/537.36")
+	str1 := []byte(
+		"User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+	)
+	str2 := []byte(
+		"user-agent: mozilla/5.0 (windows nt 10.0; win64; x64) applewebkit/537.36 (khtml, like gecko) chrome/120.0.0.0 safari/537.36",
+	)
 
 	b.SetBytes(int64(len(str1)))
 	b.ReportAllocs()
@@ -394,7 +410,12 @@ func BenchmarkScanByte_AVX2(b *testing.B) {
 
 func BenchmarkIndexCRLFCRLF_AVX2(b *testing.B) {
 	data := make([]byte, 1024)
-	copy(data, []byte("POST /api/v1/trade/submit HTTP/1.1\r\nHost: api.steampowered.com\r\nAuthorization: Bearer test\r\n\r\n"))
+	copy(
+		data,
+		[]byte(
+			"POST /api/v1/trade/submit HTTP/1.1\r\nHost: api.steampowered.com\r\nAuthorization: Bearer test\r\n\r\n",
+		),
+	)
 
 	b.SetBytes(int64(len(data)))
 	b.ReportAllocs()

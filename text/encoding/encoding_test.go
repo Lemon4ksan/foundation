@@ -53,7 +53,7 @@ func TestEncodeInvalidUTF8(t *testing.T) {
 
 func TestReplacement(t *testing.T) {
 	for _, direction := range []string{"Decode", "Encode"} {
-		enc, want := (transform.Transformer)(nil), ""
+		enc, want := transform.Transformer(nil), ""
 		if direction == "Decode" {
 			enc = encoding.Replacement.NewDecoder()
 			want = "\ufffd"
