@@ -100,3 +100,13 @@ func IndexCRLFCRLF(buf []byte) int {
 	}
 	return -1
 }
+
+// IndexByteVector locates the first occurrence of byte target in b using SIMD/vector routines.
+func IndexByteVector(b []byte, target byte) int {
+	return IndexByteSWAR(b, target)
+}
+
+// IndexTwoBytesVector locates the first occurrence of either b1 or b2 in b using SIMD/vector routines.
+func IndexTwoBytesVector(b []byte, b1, b2 byte) int {
+	return IndexByteTwoSWAR(b, b1, b2)
+}
