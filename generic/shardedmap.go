@@ -109,6 +109,25 @@ func (m *ShardedMap[K, V]) TrySet(key K, val V) bool {
 	return true
 }
 
+// GetOrSet returns the existing value for the key if present.
+// Otherwise, it stores and returns the given value. The loaded result is true if the value was loaded, false if stored.
+func (m *ShardedMap[K, V]) GetOrSet(key K, val V) (actual V, loaded bool) {
+	if m == nil {
+		return val, false
+	}
+
+	shard := m.getShard(key)
+	shard.mu.Lock()
+	defer shard.mu.Unlock()
+
+	if existing, ok := shard.items[key]; ok {
+		return existing, true
+	}
+
+	shard.items[key] = val
+	return val, false
+}
+
 // Delete deletes the value for the given key from the sharded map.
 func (m *ShardedMap[K, V]) Delete(key K) {
 	if m == nil {
