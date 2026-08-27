@@ -46,7 +46,7 @@ func New(s string) Path {
 
 	// Local path
 	return Path{
-		raw:    filepath.ToSlash(s),
+		raw:    strings.ReplaceAll(s, "\\", "/"),
 		scheme: "",
 		isURL:  false,
 	}

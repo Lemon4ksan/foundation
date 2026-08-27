@@ -6,8 +6,6 @@ package bytesconv
 
 import (
 	"bytes"
-
-	"github.com/lemon4ksan/foundation/silicon/simd"
 )
 
 // PatternSlicer is a zero-allocation byte slice pattern matcher and splitter.
@@ -28,11 +26,7 @@ func NewPatternSlicer(pattern []byte, offset int) *PatternSlicer {
 // findIndex locates the byte offset of s.Pattern in data using vector-accelerated SIMD routines.
 func (s *PatternSlicer) findIndex(data []byte) int {
 	if len(s.Pattern) == 1 {
-		return simd.IndexByteVector(data, s.Pattern[0])
-	}
-
-	if len(s.Pattern) == 2 {
-		return simd.IndexTwoBytesVector(data, s.Pattern[0], s.Pattern[1])
+		return bytes.IndexByte(data, s.Pattern[0])
 	}
 
 	return bytes.Index(data, s.Pattern)

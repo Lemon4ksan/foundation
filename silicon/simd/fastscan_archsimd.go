@@ -9,9 +9,8 @@ package simd
 import (
 	"bytes"
 	"math/bits"
-	"unsafe"
-
 	"simd/archsimd"
+	"unsafe"
 )
 
 // ScanByteVector scans data for target byte using 256-bit AVX2 SIMD instructions with 4-way loop unrolling.
@@ -52,7 +51,7 @@ func ScanByteVector(data []byte, target byte) int {
 			i += 128
 		}
 
-		// 32-byte chunk processing
+		// Process remaining 32-byte chunks
 		for i+32 <= n {
 			chunk := archsimd.LoadUint8x32(data[i : i+32])
 			mask := chunk.Equal(targetVec).ToBits()
@@ -62,10 +61,10 @@ func ScanByteVector(data []byte, target byte) int {
 			i += 32
 		}
 
-		// Tail scalar processing
-		if i < n {
-			if idx := bytes.IndexByte(data[i:], target); idx >= 0 {
-				return i + idx
+		// Scalar tail
+		for ; i < n; i++ {
+			if data[i] == target {
+				return i
 			}
 		}
 		return -1
@@ -74,45 +73,58 @@ func ScanByteVector(data []byte, target byte) int {
 	return bytes.IndexByte(data, target)
 }
 
-// IndexCRLFCRLFVector searches for "\r\n\r\n" in data and returns the index of the first byte after the sequence.
-func IndexCRLFCRLFVector(data []byte) int {
+// IndexDoubleCRLFVector finds the first occurrence of \r\n\r\n or \n\n in data using AVX2 SIMD instructions.
+func IndexDoubleCRLFVector(data []byte) int {
 	n := len(data)
-	if n < 4 {
+	if n < 2 {
 		return -1
 	}
 
 	if n >= 32 && hasAVX2 {
-		crVec := archsimd.BroadcastUint8x32('\r')
+		vecCR := archsimd.BroadcastUint8x32('\r')
+		vecLF := archsimd.BroadcastUint8x32('\n')
 		i := 0
 
 		for i+32 <= n {
 			chunk := archsimd.LoadUint8x32(data[i : i+32])
-			mask := chunk.Equal(crVec).ToBits()
+			maskCR := chunk.Equal(vecCR).ToBits()
+			maskLF := chunk.Equal(vecLF).ToBits()
 
-			for mask != 0 {
-				bit := bits.TrailingZeros32(mask)
-				pos := i + bit
-				if pos+3 < n {
-					val := *(*uint32)(unsafe.Pointer(&data[pos]))
-					if val == CRLFCRLFUint32 {
-						return pos + 4
+			if (maskCR | maskLF) != 0 {
+				// Potential header delimiter found within this 32-byte window
+				for mask := (maskCR | maskLF); mask != 0; {
+					bit := bits.TrailingZeros32(mask)
+					pos := i + bit
+					if pos+4 <= n && *(*uint32)(unsafe.Pointer(&data[pos])) == CRLFCRLFUint32 {
+						return pos
 					}
+					if pos+2 <= n && data[pos] == '\n' && data[pos+1] == '\n' {
+						return pos
+					}
+					mask &= mask - 1
 				}
-				mask &= mask - 1
 			}
 			i += 32
 		}
 
-		for ; i < n; i++ {
-			if data[i] == '\r' && i+3 < n {
-				val := *(*uint32)(unsafe.Pointer(&data[i]))
-				if val == CRLFCRLFUint32 {
-					return i + 4
-				}
+		// Fallback for remainder
+		if i < n {
+			tailIdx := IndexDoubleCRLF(data[i:])
+			if tailIdx != -1 {
+				return i + tailIdx
 			}
 		}
 		return -1
 	}
 
-	return IndexCRLFCRLF(data)
+	return IndexDoubleCRLF(data)
+}
+
+// IndexCRLFCRLFVector searches for "\r\n\r\n" in data and returns the index of the first byte after the sequence.
+func IndexCRLFCRLFVector(data []byte) int {
+	idx := IndexDoubleCRLFVector(data)
+	if idx < 0 {
+		return -1
+	}
+	return idx + 4
 }

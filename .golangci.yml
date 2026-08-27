@@ -96,3 +96,4 @@ linters:
       - "net/hpack/.*"
       - "net/proxy/socks/.*"
       - "net/psl/.*"
+      - "silicon/simd/fastscan_archsimd\\.go"

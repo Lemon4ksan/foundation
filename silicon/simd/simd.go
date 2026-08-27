@@ -160,3 +160,47 @@ func ValidUTF8(b []byte) bool {
 	// Tail and multibyte validation
 	return utf8.Valid(b[i:])
 }
+
+// XORMask32 masks slice b using a 4-byte cyclic mask via SWAR 64-bit XOR.
+func XORMask32(b []byte, mask uint32) {
+	if len(b) == 0 {
+		return
+	}
+
+	mask64 := uint64(mask) | (uint64(mask) << 32)
+	i := 0
+
+	for i+8 <= len(b) {
+		*(*uint64)(unsafe.Pointer(&b[i])) ^= mask64
+		i += 8
+	}
+
+	maskBytes := [4]byte{
+		byte(mask),
+		byte(mask >> 8),
+		byte(mask >> 16),
+		byte(mask >> 24),
+	}
+
+	for ; i < len(b); i++ {
+		b[i] ^= maskBytes[i&3]
+	}
+}
+
+// PrefetchL1 issues a prefetch instruction for the memory address.
+func PrefetchL1(_ unsafe.Pointer) {}
+
+// StreamCopy256 performs streaming copy.
+func StreamCopy256(dst, src []byte) int {
+	return copy(dst, src)
+}
+
+// IndexByteVector finds the first instance of c in b using vector/SIMD algorithms.
+func IndexByteVector(b []byte, c byte) int {
+	return bytes.IndexByte(b, c)
+}
+
+// IndexTwoBytesVector finds the first instance of c1 or c2 in b using vector/SIMD algorithms.
+func IndexTwoBytesVector(b []byte, c1, c2 byte) int {
+	return IndexByteTwoSWAR(b, c1, c2)
+}

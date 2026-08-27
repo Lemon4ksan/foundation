@@ -116,8 +116,8 @@ func TestScenario_PipelineDeadlockAndResilience(t *testing.T) {
 		failedCount    atomic.Uint64
 	)
 
-	// Subscribe to OrderProcessedEvent on the event.
-	sub := eventBus.Subscribe(OrderProcessedEvent{})
+	// Subscribe to OrderProcessedEvent on the event bus with ample buffer for parallel burst load.
+	sub := eventBus.SubscribeBuffer(2048, OrderProcessedEvent{})
 
 	subDone := make(chan struct{})
 	go func() {

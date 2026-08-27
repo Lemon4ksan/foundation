@@ -53,6 +53,6 @@ func IndexCRLFCRLFVector(data []byte) int {
 		return -1
 	}
 
-	return IndexCRLFCRLF(data)
+	return IndexDoubleCRLF(data)
 }
 

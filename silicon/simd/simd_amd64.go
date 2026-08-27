@@ -11,7 +11,6 @@ import (
 	"unsafe"
 
 	"golang.org/x/sys/cpu"
-	"simd/archsimd"
 )
 
 var hasAVX2 = cpu.X86.HasAVX2
@@ -24,16 +23,52 @@ func applyFastMaskAVX2(b []byte, mask uint32)
 //go:noescape
 func pext64(val, mask uint64) uint64
 
-//go:noescape
-func pdep64(val, mask uint64) uint64
+// MaskCRLF modifies slice in-place to neutralize CR and LF characters to space.
+func MaskCRLF(b []byte) {
+	n := len(b)
+	if n == 0 {
+		return
+	}
 
-//go:noescape
-func prefetchL1(ptr unsafe.Pointer)
+	if n >= 32 && hasAVX2 {
+		applyFastMaskAVX2(b, 0x20202020)
+		return
+	}
 
-//go:noescape
-func streamCopy256(dst, src []byte)
+	for i := range b {
+		if b[i] == '\r' || b[i] == '\n' {
+			b[i] = ' '
+		}
+	}
+}
 
-func extractBitsHW(val, mask uint64) uint64 {
+// ToLowerSWAR converts ASCII uppercase characters to lowercase using 64-bit SWAR.
+func ToLowerSWAR(dst, src []byte) {
+	n := min(len(dst), len(src))
+	i := 0
+
+	for i+8 <= n {
+		v := *(*uint64)(unsafe.Pointer(&src[i]))
+		// SWAR ASCII lowercase
+		mask := v + 0x7f7f7f7f7f7f7f7f
+		mask = (mask ^ v) & 0x8080808080808080
+		mask = ((v + 0x3f3f3f3f3f3f3f3f) ^ v) & mask
+		mask = (mask >> 2) & 0x2020202020202020
+		*(*uint64)(unsafe.Pointer(&dst[i])) = v | mask
+		i += 8
+	}
+
+	for ; i < n; i++ {
+		c := src[i]
+		if c >= 'A' && c <= 'Z' {
+			c += 32
+		}
+		dst[i] = c
+	}
+}
+
+// ParallelExtract64 performs parallel bit extraction using hardware PEXT instruction when BMI2 is available.
+func ParallelExtract64(val, mask uint64) uint64 {
 	if hasBMI2 {
 		return pext64(val, mask)
 	}
@@ -41,119 +76,17 @@ func extractBitsHW(val, mask uint64) uint64 {
 	return extractBitsSWAR(val, mask)
 }
 
+// TrailingZeros32 returns the number of trailing zero bits in x.
+//
+//go:inline
+func TrailingZeros32(x uint32) int {
+	return bits.TrailingZeros32(x)
+}
+
+func extractBitsHW(val, mask uint64) uint64 {
+	return ParallelExtract64(val, mask)
+}
+
 func depositBitsHW(val, mask uint64) uint64 {
-	if hasBMI2 {
-		return pdep64(val, mask)
-	}
-
 	return depositBitsSWAR(val, mask)
-}
-
-// PrefetchL1 issues a PREFETCHT0 instruction to load ptr's cache line into L1 data cache.
-func PrefetchL1(ptr unsafe.Pointer) {
-	if ptr != nil {
-		prefetchL1(ptr)
-	}
-}
-
-// StreamCopy256 copies src bytes to dst using VMOVNTDQ non-temporal streaming stores, bypassing CPU L1/L2/L3 cache.
-func StreamCopy256(dst, src []byte) int {
-	if len(dst) == 0 || len(src) == 0 {
-		return 0
-	}
-
-	n := min(len(dst), len(src))
-	if n >= 64 && hasAVX2 && uintptr(unsafe.Pointer(&dst[0]))%32 == 0 {
-		streamCopy256(dst[:n], src[:n])
-
-		rem := n &^ 31
-		if rem < n {
-			copy(dst[rem:n], src[rem:n])
-		}
-
-		return n
-	}
-
-	return copy(dst, src)
-}
-
-// IndexByteVector scans slice b for byte c using 256-bit AVX2 SIMD hardware intrinsics.
-func IndexByteVector(b []byte, c byte) int {
-	return ScanByteVector(b, c)
-}
-
-// IndexTwoBytesVector searches for the first occurrence of c1 or c2 using 256-bit AVX2 SIMD hardware intrinsics.
-func IndexTwoBytesVector(b []byte, c1, c2 byte) int {
-	n := len(b)
-	if n == 0 {
-		return -1
-	}
-
-	if n >= 32 && hasAVX2 {
-		v1 := archsimd.BroadcastUint8x32(c1)
-		v2 := archsimd.BroadcastUint8x32(c2)
-		i := 0
-
-		for i+32 <= n {
-			chunk := archsimd.LoadUint8x32(b[i : i+32])
-			m1 := chunk.Equal(v1).ToBits()
-			m2 := chunk.Equal(v2).ToBits()
-			mask := m1 | m2
-			if mask != 0 {
-				return i + bits.TrailingZeros32(mask)
-			}
-			i += 32
-		}
-
-		if i < n {
-			if idx := IndexByteTwoSWAR(b[i:], c1, c2); idx >= 0 {
-				return i + idx
-			}
-		}
-
-		return -1
-	}
-
-	return IndexByteTwoSWAR(b, c1, c2)
-}
-
-// XORMask32 masks slice b using a 4-byte cyclic mask via 256-bit AVX2 VPXOR vector instructions.
-func XORMask32(b []byte, mask uint32) {
-	if len(b) >= 32 && hasAVX2 {
-		applyFastMaskAVX2(b, mask)
-
-		rem := len(b) &^ 31
-		if rem < len(b) {
-			maskSWAR(b[rem:], mask)
-		}
-
-		return
-	}
-
-	maskSWAR(b, mask)
-}
-
-func maskSWAR(b []byte, mask uint32) {
-	if len(b) == 0 {
-		return
-	}
-
-	mask64 := uint64(mask) | (uint64(mask) << 32)
-	i := 0
-
-	for i+8 <= len(b) {
-		*(*uint64)(unsafe.Pointer(&b[i])) ^= mask64
-		i += 8
-	}
-
-	maskBytes := [4]byte{
-		byte(mask),
-		byte(mask >> 8),
-		byte(mask >> 16),
-		byte(mask >> 24),
-	}
-
-	for ; i < len(b); i++ {
-		b[i] ^= maskBytes[i&3]
-	}
 }

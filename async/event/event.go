@@ -107,19 +107,28 @@ func (b *Bus) SetOnDropped(fn func(event Event, subID uint64)) {
 	b.mu.Unlock()
 }
 
-// Subscribe registers a subscription to receive events of the specified types.
+// Subscribe registers a subscription to receive events of the specified types with default buffer size (128).
 //
 // If no event types are provided or if an event is nil, those entries are ignored.
 // Duplicate event types within a single Subscribe call are automatically deduplicated.
 // If the Bus is closed, Subscribe returns a subscription with an already closed channel.
 func (b *Bus) Subscribe(evs ...Event) *Subscription {
+	return b.SubscribeBuffer(128, evs...)
+}
+
+// SubscribeBuffer registers a subscription to receive events with a custom channel buffer capacity.
+func (b *Bus) SubscribeBuffer(bufferSize int, evs ...Event) *Subscription {
 	b.mu.Lock()
 	defer b.mu.Unlock()
+
+	if bufferSize <= 0 {
+		bufferSize = 128
+	}
 
 	id := b.nextID.Add(1)
 	sub := &Subscription{
 		id:  id,
-		ch:  make(chan Event, 128),
+		ch:  make(chan Event, bufferSize),
 		bus: b,
 	}
 

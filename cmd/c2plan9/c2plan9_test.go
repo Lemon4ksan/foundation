@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -107,7 +108,9 @@ func FastAddAccumulate(a, b unsafe.Pointer, n uint64) uint64
 		t.Fatalf("failed to write stub: %v", err)
 	}
 
-	testCode := `package main
+	testCode := `//go:build amd64 && !purego
+
+package main
 
 import (
 	"testing"
@@ -143,7 +146,13 @@ go 1.25
 
 	_ = os.Remove(cFile)
 
-	cmd := exec.Command("go", "test", "-v", ".")
+	var cmd *exec.Cmd
+	if runtime.GOARCH == "amd64" {
+		cmd = exec.Command("go", "test", "-v", ".")
+	} else {
+		cmd = exec.Command("go", "build", "-o", os.DevNull, ".")
+		cmd.Env = append(os.Environ(), "GOARCH=amd64")
+	}
 	cmd.Dir = tmpDir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
