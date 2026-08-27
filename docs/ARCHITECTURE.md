@@ -54,12 +54,14 @@ graph TD
 | | `offheap` | [`docs/silicon/OFFHEAP.md`](silicon/OFFHEAP.md) | Direct unmanaged memory slabs avoiding Go GC overhead. |
 | | `pool` | [`docs/silicon/POOL.md`](silicon/POOL.md) | Multi-tiered memory arenas, perpetual byte storage, object pools. |
 | | `ringbuf` | [`docs/silicon/RINGBUF.md`](silicon/RINGBUF.md) | Lock-free SPSC / MPMC ring buffers and Structure-of-Arrays (SoA). |
-| | `clock`, `rand` | [`docs/silicon/CLOCK_AND_RAND.md`](silicon/CLOCK_AND_RAND.md) | Monotonic fast-clock and lock-free fast pseudo-random / UUID v4/v7. |
+| | `clock`, `randkit` | [`docs/silicon/CLOCK_AND_RAND.md`](silicon/CLOCK_AND_RAND.md) | Monotonic fast-clock and lock-free fast pseudo-random / UUID v4/v7. |
+| | `hexkit` | [`docs/silicon/BYTESCONV.md`](silicon/BYTESCONV.md) | Vectorized AVX2 hexadecimal encoding and decoding. |
 | | `trie` | [`docs/silicon/TRIE.md`](silicon/TRIE.md) | Zero-allocation prefix and radix search trees. |
 | **`bufkit/`** | `bufkit` | [`docs/bufkit/BUFKIT.md`](bufkit/BUFKIT.md) | Cacheline-aligned buffers, scatter-gather BufferChain, and SPSC RingBuffer. |
 | **`timekit/`** | `timekit` | [`docs/timekit/TIMEKIT.md`](timekit/TIMEKIT.md) | Coarse atomic clock, zero-alloc HTTP-date / ISO 8601 formatting, stopwatch. |
 | **`refkit/`** | `refkit` | [`docs/refkit/REFKIT.md`](refkit/REFKIT.md) | High-speed struct tag parsing with cache and panic-safe reflection checks. |
-| **`async/`** | `lifecycle` | [`docs/async/LIFECYCLE.md`](async/LIFECYCLE.md) | Topologically sorted DAG service boot and background loop runners. |
+| **`async/`** | `contextkit` | [`docs/async/CONTEXTKIT.md`](async/CONTEXTKIT.md) | Flat-array zero-alloc L1-resident `context.Context` replacement. |
+| | `lifecycle` | [`docs/async/LIFECYCLE.md`](async/LIFECYCLE.md) | Topologically sorted DAG service boot and background loop runners. |
 | | `event` | [`docs/async/EVENT.md`](async/EVENT.md) | Type-safe non-blocking event bus with reflection-free dispatch. |
 | | `task` | [`docs/async/TASK.md`](async/TASK.md) | Asynchronous task tracking with Correlation IDs and Futures. |
 | | `dedup` | [`docs/async/DEDUP.md`](async/DEDUP.md) | SingleFlight request deduplication with isolated panic propagation. |
@@ -67,8 +69,8 @@ graph TD
 | | `pipeline` | [`docs/async/PIPELINE.md`](async/PIPELINE.md) | Concurrent mapping pipelines with rate-limiting and fan-out/fan-in. |
 | | `pool` | [`docs/async/POOL.md`](async/POOL.md) | Dynamic auto-scaling goroutine worker pool with futures. |
 | | `scheduler` | [`docs/async/SCHEDULER.md`](async/SCHEDULER.md) | Microsecond-precision recurring task schedulers and cron runners. |
-| | `log` | [`docs/async/LOG.md`](async/LOG.md) | High-performance zero-allocation structured logger facade. |
+| | `logkit` | [`docs/async/LOGKIT.md`](async/LOGKIT.md) | High-performance zero-allocation structured logger facade. |
 | **`sync/`** | `sync` | [`docs/sync/SYNC.md`](sync/SYNC.md) | Striped key-based locks, Vegas limiters, breakers, backoff, and semaphores. |
 | **`generic/`** | `generic` | [`docs/generic/GENERIC.md`](generic/GENERIC.md) | Thread-safe `Safe[T]`, `LRU[K, V]`, `ResourcePool[T]`, `Cache[K, V]`, `Stream[T]`. |
-| **`io/`** | `io` | [`docs/io/IO.md`](io/IO.md) | Replayable body buffers, allocation-free `BytesReader`, and copy pools. |
-| **`net/`** | `net` | [`docs/net/NET.md`](net/NET.md) | Canonical HTTP headers, HPACK compression, gRPC-Web framing, Cache-Status, DNS. |
+| **`iokit/`** | `iokit` | [`docs/iokit/IOKIT.md`](iokit/IOKIT.md) | Replayable body buffers, allocation-free `BytesReader`, and copy pools. |
+| **`net/`** | `net` | [`docs/net/NET.md`](net/NET.md) | Canonical HTTP headers, URL parsing (`urlkit`), HPACK compression, gRPC-Web, Cache-Status, DNS. |

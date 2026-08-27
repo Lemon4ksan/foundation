@@ -75,9 +75,9 @@ foundation/
 Every package defines a standard `generate.go` directive:
 
 ```go
-package hex
+package hexkit
 
-//go:generate c2plan9 -c ../../csrc/hex.c -o hex_amd64.s -stub hex_amd64.go -pkg hex
+//go:generate c2plan9 -c ../../csrc/hex.c -o hex_amd64.s -stub hex_amd64.go -pkg hexkit
 ```
 
 To recompile all kernels across the entire repository:
@@ -89,12 +89,12 @@ go generate ./...
 
 ### 1. Silicon & Memory Substrate (`silicon/`)
 * **`simd`**: AVX2/BMI2 vector processing for frame scanning and match lengths.
-* **`hex`**: 13.0 GB/s SIMD hex encoder and decoder.
+* **`hexkit`**: 13.0 GB/s SIMD hex encoder and decoder.
 * **`bytesconv`**: 31.8 GB/s vector casing, Base64 codecs, zero-copy converters, and tokenizers.
 * **`offheap`**: Unmanaged direct memory slabs bypassing the Go GC.
 * **`pool`**: Multi-tiered memory arenas, perpetual byte storage, and lock-free object pools.
 * **`ringbuf`**: Lock-free SPSC / MPMC ring buffers and Structure-of-Arrays (SoA) layout.
-* **`clock` & `rand`**: Monotonic fast-clock without syscalls, lock-free PRNG, and UUIDv7.
+* **`clock` & `randkit`**: Monotonic fast-clock without syscalls, lock-free PRNG, and UUIDv7.
 * **`trie`**: Compressed radix search trees for high-speed prefix routing.
 
 ### 2. High-Performance Buffers (`bufkit/`)
@@ -113,7 +113,7 @@ go generate ./...
 * **`check`**: Zero-allocation reflection introspection helpers (`IsNil`, `IsZero`, `IsStruct`, `IsCollection`).
 
 ### 5. Concurrency & Runtime Orchestration (`async/`)
-* **`context`**: Flat-array, L1-cache resident `context.Context` with zero allocations.
+* **`contextkit`**: Flat-array, L1-cache resident `context.Context` with zero allocations.
 * **`lifecycle`**: Topologically sorted DAG service boot, health monitoring, and graceful teardown.
 * **`event`**: Type-safe, non-blocking asynchronous event bus.
 * **`task`**: Asynchronous task manager with correlation IDs, timeouts, and futures.
@@ -122,7 +122,7 @@ go generate ./...
 * **`pipeline`**: Concurrent worker pipelines with token-bucket rate limiting and DataLoader batching.
 * **`pool`**: Auto-scaling goroutine worker pools with idle scale-down and panic recovery.
 * **`scheduler`**: Microsecond-precision recurring task schedulers and cron runners.
-* **`log`**: Zero-allocation structured logging facade with asynchronous flushing.
+* **`logkit`**: Zero-allocation structured logging facade with asynchronous flushing.
 
 ### 6. Tactical Synchronization & Resilience (`sync/`)
 * **`sync`**: Striped key-based locks, Vegas adaptive limiters, circuit breakers, and jittered backoff.
@@ -130,15 +130,17 @@ go generate ./...
 ### 7. Type-Safe Generics & Collections (`generic/`)
 * **`generic`**: Thread-safe `Safe[T]`, `LRU[K, V]` cache, `ResourcePool[T]`, in-memory TTL `Cache[K, V]`, monadic `Optional`/`Result`, and lazy `Stream[T]` (`iter.Seq`) pipelines.
 
-### 8. Streaming I/O & Replayable Buffers (`io/`)
-* **`io`**: Replayable body buffers, allocation-free `BytesReader`, and pooled stream copy helpers.
+### 8. Streaming I/O & Replayable Buffers (`iokit/`)
+* **`iokit`**: Replayable body buffers, allocation-free `BytesReader`, and pooled stream copy helpers.
 
 ### 9. Low-Level Network Protocol Primitives (`net/`)
 * **`net/http/header`**: Canonical HTTP header constants, pseudo-headers, MIME media types, and zero-allocation header map parser.
+* **`net/urlkit`**: CRC32 sharded URL cache, path variable expansion, and fast query param appending.
 * **`net`**: HPACK compression, gRPC-Web framing, RFC 9211 Cache-Status, DoH/DoQ/DoT DNS, and Proxy connectors.
 
-### 10. Codecs & Types (`codec/`, `types/`)
+### 10. Codecs & Types (`codec/`, `text/`, `types/`)
 * **`codec/json`**: High-performance JSON serializer with AVX2 whitespace/escape scanners.
+* **`text/htmlkit`**: Zero-allocation HTML entity unescaping.
 * **`types/uuid`**: RFC 9562 UUIDv4 and UUIDv7 generators with SIMD formatting and parsing.
 
 ## License

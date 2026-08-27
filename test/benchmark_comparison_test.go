@@ -14,7 +14,7 @@ import (
 	"github.com/lemon4ksan/foundation/net/hpack"
 	"github.com/lemon4ksan/foundation/net/idna"
 	"github.com/lemon4ksan/foundation/net/psl"
-	foundationurl "github.com/lemon4ksan/foundation/net/url"
+	"github.com/lemon4ksan/foundation/net/urlkit"
 	"github.com/lemon4ksan/foundation/silicon/clock"
 	"github.com/lemon4ksan/foundation/text/encoding/charmap"
 	"github.com/lemon4ksan/foundation/text/encoding/htmlindex"
@@ -41,7 +41,7 @@ func BenchmarkCompare_URL_Parse_Foundation(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		u, err := foundationurl.Parse(testRawURL)
+		u, err := urlkit.Parse(testRawURL)
 		if err != nil || u.Host == "" {
 			b.Fatal(err)
 		}

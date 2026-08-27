@@ -1,0 +1,15 @@
+// Copyright (c) 2026 Lemon4ksan All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
+//go:build (!amd64 && !arm64) || purego
+
+package urlkit
+
+import "errors"
+
+var ErrInvalidEscape = errors.New("url: invalid URL escape sequence")
+
+func unescapeVector(dst, src []byte) (int, error) {
+	return unescapeScalar(dst, src)
+}

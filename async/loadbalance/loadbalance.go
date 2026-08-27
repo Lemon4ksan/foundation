@@ -12,7 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/lemon4ksan/foundation/silicon/rand"
+	"github.com/lemon4ksan/foundation/silicon/randkit"
 )
 
 var (
@@ -163,7 +163,7 @@ func (b *Balancer[T]) Select() (*Target[T], error) {
 
 	switch b.strategy {
 	case Random:
-		return healthy[rand.Intn(len(healthy))], nil
+		return healthy[randkit.Intn(len(healthy))], nil
 
 	case Weighted:
 		totalWeight := 0
@@ -175,7 +175,7 @@ func (b *Balancer[T]) Select() (*Target[T], error) {
 			return healthy[0], nil
 		}
 
-		r := rand.Intn(totalWeight)
+		r := randkit.Intn(totalWeight)
 		acc := 0
 		for _, target := range healthy {
 			acc += target.Weight
@@ -206,8 +206,8 @@ func (b *Balancer[T]) Select() (*Target[T], error) {
 		}
 
 		// Power of Two Choices (P2C)
-		i := rand.Intn(len(healthy))
-		j := rand.Intn(len(healthy) - 1)
+		i := randkit.Intn(len(healthy))
+		j := randkit.Intn(len(healthy) - 1)
 		if j >= i {
 			j++
 		}

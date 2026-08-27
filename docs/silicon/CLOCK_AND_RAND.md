@@ -1,8 +1,8 @@
-# Monotonic Clock & Lock-Free Rand (`silicon/clock`, `silicon/rand`)
+# Monotonic Clock & Lock-Free Rand (`silicon/clock`, `silicon/randkit`)
 
 [![Go Reference](https://img.shields.io/badge/go-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/lemon4ksan/foundation/silicon/clock)
 
-`silicon/clock` and `silicon/rand` provide nanosecond-precision monotonic time tracking without OS syscall overhead, lock-free fast pseudo-random generators, and zero-allocation UUID v4/v7 builders.
+`silicon/clock` and `silicon/randkit` provide nanosecond-precision monotonic time tracking without OS syscall overhead, lock-free fast pseudo-random generators, and zero-allocation UUID v4/v7 builders.
 
 ## Motivation & Problem Context
 
@@ -14,7 +14,7 @@ Querying system time via `time.Now()` on millions of operations incurs operating
 
 ```go
 // Global lock contention across goroutines
-num := rand.Intn(1000)
+num := randkit.Intn(1000)
 
 // Allocates 16 bytes on heap
 id := uuid.New().String()
@@ -24,11 +24,11 @@ id := uuid.New().String()
 
 ```go
 // Thread-local lock-free XorShift (0 mutexes)
-num := rand.Uint32n(1000)
+num := randkit.Uint32n(1000)
 
 // Zero-allocation UUID v7 directly into buffer
 var buf [36]byte
-id := rand.UUIDv7Into(&buf)
+id := randkit.UUIDv7Into(&buf)
 ```
 
 ## Architecture & Mechanics
@@ -48,12 +48,12 @@ package main
 import (
 	"fmt"
 
-	"github.com/lemon4ksan/foundation/silicon/rand"
+	"github.com/lemon4ksan/foundation/silicon/randkit"
 )
 
 func main() {
 	var uuidBuf [36]byte
-	uuidStr := rand.UUIDv7Into(&uuidBuf)
+	uuidStr := randkit.UUIDv7Into(&uuidBuf)
 
 	fmt.Println("Time-sortable UUID v7:", uuidStr)
 }

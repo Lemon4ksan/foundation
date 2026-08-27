@@ -31,10 +31,10 @@ foundation/
 │   ├── DEDUP.md              // Single-flight request deduplication & panic isolation
 │   ├── FSM.md                // Strictly typed FSM with rollback & DOT export
 │   ├── PIPELINE.md           // Concurrent mapping, fan-out/fan-in, DataLoader
-│   ├── CONTEXT.md            // Ultra-fast flat-array context (0 B/op, L1 cache)
+│   ├── CONTEXTKIT.md         // Ultra-fast flat-array context (0 B/op, L1 cache)
 │   ├── POOL.md               // Auto-scaling goroutine worker pool
 │   ├── SCHEDULER.md          // Microsecond precision task scheduler & cron
-│   └── LOG.md                // Zero-allocation structured logging
+│   └── LOGKIT.md             // Zero-allocation structured logging
 │
 ├── sync/                     // Tactical Synchronization & Resilience
 │   └── SYNC.md               // KeyLock, Limiter (Vegas/Keyed), Breaker, Backoff, Semaphore, Lazy, SpinLock
@@ -42,8 +42,8 @@ foundation/
 ├── generic/                  // Type-Safe Generics & Collections
 │   └── GENERIC.md            // Safe[T], Cache[K,V], LRU, Pool, Optional/Result, Slices, Maps, Stream
 │
-├── io/                       // Streaming I/O & Replayable Buffers
-│   └── IO.md                 // ReplayableBody, BytesReader, Stream Limits, Copy Pools
+├── iokit/                    // Streaming I/O & Replayable Buffers
+│   └── IOKIT.md              // ReplayableBody, BytesReader, Stream Limits, Copy Pools
 │
 └── net/                      // Low-Level Network Protocol Primitives
     └── NET.md                // Header, HPACK, gRPC-Web, Cache-Status, DoH/DoQ, Proxy, Cookie, PSL
@@ -60,7 +60,8 @@ foundation/
 | `offheap` | [`docs/silicon/OFFHEAP.md`](silicon/OFFHEAP.md) | Direct virtual memory slabs eliminating GC scan latency. |
 | `pool` | [`docs/silicon/POOL.md`](silicon/POOL.md) | Contiguous bump-allocator arenas with O(1) instant reset. |
 | `ringbuf` | [`docs/silicon/RINGBUF.md`](silicon/RINGBUF.md) | Lock-free SPSC / MPMC ring buffers eliminating channel mutex overhead. |
-| `clock`/`rand` | [`docs/silicon/CLOCK_AND_RAND.md`](silicon/CLOCK_AND_RAND.md) | Monotonic clock without syscalls and lock-free sortable UUID v7. |
+| `clock`/`randkit` | [`docs/silicon/CLOCK_AND_RAND.md`](silicon/CLOCK_AND_RAND.md) | Monotonic clock without syscalls and lock-free sortable UUID v7. |
+| `hexkit` | [`docs/silicon/BYTESCONV.md`](silicon/BYTESCONV.md) | Vectorized AVX2 hexadecimal encoding and decoding. |
 | `trie` | [`docs/silicon/TRIE.md`](silicon/TRIE.md) | Compressed radix prefix trees for URL routing and domain lookup. |
 
 ### High-Performance Buffers (`bufkit/`)
@@ -85,7 +86,7 @@ foundation/
 
 | Module | Documentation | Focus Area |
 | :--- | :--- | :--- |
-| `context` | [`docs/async/CONTEXT.md`](async/CONTEXT.md) | High-performance flat-array `context.Context` (0 B/op, L1 cache, generics). |
+| `contextkit` | [`docs/async/CONTEXTKIT.md`](async/CONTEXTKIT.md) | High-performance flat-array `context.Context` (0 B/op, L1 cache, generics). |
 | `lifecycle` | [`docs/async/LIFECYCLE.md`](async/LIFECYCLE.md) | Topologically sorted DAG service boot and reverse graceful teardown. |
 | `event` | [`docs/async/EVENT.md`](async/EVENT.md) | Type-safe non-blocking event bus preventing slow consumer backpressure. |
 | `task` | [`docs/async/TASK.md`](async/TASK.md) | Correlation-ID async task manager with pooled memory and deadlines. |
@@ -94,7 +95,7 @@ foundation/
 | `pipeline` | [`docs/async/PIPELINE.md`](async/PIPELINE.md) | Concurrent mapping pipelines with rate limiting and DataLoader batching. |
 | `pool` | [`docs/async/POOL.md`](async/POOL.md) | Auto-scaling goroutine worker pool with idle scale-down and futures. |
 | `scheduler` | [`docs/async/SCHEDULER.md`](async/SCHEDULER.md) | Microsecond precision task scheduler with recurring interval loops. |
-| `log` | [`docs/async/LOG.md`](async/LOG.md) | Zero-allocation structured logging facade with asynchronous flushing. |
+| `logkit` | [`docs/async/LOGKIT.md`](async/LOGKIT.md) | Zero-allocation structured logging facade with asynchronous flushing. |
 
 ### Tactical Synchronization (`sync/`)
 
@@ -108,14 +109,14 @@ foundation/
 | :--- | :--- | :--- |
 | `generic` | [`docs/generic/GENERIC.md`](generic/GENERIC.md) | Thread-safe `Safe[T]`, `LRU[K, V]`, `ResourcePool[T]`, in-memory `Cache[K, V]`, monadic `Optional`/`Result`, and lazy `Stream[T]` iterators. |
 
-### Streaming I/O & Replay Buffers (`io/`)
+### Streaming I/O & Replay Buffers (`iokit/`)
 
 | Module | Documentation | Focus Area |
 | :--- | :--- | :--- |
-| `io` | [`docs/io/IO.md`](io/IO.md) | Replayable body buffers, allocation-free `BytesReader`, and pooled stream copy helpers. |
+| `iokit` | [`docs/iokit/IOKIT.md`](iokit/IOKIT.md) | Replayable body buffers, allocation-free `BytesReader`, and pooled stream copy helpers. |
 
 ### Low-Level Network Protocol Primitives (`net/`)
 
 | Module | Documentation | Focus Area |
 | :--- | :--- | :--- |
-| `net` | [`docs/net/NET.md`](net/NET.md) | Canonical HTTP headers, HPACK compression, gRPC-Web framing, RFC 9211 Cache-Status, DoH/DoQ/DoT DNS, and Proxy engines. |
+| `net` | [`docs/net/NET.md`](net/NET.md) | Canonical HTTP headers, URL parsing (`urlkit`), HPACK compression, gRPC-Web framing, RFC 9211 Cache-Status, DoH/DoQ/DoT DNS, and Proxy engines. |
