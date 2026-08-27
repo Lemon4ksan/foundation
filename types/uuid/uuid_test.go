@@ -210,8 +210,47 @@ func TestUUID_SQL_ValuerAndScanner(t *testing.T) {
 	// Scanner invalid length bytes
 	assert.ErrorIs(t, uErr.Scan([]byte{1, 2, 3}), uuid.ErrInvalidLength)
 
+	// Scanner invalid hex format
+	assert.ErrorIs(t, uErr.Scan("6ba7b810_9dad_11d1_80b4_00c04fd430c8"), uuid.ErrInvalidFormat)
+	assert.ErrorIs(t, uErr.Scan([]byte("6ba7b810_9dad_11d1_80b4_00c04fd430c8")), uuid.ErrInvalidFormat)
+
 	// Ensure implements driver.Valuer
 	var _ driver.Valuer = u
+}
+
+func TestUUID_Variants_Format_And_TimeEdgeCases(t *testing.T) {
+	t.Parallel()
+
+	// 1. Format
+	u := uuid.MustNewV4()
+	var buf [36]byte
+	u.Format(&buf)
+	assert.Equal(t, u.String(), string(buf[:]))
+
+	// 2. All 4 Variants
+	var uNCS uuid.UUID
+	uNCS[8] = 0x00 // 0xxx
+	assert.Equal(t, 0, uNCS.Variant())
+
+	var uRFC uuid.UUID
+	uRFC[8] = 0x80 // 10xx
+	assert.Equal(t, 2, uRFC.Variant())
+
+	var uMS uuid.UUID
+	uMS[8] = 0xC0 // 110x
+	assert.Equal(t, 6, uMS.Variant())
+
+	var uRes uuid.UUID
+	uRes[8] = 0xE0 // 111x
+	assert.Equal(t, 7, uRes.Variant())
+
+	// 3. Time() on non-v7 UUID (e.g. v4) returns zero time
+	assert.True(t, u.Time().IsZero())
+
+	// 4. UnmarshalText errors
+	var uText uuid.UUID
+	assert.ErrorIs(t, uText.UnmarshalText([]byte("short")), uuid.ErrInvalidLength)
+	assert.ErrorIs(t, uText.UnmarshalText([]byte("6ba7b810_9dad_11d1_80b4_00c04fd430c8")), uuid.ErrInvalidFormat)
 }
 
 func BenchmarkUUID_String(b *testing.B) {

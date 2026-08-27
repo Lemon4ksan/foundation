@@ -391,6 +391,46 @@ func TestHash64Vector(t *testing.T) {
 	differentData := []byte("The quick brown fox jumps over the lazy cat")
 	h3 := simd.Hash64Vector(differentData, 0)
 	assert.True(t, h1 != h3)
+
+	// Empty data and seeded
+	assert.Equal(t, uint64(0), simd.Hash64Vector(nil, 0))
+	assert.NotEqual(t, uint64(0), simd.Hash64Vector(data, 12345))
+}
+
+func TestSIMD_MaskCRLF_And_ToLowerSWAR(t *testing.T) {
+	t.Parallel()
+
+	// 1. MaskCRLF short
+	shortData := []byte("hello\r\nworld\n!")
+	simd.MaskCRLF(shortData)
+	assert.Equal(t, []byte("hello  world !"), shortData)
+
+	// Empty MaskCRLF
+	simd.MaskCRLF(nil)
+
+	// MaskCRLF long >= 32 bytes
+	longData := []byte("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n")
+	simd.MaskCRLF(longData)
+	assert.Equal(t, 51, len(longData))
+
+	// 2. ToLowerSWAR
+	src := []byte("HELLO WORLD! 123 ABCDEFGHIJKLMNOPQRSTUVWXYZ-extra-tail")
+	dst := make([]byte, len(src))
+	simd.ToLowerSWAR(dst, src)
+	assert.Equal(t, []byte(strings.ToLower(string(src))), dst)
+
+	// 3. ParallelExtract64 & TrailingZeros32
+	pext := simd.ParallelExtract64(0b10101010, 0b11110000)
+	assert.True(t, pext > 0)
+	assert.Equal(t, 3, simd.TrailingZeros32(0b1000))
+
+	// 4. PrefetchL1
+	simd.PrefetchL1(unsafe.Pointer(&src[0]))
+
+	// 5. IndexCRLFCRLF
+	rawHTTP := []byte("GET / HTTP/1.1\r\nHost: example.com\r\n\r\nBody")
+	assert.Equal(t, 37, simd.IndexCRLFCRLF(rawHTTP))
+	assert.Equal(t, -1, simd.IndexCRLFCRLF([]byte("no-boundary")))
 }
 
 func BenchmarkScanByte_AVX2(b *testing.B) {

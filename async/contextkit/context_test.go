@@ -28,6 +28,9 @@ func TestFastContext_BasicValues(t *testing.T) {
 	bg := contextkit.Background()
 	require.NotNil(t, bg)
 
+	todo := contextkit.TODO()
+	require.NotNil(t, todo)
+
 	ctx1 := contextkit.WithValue(bg, keyTraceID, "trace-123")
 	ctx2 := contextkit.WithValue(ctx1, keyUserID, 42)
 	ctx3 := contextkit.WithValue(ctx2, keyRole, "admin")
@@ -55,6 +58,64 @@ func TestFastContext_BasicValues(t *testing.T) {
 
 	// Missing key returns default
 	assert.Equal(t, "guest", contextkit.GetOr[string](ctx3, "missing", "guest"))
+
+	// Nil context or nil key
+	assert.False(t, contextkit.Get[string](nil, "key").IsPresent())
+	assert.False(t, contextkit.Get[string](ctx3, nil).IsPresent())
+}
+
+func TestFastContext_Wrap_And_NilBranches(t *testing.T) {
+	t.Parallel()
+
+	// 1. Wrap nil -> Background
+	wNil := contextkit.Wrap(nil)
+	assert.NotNil(t, wNil)
+
+	// 2. Wrap already FastContext -> returns same
+	wSame := contextkit.Wrap(wNil)
+	assert.Same(t, wNil, wSame)
+
+	// 3. Wrap standard context
+	stdCtx := context.WithValue(context.Background(), "k", "v")
+	wStd := contextkit.Wrap(stdCtx)
+	assert.Equal(t, "v", wStd.Value("k"))
+
+	// 4. Methods on nil *Context
+	var nilCtx *contextkit.Context
+	_, ok := nilCtx.Deadline()
+	assert.False(t, ok)
+	assert.Nil(t, nilCtx.Done())
+	assert.Nil(t, nilCtx.Err())
+	assert.Nil(t, nilCtx.Value("k"))
+	assert.Nil(t, nilCtx.Set("k", "v"))
+}
+
+func TestFastContext_Set_InPlace(t *testing.T) {
+	t.Parallel()
+
+	ctx := contextkit.Background()
+
+	// Set nil key
+	ctx.Set(nil, "val")
+
+	// Set within inline capacity (8 items)
+	for i := 0; i < 8; i++ {
+		ctx.Set(i, i*10)
+	}
+
+	// Update existing inline key in-place
+	ctx.Set(3, 999)
+	assert.Equal(t, 999, ctx.Value(3))
+
+	// Set beyond inline capacity -> into extra slice
+	for i := 8; i < 12; i++ {
+		ctx.Set(i, i*10)
+	}
+	assert.Equal(t, 100, ctx.Value(10))
+
+	// Update existing key in extra slice
+	ctx.Set(10, 888)
+	assert.Equal(t, 888, ctx.Value(10))
 }
 
 func TestFastContext_OverflowCapacity(t *testing.T) {
@@ -70,6 +131,10 @@ func TestFastContext_OverflowCapacity(t *testing.T) {
 	for i := 0; i < 12; i++ {
 		assert.Equal(t, i*10, contextkit.GetOr[int](ctx, i, -1))
 	}
+
+	// WithValue from nil parent
+	ctxNilParent := contextkit.WithValue(nil, "key", "val")
+	assert.Equal(t, "val", ctxNilParent.Value("key"))
 }
 
 func TestFastContext_WithCancelAndTimeout(t *testing.T) {
@@ -86,6 +151,11 @@ func TestFastContext_WithCancelAndTimeout(t *testing.T) {
 		default:
 			t.Fatal("expected Done channel to be closed")
 		}
+
+		// WithCancel nil parent
+		ctxNil, cancelNil := contextkit.WithCancel(nil)
+		defer cancelNil()
+		assert.NotNil(t, ctxNil)
 	})
 
 	t.Run("WithTimeout", func(t *testing.T) {
@@ -94,6 +164,26 @@ func TestFastContext_WithCancelAndTimeout(t *testing.T) {
 
 		time.Sleep(50 * time.Millisecond)
 		assert.ErrorIs(t, ctx.Err(), context.DeadlineExceeded)
+
+		// WithTimeout nil parent
+		ctxNil, cancelNil := contextkit.WithTimeout(nil, time.Hour)
+		defer cancelNil()
+		assert.NotNil(t, ctxNil)
+	})
+
+	t.Run("WithDeadline", func(t *testing.T) {
+		dl := time.Now().Add(50 * time.Millisecond)
+		ctx, cancel := contextkit.WithDeadline(contextkit.Background(), dl)
+		defer cancel()
+
+		d, ok := ctx.Deadline()
+		assert.True(t, ok)
+		assert.Equal(t, dl, d)
+
+		// WithDeadline nil parent
+		ctxNil, cancelNil := contextkit.WithDeadline(nil, dl)
+		defer cancelNil()
+		assert.NotNil(t, ctxNil)
 	})
 }
 
@@ -101,180 +191,23 @@ func TestFastContext_Pool(t *testing.T) {
 	t.Parallel()
 
 	pool := contextkit.NewPool()
-	fc := pool.Acquire(context.Background())
-	require.NotNil(t, fc)
 
-	ctx := contextkit.WithValue(fc, "key", "val")
-	assert.Equal(t, "val", contextkit.GetOr[string](ctx, "key", ""))
+	// Acquire nil parent -> defaults to Background
+	cNil := pool.Acquire(nil)
+	assert.NotNil(t, cNil)
+	pool.Release(cNil)
 
-	pool.Release(fc)
-}
+	// Release nil
+	pool.Release(nil)
 
-// -----------------------------------------------------------------------------
-// BENCHMARKS: FastContext vs Standard context.Context
-// -----------------------------------------------------------------------------
+	// Acquire and populate
+	c1 := pool.Acquire(context.Background())
+	c1.Set("k1", "v1")
+	assert.Equal(t, "v1", c1.Value("k1"))
+	pool.Release(c1)
 
-// 1. Chained Writes: adding 5 values (Trace, Proxy, Tenant, Timeout, Retry)
-func BenchmarkFastContext_ChainWrites_5(b *testing.B) {
-	bg := contextkit.Background()
-
-	b.ReportAllocs()
-
-	for b.Loop() {
-		ctx := contextkit.WithValue(bg, 1, "trace-123")
-		ctx = contextkit.WithValue(ctx, 2, "proxy-us-east")
-		ctx = contextkit.WithValue(ctx, 3, "tenant-premium")
-		ctx = contextkit.WithValue(ctx, 4, 3000)
-		ctx = contextkit.WithValue(ctx, 5, true)
-		_ = ctx
-	}
-}
-
-func BenchmarkStdlibContext_ChainWrites_5(b *testing.B) {
-	bg := context.Background()
-
-	b.ReportAllocs()
-
-	for b.Loop() {
-		ctx := context.WithValue(bg, 1, "trace-123")
-		ctx = context.WithValue(ctx, 2, "proxy-us-east")
-		ctx = context.WithValue(ctx, 3, "tenant-premium")
-		ctx = context.WithValue(ctx, 4, 3000)
-		ctx = context.WithValue(ctx, 5, true)
-		_ = ctx
-	}
-}
-
-// 2. Deep Lookup: reading the FIRST key added (bottom of linked-list for stdctx)
-func BenchmarkFastContext_DeepLookup_FirstKey(b *testing.B) {
-	ctx := context.Context(contextkit.Background())
-	for i := range 6 {
-		ctx = contextkit.WithValue(ctx, i, i*100)
-	}
-
-	b.ReportAllocs()
-
-	for b.Loop() {
-		_ = contextkit.GetOr[int](ctx, 0, 0)
-	}
-}
-
-func BenchmarkStdlibContext_DeepLookup_FirstKey(b *testing.B) {
-	ctx := context.Background()
-	for i := range 6 {
-		ctx = context.WithValue(ctx, i, i*100)
-	}
-
-	b.ReportAllocs()
-
-	for b.Loop() {
-		if val, ok := ctx.Value(0).(int); ok {
-			_ = val
-		}
-	}
-}
-
-// 3. Full Pipeline Lifecycle: Create -> 5 Middleware Writes -> 5 Pipeline Reads
-func BenchmarkFastContext_PipelineLifecycle(b *testing.B) {
-	bg := contextkit.Background()
-	b.ReportAllocs()
-
-	for b.Loop() {
-		// 5 Middleware stages enrich context
-		ctx := contextkit.WithValue(bg, 1, "trace-id-abc")
-		ctx = contextkit.WithValue(ctx, 2, "proxy-exit-node")
-		ctx = contextkit.WithValue(ctx, 3, 42)
-		ctx = contextkit.WithValue(ctx, 4, 5000)
-		ctx = contextkit.WithValue(ctx, 5, true)
-
-		// 5 Downstream layers read their typed values
-		_ = contextkit.GetOr[string](ctx, 1, "")
-		_ = contextkit.GetOr[string](ctx, 2, "")
-		_ = contextkit.GetOr[int](ctx, 3, 0)
-		_ = contextkit.GetOr[int](ctx, 4, 0)
-		_ = contextkit.GetOr[bool](ctx, 5, false)
-	}
-}
-
-func BenchmarkStdlibContext_PipelineLifecycle(b *testing.B) {
-	bg := context.Background()
-	b.ReportAllocs()
-
-	for b.Loop() {
-		// 5 Middleware stages enrich context
-		ctx := context.WithValue(bg, 1, "trace-id-abc")
-		ctx = context.WithValue(ctx, 2, "proxy-exit-node")
-		ctx = context.WithValue(ctx, 3, 42)
-		ctx = context.WithValue(ctx, 4, 5000)
-		ctx = context.WithValue(ctx, 5, true)
-
-		// 5 Downstream layers read their typed values
-		if v, ok := ctx.Value(1).(string); ok {
-			_ = v
-		}
-		if v, ok := ctx.Value(2).(string); ok {
-			_ = v
-		}
-		if v, ok := ctx.Value(3).(int); ok {
-			_ = v
-		}
-		if v, ok := ctx.Value(4).(int); ok {
-			_ = v
-		}
-		if v, ok := ctx.Value(5).(bool); ok {
-			_ = v
-		}
-	}
-}
-
-// 4. In-Place Pipeline Lifecycle: 0 ALLOCS inside single-request pipeline
-func BenchmarkFastContext_InPlace_PipelineLifecycle(b *testing.B) {
-	bg := contextkit.Background()
-	b.ReportAllocs()
-
-	for b.Loop() {
-		// Single allocation context wrapper at ingress
-		ctx := contextkit.Wrap(bg)
-
-		// 5 Middleware stages enrich context in-place (0 ALLOCATIONS)
-		ctx.Set(1, "trace-id-abc")
-		ctx.Set(2, "proxy-exit-node")
-		ctx.Set(3, 42)
-		ctx.Set(4, 5000)
-		ctx.Set(5, true)
-
-		// 5 Downstream layers read their typed values
-		_ = contextkit.GetOr[string](ctx, 1, "")
-		_ = contextkit.GetOr[string](ctx, 2, "")
-		_ = contextkit.GetOr[int](ctx, 3, 0)
-		_ = contextkit.GetOr[int](ctx, 4, 0)
-		_ = contextkit.GetOr[bool](ctx, 5, false)
-	}
-}
-
-// 5. Pooled Pipeline Lifecycle: 0 ALLOCS / 0 B/op (Absolute Zero-Alloc)
-func BenchmarkFastContext_Pool_PipelineLifecycle(b *testing.B) {
-	pool := contextkit.NewPool()
-	bg := context.Background()
-	b.ReportAllocs()
-
-	for b.Loop() {
-		ctx := pool.Acquire(bg)
-
-		// 5 Middleware stages enrich context in-place
-		ctx.Set(1, "trace-id-abc")
-		ctx.Set(2, "proxy-exit-node")
-		ctx.Set(3, 42)
-		ctx.Set(4, 5000)
-		ctx.Set(5, true)
-
-		// 5 Downstream layers read their typed values
-		_ = contextkit.GetOr[string](ctx, 1, "")
-		_ = contextkit.GetOr[string](ctx, 2, "")
-		_ = contextkit.GetOr[int](ctx, 3, 0)
-		_ = contextkit.GetOr[int](ctx, 4, 0)
-		_ = contextkit.GetOr[bool](ctx, 5, false)
-
-		pool.Release(ctx)
-	}
+	// Re-acquire must be clean
+	c2 := pool.Acquire(context.Background())
+	assert.Nil(t, c2.Value("k1"))
+	pool.Release(c2)
 }

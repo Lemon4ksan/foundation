@@ -130,6 +130,56 @@ func TestUnescape(t *testing.T) {
 	// Invalid escape
 	_, err = urlkit.Unescape("invalid%2")
 	assert.Error(t, err)
+
+	// Empty string
+	empty, err := urlkit.Unescape("")
+	require.NoError(t, err)
+	assert.Equal(t, "", empty)
+}
+
+func TestAppendRawQuery_And_BuildPath(t *testing.T) {
+	t.Parallel()
+
+	// 1. AppendRawQuery
+	assert.Equal(t, "https://example.com", urlkit.AppendRawQuery("https://example.com", ""))
+	assert.Equal(t, "https://example.com?a=1", urlkit.AppendRawQuery("https://example.com", "a=1"))
+	assert.Equal(t, "https://example.com?a=1&b=2", urlkit.AppendRawQuery("https://example.com?a=1", "b=2"))
+
+	// 2. BuildPath
+	params := map[string]string{"user_id": "123", "action": "edit"}
+	q := make(map[string][]string)
+	q["tab"] = []string{"settings"}
+
+	path1 := urlkit.BuildPath("/users/{user_id}/{action}", params, q)
+	assert.Equal(t, "/users/123/edit?tab=settings", path1)
+
+	// BuildPath with existing query mark
+	path2 := urlkit.BuildPath("/search?type=all", nil, q)
+	assert.Equal(t, "/search?type=all&tab=settings", path2)
+}
+
+func TestQueryEscape_And_UnescapeBytes(t *testing.T) {
+	t.Parallel()
+
+	// 1. AppendQueryEscape & AppendQueryEscapeString
+	raw := "Hello World! &foo=bar/baz~_.-"
+	escapedBytes := urlkit.AppendQueryEscape(nil, []byte(raw))
+	escapedStr := urlkit.AppendQueryEscapeString(nil, raw)
+	assert.Equal(t, escapedBytes, escapedStr)
+
+	// 2. UnescapeBytes
+	unescapedBytes, err := urlkit.UnescapeBytes(nil, escapedBytes)
+	require.NoError(t, err)
+	assert.Equal(t, []byte(raw), unescapedBytes)
+
+	// Empty src
+	emptyBytes, err := urlkit.UnescapeBytes([]byte("prefix"), nil)
+	require.NoError(t, err)
+	assert.Equal(t, []byte("prefix"), emptyBytes)
+
+	// Invalid hex in UnescapeBytes
+	_, err = urlkit.UnescapeBytes(nil, []byte("bad%ZZ"))
+	assert.Error(t, err)
 }
 
 func BenchmarkUnescape1KB(b *testing.B) {

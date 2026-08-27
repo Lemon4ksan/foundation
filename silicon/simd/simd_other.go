@@ -6,6 +6,11 @@
 
 package simd
 
+import (
+	"math/bits"
+	"unsafe"
+)
+
 // ParallelExtract64 falls back to SWAR bit extraction on non-amd64 architectures.
 func ParallelExtract64(val, mask uint64) uint64 {
 	return extractBitsSWAR(val, mask)
@@ -73,4 +78,42 @@ func ScanByteVector(data []byte, target byte) int {
 // IndexCRLFCRLFVector searches for "\r\n\r\n" in data on non-amd64 architectures.
 func IndexCRLFCRLFVector(data []byte) int {
 	return IndexCRLFCRLF(data)
+}
+
+// MaskCRLF modifies slice in-place to neutralize CR and LF characters to space on non-amd64.
+func MaskCRLF(b []byte) {
+	for i := range b {
+		if b[i] == '\r' || b[i] == '\n' {
+			b[i] = ' '
+		}
+	}
+}
+
+// ToLowerSWAR converts ASCII uppercase characters to lowercase using 64-bit SWAR on non-amd64.
+func ToLowerSWAR(dst, src []byte) {
+	n := min(len(dst), len(src))
+	i := 0
+
+	for i+8 <= n {
+		v := *(*uint64)(unsafe.Pointer(&src[i]))
+		mask := v + 0x7f7f7f7f7f7f7f7f
+		mask = (mask ^ v) & 0x8080808080808080
+		mask = ((v + 0x3f3f3f3f3f3f3f3f) ^ v) & mask
+		mask = (mask >> 2) & 0x2020202020202020
+		*(*uint64)(unsafe.Pointer(&dst[i])) = v | mask
+		i += 8
+	}
+
+	for ; i < n; i++ {
+		c := src[i]
+		if c >= 'A' && c <= 'Z' {
+			c += 32
+		}
+		dst[i] = c
+	}
+}
+
+// TrailingZeros32 returns the number of trailing zero bits in x on non-amd64.
+func TrailingZeros32(x uint32) int {
+	return bits.TrailingZeros32(x)
 }

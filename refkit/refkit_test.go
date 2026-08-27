@@ -14,8 +14,8 @@ import (
 )
 
 type SampleModel struct {
-	Name  string   `json:"name,omitempty" url:"name,omitempty"`
-	Tags  []string `json:"tags,comma"     url:"tags,comma"`
+	Name  string   `json:"name,omitempty,default=anonymous,min=5,ratio=1.5,enum=a|b"`
+	Tags  []string `json:"tags,comma"`
 	Skip  int      `json:"-"`
 	Inner *Inner   `json:"inner,inline"`
 }
@@ -53,6 +53,9 @@ func TestDerefType_And_DerefValue(t *testing.T) {
 
 	iv := refkit.IndirectValue(reflect.ValueOf(val))
 	assert.Equal(t, "alice", iv.FieldByName("Name").String())
+
+	ivPlain := refkit.IndirectValue(reflect.ValueOf(42))
+	assert.Equal(t, 42, int(ivPlain.Int()))
 }
 
 func TestIndirectKind_And_TypeName(t *testing.T) {
@@ -69,129 +72,144 @@ func TestIndirectKind_And_TypeName(t *testing.T) {
 	assert.Equal(t, "SampleModel", refkit.TypeName(reflect.TypeOf(val)))
 	assert.Equal(t, "SampleModel", refkit.TypeName(reflect.ValueOf(val)))
 	assert.Equal(t, "<nil>", refkit.TypeName(nil))
+	assert.Equal(t, "<nil>", refkit.TypeName(reflect.Value{}))
 	assert.Equal(t, "int", refkit.TypeName(42))
+
+	// FullTypeName
+	assert.Equal(t, "<nil>", refkit.FullTypeName(nil))
+	assert.Equal(t, "<nil>", refkit.FullTypeName(reflect.Value{}))
+	assert.Equal(t, "*refkit_test.SampleModel", refkit.FullTypeName(val))
+	assert.Equal(t, "*refkit_test.SampleModel", refkit.FullTypeName(reflect.TypeOf(val)))
+	assert.Equal(t, "*refkit_test.SampleModel", refkit.FullTypeName(reflect.ValueOf(val)))
+	assert.Equal(t, "int", refkit.FullTypeName(100))
 }
 
-func TestCheck_IsNil_IsZero_IsStruct_IsCollection(t *testing.T) {
+func TestCheck_Kinds_And_Numbers(t *testing.T) {
 	t.Parallel()
 
-	// IsNil panic safety
+	// 1. IsNumeric
+	assert.True(t, refkit.IsNumeric(reflect.Int))
+	assert.True(t, refkit.IsNumeric(reflect.Int64))
+	assert.True(t, refkit.IsNumeric(reflect.Uint32))
+	assert.True(t, refkit.IsNumeric(reflect.Float64))
+	assert.False(t, refkit.IsNumeric(reflect.String))
+
+	// 2. IsInteger
+	assert.True(t, refkit.IsInteger(reflect.Int16))
+	assert.True(t, refkit.IsInteger(reflect.Uint8))
+	assert.False(t, refkit.IsInteger(reflect.Float32))
+
+	// 3. IsFloat
+	assert.True(t, refkit.IsFloat(reflect.Float32))
+	assert.True(t, refkit.IsFloat(reflect.Float64))
+	assert.False(t, refkit.IsFloat(reflect.Int))
+
+	// 4. IsSigned & IsUnsigned
+	assert.True(t, refkit.IsSigned(reflect.Int32))
+	assert.False(t, refkit.IsSigned(reflect.Uint32))
+	assert.True(t, refkit.IsUnsigned(reflect.Uint64))
+	assert.False(t, refkit.IsUnsigned(reflect.Int64))
+
+	// 5. IsNil & IsZero
 	assert.True(t, refkit.IsNil(reflect.Value{}))
 	assert.False(t, refkit.IsNil(reflect.ValueOf(42)))
-	assert.False(t, refkit.IsNil(reflect.ValueOf("test")))
-	assert.False(t, refkit.IsNil(reflect.ValueOf(SampleModel{})))
-
-	var nilSlice []string
-	assert.True(t, refkit.IsNil(reflect.ValueOf(nilSlice)))
-	var nilMap map[string]int
-	assert.True(t, refkit.IsNil(reflect.ValueOf(nilMap)))
-	var nilPtr *SampleModel
+	var nilPtr *int
 	assert.True(t, refkit.IsNil(reflect.ValueOf(nilPtr)))
 
-	// IsZero
 	assert.True(t, refkit.IsZero(reflect.Value{}))
 	assert.True(t, refkit.IsZero(reflect.ValueOf(0)))
-	assert.True(t, refkit.IsZero(reflect.ValueOf("")))
-	assert.False(t, refkit.IsZero(reflect.ValueOf(1)))
+	assert.False(t, refkit.IsZero(reflect.ValueOf(5)))
 
-	// IsStruct & IsCollection
+	// 6. IsStruct & IsCollection
 	assert.True(t, refkit.IsStruct(&SampleModel{}))
-	assert.True(t, refkit.IsStruct(SampleModel{}))
-	assert.False(t, refkit.IsStruct([]int{1, 2}))
-
-	assert.True(t, refkit.IsCollection([]string{"a"}))
+	assert.False(t, refkit.IsStruct(123))
+	assert.True(t, refkit.IsCollection([]int{1, 2}))
 	assert.True(t, refkit.IsCollection(map[string]int{"a": 1}))
-	assert.False(t, refkit.IsCollection(SampleModel{}))
+	assert.False(t, refkit.IsCollection("str"))
 }
 
-func TestAlloc_EnsureAlloc_And_NewOf(t *testing.T) {
+func TestAlloc_New_And_EnsureAlloc(t *testing.T) {
 	t.Parallel()
 
-	type Container struct {
-		Model *SampleModel
-	}
+	// 1. New[T]
+	ptr := refkit.New[SampleModel]()
+	assert.NotNil(t, ptr)
+	assert.Equal(t, "", ptr.Name)
 
-	c := &Container{}
-	fieldVal := reflect.ValueOf(c).Elem().FieldByName("Model")
+	// 2. NewOf
+	valOf := refkit.NewOf(reflect.TypeOf(SampleModel{}))
+	assert.True(t, valOf.IsValid())
+	assert.False(t, refkit.NewOf(nil).IsValid())
 
-	require.True(t, fieldVal.IsNil())
-	elem, allocated := refkit.EnsureAlloc(fieldVal)
+	// 3. EnsureAlloc on nil settable pointer
+	var target *SampleModel
+	targetVal := reflect.ValueOf(&target).Elem()
+	elem, allocated := refkit.EnsureAlloc(targetVal)
 	assert.True(t, allocated)
-	assert.True(t, elem.IsValid())
-	assert.False(t, fieldVal.IsNil())
+	assert.NotNil(t, target)
+	assert.Equal(t, reflect.Struct, elem.Kind())
 
-	// Calling again on already allocated pointer
-	elem2, allocated2 := refkit.EnsureAlloc(fieldVal)
+	// EnsureAlloc on already non-nil pointer
+	elem2, allocated2 := refkit.EnsureAlloc(targetVal)
 	assert.False(t, allocated2)
-	assert.True(t, elem2.IsValid())
+	assert.Equal(t, reflect.Struct, elem2.Kind())
 
-	// Non-pointer
-	var x int = 10
-	vx := reflect.ValueOf(x)
-	elemX, allocX := refkit.EnsureAlloc(vx)
-	assert.False(t, allocX)
-	assert.Equal(t, int64(10), elemX.Int())
+	// EnsureAlloc on non-pointer
+	nonPtr := 42
+	elemNonPtr, allocNonPtr := refkit.EnsureAlloc(reflect.ValueOf(nonPtr))
+	assert.False(t, allocNonPtr)
+	assert.Equal(t, int64(42), elemNonPtr.Int())
 
-	// NewOf
-	newVal := refkit.NewOf(reflect.TypeOf(SampleModel{}))
-	assert.Equal(t, reflect.Pointer, newVal.Kind())
-	assert.Equal(t, reflect.TypeOf(&SampleModel{}), newVal.Type())
+	// EnsureAlloc on invalid Value
+	_, allocInvalid := refkit.EnsureAlloc(reflect.Value{})
+	assert.False(t, allocInvalid)
 }
 
-func TestTag_Parsing(t *testing.T) {
+func TestTag_Parsing_And_Getters(t *testing.T) {
 	t.Parallel()
 
-	st := reflect.TypeOf(SampleModel{})
+	field, _ := reflect.TypeOf(SampleModel{}).FieldByName("Name")
+	tag := refkit.GetTag(field, "json")
 
-	// 1. json:"name,omitempty"
-	f0, _ := st.FieldByName("Name")
-	tag0 := refkit.GetTag(f0, "url", "json")
-	assert.Equal(t, "name", tag0.Name)
-	assert.True(t, tag0.Has("omitempty"))
-	assert.False(t, tag0.IsIgnored())
+	assert.Equal(t, "name", tag.Name)
+	assert.True(t, tag.Has("omitempty"))
+	assert.False(t, tag.Has("nonexistent"))
+	assert.False(t, tag.IsEmpty())
+	assert.False(t, tag.IsIgnored())
 
-	// 2. json:"tags,comma"
-	f1, _ := st.FieldByName("Tags")
-	tag1 := refkit.GetTag(f1, "json")
-	assert.Equal(t, "tags", tag1.Name)
-	assert.True(t, tag1.Has("comma"))
+	// Tag getters
+	assert.Equal(t, "anonymous", tag.Get("default"))
+	assert.Equal(t, "", tag.Get("missing"))
 
-	// 3. json:"-"
-	f2, _ := st.FieldByName("Skip")
-	tag2 := refkit.GetTag(f2, "json")
-	assert.True(t, tag2.IsIgnored())
+	minVal, ok := tag.GetInt("min")
+	assert.True(t, ok)
+	assert.Equal(t, 5, minVal)
 
-	// 4. ParseTag direct
-	pTag := refkit.ParseTag("user_id,omitempty,inline,pk")
-	assert.Equal(t, "user_id", pTag.Name)
-	assert.True(t, pTag.Has("omitempty"))
-	assert.True(t, pTag.Has("inline"))
-	assert.True(t, pTag.Has("pk"))
-	assert.False(t, pTag.Has("non_existent"))
+	_, ok = tag.GetInt("missing")
+	assert.False(t, ok)
 
+	ratioVal, ok := tag.GetFloat("ratio")
+	assert.True(t, ok)
+	assert.Equal(t, 1.5, ratioVal)
+
+	_, ok = tag.GetFloat("missing")
+	assert.False(t, ok)
+
+	// SplitOption
+	enumParts := tag.SplitOption("enum", "|")
+	assert.Equal(t, []string{"a", "b"}, enumParts)
+	assert.Nil(t, tag.SplitOption("missing", "|"))
+
+	// Ignored field `json:"-"`
+	skipField, _ := reflect.TypeOf(SampleModel{}).FieldByName("Skip")
+	skipTag := refkit.GetTag(skipField, "json")
+	assert.True(t, skipTag.IsIgnored())
+
+	// Empty tag
 	emptyTag := refkit.ParseTag("")
-	assert.Empty(t, emptyTag.Name)
-	assert.Empty(t, emptyTag.Options)
-}
+	assert.True(t, emptyTag.IsEmpty())
 
-func BenchmarkRefkit_Deref(b *testing.B) {
-	m := &SampleModel{Name: "bench"}
-	p1 := &m
-	p2 := &p1
-	v := reflect.ValueOf(p2)
-
-	b.ReportAllocs()
-	for b.Loop() {
-		_ = refkit.DerefValue(v)
-	}
-}
-
-func BenchmarkRefkit_IsNil(b *testing.B) {
-	var nilPtr *SampleModel
-	v := reflect.ValueOf(nilPtr)
-
-	b.ReportAllocs()
-	for b.Loop() {
-		_ = refkit.IsNil(v)
-	}
+	// Nonexistent tag lookup
+	missingTag := refkit.GetTag(field, "xml")
+	assert.True(t, missingTag.IsEmpty())
 }

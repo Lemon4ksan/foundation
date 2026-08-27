@@ -308,3 +308,104 @@ func TestConcurrentMarshalUnmarshal(t *testing.T) {
 
 	wg.Wait()
 }
+
+type TextType struct {
+	Val string
+}
+
+func (t TextType) MarshalText() ([]byte, error) {
+	return []byte("text:" + t.Val), nil
+}
+
+func (t *TextType) UnmarshalText(data []byte) error {
+	t.Val = strings.TrimPrefix(string(data), "text:")
+	return nil
+}
+
+type AllScalars struct {
+	I8   int8            `json:"i8"`
+	I16  int16           `json:"i16"`
+	I32  int32           `json:"i32"`
+	U    uint            `json:"u"`
+	U8   uint8           `json:"u8"`
+	U16  uint16          `json:"u16"`
+	U32  uint32          `json:"u32"`
+	F32  float32         `json:"f32"`
+	Arr  [3]int          `json:"arr"`
+	Text TextType        `json:"text"`
+	Raw  json.RawMessage `json:"raw"`
+}
+
+func TestAllScalars_And_Arrays_And_TextMarshaler(t *testing.T) {
+	t.Parallel()
+
+	in := AllScalars{
+		I8:   -8,
+		I16:  -16,
+		I32:  -32,
+		U:    100,
+		U8:   8,
+		U16:  16,
+		U32:  32,
+		F32:  1.25,
+		Arr:  [3]int{10, 20, 30},
+		Text: TextType{Val: "custom"},
+		Raw:  json.RawMessage(`{"nested":true}`),
+	}
+
+	data, err := json.Marshal(in)
+	require.NoError(t, err)
+
+	var out AllScalars
+	require.NoError(t, json.Unmarshal(data, &out))
+	assert.Equal(t, in.I8, out.I8)
+	assert.Equal(t, in.I16, out.I16)
+	assert.Equal(t, in.I32, out.I32)
+	assert.Equal(t, in.U, out.U)
+	assert.Equal(t, in.U8, out.U8)
+	assert.Equal(t, in.U16, out.U16)
+	assert.Equal(t, in.U32, out.U32)
+	assert.Equal(t, in.F32, out.F32)
+	assert.Equal(t, in.Arr, out.Arr)
+	assert.Equal(t, in.Text.Val, out.Text.Val)
+	assert.Equal(t, string(in.Raw), string(out.Raw))
+
+	// UnmarshalNoCopy
+	var outNoCopy AllScalars
+	require.NoError(t, json.UnmarshalNoCopy(data, &outNoCopy))
+	assert.Equal(t, in.I8, outNoCopy.I8)
+}
+
+func TestStreamHelpers_Compact_HTMLEscape(t *testing.T) {
+	t.Parallel()
+
+	// 1. Compact
+	var compactBuf bytes.Buffer
+	srcJSON := []byte("{\n  \"key\":   \"value\"\n}\n")
+	require.NoError(t, json.Compact(&compactBuf, srcJSON))
+	assert.Equal(t, `{"key":"value"}`, compactBuf.String())
+
+	// 2. HTMLEscape
+	var htmlBuf bytes.Buffer
+	srcHTML := []byte(`{"tag":"<script>&foo</script>"}`)
+	json.HTMLEscape(&htmlBuf, srcHTML)
+	assert.Contains(t, htmlBuf.String(), `\u003cscript\u003e\u0026foo\u003c/script\u003e`)
+
+	// 3. Decoder More and InputOffset
+	dec := json.NewDecoder(strings.NewReader(`[1, 2, 3]`))
+	dec.UseNumber()
+	dec.DisallowUnknownFields()
+	assert.Equal(t, int64(0), dec.InputOffset())
+
+	var nums []int
+	require.NoError(t, dec.Decode(&nums))
+	assert.Equal(t, []int{1, 2, 3}, nums)
+	assert.Greater(t, dec.InputOffset(), int64(0))
+
+	// 4. Encoder SetEscapeHTML
+	var encBuf bytes.Buffer
+	enc := json.NewEncoder(&encBuf)
+	enc.SetEscapeHTML(false)
+	require.NoError(t, enc.Encode(map[string]string{"tag": "test"}))
+	assert.Contains(t, encBuf.String(), `"tag":"test"`)
+}
