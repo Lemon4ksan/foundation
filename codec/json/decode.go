@@ -32,19 +32,61 @@ type DecoderConfig struct {
 
 type decodeFunc func(data []byte, cursor int, p unsafe.Pointer, cfg *DecoderConfig) (int, error)
 
-var decoderCache sync.Map // map[reflect.Type]decodeFunc
+type decEntry struct {
+	done chan struct{}
+	dec  decodeFunc
+	err  error
+}
+
+var (
+	decoderCache sync.Map // map[reflect.Type]decodeFunc
+	decMu        sync.Mutex
+	decCompiling = make(map[reflect.Type]*decEntry)
+)
 
 func getDecoder(t reflect.Type) (decodeFunc, error) {
 	if dec, ok := decoderCache.Load(t); ok {
 		return dec.(decodeFunc), nil
 	}
 
+	decMu.Lock()
+	if dec, ok := decoderCache.Load(t); ok {
+		decMu.Unlock()
+		return dec.(decodeFunc), nil
+	}
+
+	if entry, ok := decCompiling[t]; ok {
+		decMu.Unlock()
+		return func(data []byte, cursor int, p unsafe.Pointer, cfg *DecoderConfig) (int, error) {
+			<-entry.done
+			if entry.err != nil {
+				return cursor, entry.err
+			}
+			return entry.dec(data, cursor, p, cfg)
+		}, nil
+	}
+
+	entry := &decEntry{
+		done: make(chan struct{}),
+	}
+	decCompiling[t] = entry
+	decMu.Unlock()
+
 	dec, err := compileDecoder(t)
+
+	decMu.Lock()
+	entry.dec = dec
+	entry.err = err
+	delete(decCompiling, t)
+	if err == nil {
+		decoderCache.Store(t, dec)
+	}
+	close(entry.done)
+	decMu.Unlock()
+
 	if err != nil {
 		return nil, err
 	}
-
-	decoderCache.Store(t, dec)
 
 	return dec, nil
 }

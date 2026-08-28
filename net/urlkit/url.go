@@ -164,8 +164,12 @@ func ResolveString(baseURL *url.URL, path string) (string, error) {
 		return baseStr + path, nil
 	}
 
-	// If relative path without slash (e.g. "users/1" or "../api"), use RFC 3986 reference resolution
-	rel, err := Parse(strings.TrimLeft(path, "/"))
+	if !strings.HasPrefix(path, ".") {
+		return baseStr + "/" + path, nil
+	}
+
+	// If relative path with dot segments (e.g. "../api"), use RFC 3986 reference resolution
+	rel, err := Parse(path)
 	if err != nil {
 		return "", err
 	}

@@ -409,3 +409,41 @@ func TestStreamHelpers_Compact_HTMLEscape(t *testing.T) {
 	require.NoError(t, enc.Encode(map[string]string{"tag": "test"}))
 	assert.Contains(t, encBuf.String(), `"tag":"test"`)
 }
+
+type RecursiveNode struct {
+	ID       int             `json:"id"`
+	Next     *RecursiveNode  `json:"next,omitempty"`
+	Children []RecursiveNode `json:"children,omitempty"`
+}
+
+func TestMarshalUnmarshal_RecursiveStruct(t *testing.T) {
+	t.Parallel()
+
+	node := &RecursiveNode{
+		ID: 1,
+		Next: &RecursiveNode{
+			ID: 2,
+			Next: &RecursiveNode{
+				ID: 3,
+			},
+		},
+		Children: []RecursiveNode{
+			{ID: 10},
+			{ID: 20},
+		},
+	}
+
+	data, err := json.Marshal(node)
+	require.NoError(t, err)
+
+	var decoded RecursiveNode
+	require.NoError(t, json.Unmarshal(data, &decoded))
+
+	assert.Equal(t, 1, decoded.ID)
+	require.NotNil(t, decoded.Next)
+	assert.Equal(t, 2, decoded.Next.ID)
+	require.NotNil(t, decoded.Next.Next)
+	assert.Equal(t, 3, decoded.Next.Next.ID)
+	assert.Len(t, decoded.Children, 2)
+	assert.Equal(t, 10, decoded.Children[0].ID)
+}

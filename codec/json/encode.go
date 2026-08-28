@@ -39,19 +39,61 @@ var encPool = sync.Pool{
 
 type encoderFunc func(e *encodeState, p unsafe.Pointer) error
 
-var encoderCache sync.Map // map[reflect.Type]encoderFunc
+type encEntry struct {
+	done chan struct{}
+	enc  encoderFunc
+	err  error
+}
+
+var (
+	encoderCache sync.Map // map[reflect.Type]encoderFunc
+	encMu        sync.Mutex
+	encCompiling = make(map[reflect.Type]*encEntry)
+)
 
 func getEncoder(t reflect.Type) (encoderFunc, error) {
 	if enc, ok := encoderCache.Load(t); ok {
 		return enc.(encoderFunc), nil
 	}
 
+	encMu.Lock()
+	if enc, ok := encoderCache.Load(t); ok {
+		encMu.Unlock()
+		return enc.(encoderFunc), nil
+	}
+
+	if entry, ok := encCompiling[t]; ok {
+		encMu.Unlock()
+		return func(e *encodeState, p unsafe.Pointer) error {
+			<-entry.done
+			if entry.err != nil {
+				return entry.err
+			}
+			return entry.enc(e, p)
+		}, nil
+	}
+
+	entry := &encEntry{
+		done: make(chan struct{}),
+	}
+	encCompiling[t] = entry
+	encMu.Unlock()
+
 	enc, err := compileEncoder(t)
+
+	encMu.Lock()
+	entry.enc = enc
+	entry.err = err
+	delete(encCompiling, t)
+	if err == nil {
+		encoderCache.Store(t, enc)
+	}
+	close(entry.done)
+	encMu.Unlock()
+
 	if err != nil {
 		return nil, err
 	}
-
-	encoderCache.Store(t, enc)
 
 	return enc, nil
 }
