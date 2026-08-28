@@ -31,7 +31,7 @@ foundation/
 │   ├── DEDUP.md              // Single-flight request deduplication & panic isolation
 │   ├── FSM.md                // Strictly typed FSM with rollback & DOT export
 │   ├── PIPELINE.md           // Concurrent mapping, fan-out/fan-in, DataLoader
-│   ├── CONTEXTKIT.md         // Ultra-fast flat-array context (0 B/op, L1 cache)
+│   ├── CTXKIT.md             // Ultra-fast flat-array context (0 B/op, L1 cache)
 │   ├── POOL.md               // Auto-scaling goroutine worker pool
 │   ├── SCHEDULER.md          // Microsecond precision task scheduler & cron
 │   └── LOGKIT.md             // Zero-allocation structured logging
@@ -86,7 +86,7 @@ foundation/
 
 | Module | Documentation | Focus Area |
 | :--- | :--- | :--- |
-| `contextkit` | [`docs/async/CONTEXTKIT.md`](async/CONTEXTKIT.md) | High-performance flat-array `context.Context` (0 B/op, L1 cache, generics). |
+| `ctxkit` | [`docs/async/CTXKIT.md`](async/CTXKIT.md) | High-performance flat-array `context.Context` (0 B/op, L1 cache, generics). |
 | `lifecycle` | [`docs/async/LIFECYCLE.md`](async/LIFECYCLE.md) | Topologically sorted DAG service boot and reverse graceful teardown. |
 | `event` | [`docs/async/EVENT.md`](async/EVENT.md) | Type-safe non-blocking event bus preventing slow consumer backpressure. |
 | `task` | [`docs/async/TASK.md`](async/TASK.md) | Correlation-ID async task manager with pooled memory and deadlines. |

@@ -60,7 +60,7 @@ graph TD
 | **`bufkit/`** | `bufkit` | [`docs/bufkit/BUFKIT.md`](bufkit/BUFKIT.md) | Cacheline-aligned buffers, scatter-gather BufferChain, and SPSC RingBuffer. |
 | **`timekit/`** | `timekit` | [`docs/timekit/TIMEKIT.md`](timekit/TIMEKIT.md) | Coarse atomic clock, zero-alloc HTTP-date / ISO 8601 formatting, stopwatch. |
 | **`refkit/`** | `refkit` | [`docs/refkit/REFKIT.md`](refkit/REFKIT.md) | High-speed struct tag parsing with cache and panic-safe reflection checks. |
-| **`async/`** | `contextkit` | [`docs/async/CONTEXTKIT.md`](async/CONTEXTKIT.md) | Flat-array zero-alloc L1-resident `context.Context` replacement. |
+| **`async/`** | `ctxkit` | [`docs/async/CTXKIT.md`](async/CTXKIT.md) | Flat-array zero-alloc L1-resident `context.Context` replacement. |
 | | `lifecycle` | [`docs/async/LIFECYCLE.md`](async/LIFECYCLE.md) | Topologically sorted DAG service boot and background loop runners. |
 | | `event` | [`docs/async/EVENT.md`](async/EVENT.md) | Type-safe non-blocking event bus with reflection-free dispatch. |
 | | `task` | [`docs/async/TASK.md`](async/TASK.md) | Asynchronous task tracking with Correlation IDs and Futures. |

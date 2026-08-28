@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package contextkit_test
+package ctxkit_test
 
 import (
 	"context"
 	"testing"
 	"time"
 
-	"github.com/lemon4ksan/foundation/async/contextkit"
+	"github.com/lemon4ksan/foundation/async/ctxkit"
 	"github.com/lemon4ksan/foundation/testkit/assert"
 	"github.com/lemon4ksan/foundation/testkit/require"
 )
@@ -25,15 +25,15 @@ const (
 func TestFastContext_BasicValues(t *testing.T) {
 	t.Parallel()
 
-	bg := contextkit.Background()
+	bg := ctxkit.Background()
 	require.NotNil(t, bg)
 
-	todo := contextkit.TODO()
+	todo := ctxkit.TODO()
 	require.NotNil(t, todo)
 
-	ctx1 := contextkit.WithValue(bg, keyTraceID, "trace-123")
-	ctx2 := contextkit.WithValue(ctx1, keyUserID, 42)
-	ctx3 := contextkit.WithValue(ctx2, keyRole, "admin")
+	ctx1 := ctxkit.WithValue(bg, keyTraceID, "trace-123")
+	ctx2 := ctxkit.WithValue(ctx1, keyUserID, 42)
+	ctx3 := ctxkit.WithValue(ctx2, keyRole, "admin")
 
 	// Verify standard Value lookup
 	assert.Equal(t, "trace-123", ctx3.Value(keyTraceID))
@@ -42,46 +42,46 @@ func TestFastContext_BasicValues(t *testing.T) {
 	assert.Nil(t, ctx3.Value("missing_key"))
 
 	// Verify typed generic.Get
-	traceOpt := contextkit.Get[string](ctx3, keyTraceID)
+	traceOpt := ctxkit.Get[string](ctx3, keyTraceID)
 	assert.True(t, traceOpt.IsPresent())
 	val, ok := traceOpt.Value()
 	assert.True(t, ok)
 	assert.Equal(t, "trace-123", val)
 
-	userOpt := contextkit.Get[int](ctx3, keyUserID)
+	userOpt := ctxkit.Get[int](ctx3, keyUserID)
 	assert.True(t, userOpt.IsPresent())
-	assert.Equal(t, 42, contextkit.GetOr[int](ctx3, keyUserID, 0))
+	assert.Equal(t, 42, ctxkit.GetOr[int](ctx3, keyUserID, 0))
 
 	// Wrong type returns None
-	wrongTypeOpt := contextkit.Get[int](ctx3, keyTraceID)
+	wrongTypeOpt := ctxkit.Get[int](ctx3, keyTraceID)
 	assert.False(t, wrongTypeOpt.IsPresent())
 
 	// Missing key returns default
-	assert.Equal(t, "guest", contextkit.GetOr[string](ctx3, "missing", "guest"))
+	assert.Equal(t, "guest", ctxkit.GetOr[string](ctx3, "missing", "guest"))
 
 	// Nil context or nil key
-	assert.False(t, contextkit.Get[string](nil, "key").IsPresent())
-	assert.False(t, contextkit.Get[string](ctx3, nil).IsPresent())
+	assert.False(t, ctxkit.Get[string](nil, "key").IsPresent())
+	assert.False(t, ctxkit.Get[string](ctx3, nil).IsPresent())
 }
 
 func TestFastContext_Wrap_And_NilBranches(t *testing.T) {
 	t.Parallel()
 
 	// 1. Wrap nil -> Background
-	wNil := contextkit.Wrap(nil)
+	wNil := ctxkit.Wrap(nil)
 	assert.NotNil(t, wNil)
 
 	// 2. Wrap already FastContext -> returns same
-	wSame := contextkit.Wrap(wNil)
+	wSame := ctxkit.Wrap(wNil)
 	assert.Same(t, wNil, wSame)
 
 	// 3. Wrap standard context
 	stdCtx := context.WithValue(context.Background(), "k", "v")
-	wStd := contextkit.Wrap(stdCtx)
+	wStd := ctxkit.Wrap(stdCtx)
 	assert.Equal(t, "v", wStd.Value("k"))
 
 	// 4. Methods on nil *Context
-	var nilCtx *contextkit.Context
+	var nilCtx *ctxkit.Context
 	_, ok := nilCtx.Deadline()
 	assert.False(t, ok)
 	assert.Nil(t, nilCtx.Done())
@@ -93,7 +93,7 @@ func TestFastContext_Wrap_And_NilBranches(t *testing.T) {
 func TestFastContext_Set_InPlace(t *testing.T) {
 	t.Parallel()
 
-	ctx := contextkit.Background()
+	ctx := ctxkit.Background()
 
 	// Set nil key
 	ctx.Set(nil, "val")
@@ -121,19 +121,19 @@ func TestFastContext_Set_InPlace(t *testing.T) {
 func TestFastContext_OverflowCapacity(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Context(contextkit.Background())
+	ctx := context.Context(ctxkit.Background())
 
 	// Add 12 values (exceeding inlineCapacity of 8)
 	for i := 0; i < 12; i++ {
-		ctx = contextkit.WithValue(ctx, i, i*10)
+		ctx = ctxkit.WithValue(ctx, i, i*10)
 	}
 
 	for i := 0; i < 12; i++ {
-		assert.Equal(t, i*10, contextkit.GetOr[int](ctx, i, -1))
+		assert.Equal(t, i*10, ctxkit.GetOr[int](ctx, i, -1))
 	}
 
 	// WithValue from nil parent
-	ctxNilParent := contextkit.WithValue(nil, "key", "val")
+	ctxNilParent := ctxkit.WithValue(nil, "key", "val")
 	assert.Equal(t, "val", ctxNilParent.Value("key"))
 }
 
@@ -141,7 +141,7 @@ func TestFastContext_WithCancelAndTimeout(t *testing.T) {
 	t.Parallel()
 
 	t.Run("WithCancel", func(t *testing.T) {
-		ctx, cancel := contextkit.WithCancel(contextkit.Background())
+		ctx, cancel := ctxkit.WithCancel(ctxkit.Background())
 		assert.Nil(t, ctx.Err())
 
 		cancel()
@@ -153,27 +153,27 @@ func TestFastContext_WithCancelAndTimeout(t *testing.T) {
 		}
 
 		// WithCancel nil parent
-		ctxNil, cancelNil := contextkit.WithCancel(nil)
+		ctxNil, cancelNil := ctxkit.WithCancel(nil)
 		defer cancelNil()
 		assert.NotNil(t, ctxNil)
 	})
 
 	t.Run("WithTimeout", func(t *testing.T) {
-		ctx, cancel := contextkit.WithTimeout(contextkit.Background(), 20*time.Millisecond)
+		ctx, cancel := ctxkit.WithTimeout(ctxkit.Background(), 20*time.Millisecond)
 		defer cancel()
 
 		time.Sleep(50 * time.Millisecond)
 		assert.ErrorIs(t, ctx.Err(), context.DeadlineExceeded)
 
 		// WithTimeout nil parent
-		ctxNil, cancelNil := contextkit.WithTimeout(nil, time.Hour)
+		ctxNil, cancelNil := ctxkit.WithTimeout(nil, time.Hour)
 		defer cancelNil()
 		assert.NotNil(t, ctxNil)
 	})
 
 	t.Run("WithDeadline", func(t *testing.T) {
 		dl := time.Now().Add(50 * time.Millisecond)
-		ctx, cancel := contextkit.WithDeadline(contextkit.Background(), dl)
+		ctx, cancel := ctxkit.WithDeadline(ctxkit.Background(), dl)
 		defer cancel()
 
 		d, ok := ctx.Deadline()
@@ -181,7 +181,7 @@ func TestFastContext_WithCancelAndTimeout(t *testing.T) {
 		assert.Equal(t, dl, d)
 
 		// WithDeadline nil parent
-		ctxNil, cancelNil := contextkit.WithDeadline(nil, dl)
+		ctxNil, cancelNil := ctxkit.WithDeadline(nil, dl)
 		defer cancelNil()
 		assert.NotNil(t, ctxNil)
 	})
@@ -190,7 +190,7 @@ func TestFastContext_WithCancelAndTimeout(t *testing.T) {
 func TestFastContext_Pool(t *testing.T) {
 	t.Parallel()
 
-	pool := contextkit.NewPool()
+	pool := ctxkit.NewPool()
 
 	// Acquire nil parent -> defaults to Background
 	cNil := pool.Acquire(nil)

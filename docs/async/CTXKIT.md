@@ -1,8 +1,8 @@
-# High-Performance Flat-Array Context (`async/contextkit`)
+# High-Performance Flat-Array Context (`async/ctxkit`)
 
-[![Go Reference](https://img.shields.io/badge/go-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/lemon4ksan/foundation/async/contextkit)
+[![Go Reference](https://img.shields.io/badge/go-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/lemon4ksan/foundation/async/ctxkit)
 
-`async/contextkit` provides an ultra-high-performance, flat-array implementation of `context.Context` designed for high-throughput request pipelines, 100% standard library interoperability, and generic type-safe value retrieval.
+`async/ctxkit` provides an ultra-high-performance, flat-array implementation of `context.Context` designed for high-throughput request pipelines, 100% standard library interoperability, and generic type-safe value retrieval.
 
 ## 1. Motivation & The Hidden Cost of Standard `context.Context`
 
@@ -34,7 +34,7 @@ graph TD
 
 ### Memory Layout Comparison
 
-| Feature | Standard Library `context.Context` | Foundation `async/contextkit.FastContext` |
+| Feature | Standard Library `context.Context` | Foundation `async/ctxkit.FastContext` |
 | :--- | :--- | :--- |
 | **Data Structure** | Singly-linked list of `valueCtx` structs | Contiguous flat array (`[8]kvEntry` inline buffer) |
 | **Memory Locality** | Dispersed throughout heap memory | Packed in a single CPU cache line |
@@ -48,7 +48,7 @@ graph TD
 Benchmarks executed on **12th Gen Intel(R) Core(TM) i5-12400F** (Go 1.25.4):
 
 ```bash
-go test -bench="PipelineLifecycle" -benchmem -count=3 ./async/contextkit
+go test -bench="PipelineLifecycle" -benchmem -count=3 ./async/ctxkit
 ```
 
 ### Real-World Pipeline Scenario (5 Middleware Writes -> 5 Engine Reads)
@@ -74,19 +74,19 @@ package main
 import (
     "net/http"
 
-    contextkit "github.com/lemon4ksan/foundation/async/contextkit"
+    ctxkit "github.com/lemon4ksan/foundation/async/ctxkit"
 )
 
 func IngressMiddleware(next http.Handler) http.Handler {
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
         // Wrap standard context once at ingress:
-        fastCtx := contextkit.Wrap(r.Context())
+        fastCtx := ctxkit.Wrap(r.Context())
         next.ServeHTTP(w, r.WithContext(fastCtx))
     })
 }
 ```
 
-### Type-Safe Generic Extraction (`contextkit.Get[T]`)
+### Type-Safe Generic Extraction (`ctxkit.Get[T]`)
 
 Eliminate dangerous `.(any)` type assertions and boilerplate `if !ok` branches:
 
@@ -97,16 +97,16 @@ type TraceInfo struct {
 }
 
 // 1. Write value
-ctx = contextkit.WithValue(ctx, "trace_key", TraceInfo{TraceID: "abc-123", SpanID: "span-456"})
+ctx = ctxkit.WithValue(ctx, "trace_key", TraceInfo{TraceID: "abc-123", SpanID: "span-456"})
 
 // 2. Read with Swift-like Optional monad:
-traceOpt := contextkit.Get[TraceInfo](ctx, "trace_key")
+traceOpt := ctxkit.Get[TraceInfo](ctx, "trace_key")
 if trace, ok := traceOpt.Value(); ok {
     fmt.Println("Trace ID:", trace.TraceID)
 }
 
 // 3. Read with fallback default:
-tenantID := contextkit.GetOr[string](ctx, "tenant_key", "default-tenant")
+tenantID := ctxkit.GetOr[string](ctx, "tenant_key", "default-tenant")
 ```
 
 ### In-Place Zero-Allocation Enrichment
@@ -114,7 +114,7 @@ tenantID := contextkit.GetOr[string](ctx, "tenant_key", "default-tenant")
 For single-goroutine request lifecycles and middleware chains:
 
 ```go
-func EnrichRequestContext(ctx *contextkit.FastContext) {
+func EnrichRequestContext(ctx *ctxkit.FastContext) {
     // Zero allocations across all mutations:
     ctx.Set("auth_token", "jwt-header-xyz")
     ctx.Set("retry_count", 3)
@@ -122,12 +122,12 @@ func EnrichRequestContext(ctx *contextkit.FastContext) {
 }
 ```
 
-### Recycled Context Pool (`contextkit.NewPool`)
+### Recycled Context Pool (`ctxkit.NewPool`)
 
 For extreme RPS pipelines and network protocol drivers (QUIC/H3/TCP):
 
 ```go
-var contextPool = contextkit.NewPool()
+var contextPool = ctxkit.NewPool()
 
 func HandleConnection(parent context.Context) {
     ctx := contextPool.Acquire(parent)
