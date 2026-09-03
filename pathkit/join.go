@@ -104,9 +104,14 @@ func Sanitize(p string) string {
 		return ""
 	}
 
-	// Normalize all backslashes to forward slashes
-	p = strings.ReplaceAll(p, "\\", "/")
-	p = path.Clean("/" + p)
+	if strings.IndexByte(p, '\\') != -1 {
+		p = strings.ReplaceAll(p, "\\", "/")
+	}
 
-	return strings.TrimPrefix(p, "/")
+	if !strings.HasPrefix(p, "/") {
+		p = "/" + p
+	}
+
+	cleaned := path.Clean(p)
+	return strings.TrimPrefix(cleaned, "/")
 }
