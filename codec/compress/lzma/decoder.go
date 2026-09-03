@@ -81,13 +81,17 @@ func NewDecoderCore(lc, lp, pb uint, dictSize uint32, uncompressedSize uint64) *
 	return d
 }
 
-// InitProbs resets the probability models.
-func (d *DecoderCore) InitProbs() {
+// ResetDict clears the dictionary history.
+func (d *DecoderCore) ResetDict() {
+	d.winPos = 0
+	d.winFull = false
+}
+
+// ResetStateKeepDict resets the probability models and coder state without clearing dictionary history.
+func (d *DecoderCore) ResetStateKeepDict() {
 	d.state = 0
 	d.reps = [4]uint32{0, 0, 0, 0}
 	d.outBufPos = 0
-	d.winPos = 0
-	d.winFull = false
 
 	for i := range d.isMatch {
 		for j := range d.isMatch[i] {
@@ -131,6 +135,12 @@ func (d *DecoderCore) InitProbs() {
 			d.litProbs[i][j] = probInitVal
 		}
 	}
+}
+
+// InitProbs resets both dictionary history and probability models.
+func (d *DecoderCore) InitProbs() {
+	d.ResetDict()
+	d.ResetStateKeepDict()
 }
 
 func (d *DecoderCore) getLitSubCoder(pos uint32, prevByte byte) *[0x300]uint16 {
@@ -539,6 +549,10 @@ func (d *DecoderCore) DecodeToSlice(rd *RangeDecoder, dest []byte, maxUnpack uin
 		bufPtr = unsafe.Pointer(&buf[0])
 	}
 
+	if winPos > 0 && winPtr != nil && prevByte == 0 {
+		prevByte = *(*byte)(unsafe.Add(winPtr, (winPos-1)&dictMask))
+	}
+
 	fd := fastDecoder{
 		rd:     rd,
 		range_: rd.range_,
@@ -562,7 +576,7 @@ func (d *DecoderCore) DecodeToSlice(rd *RangeDecoder, dest []byte, maxUnpack uin
 		if bit == 0 {
 			// Literal decoding pathway:
 			// Select literal sub-coder using the high lc bits of the previous byte and low lp bits of position.
-			litIdx := ((uint32(totalWritten) & lpMask) << lc) + (uint32(prevByte) >> prevShift)
+			litIdx := (((winPos + uint32(totalWritten)) & lpMask) << lc) + (uint32(prevByte) >> prevShift)
 			probs := &d.litProbs[litIdx]
 			var symbol uint32 = 1
 

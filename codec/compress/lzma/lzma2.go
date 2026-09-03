@@ -264,7 +264,7 @@ func (d *Decompressor2) Decompress(src io.Reader) (io.ReadCloser, error) {
 					t := &tasks[i]
 					if t.isRaw {
 						if t.mode == 1 {
-							core.winPos = 0
+							core.ResetDict()
 						}
 						copy(finalOut[t.offset:], t.rawSlice)
 						for _, b := range t.rawSlice {
@@ -272,13 +272,13 @@ func (d *Decompressor2) Decompress(src io.Reader) (io.ReadCloser, error) {
 							core.winPos = (core.winPos + 1) & core.dictMask
 						}
 						if t.mode == 1 {
-							core.InitProbs()
+							core.ResetStateKeepDict()
 						}
 						continue
 					}
 
 					if t.mode == 3 {
-						core.winPos = 0
+						core.ResetDict()
 					}
 					if t.mode >= 2 {
 						core.lc = t.lc
@@ -287,7 +287,7 @@ func (d *Decompressor2) Decompress(src io.Reader) (io.ReadCloser, error) {
 						core.posMask = (1 << t.pb) - 1
 					}
 					if t.mode >= 1 {
-						core.InitProbs()
+						core.ResetStateKeepDict()
 					}
 
 					if err := rd.Init(bytes.NewReader(t.chunkData)); err != nil {
@@ -671,6 +671,7 @@ func (c *Compressor2) Compress(src io.Reader, dest io.Writer) (int64, error) {
 
 					numChunksInBlock := (blockLen + chunkSize - 1) / chunkSize
 					chunks := make([]encodedChunk, 0, numChunksInBlock)
+					propsSent := false
 
 					for cIdx := 0; cIdx < numChunksInBlock; cIdx++ {
 						cStart := cIdx * chunkSize
@@ -685,6 +686,9 @@ func (c *Compressor2) Compress(src io.Reader, dest io.Writer) (int64, error) {
 						if cIdx == 0 {
 							mode = 3
 							core.Reset()
+						} else if !propsSent {
+							mode = 2
+							core.ResetStateKeepDict()
 						} else {
 							core.ResetStateKeepDict()
 						}
@@ -709,6 +713,7 @@ func (c *Compressor2) Compress(src io.Reader, dest io.Writer) (int64, error) {
 								chunkLen: cLen,
 							})
 						} else {
+							propsSent = true
 							chunkCopy := make([]byte, len(compBytes))
 							copy(chunkCopy, compBytes)
 							chunks = append(chunks, encodedChunk{
@@ -754,8 +759,8 @@ func (c *Compressor2) Compress(src io.Reader, dest io.Writer) (int64, error) {
 					unpackSizeMinus1 := uint32(res.chunkLen - 1)
 					packSizeMinus1 := uint16(len(res.compBytes) - 1)
 
-					if res.mode == 3 {
-						var control byte = 0x80 | (3 << 5) // mode 3
+					if res.mode >= 2 {
+						var control byte = 0x80 | (byte(res.mode) << 5)
 						control |= byte((unpackSizeMinus1 >> 16) & 0x1F)
 
 						var chunkHeader [6]byte
@@ -771,7 +776,7 @@ func (c *Compressor2) Compress(src io.Reader, dest io.Writer) (int64, error) {
 						}
 						totalWritten += 6
 					} else {
-						var control byte = 0x80 | (1 << 5) // mode 1
+						var control byte = 0x80 | (byte(res.mode) << 5)
 						control |= byte((unpackSizeMinus1 >> 16) & 0x1F)
 
 						var chunkHeader [5]byte
