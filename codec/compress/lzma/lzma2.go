@@ -597,6 +597,18 @@ func (c *Compressor2) Compress(src io.Reader, dest io.Writer) (int64, error) {
 	}
 	batchBuf := make([]byte, batchBufSize)
 
+	// Scope worker options so match finder tables match the worker's block window
+	workerOpts := c.Options
+	if numWorkers > 1 && workerOpts.DictSize > uint32(blockSize) {
+		workerOpts.DictSize = uint32(blockSize)
+	}
+
+	// Pre-allocate worker cores ONCE for the whole operation to eliminate GC pressure
+	workerCores := make([]*EncoderCore, numWorkers)
+	for i := range workerCores {
+		workerCores[i] = NewEncoderCoreWithOptions(workerOpts)
+	}
+
 	type encodedChunk struct {
 		isRaw     bool
 		mode      byte
@@ -638,10 +650,11 @@ func (c *Compressor2) Compress(src io.Reader, dest io.Writer) (int64, error) {
 
 		workersForBatch := min(numWorkers, numBlocks)
 		for w := 0; w < workersForBatch; w++ {
+			workerID := w
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				core := NewEncoderCoreWithOptions(c.Options)
+				core := workerCores[workerID]
 				var re RangeEncoder
 				var compBuf bytes.Buffer
 

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"io"
 
-	"github.com/lemon4ksan/seal/codec/brotli/matchfinder"
+	"github.com/lemon4ksan/foundation/codec/compress/brotli/matchfinder"
 )
 
 const (

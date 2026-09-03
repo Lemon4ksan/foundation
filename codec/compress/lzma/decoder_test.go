@@ -7,7 +7,7 @@ package lzma_test
 import (
 	"testing"
 
-	"github.com/lemon4ksan/seal/codec/lzma"
+	"github.com/lemon4ksan/foundation/codec/compress/lzma"
 )
 
 func TestDecoderCore_DecodeToSlice(t *testing.T) {

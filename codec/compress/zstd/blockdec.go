@@ -13,8 +13,8 @@ import (
 	"io"
 	"sync"
 
-	"github.com/lemon4ksan/seal/codec/huff0"
-	"github.com/lemon4ksan/seal/codec/zstd/xxhash"
+	"github.com/lemon4ksan/foundation/codec/compress/huff0"
+	"github.com/lemon4ksan/foundation/codec/compress/zstd/xxhash"
 )
 
 type blockType uint8

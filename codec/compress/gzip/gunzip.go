@@ -17,7 +17,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/lemon4ksan/seal/codec/flate"
+	"github.com/lemon4ksan/foundation/codec/compress/flate"
 )
 
 const (

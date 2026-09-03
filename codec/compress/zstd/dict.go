@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/lemon4ksan/seal/codec/huff0"
+	"github.com/lemon4ksan/foundation/codec/compress/huff0"
 )
 
 type dict struct {

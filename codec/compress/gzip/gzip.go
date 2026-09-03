@@ -12,7 +12,7 @@ import (
 	"hash/crc32"
 	"io"
 
-	"github.com/lemon4ksan/seal/codec/flate"
+	"github.com/lemon4ksan/foundation/codec/compress/flate"
 )
 
 // These constants are copied from the flate package, so that code that imports

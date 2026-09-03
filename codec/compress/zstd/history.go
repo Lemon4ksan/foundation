@@ -7,7 +7,7 @@
 package zstd
 
 import (
-	"github.com/lemon4ksan/seal/codec/huff0"
+	"github.com/lemon4ksan/foundation/codec/compress/huff0"
 )
 
 // history contains the information transferred between blocks.

@@ -11,7 +11,7 @@ import (
 	"io"
 	"math/bits"
 
-	"github.com/lemon4ksan/seal/codec/zstd/xxhash"
+	"github.com/lemon4ksan/foundation/codec/compress/zstd/xxhash"
 )
 
 // Writer implements a streaming Zstandard (RFC 8878) encoder.

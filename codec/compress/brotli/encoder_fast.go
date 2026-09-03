@@ -3,7 +3,7 @@ package brotli
 import (
 	"math"
 
-	"github.com/lemon4ksan/seal/codec/brotli/matchfinder"
+	"github.com/lemon4ksan/foundation/codec/compress/brotli/matchfinder"
 )
 
 func gaussianProbability(x, mean, stdDev float64) float64 {

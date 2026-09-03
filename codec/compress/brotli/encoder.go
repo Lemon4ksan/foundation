@@ -1,6 +1,6 @@
 package brotli
 
-import "github.com/lemon4ksan/seal/codec/brotli/matchfinder"
+import "github.com/lemon4ksan/foundation/codec/compress/brotli/matchfinder"
 
 // An Encoder implements the matchfinder.Encoder interface, writing in Brotli format.
 type Encoder struct {

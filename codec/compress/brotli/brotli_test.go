@@ -13,7 +13,7 @@ import (
 	"github.com/lemon4ksan/foundation/testkit/assert"
 	"github.com/lemon4ksan/foundation/testkit/require"
 
-	"github.com/lemon4ksan/seal/codec/brotli"
+	"github.com/lemon4ksan/foundation/codec/compress/brotli"
 )
 
 func TestBrotliRoundtrip(t *testing.T) {
