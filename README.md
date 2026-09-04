@@ -87,7 +87,7 @@ go generate ./...
 
 ## Architecture & Packages
 
-### 1. Silicon & Memory Substrate (`silicon/`)
+### 1. Silicon & Hardware Substrate (`silicon/`, `bufkit/`, `binkit/`)
 * **`simd`**: AVX2/BMI2 vector processing for frame scanning and match lengths.
 * **`hexkit`**: 13.0 GB/s SIMD hex encoder and decoder.
 * **`bytesconv`**: 31.8 GB/s vector casing, Base64 codecs, zero-copy converters, and tokenizers.
@@ -96,24 +96,24 @@ go generate ./...
 * **`ringbuf`**: Lock-free SPSC / MPMC ring buffers and Structure-of-Arrays (SoA) layout.
 * **`clock` & `randkit`**: Monotonic fast-clock without syscalls, lock-free PRNG, and UUIDv7.
 * **`trie`**: Compressed radix search trees for high-speed prefix routing.
+* **`bufkit`**: Cacheline-aligned (64B) buffers, scatter-gather `BufferChain`, and SPSC `RingBuffer`.
+* **`binkit`**: Sequential zero-allocation binary Reader/Writer with sticky errors and JIT struct codecs.
 
-### 2. High-Performance Buffers (`bufkit/`)
-* **`AlignedBuffer`**: Cacheline-aligned (64B) and page-aligned (4KB) memory buffers for SIMD and DMA.
-* **`BufferChain`**: Scatter-gather chunked buffer chaining fixed-size blocks with zero-copy splicing.
-* **`RingBuffer`**: Lock-free circular ring buffer optimized for single-producer single-consumer streaming.
+### 2. Core Codecs & Filesystem (`codec/`, `fskit/`, `pathkit/`, `vfs/`, `iokit/`)
+* **`codec`**: Multi-algorithm compression (`brotli`, `zstd`, `gzip`, `flate`, `lz4`, `lzma`, `fse`, `huff0`), pre-compression filters (`bcj`, `delta`, `shuffle`), and SIMD JSON.
+* **`fskit`**: High-performance multi-threaded directory walking (`FastWalk`) and cross-platform memory-mapped I/O (`Mmap`).
+* **`pathkit`**: Unified immutable Path type, RFC 8089 `file://` URIs, and cross-platform path normalization.
+* **`vfs`**: Standard `io/fs.FS` integration with Zip Slip / Tar Slip path defenses and extraction resource limits.
+* **`iokit`**: Replayable body buffers, allocation-free `BytesReader`, and pooled stream copy helpers.
 
-### 3. High-Throughput Time & Dates (`timekit/`)
-* **`CoarseNow`**: Atomic monotonic fast-clock continuously refreshed in background goroutines.
-* **`AppendHTTPDate`**: Zero-allocation RFC 7231 / RFC 9110 HTTP-date parser and formatter.
-* **`AppendRFC3339` / `AppendISO8601`**: Zero-allocation ISO 8601 timestamp generator.
-* **`Stopwatch`**: High-precision monotonic stopwatch for micro-benchmarking and request timing.
+### 3. CLI & Developer Tooling (`argkit/`, `astkit/`, `tuikit/`, `testkit/`)
+* **`argkit`**: POSIX flag parsing with interspersing, short flag stacking (`-la`), attached values, and Levenshtein typo suggestions.
+* **`astkit`**: Zero-dependency Go AST inspection, struct field/tag extraction, method discovery, and expression parsing.
+* **`tuikit`**: Terminal UI framework, subcommand routing, auto-aligned tables, bordered boxes, badges, progress bars, and ANSI TrueColor detection.
+* **`testkit`**: Zero-dependency assertion (`assert`), immediate termination (`require`), and method expectation (`mock`) toolkit.
 
-### 4. Struct & Type Reflection Helpers (`refkit/`)
-* **`tag`**: High-speed struct tag parser with caching, flag inspection, and type conversion.
-* **`check`**: Zero-allocation reflection introspection helpers (`IsNil`, `IsZero`, `IsStruct`, `IsCollection`).
-
-### 5. Concurrency & Runtime Orchestration (`async/`)
-* **`contextkit`**: Flat-array, L1-cache resident `context.Context` with zero allocations.
+### 4. Concurrency & Runtime Orchestration (`async/`)
+* **`ctxkit`**: Flat-array, L1-cache resident `context.Context` with zero allocations.
 * **`lifecycle`**: Topologically sorted DAG service boot, health monitoring, and graceful teardown.
 * **`event`**: Type-safe, non-blocking asynchronous event bus.
 * **`task`**: Asynchronous task manager with correlation IDs, timeouts, and futures.
@@ -124,24 +124,19 @@ go generate ./...
 * **`scheduler`**: Microsecond-precision recurring task schedulers and cron runners.
 * **`logkit`**: Zero-allocation structured logging facade with asynchronous flushing.
 
-### 6. Tactical Synchronization & Resilience (`sync/`)
+### 5. Tactical Synchronization & Generics (`sync/`, `generic/`)
 * **`sync`**: Striped key-based locks, Vegas adaptive limiters, circuit breakers, and jittered backoff.
-
-### 7. Type-Safe Generics & Collections (`generic/`)
 * **`generic`**: Thread-safe `Safe[T]`, `LRU[K, V]` cache, `ResourcePool[T]`, in-memory TTL `Cache[K, V]`, monadic `Optional`/`Result`, and lazy `Stream[T]` (`iter.Seq`) pipelines.
 
-### 8. Streaming I/O & Replayable Buffers (`iokit/`)
-* **`iokit`**: Replayable body buffers, allocation-free `BytesReader`, and pooled stream copy helpers.
-
-### 9. Low-Level Network Protocol Primitives (`net/`)
+### 6. Low-Level Network Protocol Primitives (`net/`)
 * **`net/http/header`**: Canonical HTTP header constants, pseudo-headers, MIME media types, and zero-allocation header map parser.
 * **`net/urlkit`**: CRC32 sharded URL cache, path variable expansion, and fast query param appending.
 * **`net`**: HPACK compression, gRPC-Web framing, RFC 9211 Cache-Status, DoH/DoQ/DoT DNS, and Proxy connectors.
 
-### 10. Codecs & Types (`codec/`, `text/`, `types/`)
-* **`codec/json`**: High-performance JSON serializer with AVX2 whitespace/escape scanners.
+### 7. Core Types (`text/`, `types/`)
 * **`text/htmlkit`**: Zero-allocation HTML entity unescaping.
 * **`types/uuid`**: RFC 9562 UUIDv4 and UUIDv7 generators with SIMD formatting and parsing.
+* **`types/values`**: High-speed type conversions and structured extraction.
 
 ## License
 

@@ -1,26 +1,38 @@
 # Architecture & Engineering
 
-`foundation` is a unified, high-performance silicon substrate and tactical concurrency runtime for Go. It consolidates hardware-accelerated memory and SIMD primitives with service orchestration and data structures into a cohesive vertical architecture.
+`foundation` is a unified, high-performance silicon substrate and tactical concurrency runtime for Go. It consolidates hardware-accelerated memory and SIMD primitives with service orchestration, codecs, and data structures into a cohesive vertical architecture.
 
 ## Architectural Decomposition
 
 ```mermaid
 graph TD
-    subgraph Silicon["Silicon & Memory Substrate (foundation/silicon, foundation/bufkit)"]
+    subgraph Silicon["Silicon & Hardware Substrate (silicon, bufkit, binkit)"]
         SIMD["simd (256-bit AVX2/BMI2 & ARM64 NEON)"]
         MEM["offheap, pool (Direct Slabs, Arenas, Perpetual Storage)"]
         BUFKIT["bufkit (AlignedBuffer, BufferChain, RingBuffer)"]
-        CONV["bytesconv, hex (Zero-Copy Slicers, SIMD Codecs)"]
-        TIME["timekit, clock, rand (Monotonic Fast-Clock, FastRand, UUID)"]
+        BINKIT["binkit (Sequential Reader/Writer, JIT Struct Codec)"]
+        CONV["bytesconv, hexkit (Zero-Copy Slicers, SIMD Codecs)"]
+        TIME["timekit, clock, randkit (Monotonic Fast-Clock, FastRand, UUID)"]
         STRUCT["ringbuf, trie (Lock-Free Ring Buffers, Radix Trie)"]
     end
 
-    subgraph Primitives["Language & Reflection Primitives (foundation/refkit, foundation/generic)"]
-        REF["refkit (Cached Tag Parser, Zero-Alloc Checks)"]
-        GEN["generic (Safe[T], LRU Cache, ResourcePool, Stream iter.Seq)"]
+    subgraph Core["Core & IO Layer (codec, fskit, pathkit, vfs, iokit, types)"]
+        CODEC["codec (Brotli, Zstd, Gzip, Deflate, LZ4, Filters, JSON)"]
+        FSKIT["fskit (FastWalk, Cross-Platform Mmap)"]
+        PATH["pathkit (Unified Path, RFC 8089 File URIs)"]
+        VFS["vfs (io/fs.FS, Traversal Defense, Limiters)"]
+        IOKIT["iokit (ReplayableBody, BytesReader, Copy Pools)"]
+        TYPES["types (UUIDv4/v7, Dynamic Values)"]
     end
 
-    subgraph Async["Concurrency Runtime (foundation/async, foundation/sync)"]
+    subgraph CLI["CLI & Tooling (argkit, astkit, tuikit, testkit)"]
+        ARG["argkit (POSIX Flags, Stacking, Typo Suggestions)"]
+        AST["astkit (AST Parser, Struct/Method Inspection)"]
+        TUI["tuikit (Subcommands, Box, Tables, ANSI Probe)"]
+        TEST["testkit (Zero-Dependency Assert, Require, Mock)"]
+    end
+
+    subgraph Async["Concurrency Runtime (async, sync, generic, net)"]
         LIFE["lifecycle (DAG Topological Boot / Teardown)"]
         TASK["task (Jobs / Correlation IDs / Futures)"]
         DEDUP["dedup (SingleFlight Coalescing & Panic Isolation)"]
@@ -30,18 +42,24 @@ graph TD
         EVENT["event (Type-Safe Event Backbone)"]
         SCHED["scheduler (Precision Task Scheduler & Cron)"]
         SYNC["sync (KeyLock, Limiter, Breaker, Backoff, Semaphore)"]
-        LOG["log (Zero-Alloc Structured Logger)"]
+        LOG["logkit (Zero-Alloc Structured Logger)"]
+        GEN["generic (Safe[T], LRU Cache, ResourcePool, Stream)"]
+        NET["net (Headers, HPACK, URLKit, DNS, TLS, Proxy)"]
     end
 
-    Primitives --> Silicon
-    Async --> Silicon
+    Core --> Silicon
+    CLI --> Core
+    Async --> Core
 ```
 
-### Pillar 1: `silicon/` & `bufkit/` (Hardware Substrate)
-* **Design Goal**: Nanosecond compute, zero garbage collection overhead, direct register utilization.
+### Pillar 1: `silicon/`, `bufkit/`, `binkit/` (Hardware Substrate)
+* **Design Goal**: Nanosecond compute, zero garbage collection overhead, direct register and memory layout utilization.
 * **Constraints**: Zero external dependencies, pure Go runtime + Plan 9 Go Assembly, zero heap allocations on hot paths.
 
-### Pillar 2: `async/` & `sync/` (Tactical Concurrency Runtime)
+### Pillar 2: `codec/`, `fskit/`, `vfs/`, `iokit/` (Streaming & Codec Substrate)
+* **Design Goal**: Multi-algorithm compression (Brotli, Zstd, Gzip, Deflate, LZ4), memory mapping, virtual filesystem integration with strict decompression bomb and path traversal defenses.
+
+### Pillar 3: `async/` & `sync/` (Tactical Concurrency Runtime)
 * **Design Goal**: Orchestrating goroutine worker pools, DAG service lifecycles, type-safe events, and resilient synchronization without race conditions or memory leaks.
 * **Constraints**: Generics-first (`[T any, K comparable]`), context-aware cancellation, panic boundary isolation, zero reflection in hot execution loops.
 
@@ -57,8 +75,18 @@ graph TD
 | | `clock`, `randkit` | [`docs/silicon/CLOCK_AND_RAND.md`](silicon/CLOCK_AND_RAND.md) | Monotonic fast-clock and lock-free fast pseudo-random / UUID v4/v7. |
 | | `hexkit` | [`docs/silicon/BYTESCONV.md`](silicon/BYTESCONV.md) | Vectorized AVX2 hexadecimal encoding and decoding. |
 | | `trie` | [`docs/silicon/TRIE.md`](silicon/TRIE.md) | Zero-allocation prefix and radix search trees. |
+| **`argkit/`** | `argkit` | [`docs/argkit/ARGKIT.md`](argkit/ARGKIT.md) | POSIX flag interspersing, short flag stacking (`-la`), attached values, typo suggestions. |
+| **`astkit/`** | `astkit` | [`docs/astkit/ASTKIT.md`](astkit/ASTKIT.md) | Go AST traversal, struct tag extraction, method inspection, statement parsing. |
+| **`binkit/`** | `binkit` | [`docs/binkit/BINKIT.md`](binkit/BINKIT.md) | Sequential zero-allocation binary Reader/Writer, sticky errors, JIT struct serialization. |
 | **`bufkit/`** | `bufkit` | [`docs/bufkit/BUFKIT.md`](bufkit/BUFKIT.md) | Cacheline-aligned buffers, scatter-gather BufferChain, and SPSC RingBuffer. |
+| **`codec/`** | `codec` | [`docs/codec/CODEC.md`](codec/CODEC.md) | Brotli, Zstd, Gzip, Deflate, LZ4, LZMA, filters (BCJ/Delta/Shuffle), SIMD JSON. |
+| **`fskit/`** | `fskit` | [`docs/fskit/FSKIT.md`](fskit/FSKIT.md) | Parallel multi-threaded directory walking (`FastWalk`), cross-platform mmap. |
+| **`pathkit/`** | `pathkit` | [`docs/pathkit/PATHKIT.md`](pathkit/PATHKIT.md) | Unified immutable Path type, RFC 8089 file:// URIs, clean normalization. |
+| **`testkit/`** | `testkit` | [`docs/testkit/TESTKIT.md`](testkit/TESTKIT.md) | Zero-dependency test assertions (`assert`), immediate failure (`require`), method `mock`. |
 | **`timekit/`** | `timekit` | [`docs/timekit/TIMEKIT.md`](timekit/TIMEKIT.md) | Coarse atomic clock, zero-alloc HTTP-date / ISO 8601 formatting, stopwatch. |
+| **`tuikit/`** | `tuikit` | [`docs/tuikit/TUIKIT.md`](tuikit/TUIKIT.md) | CLI subcommands, formatted data tables, bordered boxes, progress indicators, ANSI sniffer. |
+| **`types/`** | `types` | [`docs/types/TYPES.md`](types/TYPES.md) | RFC 9562 UUIDv4/v7 with SIMD parsers, zero-allocation dynamic value extraction. |
+| **`vfs/`** | `vfs` | [`docs/vfs/VFS.md`](vfs/VFS.md) | Standard io/fs.FS integration, Zip Slip / Tar Slip traversal defenses, extraction limits. |
 | **`refkit/`** | `refkit` | [`docs/refkit/REFKIT.md`](refkit/REFKIT.md) | High-speed struct tag parsing with cache and panic-safe reflection checks. |
 | **`async/`** | `ctxkit` | [`docs/async/CTXKIT.md`](async/CTXKIT.md) | Flat-array zero-alloc L1-resident `context.Context` replacement. |
 | | `lifecycle` | [`docs/async/LIFECYCLE.md`](async/LIFECYCLE.md) | Topologically sorted DAG service boot and background loop runners. |

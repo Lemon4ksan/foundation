@@ -15,11 +15,41 @@ foundation/
 │   ├── CLOCK_AND_RAND.md     // Monotonic fast-clock, lock-free fastrand, UUID v7
 │   └── TRIE.md               // Compressed radix search trees
 │
+├── argkit/                   // Command-Line Argument & Flag Parsing
+│   └── ARGKIT.md             // POSIX flag interspersing, short flag stacking, typo suggestions
+│
+├── astkit/                   // Go AST Code Inspection & Script Parsing
+│   └── ASTKIT.md             // AST traversal, struct/method introspection, expression parsing
+│
+├── binkit/                   // Binary Encoding & Fast Serialization
+│   └── BINKIT.md             // Sequential Reader/Writer, sticky errors, JIT struct codec
+│
 ├── bufkit/                   // High-Performance Memory Buffers
 │   └── BUFKIT.md             // Cache-aligned buffers, BufferChain, RingBuffer
 │
+├── codec/                    // Compression & Format Codecs
+│   └── CODEC.md              // Brotli, Zstd, Gzip, Deflate, LZ4, LZMA, Filters (BCJ/Delta/Shuffle), JSON
+│
+├── fskit/                    // High-Throughput Filesystem Primitives
+│   └── FSKIT.md              // FastWalk directory traversal, cross-platform mmap
+│
+├── pathkit/                  // Unified Path & URI Abstraction
+│   └── PATHKIT.md            // File URIs (RFC 8089), network URLs, OS paths
+│
+├── testkit/                  // Zero-Dependency Test Suite & Mocks
+│   └── TESTKIT.md            // Assertions, require, mock expectations, gomock
+│
 ├── timekit/                  // High-Throughput Time & Dates
 │   └── TIMEKIT.md            // CoarseNow, zero-alloc HTTP-date & ISO 8601, Stopwatch
+│
+├── tuikit/                   // Terminal UI & CLI App Framework
+│   └── TUIKIT.md             // App routing, table formatting, bordered boxes, badges, ANSI probe
+│
+├── types/                    // Core Types & Identifiers
+│   └── TYPES.md              // RFC 9562 UUIDv4/v7 with SIMD parsing, dynamic values
+│
+├── vfs/                      // Virtual Filesystem & Security Defenses
+│   └── VFS.md                // io/fs.FS implementation, Zip Slip defense, extraction limits
 │
 ├── refkit/                   // Struct & Type Reflection Helpers
 │   └── REFKIT.md             // Tag parsing with cache, panic-safe reflection checks
@@ -64,17 +94,77 @@ foundation/
 | `hexkit` | [`docs/silicon/BYTESCONV.md`](silicon/BYTESCONV.md) | Vectorized AVX2 hexadecimal encoding and decoding. |
 | `trie` | [`docs/silicon/TRIE.md`](silicon/TRIE.md) | Compressed radix prefix trees for URL routing and domain lookup. |
 
+### CLI Arguments & Flag Parsing (`argkit/`)
+
+| Module | Documentation | Focus Area |
+| :--- | :--- | :--- |
+| `argkit` | [`docs/argkit/ARGKIT.md`](argkit/ARGKIT.md) | POSIX flag interspersing, short flag stacking (`-la`), attached values, typo suggestions. |
+
+### AST Inspection & Code Analysis (`astkit/`)
+
+| Module | Documentation | Focus Area |
+| :--- | :--- | :--- |
+| `astkit` | [`docs/astkit/ASTKIT.md`](astkit/ASTKIT.md) | Go AST traversal, struct tag extraction, method inspection, statement parsing. |
+
+### Binary Encoding & Layout Serialization (`binkit/`)
+
+| Module | Documentation | Focus Area |
+| :--- | :--- | :--- |
+| `binkit` | [`docs/binkit/BINKIT.md`](binkit/BINKIT.md) | Sequential zero-allocation binary Reader/Writer, sticky errors, JIT struct serialization. |
+
 ### High-Performance Buffers (`bufkit/`)
 
 | Module | Documentation | Focus Area |
 | :--- | :--- | :--- |
 | `bufkit` | [`docs/bufkit/BUFKIT.md`](bufkit/BUFKIT.md) | Cacheline-aligned buffers, scatter-gather BufferChain, and SPSC RingBuffer. |
 
+### Compression & Codecs (`codec/`)
+
+| Module | Documentation | Focus Area |
+| :--- | :--- | :--- |
+| `codec` | [`docs/codec/CODEC.md`](codec/CODEC.md) | Brotli, Zstd, Gzip, Deflate, LZ4, LZMA, pre-compression filters (BCJ/Delta/Shuffle), SIMD JSON. |
+
+### Filesystem Primitives (`fskit/`)
+
+| Module | Documentation | Focus Area |
+| :--- | :--- | :--- |
+| `fskit` | [`docs/fskit/FSKIT.md`](fskit/FSKIT.md) | Parallel multi-threaded directory walking (`FastWalk`), cross-platform mmap. |
+
+### Path & URI Abstraction (`pathkit/`)
+
+| Module | Documentation | Focus Area |
+| :--- | :--- | :--- |
+| `pathkit` | [`docs/pathkit/PATHKIT.md`](pathkit/PATHKIT.md) | Unified immutable Path type, RFC 8089 file:// URIs, clean normalization. |
+
+### Testing & Mocking Toolkit (`testkit/`)
+
+| Module | Documentation | Focus Area |
+| :--- | :--- | :--- |
+| `testkit` | [`docs/testkit/TESTKIT.md`](testkit/TESTKIT.md) | Zero-dependency test assertions (`assert`), immediate failure (`require`), method `mock`. |
+
 ### High-Throughput Time & Dates (`timekit/`)
 
 | Module | Documentation | Focus Area |
 | :--- | :--- | :--- |
 | `timekit` | [`docs/timekit/TIMEKIT.md`](timekit/TIMEKIT.md) | Coarse atomic clock, zero-alloc HTTP-date / ISO 8601 formatting, stopwatch. |
+
+### Terminal UI & CLI Framework (`tuikit/`)
+
+| Module | Documentation | Focus Area |
+| :--- | :--- | :--- |
+| `tuikit` | [`docs/tuikit/TUIKIT.md`](tuikit/TUIKIT.md) | CLI subcommands, formatted data tables, bordered boxes, progress indicators, ANSI sniffer. |
+
+### Core Types (`types/`)
+
+| Module | Documentation | Focus Area |
+| :--- | :--- | :--- |
+| `types` | [`docs/types/TYPES.md`](types/TYPES.md) | RFC 9562 UUIDv4/v7 with SIMD parsers, zero-allocation dynamic value extraction. |
+
+### Virtual Filesystem & Path Security (`vfs/`)
+
+| Module | Documentation | Focus Area |
+| :--- | :--- | :--- |
+| `vfs` | [`docs/vfs/VFS.md`](vfs/VFS.md) | Standard io/fs.FS integration, Zip Slip / Tar Slip traversal defenses, extraction limits. |
 
 ### Struct & Type Reflection Helpers (`refkit/`)
 
