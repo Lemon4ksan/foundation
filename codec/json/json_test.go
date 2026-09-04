@@ -6,6 +6,7 @@ package json_test
 
 import (
 	"bytes"
+	stdjson "encoding/json"
 	"fmt"
 	"strings"
 	"sync"
@@ -446,4 +447,30 @@ func TestMarshalUnmarshal_RecursiveStruct(t *testing.T) {
 	assert.Equal(t, 3, decoded.Next.Next.ID)
 	assert.Len(t, decoded.Children, 2)
 	assert.Equal(t, 10, decoded.Children[0].ID)
+}
+
+func TestUnmarshal_InvalidUTF8Replacement(t *testing.T) {
+	t.Parallel()
+
+	inputs := [][]byte{
+		[]byte("{\"name\": \"\x80\"}"),
+		[]byte("{\"name\": \"\x80\x81\xfe\"}"),
+		[]byte("{\"name\": \"valid\xffname\"}"),
+		[]byte("{\"name\": \"\\u003c\x80\\u003e\"}"),
+	}
+
+	for _, data := range inputs {
+		var p struct {
+			Name string `json:"name"`
+		}
+		var stdP struct {
+			Name string `json:"name"`
+		}
+		err := json.Unmarshal(data, &p)
+		stdErr := stdjson.Unmarshal(data, &stdP)
+		require.Equal(t, stdErr == nil, err == nil)
+		if stdErr == nil {
+			assert.Equal(t, stdP.Name, p.Name)
+		}
+	}
 }

@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"unicode/utf8"
 	"unsafe"
 
 	"github.com/lemon4ksan/foundation/silicon/bytesconv"
@@ -389,6 +390,46 @@ func decodeFloat64(data []byte, cursor int, p unsafe.Pointer, cfg *DecoderConfig
 	return newCursor, nil
 }
 
+func decodeToValidUTF8(s []byte) []byte {
+	if utf8.Valid(s) {
+		return s
+	}
+
+	var b []byte
+	for i := 0; i < len(s); {
+		c := s[i]
+		if c < 0x80 {
+			if b != nil {
+				b = append(b, c)
+			}
+			i++
+			continue
+		}
+
+		r, size := utf8.DecodeRune(s[i:])
+		if r == utf8.RuneError && size == 1 {
+			if b == nil {
+				b = make([]byte, 0, len(s)+8)
+				b = append(b, s[:i]...)
+			}
+			var buf [utf8.UTFMax]byte
+			n := utf8.EncodeRune(buf[:], utf8.RuneError)
+			b = append(b, buf[:n]...)
+			i++
+			continue
+		}
+
+		if b != nil {
+			b = append(b, s[i:i+size]...)
+		}
+		i += size
+	}
+	if b == nil {
+		return s
+	}
+	return b
+}
+
 func decodeString(data []byte, cursor int, p unsafe.Pointer, cfg *DecoderConfig) (int, error) {
 	cursor = skipWhitespace(data, cursor)
 	if cursor >= len(data) {
@@ -406,12 +447,16 @@ func decodeString(data []byte, cursor int, p unsafe.Pointer, cfg *DecoderConfig)
 	}
 
 	if !hasEscape {
-		if cfg != nil && cfg.NoCopy {
-			*(*string)(p) = bytesconv.B2S(raw)
-		} else {
-			*(*string)(p) = string(raw)
+		if utf8.Valid(raw) {
+			if cfg != nil && cfg.NoCopy {
+				*(*string)(p) = bytesconv.B2S(raw)
+			} else {
+				*(*string)(p) = string(raw)
+			}
+			return newCursor, nil
 		}
 
+		*(*string)(p) = string(decodeToValidUTF8(raw))
 		return newCursor, nil
 	}
 
@@ -420,7 +465,7 @@ func decodeString(data []byte, cursor int, p unsafe.Pointer, cfg *DecoderConfig)
 		return cursor, err
 	}
 
-	*(*string)(p) = string(unescaped)
+	*(*string)(p) = string(decodeToValidUTF8(unescaped))
 
 	return newCursor, nil
 }
@@ -690,13 +735,15 @@ func compileStructDecoder(t reflect.Type) (decodeFunc, error) {
 			}
 			cursor = newCursor
 
-			key := bytesconv.B2S(keyRaw)
+			var key string
 			if hasEscape {
 				unescaped, err := unescapeString(make([]byte, 0, len(keyRaw)), keyRaw)
 				if err != nil {
 					return cursor, err
 				}
-				key = string(unescaped)
+				key = string(decodeToValidUTF8(unescaped))
+			} else {
+				key = string(decodeToValidUTF8(keyRaw))
 			}
 
 			cursor = skipWhitespace(data, cursor)
@@ -1002,13 +1049,15 @@ func compileMapDecoder(t reflect.Type) (decodeFunc, error) {
 			}
 			cursor = newCursor
 
-			keyStr := string(keyRaw)
+			var keyStr string
 			if hasEscape {
 				unescaped, err := unescapeString(make([]byte, 0, len(keyRaw)), keyRaw)
 				if err != nil {
 					return cursor, err
 				}
-				keyStr = string(unescaped)
+				keyStr = string(decodeToValidUTF8(unescaped))
+			} else {
+				keyStr = string(decodeToValidUTF8(keyRaw))
 			}
 
 			cursor = skipWhitespace(data, cursor)
@@ -1084,9 +1133,9 @@ func decodeDynamic(data []byte, cursor int, cfg *DecoderConfig) (any, int, error
 			if err != nil {
 				return nil, cursor, err
 			}
-			return string(unescaped), newCursor, nil
+			return string(decodeToValidUTF8(unescaped)), newCursor, nil
 		}
-		return string(raw), newCursor, nil
+		return string(decodeToValidUTF8(raw)), newCursor, nil
 
 	case '{':
 		cursor++
@@ -1117,13 +1166,15 @@ func decodeDynamic(data []byte, cursor int, cfg *DecoderConfig) (any, int, error
 			}
 			cursor = newCursor
 
-			keyStr := string(keyRaw)
+			var keyStr string
 			if hasEscape {
 				unescaped, err := unescapeString(make([]byte, 0, len(keyRaw)), keyRaw)
 				if err != nil {
 					return nil, cursor, err
 				}
-				keyStr = string(unescaped)
+				keyStr = string(decodeToValidUTF8(unescaped))
+			} else {
+				keyStr = string(decodeToValidUTF8(keyRaw))
 			}
 
 			cursor = skipWhitespace(data, cursor)

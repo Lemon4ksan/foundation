@@ -83,6 +83,8 @@ func main() {
 			ctx,
 			"go",
 			"test",
+			"-run",
+			"^$",
 			"-fuzz",
 			fmt.Sprintf("^%s$", tgt.name),
 			"-fuzztime",

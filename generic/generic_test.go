@@ -360,7 +360,7 @@ func TestDataLoader(t *testing.T) {
 		return res, nil
 	}
 
-	dl := NewDataLoader[string, int](5*time.Millisecond, batchFn)
+	dl := NewDataLoader[string, int](25*time.Millisecond, batchFn)
 
 	var wg sync.WaitGroup
 	wg.Add(3)
@@ -410,7 +410,7 @@ func TestDataLoader(t *testing.T) {
 	}
 
 	// Trigger error from batch function
-	dl2 := NewDataLoader[string, int](5*time.Millisecond, batchFn)
+	dl2 := NewDataLoader[string, int](25*time.Millisecond, batchFn)
 
 	wg.Add(2)
 
