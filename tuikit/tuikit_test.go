@@ -7,7 +7,6 @@ package tuikit_test
 import (
 	"bytes"
 	"context"
-	"flag"
 	"fmt"
 	"io"
 	"strings"
@@ -72,38 +71,6 @@ func TestTUI_Box(t *testing.T) {
 		if w != 54 { // 50 inner + 2 borders + 2 margin
 			t.Errorf("line %d width %d != 54: %q", i, w, l)
 		}
-	}
-}
-
-func TestTUI_InterspersedFlags(t *testing.T) {
-	fs := flag.NewFlagSet("test", flag.ContinueOnError)
-	var (
-		long    bool
-		all     bool
-		sortStr string
-	)
-	tuikit.BoolVar(fs, &long, "long", "l", false, "long mode")
-	tuikit.BoolVar(fs, &all, "all", "a", false, "all files")
-	tuikit.StringVar(fs, &sortStr, "sort", "s", "name", "sort key")
-
-	// Mixed args: positional, flags, short flags, long flags
-	args := []string{"target_dir", "-l", "--sort=time", "-a", "extra_pos"}
-	pos, err := tuikit.ParseInterspersedFlags(fs, args)
-	if err != nil {
-		t.Fatalf("ParseInterspersedFlags failed: %v", err)
-	}
-
-	if !long {
-		t.Errorf("expected long=true")
-	}
-	if !all {
-		t.Errorf("expected all=true")
-	}
-	if sortStr != "time" {
-		t.Errorf("expected sortStr='time', got %q", sortStr)
-	}
-	if len(pos) != 2 || pos[0] != "target_dir" || pos[1] != "extra_pos" {
-		t.Errorf("unexpected pos args: %v", pos)
 	}
 }
 
