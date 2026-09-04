@@ -22,6 +22,9 @@ func ParallelMap[F, T any](ctx context.Context, slice []F, limit int, fn func(co
 	if fn == nil || len(slice) == 0 {
 		return nil
 	}
+	if ctx != nil && ctx.Err() != nil {
+		return nil
+	}
 
 	if limit <= 0 {
 		limit = 1
@@ -33,6 +36,9 @@ func ParallelMap[F, T any](ctx context.Context, slice []F, limit int, fn func(co
 	var wg sync.WaitGroup
 
 	for i, v := range slice {
+		if ctx != nil && ctx.Err() != nil {
+			return nil
+		}
 		select {
 		case <-ctx.Done():
 			return nil
@@ -51,6 +57,10 @@ func ParallelMap[F, T any](ctx context.Context, slice []F, limit int, fn func(co
 
 	wg.Wait()
 
+	if ctx != nil && ctx.Err() != nil {
+		return nil
+	}
+
 	return res
 }
 
@@ -63,6 +73,9 @@ func ParallelForEach[T any](ctx context.Context, slice []T, limit int, fn func(c
 	if fn == nil || len(slice) == 0 {
 		return nil
 	}
+	if ctx != nil && ctx.Err() != nil {
+		return ctx.Err()
+	}
 
 	if limit <= 0 {
 		limit = 1
@@ -74,6 +87,9 @@ func ParallelForEach[T any](ctx context.Context, slice []T, limit int, fn func(c
 	var wg sync.WaitGroup
 
 	for _, v := range slice {
+		if ctx != nil && ctx.Err() != nil {
+			return ctx.Err()
+		}
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
@@ -97,6 +113,10 @@ func ParallelForEach[T any](ctx context.Context, slice []T, limit int, fn func(c
 
 	wg.Wait()
 	close(errs)
+
+	if ctx != nil && ctx.Err() != nil {
+		return ctx.Err()
+	}
 
 	return <-errs
 }
