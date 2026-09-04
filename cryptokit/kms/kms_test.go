@@ -63,16 +63,6 @@ func TestParseURI(t *testing.T) {
 		wantErr      bool
 	}{
 		{
-			uri:          "arn:aws:kms:us-east-1:123456789012:key/test-uuid",
-			wantProvider: "aws",
-			wantPath:     "arn:aws:kms:us-east-1:123456789012:key/test-uuid",
-		},
-		{
-			uri:          "aws://alias/my-key",
-			wantProvider: "aws",
-			wantPath:     "alias/my-key",
-		},
-		{
 			uri:          "vault://transit/keys/my-app-kek",
 			wantProvider: "vault",
 			wantPath:     "my-app-kek",
@@ -81,6 +71,11 @@ func TestParseURI(t *testing.T) {
 			uri:          "mock://local-test",
 			wantProvider: "mock",
 			wantPath:     "local-test",
+		},
+		{
+			uri:          "custom://corp-hsm/key-42",
+			wantProvider: "custom",
+			wantPath:     "corp-hsm/key-42",
 		},
 		{
 			uri:     "",
@@ -135,78 +130,9 @@ func TestRouter(t *testing.T) {
 	}
 
 	// Unregistered provider
-	_, err = router.Encrypt(ctx, "aws://unregistered", plaintext)
+	_, err = router.Encrypt(ctx, "unregistered://test", plaintext)
 	if !errors.Is(err, kms.ErrUnsupportedProvider) {
 		t.Fatalf("expected ErrUnsupportedProvider, got %v", err)
-	}
-}
-
-func TestAWSClient_MockServer(t *testing.T) {
-	ctx := context.Background()
-	secret := []byte("aws-kms-payload-42")
-	expectedCiphertextBlob := "Y2lwaGVydGV4dC1ibG9iLXZhbHVl" // base64 of "ciphertext-blob-value"
-
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Verify SigV4 headers
-		auth := r.Header.Get("Authorization")
-		if !strings.HasPrefix(auth, "AWS4-HMAC-SHA256 Credential=test-akid/") {
-			t.Errorf("unexpected Authorization header: %s", auth)
-		}
-		if r.Header.Get("X-Amz-Target") == "" {
-			t.Errorf("missing X-Amz-Target header")
-		}
-
-		target := r.Header.Get("X-Amz-Target")
-		if target == "TrentService.Encrypt" {
-			var req struct {
-				KeyId     string `json:"KeyId"`
-				Plaintext string `json:"Plaintext"`
-			}
-			_ = json.NewDecoder(r.Body).Decode(&req)
-			if req.KeyId != "arn:aws:kms:us-east-1:123456789012:key/test" {
-				t.Errorf("unexpected KeyId: %s", req.KeyId)
-			}
-			w.Header().Set("Content-Type", "application/x-amz-json-1.1")
-			_ = json.NewEncoder(w).Encode(map[string]string{
-				"CiphertextBlob": expectedCiphertextBlob,
-			})
-			return
-		}
-
-		if target == "TrentService.Decrypt" {
-			w.Header().Set("Content-Type", "application/x-amz-json-1.1")
-			_ = json.NewEncoder(w).Encode(map[string]string{
-				"Plaintext": base64.StdEncoding.EncodeToString(secret),
-			})
-			return
-		}
-
-		http.Error(w, "unknown target", 400)
-	}))
-	defer ts.Close()
-
-	client := kms.NewAWSClient(kms.AWSConfig{
-		Region:          "us-east-1",
-		AccessKeyID:     "test-akid",
-		SecretAccessKey: "test-secret",
-		Endpoint:        ts.URL,
-	})
-
-	keyID := "arn:aws:kms:us-east-1:123456789012:key/test"
-	ct, err := client.Encrypt(ctx, keyID, secret)
-	if err != nil {
-		t.Fatalf("client.Encrypt failed: %v", err)
-	}
-	if string(ct) != "ciphertext-blob-value" {
-		t.Fatalf("unexpected ciphertext: %s", string(ct))
-	}
-
-	pt, err := client.Decrypt(ctx, keyID, ct)
-	if err != nil {
-		t.Fatalf("client.Decrypt failed: %v", err)
-	}
-	if !bytes.Equal(pt, secret) {
-		t.Fatalf("unexpected plaintext: %s != %s", pt, secret)
 	}
 }
 

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package rand implements a silicon-grade, zero-allocation, thread-local fast pseudo-random number generator,
+// Package randkit implements a silicon-grade, zero-allocation, thread-local fast pseudo-random number generator,
 // bypassing standard math/rand lock contention, atomic CAS loops, and heap allocations.
 package randkit
 

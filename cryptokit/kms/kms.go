@@ -24,9 +24,9 @@ var (
 )
 
 // Client defines the common interface for Key Management Service envelope encryption providers
-// (e.g., AWS KMS, HashiCorp Vault Transit, cloud HSMs, or in-memory mock KMS).
+// (e.g., HashiCorp Vault Transit, enterprise KMS/HSM, or in-memory mock KMS).
 type Client interface {
-	// Encrypt encrypts a plaintext DEK or secret using the specified key ID or ARN.
+	// Encrypt encrypts a plaintext DEK or secret using the specified key ID or URI.
 	Encrypt(ctx context.Context, keyID string, plaintext []byte) ([]byte, error)
 
 	// Decrypt decrypts a KMS ciphertext blob to recover the plaintext DEK or secret.
@@ -35,37 +35,26 @@ type Client interface {
 
 // KeyURI represents a parsed KMS key identifier.
 type KeyURI struct {
-	Provider string // "aws", "vault", "mock", etc.
-	KeyPath  string // Full key ARN, key name, or transit path
+	Provider string // "vault", "mock", or custom provider name
+	KeyPath  string // Key name, transit path, or provider-specific ID
 	Raw      string // Original raw URI string
 }
 
 // ParseURI parses a key identifier or URI into provider and key path.
 // Supported formats:
-//   - "arn:aws:kms:..." -> Provider: "aws", KeyPath: full ARN
-//   - "aws://<key-id-or-arn>" -> Provider: "aws", KeyPath: <key-id-or-arn>
 //   - "vault://<transit-key-path>" -> Provider: "vault", KeyPath: <transit-key-path>
 //   - "mock://<key-id>" -> Provider: "mock", KeyPath: <key-id>
+//   - "<provider>://<key-path>" -> Provider: "<provider>", KeyPath: "<key-path>"
 func ParseURI(rawURI string) (*KeyURI, error) {
 	trimmed := strings.TrimSpace(rawURI)
 	if trimmed == "" {
 		return nil, fmt.Errorf("%w: URI is empty", ErrInvalidURI)
 	}
 
-	if strings.HasPrefix(trimmed, "arn:aws:kms:") {
-		return &KeyURI{
-			Provider: "aws",
-			KeyPath:  trimmed,
-			Raw:      trimmed,
-		}, nil
-	}
-
 	if idx := strings.Index(trimmed, "://"); idx != -1 {
 		scheme := strings.ToLower(trimmed[:idx])
 		path := trimmed[idx+3:]
 		switch scheme {
-		case "aws", "aws-kms":
-			return &KeyURI{Provider: "aws", KeyPath: path, Raw: trimmed}, nil
 		case "vault":
 			return &KeyURI{Provider: "vault", KeyPath: strings.TrimPrefix(path, "transit/keys/"), Raw: trimmed}, nil
 		case "mock":
@@ -75,7 +64,7 @@ func ParseURI(rawURI string) (*KeyURI, error) {
 		}
 	}
 
-	// Default fallback: if no scheme provided and not an ARN, return error
+	// Default fallback: if no scheme provided, return error
 	return nil, fmt.Errorf("%w: unable to determine provider from '%s'", ErrInvalidURI, rawURI)
 }
 
