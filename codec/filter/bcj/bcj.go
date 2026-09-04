@@ -10,6 +10,7 @@ package bcj
 import (
 	"encoding/binary"
 	"io"
+	"math/bits"
 )
 
 // Architecture represents the target CPU instruction set architecture for branch filtering.
@@ -75,9 +76,14 @@ func filterX86(data []byte, ip uint32, state *uint32, encode bool) int {
 			v := binary.LittleEndian.Uint64(data[p:])
 			hasE8 := ((v ^ 0xE8E8E8E8E8E8E8E8) - 0x0101010101010101) & ^(v ^ 0xE8E8E8E8E8E8E8E8) & 0x8080808080808080
 			hasE9 := ((v ^ 0xE9E9E9E9E9E9E9E9) - 0x0101010101010101) & ^(v ^ 0xE9E9E9E9E9E9E9E9) & 0x8080808080808080
-			if (hasE8 | hasE9) == 0 {
+			matchMask := hasE8 | hasE9
+			if matchMask == 0 {
 				p += 8
 				continue
+			}
+			tz := bits.TrailingZeros64(matchMask) >> 3
+			if tz > 0 {
+				p += tz
 			}
 		}
 
