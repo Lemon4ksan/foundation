@@ -221,7 +221,8 @@ func (z *Bargain3) FindMatches(dst []Match, src []byte) []Match {
 				nextOverlapSearch = max(nextOverlapSearch, m.Start+1, m.End-6)
 			}
 
-			if int(candidate12.offset) < i && i-int(candidate12.offset) < z.MaxDistance && uint32(cv) == candidate12.val &&
+			if int(candidate12.offset) < i && i-int(candidate12.offset) < z.MaxDistance &&
+				uint32(cv) == candidate12.val &&
 				binary.LittleEndian.Uint32(src[candidate12.offset:]) == uint32(cv) {
 				m := extendMatch2(src, i, int(candidate12.offset), historyLen)
 				delta := i - m.Start

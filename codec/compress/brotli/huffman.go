@@ -378,7 +378,7 @@ func reverseBits8(num uint64) uint64 {
 
 /* Stores code in table[0], table[step], table[2*step], ..., table[end] */
 /* Assumes that end is an integer multiple of step */
-func replicateValue(table []huffmanCode, step int, end int, code huffmanCode) {
+func replicateValue(table []huffmanCode, step, end int, code huffmanCode) {
 	for {
 		end -= step
 		table[end] = code
@@ -394,8 +394,8 @@ Returns the table width of the next 2nd level table. |count| is the histogram
 	of bit lengths for the remaining symbols, |len| is the code length of the
 	next processed symbol.
 */
-func nextTableBitSize(count []uint16, len int, root_bits int) int {
-	var left int = 1 << uint(len-root_bits)
+func nextTableBitSize(count []uint16, len, root_bits int) int {
+	left := 1 << uint(len-root_bits)
 	for len < huffmanMaxCodeLength {
 		left -= int(count[len])
 		if left <= 0 {
@@ -500,7 +500,7 @@ func buildHuffmanTable(root_table []huffmanCode, root_bits int, symbol_lists sym
 	var table_bits int
 	var table_size int
 	var total_size int
-	var max_length int = -1
+	max_length := -1
 	var bits int
 	var bits_count int
 
@@ -568,7 +568,10 @@ func buildHuffmanTable(root_table []huffmanCode, root_bits int, symbol_lists sym
 				total_size += table_size
 				sub_key = reverseBits8(key)
 				key += key_step
-				root_table[sub_key] = constructHuffmanCode(byte(table_bits+root_bits), uint16(uint64(uint(-cap(table)+cap(root_table)))-sub_key))
+				root_table[sub_key] = constructHuffmanCode(
+					byte(table_bits+root_bits),
+					uint16(uint64(uint(-cap(table)+cap(root_table)))-sub_key),
+				)
 				sub_key = 0
 			}
 
@@ -622,7 +625,7 @@ func buildSimpleHuffmanTable(table []huffmanCode, root_bits int, val []uint16, n
 		for i = 0; i < 3; i++ {
 			for k = i + 1; k < 4; k++ {
 				if val[k] < val[i] {
-					var t uint16 = val[k]
+					t := val[k]
 					val[k] = val[i]
 					val[i] = t
 				}
@@ -637,7 +640,7 @@ func buildSimpleHuffmanTable(table []huffmanCode, root_bits int, val []uint16, n
 
 	case 4:
 		if val[3] < val[2] {
-			var t uint16 = val[3]
+			t := val[3]
 			val[3] = val[2]
 			val[2] = t
 		}

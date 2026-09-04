@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	modkernel32                    = syscall.NewLazyDLL("kernel32.dll")
+	modkernel32                      = syscall.NewLazyDLL("kernel32.dll")
 	procGetFileInformationByHandleEx = modkernel32.NewProc("GetFileInformationByHandleEx")
 )
 

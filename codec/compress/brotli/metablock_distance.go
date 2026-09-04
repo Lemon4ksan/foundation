@@ -24,9 +24,17 @@ type blockSplitterDistance struct {
 	merge_last_count_  uint
 }
 
-func initBlockSplitterDistance(self *blockSplitterDistance, alphabet_size uint, min_block_size uint, split_threshold float64, num_symbols uint, split *blockSplit, histograms *[]histogramDistance, histograms_size *uint) {
-	var max_num_blocks uint = num_symbols/min_block_size + 1
-	var max_num_types uint = brotli_min_size_t(max_num_blocks, maxNumberOfBlockTypes+1)
+func initBlockSplitterDistance(
+	self *blockSplitterDistance,
+	alphabet_size, min_block_size uint,
+	split_threshold float64,
+	num_symbols uint,
+	split *blockSplit,
+	histograms *[]histogramDistance,
+	histograms_size *uint,
+) {
+	max_num_blocks := num_symbols/min_block_size + 1
+	max_num_types := brotli_min_size_t(max_num_blocks, maxNumberOfBlockTypes+1)
 	/* We have to allocate one more histogram than the maximum number of block
 	   types for the current histogram when the meta-block is too big. */
 	self.alphabet_size_ = alphabet_size
@@ -66,9 +74,9 @@ Does either of three things:
 	(3) merges the current block with the last block.
 */
 func blockSplitterFinishBlockDistance(self *blockSplitterDistance, is_final bool) {
-	var split *blockSplit = self.split_
-	var last_entropy []float64 = self.last_entropy_[:]
-	var histograms []histogramDistance = self.histograms_
+	split := self.split_
+	last_entropy := self.last_entropy_[:]
+	histograms := self.histograms_
 	self.block_size_ = brotli_max_size_t(self.block_size_, self.min_block_size_)
 	if self.num_blocks_ == 0 {
 		/* Create first block. */
@@ -85,20 +93,21 @@ func blockSplitterFinishBlockDistance(self *blockSplitterDistance, is_final bool
 		}
 		self.block_size_ = 0
 	} else if self.block_size_ > 0 {
-		var entropy float64 = bitsEntropy(histograms[self.curr_histogram_ix_].data_[:], self.alphabet_size_)
+		entropy := bitsEntropy(histograms[self.curr_histogram_ix_].data_[:], self.alphabet_size_)
 		var combined_histo [2]histogramDistance
 		var combined_entropy [2]float64
 		var diff [2]float64
 		var j uint
 		for j = 0; j < 2; j++ {
-			var last_histogram_ix uint = self.last_histogram_ix_[j]
+			last_histogram_ix := self.last_histogram_ix_[j]
 			combined_histo[j] = histograms[self.curr_histogram_ix_]
 			histogramAddHistogramDistance(&combined_histo[j], &histograms[last_histogram_ix])
 			combined_entropy[j] = bitsEntropy(combined_histo[j].data_[0:], self.alphabet_size_)
 			diff[j] = combined_entropy[j] - entropy - last_entropy[j]
 		}
 
-		if split.num_types < maxNumberOfBlockTypes && diff[0] > self.split_threshold_ && diff[1] > self.split_threshold_ {
+		if split.num_types < maxNumberOfBlockTypes && diff[0] > self.split_threshold_ &&
+			diff[1] > self.split_threshold_ {
 			/* Create new block. */
 			split.lengths[self.num_blocks_] = uint32(self.block_size_)
 
@@ -121,7 +130,7 @@ func blockSplitterFinishBlockDistance(self *blockSplitterDistance, is_final bool
 			split.types[self.num_blocks_] = split.types[self.num_blocks_-2]
 			/* Combine this block with second last block. */
 
-			var tmp uint = self.last_histogram_ix_[0]
+			tmp := self.last_histogram_ix_[0]
 			self.last_histogram_ix_[0] = self.last_histogram_ix_[1]
 			self.last_histogram_ix_[1] = tmp
 			histograms[self.last_histogram_ix_[0]] = combined_histo[1]

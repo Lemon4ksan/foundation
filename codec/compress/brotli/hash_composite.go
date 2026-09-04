@@ -7,8 +7,8 @@ package brotli
 */
 
 func (h *hashComposite) HashTypeLength() uint {
-	var a uint = h.ha.HashTypeLength()
-	var b uint = h.hb.HashTypeLength()
+	a := h.ha.HashTypeLength()
+	b := h.hb.HashTypeLength()
 	if a > b {
 		return a
 	} else {
@@ -17,8 +17,8 @@ func (h *hashComposite) HashTypeLength() uint {
 }
 
 func (h *hashComposite) StoreLookahead() uint {
-	var a uint = h.ha.StoreLookahead()
-	var b uint = h.hb.StoreLookahead()
+	a := h.ha.StoreLookahead()
+	b := h.hb.StoreLookahead()
 	if a > b {
 		return a
 	} else {
@@ -73,17 +73,17 @@ func (h *hashComposite) Prepare(one_shot bool, input_size uint, data []byte) {
 	h.hb.Prepare(one_shot, input_size, data)
 }
 
-func (h *hashComposite) Store(data []byte, mask uint, ix uint) {
+func (h *hashComposite) Store(data []byte, mask, ix uint) {
 	h.ha.Store(data, mask, ix)
 	h.hb.Store(data, mask, ix)
 }
 
-func (h *hashComposite) StoreRange(data []byte, mask uint, ix_start uint, ix_end uint) {
+func (h *hashComposite) StoreRange(data []byte, mask, ix_start, ix_end uint) {
 	h.ha.StoreRange(data, mask, ix_start, ix_end)
 	h.hb.StoreRange(data, mask, ix_start, ix_end)
 }
 
-func (h *hashComposite) StitchToPreviousBlock(num_bytes uint, position uint, ringbuffer []byte, ring_buffer_mask uint) {
+func (h *hashComposite) StitchToPreviousBlock(num_bytes, position uint, ringbuffer []byte, ring_buffer_mask uint) {
 	h.ha.StitchToPreviousBlock(num_bytes, position, ringbuffer, ring_buffer_mask)
 	h.hb.StitchToPreviousBlock(num_bytes, position, ringbuffer, ring_buffer_mask)
 }
@@ -93,7 +93,36 @@ func (h *hashComposite) PrepareDistanceCache(distance_cache []int) {
 	h.hb.PrepareDistanceCache(distance_cache)
 }
 
-func (h *hashComposite) FindLongestMatch(dictionary *encoderDictionary, data []byte, ring_buffer_mask uint, distance_cache []int, cur_ix uint, max_length uint, max_backward uint, gap uint, max_distance uint, out *hasherSearchResult) {
-	h.ha.FindLongestMatch(dictionary, data, ring_buffer_mask, distance_cache, cur_ix, max_length, max_backward, gap, max_distance, out)
-	h.hb.FindLongestMatch(dictionary, data, ring_buffer_mask, distance_cache, cur_ix, max_length, max_backward, gap, max_distance, out)
+func (h *hashComposite) FindLongestMatch(
+	dictionary *encoderDictionary,
+	data []byte,
+	ring_buffer_mask uint,
+	distance_cache []int,
+	cur_ix, max_length, max_backward, gap, max_distance uint,
+	out *hasherSearchResult,
+) {
+	h.ha.FindLongestMatch(
+		dictionary,
+		data,
+		ring_buffer_mask,
+		distance_cache,
+		cur_ix,
+		max_length,
+		max_backward,
+		gap,
+		max_distance,
+		out,
+	)
+	h.hb.FindLongestMatch(
+		dictionary,
+		data,
+		ring_buffer_mask,
+		distance_cache,
+		cur_ix,
+		max_length,
+		max_backward,
+		gap,
+		max_distance,
+		out,
+	)
 }

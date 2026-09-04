@@ -25,7 +25,7 @@ func (e *FastEncoder) Reset() {
 	e.bw = bitWriter{}
 }
 
-func (e *FastEncoder) Encode(dst []byte, src []byte, matches []matchfinder.Match, lastBlock bool) []byte {
+func (e *FastEncoder) Encode(dst, src []byte, matches []matchfinder.Match, lastBlock bool) []byte {
 	e.bw.dst = dst
 	if !e.wroteHeader {
 		e.bw.writeBits(4, 15)
@@ -53,7 +53,9 @@ func (e *FastEncoder) Encode(dst []byte, src []byte, matches []matchfinder.Match
 			copyCode := 2
 			e.commandHisto[128+insertCode<<3+copyCode] = uint32(100 / (insertCode + 1) / (insertCode + 1) / copyCode)
 			for copyCode := 3; copyCode < 8; copyCode++ {
-				e.commandHisto[128+insertCode<<3+copyCode] = uint32(343 / (insertCode + 1) / (insertCode + 1) / copyCode)
+				e.commandHisto[128+insertCode<<3+copyCode] = uint32(
+					343 / (insertCode + 1) / (insertCode + 1) / copyCode,
+				)
 			}
 		}
 
@@ -99,7 +101,14 @@ func (e *FastEncoder) Encode(dst []byte, src []byte, matches []matchfinder.Match
 	for _, n := range e.distanceHisto {
 		distanceCount += int(n)
 	}
-	buildAndStoreHuffmanTreeFastBW(e.distanceHisto[:], uint(distanceCount), 6, distanceDepths[:], distanceBits[:], &e.bw)
+	buildAndStoreHuffmanTreeFastBW(
+		e.distanceHisto[:],
+		uint(distanceCount),
+		6,
+		distanceDepths[:],
+		distanceBits[:],
+		&e.bw,
+	)
 
 	// Reset the statistics, starting with a count of 1 for each symbol we might use.
 	for i := range 24 {

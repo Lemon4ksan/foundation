@@ -34,8 +34,8 @@ func ringBufferInit(rb *ringBuffer) {
 }
 
 func ringBufferSetup(params *encoderParams, rb *ringBuffer) {
-	var window_bits int = computeRbBits(params)
-	var tail_bits int = params.lgblock
+	window_bits := computeRbBits(params)
+	tail_bits := params.lgblock
 	*(*uint32)(&rb.size_) = 1 << uint(window_bits)
 	*(*uint32)(&rb.mask_) = (1 << uint(window_bits)) - 1
 	*(*uint32)(&rb.tail_size_) = 1 << uint(tail_bits)
@@ -73,10 +73,10 @@ func ringBufferInitBuffer(buflen uint32, rb *ringBuffer) {
 }
 
 func ringBufferWriteTail(bytes []byte, n uint, rb *ringBuffer) {
-	var masked_pos uint = uint(rb.pos_ & rb.mask_)
+	masked_pos := uint(rb.pos_ & rb.mask_)
 	if uint32(masked_pos) < rb.tail_size_ {
 		/* Just fill the tail buffer with the beginning data. */
-		var p uint = uint(rb.size_ + uint32(masked_pos))
+		p := uint(rb.size_ + uint32(masked_pos))
 		copy(rb.buffer_[p:], bytes[:brotli_min_size_t(n, uint(rb.tail_size_-uint32(masked_pos)))])
 	}
 }
@@ -108,7 +108,7 @@ func ringBufferWrite(bytes []byte, n uint, rb *ringBuffer) {
 		rb.buffer_[rb.size_-1] = 0
 	}
 	{
-		var masked_pos uint = uint(rb.pos_ & rb.mask_)
+		masked_pos := uint(rb.pos_ & rb.mask_)
 
 		/* The length of the writes is limited so that we do not need to worry
 		   about a write */
@@ -127,7 +127,7 @@ func ringBufferWrite(bytes []byte, n uint, rb *ringBuffer) {
 		}
 	}
 	{
-		var not_first_lap bool = rb.pos_&(1<<31) != 0
+		not_first_lap := rb.pos_&(1<<31) != 0
 		var rb_pos_mask uint32 = (1 << 31) - 1
 		rb.data_[0] = rb.buffer_[rb.size_-2]
 		rb.data_[1] = rb.buffer_[rb.size_-1]

@@ -11,8 +11,15 @@ Computes the bit cost reduction by combining out[idx1] and out[idx2] and if
 
 	it is below a threshold, stores the pair (idx1, idx2) in the *pairs queue.
 */
-func compareAndPushToQueueCommand(out []histogramCommand, cluster_size []uint32, idx1 uint32, idx2 uint32, max_num_pairs uint, pairs []histogramPair, num_pairs *uint) {
-	var is_good_pair bool = false
+func compareAndPushToQueueCommand(
+	out []histogramCommand,
+	cluster_size []uint32,
+	idx1, idx2 uint32,
+	max_num_pairs uint,
+	pairs []histogramPair,
+	num_pairs *uint,
+) {
+	is_good_pair := false
 	var p histogramPair
 	p.idx2 = 0
 	p.idx1 = p.idx2
@@ -23,7 +30,7 @@ func compareAndPushToQueueCommand(out []histogramCommand, cluster_size []uint32,
 	}
 
 	if idx2 < idx1 {
-		var t uint32 = idx2
+		t := idx2
 		idx2 = idx1
 		idx1 = t
 	}
@@ -47,7 +54,7 @@ func compareAndPushToQueueCommand(out []histogramCommand, cluster_size []uint32,
 		} else {
 			threshold = brotli_max_double(0.0, pairs[0].cost_diff)
 		}
-		var combo histogramCommand = out[idx1]
+		combo := out[idx1]
 		var cost_combo float64
 		histogramAddHistogramCommand(&combo, &out[idx2])
 		cost_combo = populationCostCommand(&combo)
@@ -74,8 +81,13 @@ func compareAndPushToQueueCommand(out []histogramCommand, cluster_size []uint32,
 	}
 }
 
-func histogramCombineCommand(out []histogramCommand, cluster_size []uint32, symbols []uint32, clusters []uint32, pairs []histogramPair, num_clusters uint, symbols_size uint, max_clusters uint, max_num_pairs uint) uint {
-	var cost_diff_threshold float64 = 0.0
+func histogramCombineCommand(
+	out []histogramCommand,
+	cluster_size, symbols, clusters []uint32,
+	pairs []histogramPair,
+	num_clusters, symbols_size, max_clusters, max_num_pairs uint,
+) uint {
+	cost_diff_threshold := 0.0
 	var min_cluster_size uint = 1
 	var num_pairs uint = 0
 	{
@@ -85,7 +97,15 @@ func histogramCombineCommand(out []histogramCommand, cluster_size []uint32, symb
 		for idx1 = 0; idx1 < num_clusters; idx1++ {
 			var idx2 uint
 			for idx2 = idx1 + 1; idx2 < num_clusters; idx2++ {
-				compareAndPushToQueueCommand(out, cluster_size, clusters[idx1], clusters[idx2], max_num_pairs, pairs[0:], &num_pairs)
+				compareAndPushToQueueCommand(
+					out,
+					cluster_size,
+					clusters[idx1],
+					clusters[idx2],
+					max_num_pairs,
+					pairs[0:],
+					&num_pairs,
+				)
 			}
 		}
 	}
@@ -125,7 +145,7 @@ func histogramCombineCommand(out []histogramCommand, cluster_size []uint32, symb
 			/* Remove pairs intersecting the just combined best pair. */
 			var copy_to_idx uint = 0
 			for i = 0; i < num_pairs; i++ {
-				var p *histogramPair = &pairs[i]
+				p := &pairs[i]
 				if p.idx1 == best_idx1 || p.idx2 == best_idx1 || p.idx1 == best_idx2 || p.idx2 == best_idx2 {
 					/* Remove invalid pair from the queue. */
 					continue
@@ -133,7 +153,7 @@ func histogramCombineCommand(out []histogramCommand, cluster_size []uint32, symb
 
 				if histogramPairIsLess(&pairs[0], p) {
 					/* Replace the top of the queue if needed. */
-					var front histogramPair = pairs[0]
+					front := pairs[0]
 					pairs[0] = *p
 					pairs[copy_to_idx] = front
 				} else {
@@ -148,7 +168,15 @@ func histogramCombineCommand(out []histogramCommand, cluster_size []uint32, symb
 
 		/* Push new pairs formed with the combined histogram to the heap. */
 		for i = 0; i < num_clusters; i++ {
-			compareAndPushToQueueCommand(out, cluster_size, best_idx1, clusters[i], max_num_pairs, pairs[0:], &num_pairs)
+			compareAndPushToQueueCommand(
+				out,
+				cluster_size,
+				best_idx1,
+				clusters[i],
+				max_num_pairs,
+				pairs[0:],
+				&num_pairs,
+			)
 		}
 	}
 
@@ -156,11 +184,11 @@ func histogramCombineCommand(out []histogramCommand, cluster_size []uint32, symb
 }
 
 /* What is the bit cost of moving histogram from cur_symbol to candidate. */
-func histogramBitCostDistanceCommand(histogram *histogramCommand, candidate *histogramCommand) float64 {
+func histogramBitCostDistanceCommand(histogram, candidate *histogramCommand) float64 {
 	if histogram.total_count_ == 0 {
 		return 0.0
 	} else {
-		var tmp histogramCommand = *histogram
+		tmp := *histogram
 		histogramAddHistogramCommand(&tmp, candidate)
 		return populationCostCommand(&tmp) - candidate.bit_cost_
 	}

@@ -88,7 +88,7 @@ func sanitizeParams(params *encoderParams) {
 
 /* Returns optimized lg_block value. */
 func computeLgBlock(params *encoderParams) int {
-	var lgblock int = params.lgblock
+	lgblock := params.lgblock
 	if params.quality == fastOnePassCompressionQuality || params.quality == fastTwoPassCompressionQuality {
 		lgblock = int(params.lgwin)
 	} else if params.quality < minQualityForBlockSplit {
@@ -118,7 +118,7 @@ func computeRbBits(params *encoderParams) int {
 }
 
 func maxMetablockSize(params *encoderParams) uint {
-	var bits int = brotli_min_int(computeRbBits(params), maxInputBlockBits)
+	bits := brotli_min_int(computeRbBits(params), maxInputBlockBits)
 	return uint(1) << uint(bits)
 }
 

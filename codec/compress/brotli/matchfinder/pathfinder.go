@@ -271,7 +271,7 @@ func (q *Pathfinder) FindMatches(dst []Match, src []byte) []Match {
 		// If a match from an earlier position extends far enough past the current
 		// position, try using the tail of it, starting from here.
 		if unmatched == 0 && pending.Start != i && pending.End >= i+q.MinLength &&
-			!(arrivedHere.length != 0 && arrivedHere.distance == uint32(pending.Start-pending.Match)) {
+			(arrivedHere.length == 0 || arrivedHere.distance != uint32(pending.Start-pending.Match)) {
 			matchCost := baseMatchCost + float32(bits.Len(uint(pending.Start-pending.Match)))
 			for j := i + q.MinLength; j <= pending.End; j++ {
 				adjustedCost := matchCost

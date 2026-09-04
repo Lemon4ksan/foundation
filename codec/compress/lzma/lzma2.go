@@ -760,7 +760,7 @@ func (c *Compressor2) Compress(src io.Reader, dest io.Writer) (int64, error) {
 					packSizeMinus1 := uint16(len(res.compBytes) - 1)
 
 					if res.mode >= 2 {
-						var control byte = 0x80 | (byte(res.mode) << 5)
+						control := 0x80 | (byte(res.mode) << 5)
 						control |= byte((unpackSizeMinus1 >> 16) & 0x1F)
 
 						var chunkHeader [6]byte
@@ -776,7 +776,7 @@ func (c *Compressor2) Compress(src io.Reader, dest io.Writer) (int64, error) {
 						}
 						totalWritten += 6
 					} else {
-						var control byte = 0x80 | (byte(res.mode) << 5)
+						control := 0x80 | (byte(res.mode) << 5)
 						control |= byte((unpackSizeMinus1 >> 16) & 0x1F)
 
 						var chunkHeader [5]byte

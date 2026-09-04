@@ -898,7 +898,7 @@ func (d *Decoder) decompress4X8bit(dst, src []byte) ([]byte, error) {
 				if br.off >= 4 {
 					v := br.in[br.off-4:]
 					v = v[:4]
-					low := (uint32(v[0])) | (uint32(v[1]) << 8) | (uint32(v[2]) << 16) | (uint32(v[3]) << 24)
+					low := uint32(v[0]) | (uint32(v[1]) << 8) | (uint32(v[2]) << 16) | (uint32(v[3]) << 24)
 					br.value |= uint64(low) << (br.bitsRead - 32)
 					br.bitsRead -= 32
 					br.off -= 4
@@ -1159,7 +1159,7 @@ func (d *Decoder) decompress4X8bitExactly(dst, src []byte) ([]byte, error) {
 				if br.off >= 4 {
 					v := br.in[br.off-4:]
 					v = v[:4]
-					low := (uint32(v[0])) | (uint32(v[1]) << 8) | (uint32(v[2]) << 16) | (uint32(v[3]) << 24)
+					low := uint32(v[0]) | (uint32(v[1]) << 8) | (uint32(v[2]) << 16) | (uint32(v[3]) << 24)
 					br.value |= uint64(low) << (br.bitsRead - 32)
 					br.bitsRead -= 32
 					br.off -= 4

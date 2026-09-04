@@ -55,8 +55,8 @@ func freeMetaBlockSplit(mb *metaBlockSplit) {
 	metaBlockPool.Put(mb)
 }
 
-func initDistanceParams(params *encoderParams, npostfix uint32, ndirect uint32) {
-	var dist_params *distanceParams = &params.dist
+func initDistanceParams(params *encoderParams, npostfix, ndirect uint32) {
+	dist_params := &params.dist
 	var alphabet_size uint32
 	var max_distance uint32
 
@@ -67,7 +67,7 @@ func initDistanceParams(params *encoderParams, npostfix uint32, ndirect uint32) 
 	max_distance = ndirect + (1 << (maxDistanceBits + npostfix + 2)) - (1 << (npostfix + 2))
 
 	if params.large_window {
-		var bound = [maxNpostfix + 1]uint32{0, 4, 12, 28}
+		bound := [maxNpostfix + 1]uint32{0, 4, 12, 28}
 		var postfix uint32 = 1 << npostfix
 		alphabet_size = uint32(distanceAlphabetSize(uint(npostfix), uint(ndirect), largeMaxDistanceBits))
 
@@ -87,28 +87,36 @@ func initDistanceParams(params *encoderParams, npostfix uint32, ndirect uint32) 
 	dist_params.max_distance = uint(max_distance)
 }
 
-func recomputeDistancePrefixes(cmds []command, orig_params *distanceParams, new_params *distanceParams) {
-	if orig_params.distance_postfix_bits == new_params.distance_postfix_bits && orig_params.num_direct_distance_codes == new_params.num_direct_distance_codes {
+func recomputeDistancePrefixes(cmds []command, orig_params, new_params *distanceParams) {
+	if orig_params.distance_postfix_bits == new_params.distance_postfix_bits &&
+		orig_params.num_direct_distance_codes == new_params.num_direct_distance_codes {
 		return
 	}
 
 	for i := range cmds {
-		var cmd *command = &cmds[i]
+		cmd := &cmds[i]
 		if commandCopyLen(cmd) != 0 && cmd.cmd_prefix_ >= 128 {
-			prefixEncodeCopyDistance(uint(commandRestoreDistanceCode(cmd, orig_params)), uint(new_params.num_direct_distance_codes), uint(new_params.distance_postfix_bits), &cmd.dist_prefix_, &cmd.dist_extra_)
+			prefixEncodeCopyDistance(
+				uint(commandRestoreDistanceCode(cmd, orig_params)),
+				uint(new_params.num_direct_distance_codes),
+				uint(new_params.distance_postfix_bits),
+				&cmd.dist_prefix_,
+				&cmd.dist_extra_,
+			)
 		}
 	}
 }
 
-func computeDistanceCost(cmds []command, orig_params *distanceParams, new_params *distanceParams, cost *float64) bool {
-	var equal_params bool = false
+func computeDistanceCost(cmds []command, orig_params, new_params *distanceParams, cost *float64) bool {
+	equal_params := false
 	var dist_prefix uint16
 	var dist_extra uint32
-	var extra_bits float64 = 0.0
+	extra_bits := 0.0
 	var histo histogramDistance
 	histogramClearDistance(&histo)
 
-	if orig_params.distance_postfix_bits == new_params.distance_postfix_bits && orig_params.num_direct_distance_codes == new_params.num_direct_distance_codes {
+	if orig_params.distance_postfix_bits == new_params.distance_postfix_bits &&
+		orig_params.num_direct_distance_codes == new_params.num_direct_distance_codes {
 		equal_params = true
 	}
 
@@ -118,12 +126,18 @@ func computeDistanceCost(cmds []command, orig_params *distanceParams, new_params
 			if equal_params {
 				dist_prefix = cmd.dist_prefix_
 			} else {
-				var distance uint32 = commandRestoreDistanceCode(cmd, orig_params)
+				distance := commandRestoreDistanceCode(cmd, orig_params)
 				if distance > uint32(new_params.max_distance) {
 					return false
 				}
 
-				prefixEncodeCopyDistance(uint(distance), uint(new_params.num_direct_distance_codes), uint(new_params.distance_postfix_bits), &dist_prefix, &dist_extra)
+				prefixEncodeCopyDistance(
+					uint(distance),
+					uint(new_params.num_direct_distance_codes),
+					uint(new_params.distance_postfix_bits),
+					&dist_prefix,
+					&dist_extra,
+				)
 			}
 
 			histogramAddDistance(&histo, uint(dist_prefix)&0x3FF)
@@ -137,7 +151,15 @@ func computeDistanceCost(cmds []command, orig_params *distanceParams, new_params
 
 var buildMetaBlock_kMaxNumberOfHistograms uint = 256
 
-func buildMetaBlock(ringbuffer []byte, pos uint, mask uint, params *encoderParams, prev_byte byte, prev_byte2 byte, cmds []command, literal_context_mode int, mb *metaBlockSplit) {
+func buildMetaBlock(
+	ringbuffer []byte,
+	pos, mask uint,
+	params *encoderParams,
+	prev_byte, prev_byte2 byte,
+	cmds []command,
+	literal_context_mode int,
+	mb *metaBlockSplit,
+) {
 	var distance_histograms []histogramDistance
 	var literal_histograms []histogramLiteral
 	var literal_context_modes []int = nil
@@ -147,20 +169,21 @@ func buildMetaBlock(ringbuffer []byte, pos uint, mask uint, params *encoderParam
 	var literal_context_multiplier uint = 1
 	var npostfix uint32
 	var ndirect_msb uint32 = 0
-	var check_orig bool = true
-	var best_dist_cost float64 = 1e99
-	var orig_params encoderParams = *params
+	check_orig := true
+	best_dist_cost := 1e99
+	orig_params := *params
 	/* Histogram ids need to fit in one byte. */
 
-	var new_params encoderParams = *params
+	new_params := *params
 
 	for npostfix = 0; npostfix <= maxNpostfix; npostfix++ {
 		for ; ndirect_msb < 16; ndirect_msb++ {
-			var ndirect uint32 = ndirect_msb << npostfix
+			ndirect := ndirect_msb << npostfix
 			var skip bool
 			var dist_cost float64
 			initDistanceParams(&new_params, npostfix, ndirect)
-			if npostfix == orig_params.dist.distance_postfix_bits && ndirect == orig_params.dist.num_direct_distance_codes {
+			if npostfix == orig_params.dist.distance_postfix_bits &&
+				ndirect == orig_params.dist.num_direct_distance_codes {
 				check_orig = false
 			}
 
@@ -195,7 +218,7 @@ func buildMetaBlock(ringbuffer []byte, pos uint, mask uint, params *encoderParam
 
 	if !params.disable_literal_context_modeling {
 		literal_context_multiplier = 1 << literalContextBits
-		literal_context_modes = make([]int, (mb.literal_split.num_types))
+		literal_context_modes = make([]int, mb.literal_split.num_types)
 		for i = 0; i < mb.literal_split.num_types; i++ {
 			literal_context_modes[i] = literal_context_mode
 		}
@@ -211,30 +234,51 @@ func buildMetaBlock(ringbuffer []byte, pos uint, mask uint, params *encoderParam
 
 	mb.command_histograms_size = mb.command_split.num_types
 	if cap(mb.command_histograms) < int(mb.command_histograms_size) {
-		mb.command_histograms = make([]histogramCommand, (mb.command_histograms_size))
+		mb.command_histograms = make([]histogramCommand, mb.command_histograms_size)
 	} else {
 		mb.command_histograms = mb.command_histograms[:mb.command_histograms_size]
 	}
 	clearHistogramsCommand(mb.command_histograms, mb.command_histograms_size)
 
-	buildHistogramsWithContext(cmds, &mb.literal_split, &mb.command_split, &mb.distance_split, ringbuffer, pos, mask, prev_byte, prev_byte2, literal_context_modes, literal_histograms, mb.command_histograms, distance_histograms)
+	buildHistogramsWithContext(
+		cmds,
+		&mb.literal_split,
+		&mb.command_split,
+		&mb.distance_split,
+		ringbuffer,
+		pos,
+		mask,
+		prev_byte,
+		prev_byte2,
+		literal_context_modes,
+		literal_histograms,
+		mb.command_histograms,
+		distance_histograms,
+	)
 	literal_context_modes = nil
 
 	mb.literal_context_map_size = mb.literal_split.num_types << literalContextBits
 	if cap(mb.literal_context_map) < int(mb.literal_context_map_size) {
-		mb.literal_context_map = make([]uint32, (mb.literal_context_map_size))
+		mb.literal_context_map = make([]uint32, mb.literal_context_map_size)
 	} else {
 		mb.literal_context_map = mb.literal_context_map[:mb.literal_context_map_size]
 	}
 
 	mb.literal_histograms_size = mb.literal_context_map_size
 	if cap(mb.literal_histograms) < int(mb.literal_histograms_size) {
-		mb.literal_histograms = make([]histogramLiteral, (mb.literal_histograms_size))
+		mb.literal_histograms = make([]histogramLiteral, mb.literal_histograms_size)
 	} else {
 		mb.literal_histograms = mb.literal_histograms[:mb.literal_histograms_size]
 	}
 
-	clusterHistogramsLiteral(literal_histograms, literal_histograms_size, buildMetaBlock_kMaxNumberOfHistograms, mb.literal_histograms, &mb.literal_histograms_size, mb.literal_context_map)
+	clusterHistogramsLiteral(
+		literal_histograms,
+		literal_histograms_size,
+		buildMetaBlock_kMaxNumberOfHistograms,
+		mb.literal_histograms,
+		&mb.literal_histograms_size,
+		mb.literal_context_map,
+	)
 	literal_histograms = nil
 
 	if params.disable_literal_context_modeling {
@@ -250,19 +294,26 @@ func buildMetaBlock(ringbuffer []byte, pos uint, mask uint, params *encoderParam
 
 	mb.distance_context_map_size = mb.distance_split.num_types << distanceContextBits
 	if cap(mb.distance_context_map) < int(mb.distance_context_map_size) {
-		mb.distance_context_map = make([]uint32, (mb.distance_context_map_size))
+		mb.distance_context_map = make([]uint32, mb.distance_context_map_size)
 	} else {
 		mb.distance_context_map = mb.distance_context_map[:mb.distance_context_map_size]
 	}
 
 	mb.distance_histograms_size = mb.distance_context_map_size
 	if cap(mb.distance_histograms) < int(mb.distance_histograms_size) {
-		mb.distance_histograms = make([]histogramDistance, (mb.distance_histograms_size))
+		mb.distance_histograms = make([]histogramDistance, mb.distance_histograms_size)
 	} else {
 		mb.distance_histograms = mb.distance_histograms[:mb.distance_histograms_size]
 	}
 
-	clusterHistogramsDistance(distance_histograms, mb.distance_context_map_size, buildMetaBlock_kMaxNumberOfHistograms, mb.distance_histograms, &mb.distance_histograms_size, mb.distance_context_map)
+	clusterHistogramsDistance(
+		distance_histograms,
+		mb.distance_context_map_size,
+		buildMetaBlock_kMaxNumberOfHistograms,
+		mb.distance_histograms,
+		&mb.distance_histograms_size,
+		mb.distance_context_map,
+	)
 	distance_histograms = nil
 }
 
@@ -291,8 +342,16 @@ type contextBlockSplitter struct {
 	merge_last_count_  uint
 }
 
-func initContextBlockSplitter(self *contextBlockSplitter, alphabet_size uint, num_contexts uint, min_block_size uint, split_threshold float64, num_symbols uint, split *blockSplit, histograms *[]histogramLiteral, histograms_size *uint) {
-	var max_num_blocks uint = num_symbols/min_block_size + 1
+func initContextBlockSplitter(
+	self *contextBlockSplitter,
+	alphabet_size, num_contexts, min_block_size uint,
+	split_threshold float64,
+	num_symbols uint,
+	split *blockSplit,
+	histograms *[]histogramLiteral,
+	histograms_size *uint,
+) {
+	max_num_blocks := num_symbols/min_block_size + 1
 	var max_num_types uint
 	assert(num_contexts <= maxStaticContexts)
 
@@ -339,10 +398,10 @@ Does either of three things:
 	(3) merges the current block with the last block.
 */
 func contextBlockSplitterFinishBlock(self *contextBlockSplitter, is_final bool) {
-	var split *blockSplit = self.split_
-	var num_contexts uint = self.num_contexts_
-	var last_entropy []float64 = self.last_entropy_[:]
-	var histograms []histogramLiteral = self.histograms_
+	split := self.split_
+	num_contexts := self.num_contexts_
+	last_entropy := self.last_entropy_[:]
+	histograms := self.histograms_
 
 	if self.block_size_ < self.min_block_size_ {
 		self.block_size_ = self.min_block_size_
@@ -371,9 +430,9 @@ func contextBlockSplitterFinishBlock(self *contextBlockSplitter, is_final bool) 
 		self.block_size_ = 0
 	} else if self.block_size_ > 0 {
 		var entropy [maxStaticContexts]float64
-		var combined_histo []histogramLiteral = make([]histogramLiteral, (2 * num_contexts))
+		combined_histo := make([]histogramLiteral, (2 * num_contexts))
 		var combined_entropy [2 * maxStaticContexts]float64
-		var diff = [2]float64{0.0}
+		diff := [2]float64{0.0}
 		/* Try merging the set of histograms for the current block type with the
 		   respective set of histograms for the last and second last block types.
 		   Decide over the split based on the total reduction of entropy across
@@ -381,12 +440,12 @@ func contextBlockSplitterFinishBlock(self *contextBlockSplitter, is_final bool) 
 
 		var i uint
 		for i = 0; i < num_contexts; i++ {
-			var curr_histo_ix uint = self.curr_histogram_ix_ + i
+			curr_histo_ix := self.curr_histogram_ix_ + i
 			var j uint
 			entropy[i] = bitsEntropy(histograms[curr_histo_ix].data_[:], self.alphabet_size_)
 			for j = 0; j < 2; j++ {
-				var jx uint = j*num_contexts + i
-				var last_histogram_ix uint = self.last_histogram_ix_[j] + i
+				jx := j*num_contexts + i
+				last_histogram_ix := self.last_histogram_ix_[j] + i
 				combined_histo[jx] = histograms[curr_histo_ix]
 				histogramAddHistogramLiteral(&combined_histo[jx], &histograms[last_histogram_ix])
 				combined_entropy[jx] = bitsEntropy(combined_histo[jx].data_[0:], self.alphabet_size_)
@@ -394,7 +453,8 @@ func contextBlockSplitterFinishBlock(self *contextBlockSplitter, is_final bool) 
 			}
 		}
 
-		if split.num_types < self.max_block_types_ && diff[0] > self.split_threshold_ && diff[1] > self.split_threshold_ {
+		if split.num_types < self.max_block_types_ && diff[0] > self.split_threshold_ &&
+			diff[1] > self.split_threshold_ {
 			/* Create new block. */
 			split.lengths[self.num_blocks_] = uint32(self.block_size_)
 
@@ -421,7 +481,7 @@ func contextBlockSplitterFinishBlock(self *contextBlockSplitter, is_final bool) 
 			split.types[self.num_blocks_] = split.types[self.num_blocks_-2]
 			/* Combine this block with second last block. */
 
-			var tmp uint = self.last_histogram_ix_[0]
+			tmp := self.last_histogram_ix_[0]
 			self.last_histogram_ix_[0] = self.last_histogram_ix_[1]
 			self.last_histogram_ix_[1] = tmp
 			for i = 0; i < num_contexts; i++ {
@@ -470,7 +530,7 @@ Adds the next symbol to the current block type and context. When the
 
 	current block reaches the target size, decides on merging the block.
 */
-func contextBlockSplitterAddSymbol(self *contextBlockSplitter, symbol uint, context uint) {
+func contextBlockSplitterAddSymbol(self *contextBlockSplitter, symbol, context uint) {
 	histogramAddLiteral(&self.histograms_[self.curr_histogram_ix_+context], symbol)
 	self.block_size_++
 	if self.block_size_ == self.target_block_size_ {
@@ -482,13 +542,13 @@ func mapStaticContexts(num_contexts uint, static_context_map []uint32, mb *metaB
 	var i uint
 	mb.literal_context_map_size = mb.literal_split.num_types << literalContextBits
 	if cap(mb.literal_context_map) < int(mb.literal_context_map_size) {
-		mb.literal_context_map = make([]uint32, (mb.literal_context_map_size))
+		mb.literal_context_map = make([]uint32, mb.literal_context_map_size)
 	} else {
 		mb.literal_context_map = mb.literal_context_map[:mb.literal_context_map_size]
 	}
 
 	for i = 0; i < mb.literal_split.num_types; i++ {
-		var offset uint32 = uint32(i * num_contexts)
+		offset := uint32(i * num_contexts)
 		var j uint
 		for j = 0; j < 1<<literalContextBits; j++ {
 			mb.literal_context_map[(i<<literalContextBits)+j] = offset + static_context_map[j]
@@ -496,7 +556,16 @@ func mapStaticContexts(num_contexts uint, static_context_map []uint32, mb *metaB
 	}
 }
 
-func buildMetaBlockGreedyInternal(ringbuffer []byte, pos uint, mask uint, prev_byte byte, prev_byte2 byte, literal_context_lut contextLUT, num_contexts uint, static_context_map []uint32, commands []command, mb *metaBlockSplit) {
+func buildMetaBlockGreedyInternal(
+	ringbuffer []byte,
+	pos, mask uint,
+	prev_byte, prev_byte2 byte,
+	literal_context_lut contextLUT,
+	num_contexts uint,
+	static_context_map []uint32,
+	commands []command,
+	mb *metaBlockSplit,
+) {
 	var lit_blocks struct {
 		plain blockSplitterLiteral
 		ctx   contextBlockSplitter
@@ -509,23 +578,60 @@ func buildMetaBlockGreedyInternal(ringbuffer []byte, pos uint, mask uint, prev_b
 	}
 
 	if num_contexts == 1 {
-		initBlockSplitterLiteral(&lit_blocks.plain, 256, 512, 400.0, num_literals, &mb.literal_split, &mb.literal_histograms, &mb.literal_histograms_size)
+		initBlockSplitterLiteral(
+			&lit_blocks.plain,
+			256,
+			512,
+			400.0,
+			num_literals,
+			&mb.literal_split,
+			&mb.literal_histograms,
+			&mb.literal_histograms_size,
+		)
 	} else {
-		initContextBlockSplitter(&lit_blocks.ctx, 256, num_contexts, 512, 400.0, num_literals, &mb.literal_split, &mb.literal_histograms, &mb.literal_histograms_size)
+		initContextBlockSplitter(
+			&lit_blocks.ctx,
+			256,
+			num_contexts,
+			512,
+			400.0,
+			num_literals,
+			&mb.literal_split,
+			&mb.literal_histograms,
+			&mb.literal_histograms_size,
+		)
 	}
 
-	initBlockSplitterCommand(&cmd_blocks, numCommandSymbols, 1024, 500.0, uint(len(commands)), &mb.command_split, &mb.command_histograms, &mb.command_histograms_size)
-	initBlockSplitterDistance(&dist_blocks, 64, 512, 100.0, uint(len(commands)), &mb.distance_split, &mb.distance_histograms, &mb.distance_histograms_size)
+	initBlockSplitterCommand(
+		&cmd_blocks,
+		numCommandSymbols,
+		1024,
+		500.0,
+		uint(len(commands)),
+		&mb.command_split,
+		&mb.command_histograms,
+		&mb.command_histograms_size,
+	)
+	initBlockSplitterDistance(
+		&dist_blocks,
+		64,
+		512,
+		100.0,
+		uint(len(commands)),
+		&mb.distance_split,
+		&mb.distance_histograms,
+		&mb.distance_histograms_size,
+	)
 
 	for _, cmd := range commands {
 		var j uint
 		blockSplitterAddSymbolCommand(&cmd_blocks, uint(cmd.cmd_prefix_))
 		for j = uint(cmd.insert_len_); j != 0; j-- {
-			var literal byte = ringbuffer[pos&mask]
+			literal := ringbuffer[pos&mask]
 			if num_contexts == 1 {
 				blockSplitterAddSymbolLiteral(&lit_blocks.plain, uint(literal))
 			} else {
-				var context uint = uint(getContext(prev_byte, prev_byte2, literal_context_lut))
+				context := uint(getContext(prev_byte, prev_byte2, literal_context_lut))
 				contextBlockSplitterAddSymbol(&lit_blocks.ctx, uint(literal), uint(static_context_map[context]))
 			}
 
@@ -558,11 +664,42 @@ func buildMetaBlockGreedyInternal(ringbuffer []byte, pos uint, mask uint, prev_b
 	}
 }
 
-func buildMetaBlockGreedy(ringbuffer []byte, pos uint, mask uint, prev_byte byte, prev_byte2 byte, literal_context_lut contextLUT, num_contexts uint, static_context_map []uint32, commands []command, mb *metaBlockSplit) {
+func buildMetaBlockGreedy(
+	ringbuffer []byte,
+	pos, mask uint,
+	prev_byte, prev_byte2 byte,
+	literal_context_lut contextLUT,
+	num_contexts uint,
+	static_context_map []uint32,
+	commands []command,
+	mb *metaBlockSplit,
+) {
 	if num_contexts == 1 {
-		buildMetaBlockGreedyInternal(ringbuffer, pos, mask, prev_byte, prev_byte2, literal_context_lut, 1, nil, commands, mb)
+		buildMetaBlockGreedyInternal(
+			ringbuffer,
+			pos,
+			mask,
+			prev_byte,
+			prev_byte2,
+			literal_context_lut,
+			1,
+			nil,
+			commands,
+			mb,
+		)
 	} else {
-		buildMetaBlockGreedyInternal(ringbuffer, pos, mask, prev_byte, prev_byte2, literal_context_lut, num_contexts, static_context_map, commands, mb)
+		buildMetaBlockGreedyInternal(
+			ringbuffer,
+			pos,
+			mask,
+			prev_byte,
+			prev_byte2,
+			literal_context_lut,
+			num_contexts,
+			static_context_map,
+			commands,
+			mb,
+		)
 	}
 }
 

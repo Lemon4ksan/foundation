@@ -119,7 +119,7 @@ func (s *Scratch) readNCount() error {
 			}
 		}
 
-		max := (2*(threshold) - 1) - (remaining)
+		max := (2*threshold - 1) - remaining
 
 		var count int32
 
@@ -158,7 +158,7 @@ func (s *Scratch) readNCount() error {
 			b.advance(bitCount >> 3)
 			bitCount &= 7
 		} else {
-			bitCount -= (uint)(8 * (len(b.b) - 4 - b.off))
+			bitCount -= uint(8 * (len(b.b) - 4 - b.off))
 			b.off = len(b.b) - 4
 		}
 

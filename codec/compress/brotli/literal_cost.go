@@ -1,6 +1,6 @@
 package brotli
 
-func utf8Position(last uint, c uint, clamp uint) uint {
+func utf8Position(last, c, clamp uint) uint {
 	if c < 128 {
 		return 0 /* Next one is the 'Byte 1' again. */
 	} else if c >= 192 { /* Next one is the 'Byte 2' of utf-8 encoding. */
@@ -15,13 +15,13 @@ func utf8Position(last uint, c uint, clamp uint) uint {
 	}
 }
 
-func decideMultiByteStatsLevel(pos uint, len uint, mask uint, data []byte) uint {
-	var counts = [3]uint{0} /* should be 2, but 1 compresses better. */
+func decideMultiByteStatsLevel(pos, len, mask uint, data []byte) uint {
+	counts := [3]uint{0} /* should be 2, but 1 compresses better. */
 	var max_utf8 uint = 1
 	var last_c uint = 0
 	var i uint
 	for i = 0; i < len; i++ {
-		var c uint = uint(data[(pos+i)&mask])
+		c := uint(data[(pos+i)&mask])
 		counts[utf8Position(last_c, c, 2)]++
 		last_c = c
 	}
@@ -37,13 +37,13 @@ func decideMultiByteStatsLevel(pos uint, len uint, mask uint, data []byte) uint 
 	return max_utf8
 }
 
-func estimateBitCostsForLiteralsUTF8(pos uint, len uint, mask uint, data []byte, cost []float32) {
-	var max_utf8 uint = decideMultiByteStatsLevel(pos, uint(len), mask, data)
+func estimateBitCostsForLiteralsUTF8(pos, len, mask uint, data []byte, cost []float32) {
+	max_utf8 := decideMultiByteStatsLevel(pos, uint(len), mask, data)
 	/* Bootstrap histograms. */
-	var histogram = [3][256]uint{[256]uint{0}}
+	histogram := [3][256]uint{{0}}
 	var window_half uint = 495
-	var in_window uint = brotli_min_size_t(window_half, uint(len))
-	var in_window_utf8 = [3]uint{0}
+	in_window := brotli_min_size_t(window_half, uint(len))
+	in_window_utf8 := [3]uint{0}
 	/* max_utf8 is 0 (normal ASCII single byte modeling),
 	   1 (for 2-byte UTF-8 modeling), or 2 (for 3-byte UTF-8 modeling). */
 
@@ -52,7 +52,7 @@ func estimateBitCostsForLiteralsUTF8(pos uint, len uint, mask uint, data []byte,
 		var last_c uint = 0
 		var utf8_pos uint = 0
 		for i = 0; i < in_window; i++ {
-			var c uint = uint(data[(pos+i)&mask])
+			c := uint(data[(pos+i)&mask])
 			histogram[utf8_pos][c]++
 			in_window_utf8[utf8_pos]++
 			utf8_pos = utf8Position(last_c, c, max_utf8)
@@ -77,17 +77,17 @@ func estimateBitCostsForLiteralsUTF8(pos uint, len uint, mask uint, data []byte,
 			}
 			/* Remove a byte in the past. */
 
-			var utf8_pos2 uint = utf8Position(last_c, c, max_utf8)
+			utf8_pos2 := utf8Position(last_c, c, max_utf8)
 			histogram[utf8_pos2][data[(pos+i-window_half)&mask]]--
 			in_window_utf8[utf8_pos2]--
 		}
 
 		if i+window_half < len {
-			var c uint = uint(data[(pos+i+window_half-1)&mask])
-			var last_c uint = uint(data[(pos+i+window_half-2)&mask])
+			c := uint(data[(pos+i+window_half-1)&mask])
+			last_c := uint(data[(pos+i+window_half-2)&mask])
 			/* Add a byte in the future. */
 
-			var utf8_pos2 uint = utf8Position(last_c, c, max_utf8)
+			utf8_pos2 := utf8Position(last_c, c, max_utf8)
 			histogram[utf8_pos2][data[(pos+i+window_half)&mask]]++
 			in_window_utf8[utf8_pos2]++
 		}
@@ -104,9 +104,9 @@ func estimateBitCostsForLiteralsUTF8(pos uint, len uint, mask uint, data []byte,
 			} else {
 				last_c = uint(data[(pos+i-2)&mask])
 			}
-			var utf8_pos uint = utf8Position(last_c, c, max_utf8)
-			var masked_pos uint = (pos + i) & mask
-			var histo uint = histogram[utf8_pos][data[masked_pos]]
+			utf8_pos := utf8Position(last_c, c, max_utf8)
+			masked_pos := (pos + i) & mask
+			histo := histogram[utf8_pos][data[masked_pos]]
 			var lit_cost float64
 			if histo == 0 {
 				histo = 1
@@ -132,14 +132,14 @@ func estimateBitCostsForLiteralsUTF8(pos uint, len uint, mask uint, data []byte,
 	}
 }
 
-func estimateBitCostsForLiterals(pos uint, len uint, mask uint, data []byte, cost []float32) {
+func estimateBitCostsForLiterals(pos, len, mask uint, data []byte, cost []float32) {
 	if isMostlyUTF8(data, pos, mask, uint(len), kMinUTF8Ratio) {
 		estimateBitCostsForLiteralsUTF8(pos, uint(len), mask, data, cost)
 		return
 	} else {
-		var histogram = [256]uint{0}
+		histogram := [256]uint{0}
 		var window_half uint = 2000
-		var in_window uint = brotli_min_size_t(window_half, uint(len))
+		in_window := brotli_min_size_t(window_half, uint(len))
 		var i uint
 		/* Bootstrap histogram. */
 		for i = 0; i < in_window; i++ {
@@ -168,7 +168,7 @@ func estimateBitCostsForLiterals(pos uint, len uint, mask uint, data []byte, cos
 				histo = 1
 			}
 			{
-				var lit_cost float64 = fastLog2(in_window) - fastLog2(histo)
+				lit_cost := fastLog2(in_window) - fastLog2(histo)
 				lit_cost += 0.029
 				if lit_cost < 1.0 {
 					lit_cost *= 0.5

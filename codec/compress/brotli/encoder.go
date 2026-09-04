@@ -14,7 +14,7 @@ func (e *Encoder) Reset() {
 	e.bw = bitWriter{}
 }
 
-func (e *Encoder) Encode(dst []byte, src []byte, matches []matchfinder.Match, lastBlock bool) []byte {
+func (e *Encoder) Encode(dst, src []byte, matches []matchfinder.Match, lastBlock bool) []byte {
 	e.bw.dst = dst
 	if !e.wroteHeader {
 		e.bw.writeBits(4, 15)

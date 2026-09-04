@@ -127,7 +127,7 @@ func fillBitWindow(br *bitReader, n_bits uint32) {
 	if br.bit_pos_ >= 32 {
 		br.val_ >>= 32
 		br.bit_pos_ ^= 32 /* here same as -= 32 because of the if condition */
-		br.val_ |= (uint64(binary.LittleEndian.Uint32(br.input[br.byte_pos:]))) << 32
+		br.val_ |= uint64(binary.LittleEndian.Uint32(br.input[br.byte_pos:])) << 32
 		br.byte_pos += 4
 	}
 }
@@ -152,7 +152,7 @@ func pullByte(br *bitReader) bool {
 	}
 
 	br.val_ >>= 8
-	br.val_ |= (uint64(br.input[br.byte_pos])) << 56
+	br.val_ |= uint64(br.input[br.byte_pos]) << 56
 	br.bit_pos_ -= 8
 	br.byte_pos++
 	return true
@@ -209,8 +209,8 @@ func dropBits(br *bitReader, n_bits uint32) {
 }
 
 func bitReaderUnload(br *bitReader) {
-	var unused_bytes uint32 = getAvailableBits(br) >> 3
-	var unused_bits uint32 = unused_bytes << 3
+	unused_bytes := getAvailableBits(br) >> 3
+	unused_bits := unused_bytes << 3
 	br.byte_pos -= uint(unused_bytes)
 	if unused_bits == 64 {
 		br.val_ = 0
@@ -265,7 +265,7 @@ Advances the bit reader position to the next byte boundary and verifies
 	that any skipped bits are set to zero.
 */
 func bitReaderJumpToByteBoundary(br *bitReader) bool {
-	var pad_bits_count uint32 = getAvailableBits(br) & 0x7
+	pad_bits_count := getAvailableBits(br) & 0x7
 	var pad_bits uint32 = 0
 	if pad_bits_count != 0 {
 		takeBits(br, pad_bits_count, &pad_bits)

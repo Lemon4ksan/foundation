@@ -96,4 +96,5 @@ linters:
       - "net/hpack/.*"
       - "net/proxy/socks/.*"
       - "net/psl/.*"
+      - "codec/compress/(brotli|flate|fse|gzip|huff0|lzma|zstd)/.*"
       - "silicon/simd/fastscan_archsimd\\.go"

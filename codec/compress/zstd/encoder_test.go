@@ -61,7 +61,12 @@ func TestZstd_Encoder_Roundtrip(t *testing.T) {
 			}
 
 			if !bytes.Equal(decompressed, tc.data) {
-				t.Fatalf("Payload mismatch for %s: got %d bytes, want %d bytes", tc.name, len(decompressed), len(tc.data))
+				t.Fatalf(
+					"Payload mismatch for %s: got %d bytes, want %d bytes",
+					tc.name,
+					len(decompressed),
+					len(tc.data),
+				)
 			}
 		})
 	}

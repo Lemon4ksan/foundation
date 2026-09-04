@@ -161,10 +161,8 @@ mainLoop:
 		// We have a match in matches[0].
 		// Now look for overlapping matches.
 
-		for {
-			if matches[0].End > int(sLimit) {
-				break
-			}
+		for matches[0].End <= int(sLimit) {
+
 			s = int32(max(matches[0].Start+2, matches[0].End-6))
 			cv = binary.LittleEndian.Uint64(src[s:])
 

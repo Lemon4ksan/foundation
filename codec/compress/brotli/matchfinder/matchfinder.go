@@ -33,7 +33,7 @@ type MatchFinder interface {
 type Encoder interface {
 	// Encode appends the encoded format of src to dst, using the match
 	// information from matches.
-	Encode(dst []byte, src []byte, matches []Match, lastBlock bool) []byte
+	Encode(dst, src []byte, matches []Match, lastBlock bool) []byte
 
 	// Reset clears any internal state, preparing the Encoder to be used with
 	// a new stream.

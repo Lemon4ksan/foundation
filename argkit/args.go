@@ -188,10 +188,7 @@ func decomposeFlag(fs *flag.FlagSet, arg string) ([]string, bool) {
 			}
 		} else {
 			// Non-boolean flag: rest of current string is an attached value
-			rest := curr[1:]
-			if strings.HasPrefix(rest, "=") {
-				rest = rest[1:]
-			}
+			rest := strings.TrimPrefix(curr[1:], "=")
 			result = append(result, fmt.Sprintf("-%s=%s", firstChar, rest))
 			curr = ""
 		}

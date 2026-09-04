@@ -13,7 +13,6 @@ import (
 	"io"
 
 	"github.com/lemon4ksan/foundation/borrow"
-
 	"github.com/lemon4ksan/foundation/codec/compress/zstd"
 )
 

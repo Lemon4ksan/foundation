@@ -20,13 +20,20 @@ type hasherHandle interface {
 	Common() *hasherCommon
 	Initialize(params *encoderParams)
 	Prepare(one_shot bool, input_size uint, data []byte)
-	StitchToPreviousBlock(num_bytes uint, position uint, ringbuffer []byte, ringbuffer_mask uint)
+	StitchToPreviousBlock(num_bytes, position uint, ringbuffer []byte, ringbuffer_mask uint)
 	HashTypeLength() uint
 	StoreLookahead() uint
 	PrepareDistanceCache(distance_cache []int)
-	FindLongestMatch(dictionary *encoderDictionary, data []byte, ring_buffer_mask uint, distance_cache []int, cur_ix uint, max_length uint, max_backward uint, gap uint, max_distance uint, out *hasherSearchResult)
-	StoreRange(data []byte, mask uint, ix_start uint, ix_end uint)
-	Store(data []byte, mask uint, ix uint)
+	FindLongestMatch(
+		dictionary *encoderDictionary,
+		data []byte,
+		ring_buffer_mask uint,
+		distance_cache []int,
+		cur_ix, max_length, max_backward, gap, max_distance uint,
+		out *hasherSearchResult,
+	)
+	StoreRange(data []byte, mask, ix_start, ix_end uint)
+	Store(data []byte, mask, ix uint)
 }
 
 const kCutoffTransformsCount uint32 = 10
@@ -57,7 +64,7 @@ const kHashMul64 uint64 = 0x1E35A7BD1E35A7BD
 const kHashMul64Long uint64 = 0x1FE35A7BD3579BD3
 
 func hash14(data []byte) uint32 {
-	var h uint32 = binary.LittleEndian.Uint32(data) * kHashMul32
+	h := binary.LittleEndian.Uint32(data) * kHashMul32
 
 	/* The higher bits contain more mixture from the multiplication,
 	   so we take our results from there. */
@@ -66,7 +73,7 @@ func hash14(data []byte) uint32 {
 
 func prepareDistanceCache(distance_cache []int, num_distances int) {
 	if num_distances > 4 {
-		var last_distance int = distance_cache[0]
+		last_distance := distance_cache[0]
 		distance_cache[4] = last_distance - 1
 		distance_cache[5] = last_distance + 1
 		distance_cache[6] = last_distance - 2
@@ -74,7 +81,7 @@ func prepareDistanceCache(distance_cache []int, num_distances int) {
 		distance_cache[8] = last_distance - 3
 		distance_cache[9] = last_distance + 3
 		if num_distances > 10 {
-			var next_last_distance int = distance_cache[1]
+			next_last_distance := distance_cache[1]
 			distance_cache[10] = next_last_distance - 1
 			distance_cache[11] = next_last_distance + 1
 			distance_cache[12] = next_last_distance - 2
@@ -111,8 +118,12 @@ Usually, we always choose the longest backward reference. This function
 
 	backward_reference_offset MUST be positive.
 */
-func backwardReferenceScore(copy_length uint, backward_reference_offset uint) uint {
-	return scoreBase + literalByteScore*uint(copy_length) - distanceBitPenalty*uint(log2FloorNonZero(backward_reference_offset))
+func backwardReferenceScore(copy_length, backward_reference_offset uint) uint {
+	return scoreBase + literalByteScore*uint(
+		copy_length,
+	) - distanceBitPenalty*uint(
+		log2FloorNonZero(backward_reference_offset),
+	)
 }
 
 func backwardReferenceScoreUsingLastDistance(copy_length uint) uint {
@@ -123,7 +134,13 @@ func backwardReferencePenaltyUsingLastDistance(distance_short_code uint) uint {
 	return uint(39) + ((0x1CA10 >> (distance_short_code & 0xE)) & 0xE)
 }
 
-func testStaticDictionaryItem(dictionary *encoderDictionary, item uint, data []byte, max_length uint, max_backward uint, max_distance uint, out *hasherSearchResult) bool {
+func testStaticDictionaryItem(
+	dictionary *encoderDictionary,
+	item uint,
+	data []byte,
+	max_length, max_backward, max_distance uint,
+	out *hasherSearchResult,
+) bool {
 	var len uint
 	var word_idx uint
 	var offset uint
@@ -142,8 +159,8 @@ func testStaticDictionaryItem(dictionary *encoderDictionary, item uint, data []b
 		return false
 	}
 	{
-		var cut uint = len - matchlen
-		var transform_id uint = (cut << 2) + uint((dictionary.cutoffTransforms>>(cut*6))&0x3F)
+		cut := len - matchlen
+		transform_id := (cut << 2) + uint((dictionary.cutoffTransforms>>(cut*6))&0x3F)
 		backward = max_backward + 1 + word_idx + (transform_id << dictionary.words.size_bits_by_length[len])
 	}
 
@@ -163,16 +180,23 @@ func testStaticDictionaryItem(dictionary *encoderDictionary, item uint, data []b
 	return true
 }
 
-func searchInStaticDictionary(dictionary *encoderDictionary, handle hasherHandle, data []byte, max_length uint, max_backward uint, max_distance uint, out *hasherSearchResult, shallow bool) {
+func searchInStaticDictionary(
+	dictionary *encoderDictionary,
+	handle hasherHandle,
+	data []byte,
+	max_length, max_backward, max_distance uint,
+	out *hasherSearchResult,
+	shallow bool,
+) {
 	var key uint
 	var i uint
-	var self *hasherCommon = handle.Common()
+	self := handle.Common()
 	if self.dict_num_matches < self.dict_num_lookups>>7 {
 		return
 	}
 
 	key = uint(hash14(data) << 1)
-	for i = 0; ; (func() { i++; key++ })() {
+	for i = 0; ; func() { i++; key++ }() {
 		var tmp uint
 		if shallow {
 			tmp = 1
@@ -182,10 +206,18 @@ func searchInStaticDictionary(dictionary *encoderDictionary, handle hasherHandle
 		if i >= tmp {
 			break
 		}
-		var item uint = uint(dictionary.hash_table[key])
+		item := uint(dictionary.hash_table[key])
 		self.dict_num_lookups++
 		if item != 0 {
-			var item_matches bool = testStaticDictionaryItem(dictionary, item, data, max_length, max_backward, max_distance, out)
+			item_matches := testStaticDictionaryItem(
+				dictionary,
+				item,
+				data,
+				max_length,
+				max_backward,
+				max_distance,
+				out,
+			)
 			if item_matches {
 				self.dict_num_matches++
 			}
@@ -198,12 +230,12 @@ type backwardMatch struct {
 	length_and_code uint32
 }
 
-func initBackwardMatch(self *backwardMatch, dist uint, len uint) {
+func initBackwardMatch(self *backwardMatch, dist, len uint) {
 	self.distance = uint32(dist)
 	self.length_and_code = uint32(len << 5)
 }
 
-func initDictionaryBackwardMatch(self *backwardMatch, dist uint, len uint, len_code uint) {
+func initDictionaryBackwardMatch(self *backwardMatch, dist, len, len_code uint) {
 	self.distance = uint32(dist)
 	var tmp uint
 	if len == len_code {
@@ -219,7 +251,7 @@ func backwardMatchLength(self *backwardMatch) uint {
 }
 
 func backwardMatchLengthCode(self *backwardMatch) uint {
-	var code uint = uint(self.length_and_code) & 31
+	code := uint(self.length_and_code) & 31
 	if code != 0 {
 		return code
 	} else {
@@ -311,10 +343,10 @@ func newHasher(typ int) hasherHandle {
 	panic(fmt.Sprintf("unknown hasher type: %d", typ))
 }
 
-func hasherSetup(handle *hasherHandle, params *encoderParams, data []byte, position uint, input_size uint, is_last bool) {
+func hasherSetup(handle *hasherHandle, params *encoderParams, data []byte, position, input_size uint, is_last bool) {
 	var self hasherHandle = nil
 	var common *hasherCommon = nil
-	var one_shot bool = (position == 0 && is_last)
+	one_shot := (position == 0 && is_last)
 	if *handle == nil {
 		chooseHasher(params, &params.hasher)
 		self = newHasher(params.hasher.type_)
@@ -339,7 +371,14 @@ func hasherSetup(handle *hasherHandle, params *encoderParams, data []byte, posit
 	}
 }
 
-func initOrStitchToPreviousBlock(handle *hasherHandle, data []byte, mask uint, params *encoderParams, position uint, input_size uint, is_last bool) {
+func initOrStitchToPreviousBlock(
+	handle *hasherHandle,
+	data []byte,
+	mask uint,
+	params *encoderParams,
+	position, input_size uint,
+	is_last bool,
+) {
 	var self hasherHandle
 	hasherSetup(handle, params, data, position, input_size, is_last)
 	self = *handle

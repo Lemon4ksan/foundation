@@ -40,7 +40,7 @@ func (h *hashRolling) HashRollingFunctionInitial(state uint32, add byte, factor 
 	return uint32(factor*state + h.HashByte(add))
 }
 
-func (h *hashRolling) HashRollingFunction(state uint32, add byte, rem byte, factor uint32, factor_remove uint32) uint32 {
+func (h *hashRolling) HashRollingFunction(state uint32, add, rem byte, factor, factor_remove uint32) uint32 {
 	return uint32(factor*state + h.HashByte(add) - factor_remove*h.HashByte(rem))
 }
 
@@ -92,20 +92,20 @@ func (h *hashRolling) Prepare(one_shot bool, input_size uint, data []byte) {
 	}
 }
 
-func (*hashRolling) Store(data []byte, mask uint, ix uint) {
+func (*hashRolling) Store(data []byte, mask, ix uint) {
 }
 
-func (*hashRolling) StoreRange(data []byte, mask uint, ix_start uint, ix_end uint) {
+func (*hashRolling) StoreRange(data []byte, mask, ix_start, ix_end uint) {
 }
 
-func (h *hashRolling) StitchToPreviousBlock(num_bytes uint, position uint, ringbuffer []byte, ring_buffer_mask uint) {
+func (h *hashRolling) StitchToPreviousBlock(num_bytes, position uint, ringbuffer []byte, ring_buffer_mask uint) {
 	var position_masked uint
 	/* In this case we must re-initialize the hasher from scratch from the
 	   current position. */
 
-	var available uint = num_bytes
+	available := num_bytes
 	if position&uint(h.jump-1) != 0 {
-		var diff uint = uint(h.jump) - (position & uint(h.jump-1))
+		diff := uint(h.jump) - (position & uint(h.jump-1))
 		if diff > available {
 			available = 0
 		} else {
@@ -128,9 +128,16 @@ func (h *hashRolling) StitchToPreviousBlock(num_bytes uint, position uint, ringb
 func (*hashRolling) PrepareDistanceCache(distance_cache []int) {
 }
 
-func (h *hashRolling) FindLongestMatch(dictionary *encoderDictionary, data []byte, ring_buffer_mask uint, distance_cache []int, cur_ix uint, max_length uint, max_backward uint, gap uint, max_distance uint, out *hasherSearchResult) {
-	var cur_ix_masked uint = cur_ix & ring_buffer_mask
-	var pos uint = h.next_ix
+func (h *hashRolling) FindLongestMatch(
+	dictionary *encoderDictionary,
+	data []byte,
+	ring_buffer_mask uint,
+	distance_cache []int,
+	cur_ix, max_length, max_backward, gap, max_distance uint,
+	out *hasherSearchResult,
+) {
+	cur_ix_masked := cur_ix & ring_buffer_mask
+	pos := h.next_ix
 
 	if cur_ix&uint(h.jump-1) != 0 {
 		return
@@ -142,10 +149,10 @@ func (h *hashRolling) FindLongestMatch(dictionary *encoderDictionary, data []byt
 	}
 
 	for pos = h.next_ix; pos <= cur_ix; pos += uint(h.jump) {
-		var code uint32 = h.state & ((16777216 * 64) - 1)
-		var rem byte = data[pos&ring_buffer_mask]
-		var add byte = data[(pos+32)&ring_buffer_mask]
-		var found_ix uint = uint(kInvalidPosHashRolling)
+		code := h.state & ((16777216 * 64) - 1)
+		rem := data[pos&ring_buffer_mask]
+		add := data[(pos+32)&ring_buffer_mask]
+		found_ix := uint(kInvalidPosHashRolling)
 
 		h.state = h.HashRollingFunction(h.state, add, rem, h.factor, h.factor_remove)
 
@@ -155,12 +162,12 @@ func (h *hashRolling) FindLongestMatch(dictionary *encoderDictionary, data []byt
 			if pos == cur_ix && uint32(found_ix) != kInvalidPosHashRolling {
 				/* The cast to 32-bit makes backward distances up to 4GB work even
 				   if cur_ix is above 4GB, despite using 32-bit values in the table. */
-				var backward uint = uint(uint32(cur_ix - found_ix))
+				backward := uint(uint32(cur_ix - found_ix))
 				if backward <= max_backward {
-					var found_ix_masked uint = found_ix & ring_buffer_mask
-					var len uint = findMatchLengthWithLimit(data[found_ix_masked:], data[cur_ix_masked:], max_length)
+					found_ix_masked := found_ix & ring_buffer_mask
+					len := findMatchLengthWithLimit(data[found_ix_masked:], data[cur_ix_masked:], max_length)
 					if len >= 4 && len > out.len {
-						var score uint = backwardReferenceScore(uint(len), backward)
+						score := backwardReferenceScore(uint(len), backward)
 						if score > out.score {
 							out.len = uint(len)
 							out.distance = backward

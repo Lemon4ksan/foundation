@@ -519,7 +519,7 @@ func toUpperCase(p []byte) int {
 
 func shiftTransform(word []byte, word_len int, parameter uint16) int {
 	/* Limited sign extension: scalar < (1 << 24). */
-	var scalar uint32 = (uint32(parameter) & 0x7FFF) + (0x1000000 - (uint32(parameter) & 0x8000))
+	scalar := (uint32(parameter) & 0x7FFF) + (0x1000000 - (uint32(parameter) & 0x8000))
 	if word[0] < 0x80 {
 		/* 1-byte rune / 0sssssss / 7 bit scalar (ASCII). */
 		scalar += uint32(word[0])
@@ -564,13 +564,13 @@ func shiftTransform(word []byte, word_len int, parameter uint16) int {
 	return 1
 }
 
-func transformDictionaryWord(dst []byte, word []byte, len int, trans *transforms, transform_idx int) int {
-	var idx int = 0
-	var prefix []byte = transformPrefix(trans, transform_idx)
-	var type_ byte = transformType(trans, transform_idx)
-	var suffix []byte = transformSuffix(trans, transform_idx)
+func transformDictionaryWord(dst, word []byte, len int, trans *transforms, transform_idx int) int {
+	idx := 0
+	prefix := transformPrefix(trans, transform_idx)
+	type_ := transformType(trans, transform_idx)
+	suffix := transformSuffix(trans, transform_idx)
 	{
-		var prefix_len int = int(prefix[0])
+		prefix_len := int(prefix[0])
 		prefix = prefix[1:]
 		for {
 			tmp1 := prefix_len
@@ -584,12 +584,12 @@ func transformDictionaryWord(dst []byte, word []byte, len int, trans *transforms
 		}
 	}
 	{
-		var t int = int(type_)
-		var i int = 0
+		t := int(type_)
+		i := 0
 		if t <= transformOmitLast9 {
 			len -= t
 		} else if t >= transformOmitFirst1 && t <= transformOmitFirst9 {
-			var skip int = t - (transformOmitFirst1 - 1)
+			skip := t - (transformOmitFirst1 - 1)
 			word = word[skip:]
 			len -= skip
 		}
@@ -599,32 +599,33 @@ func transformDictionaryWord(dst []byte, word []byte, len int, trans *transforms
 			idx++
 			i++
 		}
-		if t == transformUppercaseFirst {
+		switch t {
+		case transformUppercaseFirst:
 			toUpperCase(dst[idx-len:])
-		} else if t == transformUppercaseAll {
-			var uppercase []byte = dst
+		case transformUppercaseAll:
+			uppercase := dst
 			uppercase = uppercase[idx-len:]
 			for len > 0 {
-				var step int = toUpperCase(uppercase)
+				step := toUpperCase(uppercase)
 				uppercase = uppercase[step:]
 				len -= step
 			}
-		} else if t == transformShiftFirst {
-			var param uint16 = uint16(trans.params[transform_idx*2]) + uint16(trans.params[transform_idx*2+1])<<8
+		case transformShiftFirst:
+			param := uint16(trans.params[transform_idx*2]) + uint16(trans.params[transform_idx*2+1])<<8
 			shiftTransform(dst[idx-len:], int(len), param)
-		} else if t == transformShiftAll {
-			var param uint16 = uint16(trans.params[transform_idx*2]) + uint16(trans.params[transform_idx*2+1])<<8
-			var shift []byte = dst
+		case transformShiftAll:
+			param := uint16(trans.params[transform_idx*2]) + uint16(trans.params[transform_idx*2+1])<<8
+			shift := dst
 			shift = shift[idx-len:]
 			for len > 0 {
-				var step int = shiftTransform(shift, int(len), param)
+				step := shiftTransform(shift, int(len), param)
 				shift = shift[step:]
 				len -= step
 			}
 		}
 	}
 	{
-		var suffix_len int = int(suffix[0])
+		suffix_len := int(suffix[0])
 		suffix = suffix[1:]
 		for {
 			tmp2 := suffix_len

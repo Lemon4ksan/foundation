@@ -13,7 +13,7 @@ import (
 */
 
 /* Function to find maximal matching prefixes of strings. */
-func findMatchLengthWithLimit(s1 []byte, s2 []byte, limit uint) uint {
+func findMatchLengthWithLimit(s1, s2 []byte, limit uint) uint {
 	var matched uint = 0
 	_, _ = s1[limit-1], s2[limit-1] // bounds check
 	switch runtime.GOARCH {

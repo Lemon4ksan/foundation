@@ -13,8 +13,15 @@ Computes the bit cost reduction by combining out[idx1] and out[idx2] and if
 
 	it is below a threshold, stores the pair (idx1, idx2) in the *pairs queue.
 */
-func compareAndPushToQueueDistance(out []histogramDistance, cluster_size []uint32, idx1 uint32, idx2 uint32, max_num_pairs uint, pairs []histogramPair, num_pairs *uint) {
-	var is_good_pair bool = false
+func compareAndPushToQueueDistance(
+	out []histogramDistance,
+	cluster_size []uint32,
+	idx1, idx2 uint32,
+	max_num_pairs uint,
+	pairs []histogramPair,
+	num_pairs *uint,
+) {
+	is_good_pair := false
 	var p histogramPair
 	p.idx2 = 0
 	p.idx1 = p.idx2
@@ -25,7 +32,7 @@ func compareAndPushToQueueDistance(out []histogramDistance, cluster_size []uint3
 	}
 
 	if idx2 < idx1 {
-		var t uint32 = idx2
+		t := idx2
 		idx2 = idx1
 		idx1 = t
 	}
@@ -49,7 +56,7 @@ func compareAndPushToQueueDistance(out []histogramDistance, cluster_size []uint3
 		} else {
 			threshold = brotli_max_double(0.0, pairs[0].cost_diff)
 		}
-		var combo histogramDistance = out[idx1]
+		combo := out[idx1]
 		var cost_combo float64
 		histogramAddHistogramDistance(&combo, &out[idx2])
 		cost_combo = populationCostDistance(&combo)
@@ -76,8 +83,13 @@ func compareAndPushToQueueDistance(out []histogramDistance, cluster_size []uint3
 	}
 }
 
-func histogramCombineDistance(out []histogramDistance, cluster_size []uint32, symbols []uint32, clusters []uint32, pairs []histogramPair, num_clusters uint, symbols_size uint, max_clusters uint, max_num_pairs uint) uint {
-	var cost_diff_threshold float64 = 0.0
+func histogramCombineDistance(
+	out []histogramDistance,
+	cluster_size, symbols, clusters []uint32,
+	pairs []histogramPair,
+	num_clusters, symbols_size, max_clusters, max_num_pairs uint,
+) uint {
+	cost_diff_threshold := 0.0
 	var min_cluster_size uint = 1
 	var num_pairs uint = 0
 	{
@@ -87,7 +99,15 @@ func histogramCombineDistance(out []histogramDistance, cluster_size []uint32, sy
 		for idx1 = 0; idx1 < num_clusters; idx1++ {
 			var idx2 uint
 			for idx2 = idx1 + 1; idx2 < num_clusters; idx2++ {
-				compareAndPushToQueueDistance(out, cluster_size, clusters[idx1], clusters[idx2], max_num_pairs, pairs[0:], &num_pairs)
+				compareAndPushToQueueDistance(
+					out,
+					cluster_size,
+					clusters[idx1],
+					clusters[idx2],
+					max_num_pairs,
+					pairs[0:],
+					&num_pairs,
+				)
 			}
 		}
 	}
@@ -127,7 +147,7 @@ func histogramCombineDistance(out []histogramDistance, cluster_size []uint32, sy
 			/* Remove pairs intersecting the just combined best pair. */
 			var copy_to_idx uint = 0
 			for i = 0; i < num_pairs; i++ {
-				var p *histogramPair = &pairs[i]
+				p := &pairs[i]
 				if p.idx1 == best_idx1 || p.idx2 == best_idx1 || p.idx1 == best_idx2 || p.idx2 == best_idx2 {
 					/* Remove invalid pair from the queue. */
 					continue
@@ -135,7 +155,7 @@ func histogramCombineDistance(out []histogramDistance, cluster_size []uint32, sy
 
 				if histogramPairIsLess(&pairs[0], p) {
 					/* Replace the top of the queue if needed. */
-					var front histogramPair = pairs[0]
+					front := pairs[0]
 					pairs[0] = *p
 					pairs[copy_to_idx] = front
 				} else {
@@ -150,7 +170,15 @@ func histogramCombineDistance(out []histogramDistance, cluster_size []uint32, sy
 
 		/* Push new pairs formed with the combined histogram to the heap. */
 		for i = 0; i < num_clusters; i++ {
-			compareAndPushToQueueDistance(out, cluster_size, best_idx1, clusters[i], max_num_pairs, pairs[0:], &num_pairs)
+			compareAndPushToQueueDistance(
+				out,
+				cluster_size,
+				best_idx1,
+				clusters[i],
+				max_num_pairs,
+				pairs[0:],
+				&num_pairs,
+			)
 		}
 	}
 
@@ -158,11 +186,11 @@ func histogramCombineDistance(out []histogramDistance, cluster_size []uint32, sy
 }
 
 /* What is the bit cost of moving histogram from cur_symbol to candidate. */
-func histogramBitCostDistanceDistance(histogram *histogramDistance, candidate *histogramDistance) float64 {
+func histogramBitCostDistanceDistance(histogram, candidate *histogramDistance) float64 {
 	if histogram.total_count_ == 0 {
 		return 0.0
 	} else {
-		var tmp histogramDistance = *histogram
+		tmp := *histogram
 		histogramAddHistogramDistance(&tmp, candidate)
 		return populationCostDistance(&tmp) - candidate.bit_cost_
 	}
@@ -175,7 +203,14 @@ Find the best 'out' histogram for each of the 'in' histograms.
 	symbols[0..in_size), but this property is not preserved in this function.
 	Note: we assume that out[]->bit_cost_ is already up-to-date.
 */
-func histogramRemapDistance(in []histogramDistance, in_size uint, clusters []uint32, num_clusters uint, out []histogramDistance, symbols []uint32) {
+func histogramRemapDistance(
+	in []histogramDistance,
+	in_size uint,
+	clusters []uint32,
+	num_clusters uint,
+	out []histogramDistance,
+	symbols []uint32,
+) {
 	var i uint
 	for i = 0; i < in_size; i++ {
 		var best_out uint32
@@ -184,10 +219,10 @@ func histogramRemapDistance(in []histogramDistance, in_size uint, clusters []uin
 		} else {
 			best_out = symbols[i-1]
 		}
-		var best_bits float64 = histogramBitCostDistanceDistance(&in[i], &out[best_out])
+		best_bits := histogramBitCostDistanceDistance(&in[i], &out[best_out])
 		var j uint
 		for j = 0; j < num_clusters; j++ {
-			var cur_bits float64 = histogramBitCostDistanceDistance(&in[i], &out[clusters[j]])
+			cur_bits := histogramBitCostDistanceDistance(&in[i], &out[clusters[j]])
 			if cur_bits < best_bits {
 				best_bits = cur_bits
 				best_out = clusters[j]
@@ -221,7 +256,7 @@ func histogramRemapDistance(in []histogramDistance, in_size uint, clusters []uin
 var histogramReindexDistance_kInvalidIndex uint32 = math.MaxUint32
 
 func histogramReindexDistance(out []histogramDistance, symbols []uint32, length uint) uint {
-	var new_index []uint32 = make([]uint32, length)
+	new_index := make([]uint32, length)
 	var next_index uint32
 	var tmp []histogramDistance
 	var i uint
@@ -260,13 +295,19 @@ func histogramReindexDistance(out []histogramDistance, symbols []uint32, length 
 	return uint(next_index)
 }
 
-func clusterHistogramsDistance(in []histogramDistance, in_size uint, max_histograms uint, out []histogramDistance, out_size *uint, histogram_symbols []uint32) {
-	var cluster_size []uint32 = make([]uint32, in_size)
-	var clusters []uint32 = make([]uint32, in_size)
+func clusterHistogramsDistance(
+	in []histogramDistance,
+	in_size, max_histograms uint,
+	out []histogramDistance,
+	out_size *uint,
+	histogram_symbols []uint32,
+) {
+	cluster_size := make([]uint32, in_size)
+	clusters := make([]uint32, in_size)
 	var num_clusters uint = 0
 	var max_input_histograms uint = 64
-	var pairs_capacity uint = max_input_histograms * max_input_histograms / 2
-	var pairs []histogramPair = make([]histogramPair, (pairs_capacity + 1))
+	pairs_capacity := max_input_histograms * max_input_histograms / 2
+	pairs := make([]histogramPair, (pairs_capacity + 1))
 	var i uint
 
 	/* For the first pass of clustering, we allow all pairs. */
@@ -281,20 +322,30 @@ func clusterHistogramsDistance(in []histogramDistance, in_size uint, max_histogr
 	}
 
 	for i = 0; i < in_size; i += max_input_histograms {
-		var num_to_combine uint = brotli_min_size_t(in_size-i, max_input_histograms)
+		num_to_combine := brotli_min_size_t(in_size-i, max_input_histograms)
 		var num_new_clusters uint
 		var j uint
 		for j = 0; j < num_to_combine; j++ {
 			clusters[num_clusters+j] = uint32(i + j)
 		}
 
-		num_new_clusters = histogramCombineDistance(out, cluster_size, histogram_symbols[i:], clusters[num_clusters:], pairs, num_to_combine, num_to_combine, max_histograms, pairs_capacity)
+		num_new_clusters = histogramCombineDistance(
+			out,
+			cluster_size,
+			histogram_symbols[i:],
+			clusters[num_clusters:],
+			pairs,
+			num_to_combine,
+			num_to_combine,
+			max_histograms,
+			pairs_capacity,
+		)
 		num_clusters += num_new_clusters
 	}
 	{
 		/* For the second pass, we limit the total number of histogram pairs.
 		   After this limit is reached, we only keep searching for the best pair. */
-		var max_num_pairs uint = brotli_min_size_t(64*num_clusters, (num_clusters/2)*num_clusters)
+		max_num_pairs := brotli_min_size_t(64*num_clusters, (num_clusters/2)*num_clusters)
 		if pairs_capacity < (max_num_pairs + 1) {
 			var _new_size uint
 			if pairs_capacity == 0 {
@@ -316,7 +367,17 @@ func clusterHistogramsDistance(in []histogramDistance, in_size uint, max_histogr
 		}
 
 		/* Collapse similar histograms. */
-		num_clusters = histogramCombineDistance(out, cluster_size, histogram_symbols, clusters, pairs, num_clusters, in_size, max_histograms, max_num_pairs)
+		num_clusters = histogramCombineDistance(
+			out,
+			cluster_size,
+			histogram_symbols,
+			clusters,
+			pairs,
+			num_clusters,
+			in_size,
+			max_histograms,
+			max_num_pairs,
+		)
 	}
 
 	pairs = nil

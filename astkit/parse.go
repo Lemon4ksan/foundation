@@ -5,6 +5,7 @@
 package astkit
 
 import (
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -16,7 +17,7 @@ import (
 func ParseExpr(src string) (ast.Expr, error) {
 	trimmed := strings.TrimSpace(src)
 	if trimmed == "" {
-		return nil, fmt.Errorf("empty expression")
+		return nil, errors.New("empty expression")
 	}
 	return parser.ParseExpr(trimmed)
 }
@@ -28,7 +29,7 @@ func ParseStmt(src string) (ast.Stmt, error) {
 		return nil, err
 	}
 	if len(stmts) == 0 {
-		return nil, fmt.Errorf("empty statement")
+		return nil, errors.New("empty statement")
 	}
 	return stmts[0], nil
 }
@@ -58,7 +59,7 @@ func ParseScript(src string) ([]ast.Stmt, error) {
 
 	fn, ok := file.Decls[0].(*ast.FuncDecl)
 	if !ok || fn.Body == nil {
-		return nil, fmt.Errorf("failed to parse statement body")
+		return nil, errors.New("failed to parse statement body")
 	}
 
 	return fn.Body.List, nil

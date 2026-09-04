@@ -47,12 +47,13 @@ func OpenMmap(path string) (MmapFile, error) {
 
 	addr, err := syscall.MapViewOfFile(hMap, syscall.FILE_MAP_READ, 0, 0, uintptr(size))
 	if err != nil {
-		syscall.CloseHandle(hMap)
-		f.Close()
+		_ = syscall.CloseHandle(hMap)
+		_ = f.Close()
 		return nil, fmt.Errorf("MapViewOfFile: %w", err)
 	}
-
+	//nolint:govet // addr is an OS memory-mapped address outside the Go heap
 	data := unsafe.Slice((*byte)(unsafe.Pointer(addr)), int(size))
+
 	return &windowsMmap{
 		f:      f,
 		hMap:   hMap,

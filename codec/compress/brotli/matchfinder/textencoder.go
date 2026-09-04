@@ -8,7 +8,7 @@ type TextEncoder struct{}
 
 func (t TextEncoder) Reset() {}
 
-func (t TextEncoder) Encode(dst []byte, src []byte, matches []Match, lastBlock bool) []byte {
+func (t TextEncoder) Encode(dst, src []byte, matches []Match, lastBlock bool) []byte {
 	pos := 0
 	for _, m := range matches {
 		if m.Unmatched > 0 {

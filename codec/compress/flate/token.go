@@ -223,7 +223,7 @@ func (t *tokens) AddLiteral(lit byte) {
 // from https://stackoverflow.com/a/28730362
 func mFastLog2(val float32) float32 {
 	ux := int32(math.Float32bits(val))
-	log2 := (float32)(((ux >> 23) & 255) - 128)
+	log2 := float32(((ux >> 23) & 255) - 128)
 	ux &= -0x7f800001
 	ux += 127 << 23
 	uval := math.Float32frombits(uint32(ux))

@@ -709,7 +709,7 @@ func (f *decompressor) readHuffman() error {
 func (f *decompressor) dataBlock() {
 	// Uncompressed.
 	// Discard current half-byte.
-	left := (f.nb) & 7
+	left := f.nb & 7
 	f.nb -= left
 	f.b >>= left
 

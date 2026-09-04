@@ -201,8 +201,8 @@ func (a *App) PrintUsage(w io.Writer) {
 		tbl := NewTable("COMMAND", "SYNOPSIS")
 		tbl.SetIndent(2)
 
-		var sortedCmds []Command
-		sortedCmds = append(sortedCmds, a.Commands...)
+		sortedCmds := make([]Command, len(a.Commands))
+		copy(sortedCmds, a.Commands)
 		slices.SortFunc(sortedCmds, func(a, b Command) int {
 			return strings.Compare(a.Name(), b.Name())
 		})

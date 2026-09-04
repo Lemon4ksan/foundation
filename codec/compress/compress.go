@@ -15,13 +15,12 @@ import (
 	"strings"
 
 	"github.com/lemon4ksan/foundation/borrow"
-	"github.com/lemon4ksan/foundation/silicon/pool"
-
 	"github.com/lemon4ksan/foundation/codec/compress/brotli"
 	"github.com/lemon4ksan/foundation/codec/compress/flate"
 	"github.com/lemon4ksan/foundation/codec/compress/gzip"
 	"github.com/lemon4ksan/foundation/codec/compress/lzma"
 	"github.com/lemon4ksan/foundation/codec/compress/zstd"
+	"github.com/lemon4ksan/foundation/silicon/pool"
 )
 
 const (
