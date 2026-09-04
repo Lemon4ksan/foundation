@@ -2,6 +2,7 @@ package lz4
 
 import (
 	"bytes"
+	"errors"
 	"io"
 
 	"github.com/lemon4ksan/foundation/codec/compress/lz4/internal/lz4block"
@@ -138,7 +139,7 @@ func (r *Reader) Read(buf []byte) (n int, err error) {
 					return
 				}
 
-				//Check for new stream.
+				// Check for new stream.
 				r.Reset(r.src)
 				if err = r.init(); r.state.next(err) {
 					return
@@ -263,9 +264,9 @@ func (r *Reader) WriteTo(w io.Writer) (n int64, err error) {
 				err = r.frame.Blocks.ErrorR()
 			}
 		}
-		switch err {
-		case nil:
-		case lz4errors.ErrEndOfStream:
+		switch {
+		case err == nil:
+		case errors.Is(err, lz4errors.ErrEndOfStream):
 			// Read Checksum.
 			err = r.frame.CloseR(r.src)
 			if err != nil {
@@ -274,13 +275,13 @@ func (r *Reader) WriteTo(w io.Writer) (n int64, err error) {
 			// Check for a new stream.
 			r.Reset(r.src)
 			if err = r.init(); r.state.next(err) {
-				if err == io.EOF {
+				if errors.Is(err, io.EOF) {
 					err = nil
 				}
 				return
 			}
 			goto read
-		case io.EOF:
+		case errors.Is(err, io.EOF):
 			err = r.frame.CloseR(r.src)
 			return
 		default:
@@ -302,7 +303,7 @@ func ValidFrameHeader(in []byte) (bool, error) {
 	if err == nil {
 		return true, nil
 	}
-	if err == lz4errors.ErrInvalidFrame {
+	if errors.Is(err, lz4errors.ErrInvalidFrame) {
 		return false, nil
 	}
 	return false, err

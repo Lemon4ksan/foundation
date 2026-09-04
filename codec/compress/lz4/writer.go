@@ -1,6 +1,7 @@
 package lz4
 
 import (
+	"errors"
 	"io"
 
 	"github.com/lemon4ksan/foundation/codec/compress/lz4/internal/lz4block"
@@ -219,9 +220,9 @@ func (w *Writer) ReadFrom(r io.Reader) (n int64, err error) {
 	}
 	for !done {
 		rn, err = io.ReadFull(r, data)
-		switch err {
-		case nil:
-		case io.EOF, io.ErrUnexpectedEOF: // read may be partial
+		switch {
+		case err == nil:
+		case errors.Is(err, io.EOF), errors.Is(err, io.ErrUnexpectedEOF):
 			err = nil
 			done = true
 		default:

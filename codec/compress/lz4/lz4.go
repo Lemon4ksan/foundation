@@ -120,14 +120,6 @@ func (c *CompressorHC) CompressBlock(src, dst []byte) (int, error) {
 	return c.c.CompressBlock(src, dst, lz4block.CompressionLevel(c.Level))
 }
 
-// CompressBlockHC is equivalent to CompressorHC.CompressBlock.
-// The final two arguments are ignored and should be set to nil.
-//
-// This function is deprecated. Use a CompressorHC instead.
-func CompressBlockHC(src, dst []byte, depth CompressionLevel, _, _ []int) (int, error) {
-	return lz4block.CompressBlockHC(src, dst, lz4block.CompressionLevel(depth))
-}
-
 const (
 	// ErrInvalidSourceShortBuffer is returned by UncompressBlock or CompressBLock when a compressed
 	// block is corrupted or the destination buffer is not large enough for the uncompressed data.

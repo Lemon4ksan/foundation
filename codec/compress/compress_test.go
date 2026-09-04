@@ -569,7 +569,9 @@ func BenchmarkBrotli(b *testing.B) {
 func TestLZ4RoundTrip(t *testing.T) {
 	t.Parallel()
 
-	payload := []byte(strings.Repeat("Ultra-high-speed LZ4 compression and decompression test for Seal container engine. ", 100))
+	payload := []byte(
+		strings.Repeat("Ultra-high-speed LZ4 compression and decompression test for Seal container engine. ", 100),
+	)
 	compressed, err := compress.Compress("lz4", payload, nil)
 	require.NoError(t, err)
 	require.NotEmpty(t, compressed)
@@ -612,4 +614,3 @@ func TestLZ4BlockRoundTrip(t *testing.T) {
 	assert.Equal(t, len(payload), dn)
 	assert.Equal(t, payload, decomp)
 }
-

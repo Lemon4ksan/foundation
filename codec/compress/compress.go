@@ -1295,4 +1295,3 @@ func Unlz4Block(src, dst []byte) (int, error) {
 func CompressLZ4BlockBound(n int) int {
 	return lz4.CompressBlockBound(n)
 }
-
