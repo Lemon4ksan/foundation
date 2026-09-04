@@ -131,7 +131,7 @@ func (r *Reader) Read(buf []byte) (n int, err error) {
 			}
 			switch err {
 			case nil:
-			case lz4errors.ErrEndOfStream:
+			case lz4errors.ErrEndOfStream: //nolint:errorlint
 
 				// Read Checksum.
 				err = r.frame.CloseR(r.src)
