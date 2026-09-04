@@ -46,7 +46,7 @@ func Split(secret []byte, threshold, total int) ([]Share, error) {
 	}
 
 	shares := make([]Share, total)
-	for i := 0; i < total; i++ {
+	for i := range total {
 		shares[i] = Share{
 			Index: byte(i + 1),
 			Data:  make([]byte, len(secret)),
@@ -60,7 +60,7 @@ func Split(secret []byte, threshold, total int) ([]Share, error) {
 			return nil, fmt.Errorf("shamir: generate random coefficients: %w", err)
 		}
 
-		for i := 0; i < total; i++ {
+		for i := range total {
 			x := shares[i].Index
 			shares[i].Data[byteIdx] = evalPoly(coeffs, x)
 		}
@@ -100,7 +100,7 @@ func Combine(shares []Share) ([]byte, error) {
 	secret := make([]byte, secretLen)
 	ys := make([]byte, len(shares))
 
-	for byteIdx := 0; byteIdx < secretLen; byteIdx++ {
+	for byteIdx := range secretLen {
 		for i := range shares {
 			ys[i] = shares[i].Data[byteIdx]
 		}
