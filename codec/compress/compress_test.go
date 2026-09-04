@@ -400,7 +400,7 @@ func TestCompress_AllEncodings(t *testing.T) {
 		"Compression and Decompression roundtrip test across all supported algorithms in aoni zero-alloc engine.",
 	)
 
-	encodings := []string{"gzip", "x-gzip", "br", "deflate", "identity"}
+	encodings := []string{"gzip", "x-gzip", "br", "deflate", "lz4", "identity"}
 
 	for _, enc := range encodings {
 		t.Run(enc, func(t *testing.T) {
@@ -422,7 +422,7 @@ func TestCompressScoped_AllEncodings(t *testing.T) {
 
 	raw := []byte("Zero allocation scoped compression and decompression roundtrip test in aoni.")
 
-	encodings := []string{"gzip", "x-gzip", "br", "deflate", "identity"}
+	encodings := []string{"gzip", "x-gzip", "br", "deflate", "lz4", "identity"}
 
 	for _, enc := range encodings {
 		t.Run(enc, func(t *testing.T) {
@@ -447,7 +447,7 @@ func TestNewWriter_Streaming(t *testing.T) {
 
 	raw := []byte("Streaming compression writer and reader roundtrip test with pooled writers.")
 
-	encodings := []string{"gzip", "deflate", "identity"}
+	encodings := []string{"gzip", "deflate", "lz4", "identity"}
 
 	for _, enc := range encodings {
 		t.Run(enc, func(t *testing.T) {
@@ -565,3 +565,51 @@ func BenchmarkBrotli(b *testing.B) {
 		_, _ = compress.CompressBrotli(payload, dst)
 	}
 }
+
+func TestLZ4RoundTrip(t *testing.T) {
+	t.Parallel()
+
+	payload := []byte(strings.Repeat("Ultra-high-speed LZ4 compression and decompression test for Seal container engine. ", 100))
+	compressed, err := compress.Compress("lz4", payload, nil)
+	require.NoError(t, err)
+	require.NotEmpty(t, compressed)
+
+	decompressed, err := compress.Decompress("lz4", compressed, nil)
+	require.NoError(t, err)
+	assert.Equal(t, payload, decompressed)
+}
+
+func TestLZ4Scoped(t *testing.T) {
+	t.Parallel()
+
+	scope := borrow.NewScope()
+	defer scope.Release()
+
+	payload := []byte(strings.Repeat("Zero allocation scoped LZ4 compression for FastMount profile. ", 100))
+	compBytes, err := compress.LZ4Scoped(scope, payload)
+	require.NoError(t, err)
+	require.NotEmpty(t, compBytes.AsSlice())
+
+	decompBytes, err := compress.Unlz4Scoped(scope, compBytes.AsSlice())
+	require.NoError(t, err)
+	assert.Equal(t, payload, decompBytes.AsSlice())
+}
+
+func TestLZ4BlockRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	payload := []byte(strings.Repeat("Raw un-framed LZ4 block test for micro-frame seeking. ", 100))
+	maxBound := compress.CompressLZ4BlockBound(len(payload))
+	dst := make([]byte, maxBound)
+
+	n, err := compress.CompressLZ4Block(payload, dst)
+	require.NoError(t, err)
+	require.True(t, n > 0 && n < len(payload))
+
+	decomp := make([]byte, len(payload))
+	dn, err := compress.Unlz4Block(dst[:n], decomp)
+	require.NoError(t, err)
+	assert.Equal(t, len(payload), dn)
+	assert.Equal(t, payload, decomp)
+}
+

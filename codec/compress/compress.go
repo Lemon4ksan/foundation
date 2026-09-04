@@ -18,6 +18,7 @@ import (
 	"github.com/lemon4ksan/foundation/codec/compress/brotli"
 	"github.com/lemon4ksan/foundation/codec/compress/flate"
 	"github.com/lemon4ksan/foundation/codec/compress/gzip"
+	"github.com/lemon4ksan/foundation/codec/compress/lz4"
 	"github.com/lemon4ksan/foundation/codec/compress/lzma"
 	"github.com/lemon4ksan/foundation/codec/compress/zstd"
 	"github.com/lemon4ksan/foundation/silicon/pool"
@@ -82,6 +83,14 @@ var (
 	brotliWriterStorage = pool.NewPerPStorage(func() *brotli.Writer {
 		return brotli.NewWriterLevel(io.Discard, 6)
 	})
+
+	lz4ReaderStorage = pool.NewPerPStorage(func() *lz4.Reader {
+		return lz4.NewReader(bytes.NewReader(nil))
+	})
+
+	lz4WriterStorage = pool.NewPerPStorage(func() *lz4.Writer {
+		return lz4.NewWriter(io.Discard)
+	})
 )
 
 // Decompress decodes compressed src into dst using the specified Content-Encoding algorithm.
@@ -103,6 +112,8 @@ func Decompress(encoding string, src, dst []byte) ([]byte, error) {
 		return Inflate(src, dst)
 	case "lzma2", "7z":
 		return Unlzma2(src, dst)
+	case "lz4":
+		return Unlz4(src, dst)
 	case "identity", "":
 		if cap(dst) < len(src) {
 			dst = make([]byte, len(src))
@@ -125,6 +136,8 @@ func Decompress(encoding string, src, dst []byte) ([]byte, error) {
 		return Inflate(src, dst)
 	case "lzma2", "7z":
 		return Unlzma2(src, dst)
+	case "lz4":
+		return Unlz4(src, dst)
 	case "identity", "":
 		if cap(dst) < len(src) {
 			dst = make([]byte, len(src))
@@ -201,6 +214,8 @@ func DecompressScoped(s *borrow.Scope, encoding string, src []byte) (borrow.Byte
 		return InflateScoped(s, src)
 	case "lzma2", "7z":
 		return Unlzma2Scoped(s, src)
+	case "lz4":
+		return Unlz4Scoped(s, src)
 	case "identity", "":
 		if s == nil {
 			return borrow.NewBytes(src, nil), nil
@@ -221,6 +236,8 @@ func DecompressScoped(s *borrow.Scope, encoding string, src []byte) (borrow.Byte
 		return InflateScoped(s, src)
 	case "lzma2", "7z":
 		return Unlzma2Scoped(s, src)
+	case "lz4":
+		return Unlz4Scoped(s, src)
 	case "identity", "":
 		if s == nil {
 			return borrow.NewBytes(src, nil), nil
@@ -255,6 +272,8 @@ func Compress(encoding string, src, dst []byte, level ...int) ([]byte, error) {
 		return CompressZstd(src, dst, lvl)
 	case "lzma2", "7z":
 		return CompressLZMA2(src, dst, lvl)
+	case "lz4":
+		return CompressLZ4(src, dst, lvl)
 	case "identity", "":
 		if cap(dst) < len(src) {
 			dst = make([]byte, len(src))
@@ -285,6 +304,8 @@ func CompressScoped(s *borrow.Scope, encoding string, src []byte, level ...int) 
 		return ZstdScoped(s, src, level...)
 	case "lzma2", "7z":
 		return LZMA2Scoped(s, src, level...)
+	case "lz4":
+		return LZ4Scoped(s, src, level...)
 	case "identity", "":
 		if s == nil {
 			return borrow.NewBytes(src, nil), nil
@@ -840,7 +861,7 @@ func ReleaseBrotliReader(br *brotli.Reader) {
 	}
 }
 
-// IsCompressed checks magic header bytes to detect gzip or zstd compressed payloads.
+// IsCompressed checks magic header bytes to detect gzip, zstd, or lz4 compressed payloads.
 func IsCompressed(data []byte) bool {
 	if len(data) < 2 {
 		return false
@@ -849,6 +870,9 @@ func IsCompressed(data []byte) bool {
 		return true
 	}
 	if len(data) >= 4 && data[0] == 0x28 && data[1] == 0xb5 && data[2] == 0x2f && data[3] == 0xfd {
+		return true
+	}
+	if len(data) >= 4 && data[0] == 0x04 && data[1] == 0x22 && data[2] == 0x4d && data[3] == 0x18 {
 		return true
 	}
 	return false
@@ -946,6 +970,17 @@ func NewReader(encoding string, r io.Reader) (io.ReadCloser, error) {
 			},
 		}, nil
 
+	case "lz4":
+		zr := lz4ReaderStorage.Get()
+		zr.Reset(r)
+		return &decompressReadCloser{
+			reader: zr,
+			closer: closerOf(r),
+			release: func() {
+				lz4ReaderStorage.Put(zr)
+			},
+		}, nil
+
 	case "identity", "":
 		return io.NopCloser(r), nil
 
@@ -989,6 +1024,16 @@ func NewWriter(encoding string, w io.Writer, level ...int) (io.WriteCloser, erro
 			writer: bw,
 			release: func() {
 				brotliWriterStorage.Put(bw)
+			},
+		}, nil
+
+	case "lz4":
+		zw := lz4WriterStorage.Get()
+		zw.Reset(w)
+		return &compressWriteCloser{
+			writer: zw,
+			release: func() {
+				lz4WriterStorage.Put(zw)
 			},
 		}, nil
 
@@ -1120,3 +1165,134 @@ func LZMA2Scoped(s *borrow.Scope, src []byte, level ...int) (borrow.Bytes, error
 	copy(b.AsSlice(), res)
 	return b, nil
 }
+
+// Unlz4 decompresses an LZ4 frame payload from src into dst.
+func Unlz4(src, dst []byte) ([]byte, error) {
+	if len(src) == 0 {
+		return nil, nil
+	}
+
+	zr := lz4ReaderStorage.Get()
+	defer lz4ReaderStorage.Put(zr)
+
+	br := bytesReaderStorage.Get()
+	defer bytesReaderStorage.Put(br)
+
+	br.Reset(src)
+	zr.Reset(br)
+
+	return readAllSlice(zr, dst, len(src)*3)
+}
+
+// Unlz4Scoped decompresses an LZ4 payload directly into a zero-allocation scoped buffer.
+func Unlz4Scoped(s *borrow.Scope, src []byte) (borrow.Bytes, error) {
+	if len(src) == 0 {
+		return borrow.Bytes{}, nil
+	}
+
+	zr := lz4ReaderStorage.Get()
+	defer lz4ReaderStorage.Put(zr)
+
+	br := bytesReaderStorage.Get()
+	defer bytesReaderStorage.Put(br)
+
+	br.Reset(src)
+	zr.Reset(br)
+
+	return readAllSliceScoped(s, zr, len(src)*3)
+}
+
+// CompressLZ4 compresses src using LZ4 framed format into dst.
+func CompressLZ4(src, dst []byte, level ...int) ([]byte, error) {
+	if len(src) == 0 {
+		return dst[:0], nil
+	}
+
+	buf := byteBufferStorage.Get()
+	defer byteBufferStorage.Put(buf)
+	buf.Reset()
+
+	zw := lz4WriterStorage.Get()
+	defer lz4WriterStorage.Put(zw)
+	zw.Reset(buf)
+
+	if len(level) > 0 && level[0] > 0 {
+		lvl := level[0]
+		var cl lz4.CompressionLevel
+		switch {
+		case lvl <= 1:
+			cl = lz4.Level1
+		case lvl == 2:
+			cl = lz4.Level2
+		case lvl == 3:
+			cl = lz4.Level3
+		case lvl == 4:
+			cl = lz4.Level4
+		case lvl == 5:
+			cl = lz4.Level5
+		case lvl == 6:
+			cl = lz4.Level6
+		case lvl == 7:
+			cl = lz4.Level7
+		case lvl == 8:
+			cl = lz4.Level8
+		default:
+			cl = lz4.Level9
+		}
+		_ = zw.Apply(lz4.CompressionLevelOption(cl))
+	}
+
+	if _, err := zw.Write(src); err != nil {
+		return nil, err
+	}
+	if err := zw.Close(); err != nil {
+		return nil, err
+	}
+
+	compressed := buf.Bytes()
+	if cap(dst) < len(compressed) {
+		dst = make([]byte, len(compressed))
+	} else {
+		dst = dst[:len(compressed)]
+	}
+	copy(dst, compressed)
+	return dst, nil
+}
+
+// LZ4Scoped compresses src using LZ4 framed format into a zero-allocation scoped buffer bound to s.
+func LZ4Scoped(s *borrow.Scope, src []byte, level ...int) (borrow.Bytes, error) {
+	if len(src) == 0 {
+		return borrow.Bytes{}, nil
+	}
+
+	compressed, err := CompressLZ4(src, nil, level...)
+	if err != nil {
+		return borrow.Bytes{}, err
+	}
+
+	if s == nil {
+		return borrow.NewBytes(compressed, nil), nil
+	}
+
+	b := s.AllocBytes(len(compressed))
+	copy(b.AsSlice(), compressed)
+	return b, nil
+}
+
+// CompressLZ4Block compresses src into dst using raw un-framed LZ4 block format.
+// Returns the number of bytes written to dst.
+func CompressLZ4Block(src, dst []byte) (int, error) {
+	return lz4.CompressBlock(src, dst)
+}
+
+// Unlz4Block decompresses raw LZ4 block src into dst.
+// Returns the number of bytes written to dst. dst must have sufficient capacity.
+func Unlz4Block(src, dst []byte) (int, error) {
+	return lz4.UncompressBlock(src, dst)
+}
+
+// CompressLZ4BlockBound returns the maximum compressed size for n bytes in raw block format.
+func CompressLZ4BlockBound(n int) int {
+	return lz4.CompressBlockBound(n)
+}
+
