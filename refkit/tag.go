@@ -80,10 +80,9 @@ func (t Tag) Has(option string) bool {
 
 // Get extracts the value of a key-value directive flag (e.g. `default=10` -> "10", `min=5` -> "5").
 func (t Tag) Get(key string) string {
-	prefix := key + "="
 	for _, opt := range t.Options {
-		if strings.HasPrefix(opt, prefix) {
-			return strings.TrimPrefix(opt, prefix)
+		if k, v, ok := strings.Cut(opt, "="); ok && k == key {
+			return v
 		}
 	}
 	return ""

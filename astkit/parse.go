@@ -144,5 +144,5 @@ func cleanParseError(err error) error {
 	if idx := strings.Index(msg, "__powned_eval__"); idx != -1 {
 		msg = msg[idx:]
 	}
-	return fmt.Errorf("%s", msg)
+	return errors.New(msg)
 }

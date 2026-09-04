@@ -128,7 +128,7 @@ func DecodePrivateKeyPEM(pemData []byte) (PrivateKey, error) {
 
 	privKey, ok := parsed.(ed25519.PrivateKey)
 	if !ok {
-		return nil, fmt.Errorf("sign: key is not an Ed25519 private key")
+		return nil, errors.New("sign: key is not an Ed25519 private key")
 	}
 
 	return privKey, nil
@@ -161,7 +161,7 @@ func DecodePublicKeyPEM(pemData []byte) (PublicKey, error) {
 
 	pubKey, ok := parsed.(ed25519.PublicKey)
 	if !ok {
-		return nil, fmt.Errorf("sign: key is not an Ed25519 public key")
+		return nil, errors.New("sign: key is not an Ed25519 public key")
 	}
 
 	return pubKey, nil

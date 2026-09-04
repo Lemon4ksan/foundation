@@ -134,3 +134,48 @@ func TestDictProps(t *testing.T) {
 		}
 	}
 }
+
+func BenchmarkLZMA1_Compress_64K(b *testing.B) {
+	data := make([]byte, 64*1024)
+	for i := range data {
+		data[i] = byte(i % 127)
+	}
+	comp := NewCompressor(1)
+	var buf bytes.Buffer
+	buf.Grow(len(data))
+
+	b.SetBytes(int64(len(data)))
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		buf.Reset()
+		_, err := comp.Compress(bytes.NewReader(data), &buf)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkLZMA2_Compress_64K(b *testing.B) {
+	data := make([]byte, 64*1024)
+	for i := range data {
+		data[i] = byte(i % 127)
+	}
+	comp := NewCompressor2(1 << 20)
+	var buf bytes.Buffer
+	buf.Grow(len(data))
+
+	b.SetBytes(int64(len(data)))
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		buf.Reset()
+		_, err := comp.Compress(bytes.NewReader(data), &buf)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+

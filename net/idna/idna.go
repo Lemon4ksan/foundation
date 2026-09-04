@@ -357,8 +357,44 @@ func code16(old, new string) string {
 // (https://www.unicode.org/reports/tr46/tr46-19.html)
 // and the Unicode 16 algorithm
 // (https://www.unicode.org/reports/tr46/tr46-35.html)
+func isPureValidASCIIDomain(s string) bool {
+	if len(s) == 0 || len(s) > 253 {
+		return false
+	}
+	labelLen := 0
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c == '.' {
+			if labelLen == 0 || labelLen > 63 || s[i-1] == '-' {
+				return false
+			}
+			labelLen = 0
+			continue
+		}
+		if (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') {
+			labelLen++
+			continue
+		}
+		if c == '-' {
+			if labelLen == 0 {
+				return false
+			}
+			if labelLen == 3 && i >= 3 && s[i-3] == 'x' && s[i-2] == 'n' && s[i-1] == '-' {
+				return false
+			}
+			labelLen++
+			continue
+		}
+		return false
+	}
+	return labelLen > 0 && labelLen <= 63 && s[len(s)-1] != '-'
+}
+
 // depending on unicode16, which in turn depends on unicode.Version.
 func (p *Profile) process(s string, toASCII bool) (string, error) {
+	if isPureValidASCIIDomain(s) {
+		return s, nil
+	}
 	var err error
 	var isBidi bool
 	if p.mapping != nil {

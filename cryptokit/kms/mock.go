@@ -92,7 +92,7 @@ func (m *MockClient) Decrypt(_ context.Context, keyID string, ciphertext []byte)
 	aad := []byte("kms-envelope:" + keyID)
 	pt, err := gcm.Open(nil, nonce, ct, aad)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrDecryptionFailed, err)
+		return nil, fmt.Errorf("%w: %w", ErrDecryptionFailed, err)
 	}
 	return pt, nil
 }

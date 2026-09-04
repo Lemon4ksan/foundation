@@ -13,10 +13,8 @@ import (
 	"hash"
 )
 
-var (
-	// ErrBadLength indicates the requested derived key length exceeds the maximum allowed by HKDF.
-	ErrBadLength = errors.New("hkdf: requested key length exceeds maximum limit")
-)
+// ErrBadLength indicates the requested derived key length exceeds the maximum allowed by HKDF.
+var ErrBadLength = errors.New("hkdf: requested key length exceeds maximum limit")
 
 // Extract implements HKDF-Extract (RFC 5869 Section 2.2).
 // It extracts a pseudorandom key (PRK) of hash length from the input keying material (secret) and salt.

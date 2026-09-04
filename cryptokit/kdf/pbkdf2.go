@@ -53,4 +53,3 @@ func PBKDF2(h func() hash.Hash, password, salt []byte, iter, keyLen int) []byte 
 func PBKDF2SHA256(password, salt []byte, iter, keyLen int) []byte {
 	return PBKDF2(sha256.New, password, salt, iter, keyLen)
 }
-

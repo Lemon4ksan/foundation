@@ -118,7 +118,15 @@ func (c *Compressor) Compress(src io.Reader, dest io.Writer) (int64, error) {
 	var re RangeEncoder
 	re.Init(dest)
 
-	core := NewEncoderCore(c.LC, c.LP, c.PB, c.DictSize)
+	var core *EncoderCore
+	if c.LC == 3 && c.LP == 0 && c.PB == 2 && c.DictSize <= 2*1024*1024 {
+		core = encoderPool.Get()
+		defer encoderPool.Put(core)
+		core.Reset()
+	} else {
+		core = NewEncoderCore(c.LC, c.LP, c.PB, c.DictSize)
+	}
+
 	if err := core.EncodeStream(raw, &re); err != nil {
 		return 0, err
 	}

@@ -123,7 +123,6 @@ func (e *Envelope) AddPasswordSlot(password string, profile kdf.Argon2idProfile,
 	salt := randkit.MustSecureBytes(32)
 	kek := kdf.Argon2id([]byte(password), salt, profile, 32)
 
-
 	slotIdx := uint8(len(e.Slots))
 	nonce := e.deriveSlotNonce(slotIdx)
 	aad := slotAAD(slotIdx)

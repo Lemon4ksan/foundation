@@ -48,6 +48,226 @@ func init() {
 	}
 }
 
+// URLView represents a parsed URL using direct string slices of rawURL with zero heap allocations.
+type URLView struct {
+	Scheme   string
+	User     string
+	Host     string
+	Path     string
+	RawQuery string
+	Fragment string
+}
+
+// Hostname returns the host part of u without port, if any.
+func (u URLView) Hostname() string {
+	h := u.Host
+	if strings.HasPrefix(h, "[") {
+		// IPv6 literal
+		if end := strings.IndexByte(h, ']'); end >= 0 {
+			return h[1:end]
+		}
+	}
+	if colon := strings.LastIndexByte(h, ':'); colon >= 0 {
+		return h[:colon]
+	}
+	return h
+}
+
+// Port returns the port part of u.Host, or an empty string if no port is present.
+func (u URLView) Port() string {
+	h := u.Host
+	if strings.HasPrefix(h, "[") {
+		if end := strings.IndexByte(h, ']'); end >= 0 {
+			h = h[end+1:]
+		}
+	}
+	if colon := strings.LastIndexByte(h, ':'); colon >= 0 {
+		return h[colon+1:]
+	}
+	return ""
+}
+
+// CanonicalPort returns the effective port number considering standard HTTP/HTTPS defaults.
+func (u URLView) CanonicalPort() string {
+	p := u.Port()
+	if p != "" {
+		return p
+	}
+	if strings.EqualFold(u.Scheme, "https") {
+		return "443"
+	}
+	if strings.EqualFold(u.Scheme, "http") {
+		return "80"
+	}
+	return ""
+}
+
+// IsAbs reports whether the URLView specifies an absolute scheme.
+func (u URLView) IsAbs() bool {
+	return u.Scheme != ""
+}
+
+// QueryValue returns the first value associated with the given key in RawQuery, or ("", false).
+// If the key exists without percent encoding, it returns a zero-alloc slice directly.
+func (u URLView) QueryValue(key string) (string, bool) {
+	q := u.RawQuery
+	for len(q) > 0 {
+		var pair string
+		if idx := strings.IndexByte(q, '&'); idx >= 0 {
+			pair = q[:idx]
+			q = q[idx+1:]
+		} else {
+			pair = q
+			q = ""
+		}
+		if pair == "" {
+			continue
+		}
+		k, val, found := strings.Cut(pair, "=")
+		if !found {
+			if k == key {
+				return "", true
+			}
+			continue
+		}
+		if k == key {
+			if strings.IndexByte(val, '%') >= 0 || strings.IndexByte(val, '+') >= 0 {
+				unesc, err := Unescape(val)
+				if err == nil {
+					return unesc, true
+				}
+			}
+			return val, true
+		}
+	}
+	return "", false
+}
+
+// String reconstructs the full URL string.
+func (u URLView) String() string {
+	var sb strings.Builder
+	if u.Scheme != "" {
+		sb.WriteString(u.Scheme)
+		sb.WriteString(":")
+	}
+	if u.Host != "" || u.User != "" || (u.Scheme != "" && (u.Scheme == "http" || u.Scheme == "https")) {
+		sb.WriteString("//")
+		if u.User != "" {
+			sb.WriteString(u.User)
+			sb.WriteString("@")
+		}
+		sb.WriteString(u.Host)
+	}
+	if u.Path != "" {
+		sb.WriteString(u.Path)
+	}
+	if u.RawQuery != "" {
+		sb.WriteString("?")
+		sb.WriteString(u.RawQuery)
+	}
+	if u.Fragment != "" {
+		sb.WriteString("#")
+		sb.WriteString(u.Fragment)
+	}
+	return sb.String()
+}
+
+// ToURL converts URLView to a standard [*url.URL].
+func (u URLView) ToURL() *url.URL {
+	res := &url.URL{
+		Scheme:   u.Scheme,
+		Host:     u.Host,
+		Path:     u.Path,
+		RawQuery: u.RawQuery,
+		Fragment: u.Fragment,
+	}
+	if u.User != "" {
+		if username, password, ok := strings.Cut(u.User, ":"); ok {
+			res.User = url.UserPassword(username, password)
+		} else {
+			res.User = url.User(u.User)
+		}
+	}
+	return res
+}
+
+//go:inline
+func isAlpha(c byte) bool {
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+}
+
+//go:inline
+func isSchemeChar(c byte) bool {
+	return isAlpha(c) || (c >= '0' && c <= '9') || c == '+' || c == '-' || c == '.'
+}
+
+// ParseView parses rawURL into a zero-allocation [URLView] backed directly by the rawURL string memory.
+func ParseView(rawURL string) (URLView, error) {
+	if rawURL == "" {
+		return URLView{}, nil
+	}
+
+	var view URLView
+
+	// 1. Fragment (#)
+	if hashIdx := strings.IndexByte(rawURL, '#'); hashIdx >= 0 {
+		view.Fragment = rawURL[hashIdx+1:]
+		rawURL = rawURL[:hashIdx]
+	}
+
+	// 2. Query (?)
+	if qIdx := strings.IndexByte(rawURL, '?'); qIdx >= 0 {
+		view.RawQuery = rawURL[qIdx+1:]
+		rawURL = rawURL[:qIdx]
+	}
+
+	// 3. Scheme (RFC 3986 §3.1: ALPHA *( ALPHA / DIGIT / "+" / "-" / "." ))
+	rest := rawURL
+	if colonIdx := strings.IndexByte(rawURL, ':'); colonIdx > 0 {
+		slashIdx := strings.IndexByte(rawURL, '/')
+		if slashIdx < 0 || colonIdx < slashIdx {
+			schemeCandidate := rawURL[:colonIdx]
+			validScheme := isAlpha(schemeCandidate[0])
+			if validScheme {
+				for i := 1; i < len(schemeCandidate); i++ {
+					if !isSchemeChar(schemeCandidate[i]) {
+						validScheme = false
+						break
+					}
+				}
+			}
+			if validScheme {
+				view.Scheme = strings.ToLower(schemeCandidate)
+				rest = rawURL[colonIdx+1:]
+			}
+		}
+	}
+
+	// 4. Authority (//)
+	if strings.HasPrefix(rest, "//") {
+		rest = rest[2:]
+		slashIdx := strings.IndexByte(rest, '/')
+		var authority string
+		if slashIdx >= 0 {
+			authority = rest[:slashIdx]
+			view.Path = rest[slashIdx:]
+		} else {
+			authority = rest
+			view.Path = ""
+		}
+		if atIdx := strings.LastIndexByte(authority, '@'); atIdx >= 0 {
+			view.User = authority[:atIdx]
+			view.Host = authority[atIdx+1:]
+		} else {
+			view.Host = authority
+		}
+	} else {
+		view.Path = rest
+	}
+
+	return view, nil
+}
+
 // IsAbsURL reports whether path begins with an absolute HTTP or HTTPS scheme identifier (RFC 3986 §3.1 & §4.3).
 func IsAbsURL(path string) bool {
 	return len(path) >= 7 && (strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://"))

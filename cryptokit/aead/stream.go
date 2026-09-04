@@ -71,18 +71,25 @@ type StreamWriter struct {
 
 // NewStreamWriter creates a new authenticated streaming writer.
 // If chunkSize <= 0, DefaultChunkSize (64 KiB) is used.
-func NewStreamWriter(w io.Writer, aead cipher.AEAD, nonceBase []byte, chunkSize int, streamAAD []byte) (*StreamWriter, error) {
+func NewStreamWriter(
+	w io.Writer,
+	aead cipher.AEAD,
+	nonceBase []byte,
+	chunkSize int,
+	streamAAD []byte,
+) (*StreamWriter, error) {
 	if aead == nil {
 		return nil, errors.New("aead: nil cipher provided")
 	}
 	if len(nonceBase) != aead.NonceSize() {
 		return nil, fmt.Errorf("%w: expected %d bytes, got %d", ErrInvalidNonceLength, aead.NonceSize(), len(nonceBase))
 	}
-	if chunkSize <= 0 {
+	switch {
+	case chunkSize <= 0:
 		chunkSize = DefaultChunkSize
-	} else if chunkSize < MinChunkSize {
+	case chunkSize < MinChunkSize:
 		chunkSize = MinChunkSize
-	} else if chunkSize > MaxChunkSize {
+	case chunkSize > MaxChunkSize:
 		chunkSize = MaxChunkSize
 	}
 
@@ -175,7 +182,7 @@ type StreamReader struct {
 }
 
 // NewStreamReader creates a new authenticated streaming reader.
-func NewStreamReader(r io.Reader, aead cipher.AEAD, nonceBase []byte, streamAAD []byte) (*StreamReader, error) {
+func NewStreamReader(r io.Reader, aead cipher.AEAD, nonceBase, streamAAD []byte) (*StreamReader, error) {
 	if aead == nil {
 		return nil, errors.New("aead: nil cipher provided")
 	}

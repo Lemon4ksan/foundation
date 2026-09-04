@@ -127,3 +127,57 @@ func TestArgKit_TypoSuggestion(t *testing.T) {
 		t.Errorf("expected typo suggestion for --where in error, got: %v", err)
 	}
 }
+
+func TestArgKit_EdgeCases(t *testing.T) {
+	fs := flag.NewFlagSet("test_edge", flag.ContinueOnError)
+
+	var (
+		v   bool
+		out string
+	)
+	argkit.BoolVar(fs, &v, "verbose", "v", false, "verbose")
+	argkit.StringVar(fs, &out, "output", "o", "", "output")
+
+	// 1. Single dash should be treated as a positional argument (e.g. reading from stdin)
+	args := []string{"-", "-v", "-"}
+	pos, err := argkit.ParseInterspersedFlags(fs, args)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !v {
+		t.Errorf("expected v=true")
+	}
+	if len(pos) != 2 || pos[0] != "-" || pos[1] != "-" {
+		t.Errorf("expected positionals [\"-\", \"-\"], got %v", pos)
+	}
+
+	// 2. Double dash terminator stops flag parsing
+	fs2 := flag.NewFlagSet("test_dd", flag.ContinueOnError)
+	var v2 bool
+	argkit.BoolVar(fs2, &v2, "verbose", "v", false, "verbose")
+
+	args2 := []string{"--", "-v", "--other"}
+	pos2, err := argkit.ParseInterspersedFlags(fs2, args2)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if v2 {
+		t.Errorf("expected v2=false after --")
+	}
+	if len(pos2) != 2 || pos2[0] != "-v" || pos2[1] != "--other" {
+		t.Errorf("expected positionals [\"-v\", \"--other\"], got %v", pos2)
+	}
+}
+
+func TestArgKit_StringSliceFlag(t *testing.T) {
+	var s argkit.StringSliceFlag
+	if s.String() != "" {
+		t.Errorf("expected empty string, got %q", s.String())
+	}
+
+	_ = s.Set("a")
+	_ = s.Set("b")
+	if s.String() != "a,b" {
+		t.Errorf("expected \"a,b\", got %q", s.String())
+	}
+}

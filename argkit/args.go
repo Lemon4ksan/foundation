@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 type boolFlag interface {
@@ -104,8 +105,8 @@ func ParseInterspersedFlags(fs *flag.FlagSet, args []string) ([]string, error) {
 			flagName := cleanArg
 			hasEqual := false
 
-			if eqIdx := strings.Index(cleanArg, "="); eqIdx != -1 {
-				flagName = cleanArg[:eqIdx]
+			if before, _, ok := strings.Cut(cleanArg, "="); ok {
+				flagName = before
 				hasEqual = true
 			}
 
@@ -162,8 +163,8 @@ func decomposeFlag(fs *flag.FlagSet, arg string) ([]string, bool) {
 
 	// If the entire string is already registered (e.g. -where, -all, -sort), keep as is
 	flagName := clean
-	if eqIdx := strings.Index(clean, "="); eqIdx != -1 {
-		flagName = clean[:eqIdx]
+	if before, _, ok := strings.Cut(clean, "="); ok {
+		flagName = before
 	}
 	if fs.Lookup(flagName) != nil {
 		return nil, false
@@ -173,7 +174,11 @@ func decomposeFlag(fs *flag.FlagSet, arg string) ([]string, bool) {
 	curr := clean
 
 	for len(curr) > 0 {
-		firstChar := string(curr[0])
+		r, sz := utf8.DecodeRuneInString(curr)
+		if r == utf8.RuneError && sz == 1 {
+			return nil, false
+		}
+		firstChar := curr[:sz]
 		fl := fs.Lookup(firstChar)
 		if fl == nil {
 			// First character is not a known flag, cannot decompose
@@ -182,13 +187,13 @@ func decomposeFlag(fs *flag.FlagSet, arg string) ([]string, bool) {
 
 		if bf, ok := fl.Value.(boolFlag); ok && bf.IsBoolFlag() {
 			result = append(result, "-"+firstChar)
-			curr = curr[1:]
+			curr = curr[sz:]
 			if strings.HasPrefix(curr, "=") {
 				return nil, false
 			}
 		} else {
 			// Non-boolean flag: rest of current string is an attached value
-			rest := strings.TrimPrefix(curr[1:], "=")
+			rest := strings.TrimPrefix(curr[sz:], "=")
 			result = append(result, fmt.Sprintf("-%s=%s", firstChar, rest))
 			curr = ""
 		}
@@ -200,7 +205,7 @@ func decomposeFlag(fs *flag.FlagSet, arg string) ([]string, bool) {
 // findClosestFlag calculates Levenshtein distance to suggest the closest defined flag for typos.
 func findClosestFlag(fs *flag.FlagSet, unknown string) string {
 	clean := strings.TrimLeft(unknown, "-")
-	clean = strings.Split(clean, "=")[0]
+	clean, _, _ = strings.Cut(clean, "=")
 	if len(clean) == 0 {
 		return ""
 	}

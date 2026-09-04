@@ -182,6 +182,42 @@ func TestQueryEscape_And_UnescapeBytes(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestParseView(t *testing.T) {
+	raw := "https://user:secret@api.gateway.internal:8443/v2/telemetry/events?session_id=9876543210&region=eu-central-1#heading"
+	v, err := urlkit.ParseView(raw)
+	require.NoError(t, err)
+
+	assert.Equal(t, "https", v.Scheme)
+	assert.Equal(t, "user:secret", v.User)
+	assert.Equal(t, "api.gateway.internal:8443", v.Host)
+	assert.Equal(t, "api.gateway.internal", v.Hostname())
+	assert.Equal(t, "8443", v.Port())
+	assert.Equal(t, "8443", v.CanonicalPort())
+	assert.Equal(t, "/v2/telemetry/events", v.Path)
+	assert.Equal(t, "session_id=9876543210&region=eu-central-1", v.RawQuery)
+	assert.Equal(t, "heading", v.Fragment)
+	assert.True(t, v.IsAbs())
+
+	sess, ok := v.QueryValue("session_id")
+	assert.True(t, ok)
+	assert.Equal(t, "9876543210", sess)
+
+	reg, ok := v.QueryValue("region")
+	assert.True(t, ok)
+	assert.Equal(t, "eu-central-1", reg)
+
+	_, ok = v.QueryValue("missing")
+	assert.False(t, ok)
+
+	u := v.ToURL()
+	assert.Equal(t, "https", u.Scheme)
+	assert.Equal(t, "api.gateway.internal:8443", u.Host)
+	assert.Equal(t, "/v2/telemetry/events", u.Path)
+
+	reconstructed := v.String()
+	assert.Equal(t, raw, reconstructed)
+}
+
 func BenchmarkUnescape1KB(b *testing.B) {
 	s := "query=hello%20world&tag=fast+engine&path=%2Fapi%2Fv1%2Fresource%3Ffilter%3Dactive"
 	for len(s) < 1024 {
@@ -195,5 +231,18 @@ func BenchmarkUnescape1KB(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		_, _ = urlkit.Unescape(s)
+	}
+}
+
+func BenchmarkParseView(b *testing.B) {
+	raw := "https://user:secret@api.gateway.internal:8443/v2/telemetry/events?session_id=9876543210&region=eu-central-1#heading"
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		v, err := urlkit.ParseView(raw)
+		if err != nil || v.Host == "" {
+			b.Fatal(err)
+		}
 	}
 }

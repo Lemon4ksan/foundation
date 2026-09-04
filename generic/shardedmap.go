@@ -75,9 +75,9 @@ func (m *ShardedMap[K, V]) TryGet(key K) (val V, ok, acquired bool) {
 		var zero V
 		return zero, false, false
 	}
-	defer shard.mu.RUnlock()
 
 	v, exists := shard.items[key]
+	shard.mu.RUnlock()
 	return v, exists, true
 }
 
@@ -103,9 +103,9 @@ func (m *ShardedMap[K, V]) TrySet(key K, val V) bool {
 	if !shard.mu.TryLock() {
 		return false
 	}
-	defer shard.mu.Unlock()
 
 	shard.items[key] = val
+	shard.mu.Unlock()
 	return true
 }
 
@@ -118,13 +118,13 @@ func (m *ShardedMap[K, V]) GetOrSet(key K, val V) (actual V, loaded bool) {
 
 	shard := m.getShard(key)
 	shard.mu.Lock()
-	defer shard.mu.Unlock()
-
 	if existing, ok := shard.items[key]; ok {
+		shard.mu.Unlock()
 		return existing, true
 	}
 
 	shard.items[key] = val
+	shard.mu.Unlock()
 	return val, false
 }
 

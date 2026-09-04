@@ -10,6 +10,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -154,7 +155,7 @@ func (c *AWSClient) doRequest(ctx context.Context, target string, body []byte) (
 
 	// SigV4 Authorization
 	bodyHash := sha256.Sum256(body)
-	bodyHashHex := fmt.Sprintf("%x", bodyHash)
+	bodyHashHex := hex.EncodeToString(bodyHash[:])
 	req.Header.Set("X-Amz-Content-Sha256", bodyHashHex)
 
 	signedHeadersList := []string{"content-type", "host", "x-amz-content-sha256", "x-amz-date", "x-amz-target"}
@@ -163,12 +164,17 @@ func (c *AWSClient) doRequest(ctx context.Context, target string, body []byte) (
 	}
 
 	var canonicalHeaders strings.Builder
-	canonicalHeaders.WriteString(fmt.Sprintf("content-type:application/x-amz-json-1.1\nhost:%s\nx-amz-content-sha256:%s\nx-amz-date:%s\n",
-		req.URL.Host, bodyHashHex, amzDate))
+	fmt.Fprintf(
+		&canonicalHeaders,
+		"content-type:application/x-amz-json-1.1\nhost:%s\nx-amz-content-sha256:%s\nx-amz-date:%s\n",
+		req.URL.Host,
+		bodyHashHex,
+		amzDate,
+	)
 	if c.cfg.SessionToken != "" {
-		canonicalHeaders.WriteString(fmt.Sprintf("x-amz-security-token:%s\n", c.cfg.SessionToken))
+		fmt.Fprintf(&canonicalHeaders, "x-amz-security-token:%s\n", c.cfg.SessionToken)
 	}
-	canonicalHeaders.WriteString(fmt.Sprintf("x-amz-target:%s\n", target))
+	fmt.Fprintf(&canonicalHeaders, "x-amz-target:%s\n", target)
 
 	signedHeaders := strings.Join(signedHeadersList, ";")
 
@@ -187,7 +193,7 @@ func (c *AWSClient) doRequest(ctx context.Context, target string, body []byte) (
 		"AWS4-HMAC-SHA256",
 		amzDate,
 		credentialScope,
-		fmt.Sprintf("%x", canonicalReqHash),
+		hex.EncodeToString(canonicalReqHash[:]),
 	}, "\n")
 
 	signingKey := getSigV4SigningKey(c.cfg.SecretAccessKey, dateStamp, c.cfg.Region, "kms")

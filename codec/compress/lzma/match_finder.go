@@ -3,6 +3,7 @@ package lzma
 import (
 	"encoding/binary"
 	"math/bits"
+	"unsafe"
 )
 
 // matchCandidate represents a match or repetition candidate found in the dictionary history.
@@ -48,43 +49,53 @@ func matchSavings(length, dist int, isRep bool, repIdx int) int {
 	return (length * 8) - distCost
 }
 
-// findMatchLength determines the length of matching bytes between a and b using a 32-byte SWAR pipeline.
-func findMatchLength(a, b []byte) int {
-	maxLen := min(len(a), len(b))
+// findMatchLengthPtr computes match length directly from raw pointers without slice header overhead.
+//
+//go:inline
+func findMatchLengthPtr(ptrA, ptrB unsafe.Pointer, maxLen int) int {
 	if maxLen > kMatchMaxLen {
 		maxLen = kMatchMaxLen
 	}
 	var i int
 	for i+32 <= maxLen {
-		diff0 := binary.LittleEndian.Uint64(a[i:]) ^ binary.LittleEndian.Uint64(b[i:])
+		diff0 := *(*uint64)(unsafe.Add(ptrA, i)) ^ *(*uint64)(unsafe.Add(ptrB, i))
 		if diff0 != 0 {
 			return i + (bits.TrailingZeros64(diff0) >> 3)
 		}
-		diff1 := binary.LittleEndian.Uint64(a[i+8:]) ^ binary.LittleEndian.Uint64(b[i+8:])
+		diff1 := *(*uint64)(unsafe.Add(ptrA, i+8)) ^ *(*uint64)(unsafe.Add(ptrB, i+8))
 		if diff1 != 0 {
 			return i + 8 + (bits.TrailingZeros64(diff1) >> 3)
 		}
-		diff2 := binary.LittleEndian.Uint64(a[i+16:]) ^ binary.LittleEndian.Uint64(b[i+16:])
+		diff2 := *(*uint64)(unsafe.Add(ptrA, i+16)) ^ *(*uint64)(unsafe.Add(ptrB, i+16))
 		if diff2 != 0 {
 			return i + 16 + (bits.TrailingZeros64(diff2) >> 3)
 		}
-		diff3 := binary.LittleEndian.Uint64(a[i+24:]) ^ binary.LittleEndian.Uint64(b[i+24:])
+		diff3 := *(*uint64)(unsafe.Add(ptrA, i+24)) ^ *(*uint64)(unsafe.Add(ptrB, i+24))
 		if diff3 != 0 {
 			return i + 24 + (bits.TrailingZeros64(diff3) >> 3)
 		}
 		i += 32
 	}
 	for i+8 <= maxLen {
-		diff := binary.LittleEndian.Uint64(a[i:]) ^ binary.LittleEndian.Uint64(b[i:])
+		diff := *(*uint64)(unsafe.Add(ptrA, i)) ^ *(*uint64)(unsafe.Add(ptrB, i))
 		if diff != 0 {
 			return i + (bits.TrailingZeros64(diff) >> 3)
 		}
 		i += 8
 	}
-	for i < maxLen && a[i] == b[i] {
+	for i < maxLen && *(*byte)(unsafe.Add(ptrA, i)) == *(*byte)(unsafe.Add(ptrB, i)) {
 		i++
 	}
 	return i
+}
+
+// findMatchLength determines the length of matching bytes between a and b using a 32-byte SWAR pipeline.
+func findMatchLength(a, b []byte) int {
+	maxLen := min(len(a), len(b))
+	if maxLen == 0 {
+		return 0
+	}
+	return findMatchLengthPtr(unsafe.Pointer(unsafe.SliceData(a)), unsafe.Pointer(unsafe.SliceData(b)), maxLen)
 }
 
 // findBestMatch searches for the highest entropy savings candidate across reps, 2-byte mini table, and hash chains.
@@ -101,11 +112,16 @@ func (e *EncoderCore) findBestMatch(src []byte, pos, endPos int) matchCandidate 
 		fastBytesLimit = 32
 	}
 
+	srcLen := len(src)
+	srcPtr := unsafe.Pointer(unsafe.SliceData(src))
+	curPtr := unsafe.Add(srcPtr, pos)
+	avail := endPos - pos
+
 	// 1. Repetition matches
 	for repIdx, dist := range e.reps {
 		d := int(dist) + 1
 		if pos >= d {
-			matchLen := findMatchLength(src[pos:endPos], src[pos-d:])
+			matchLen := findMatchLengthPtr(curPtr, unsafe.Add(srcPtr, pos-d), min(avail, srcLen-(pos-d)))
 			if matchLen >= kMatchMinLen {
 				savings := matchSavings(matchLen, 0, true, repIdx)
 				if savings > best.savings || (savings == best.savings && matchLen > best.length) {
@@ -138,7 +154,7 @@ func (e *EncoderCore) findBestMatch(src []byte, pos, endPos int) matchCandidate 
 
 	// 3. 4-Byte Hash Chain Dictionary Search
 	if pos+4 <= endPos {
-		u32 := binary.LittleEndian.Uint32(src[pos:])
+		u32 := *(*uint32)(curPtr)
 		h := (u32 * 0x1E35A7BD) >> e.headShift
 		matchPos := e.head[h]
 		e.head[h] = uint32(pos)
@@ -148,20 +164,21 @@ func (e *EncoderCore) findBestMatch(src []byte, pos, endPos int) matchCandidate 
 		for matchPos != 0xFFFFFFFF && uint32(pos)-matchPos < dictSize && chainLen < chainLimit {
 			d := int(uint32(pos) - matchPos)
 			mPos := int(matchPos)
+			mPtr := unsafe.Add(srcPtr, mPos)
 			if best.length >= 4 {
-				if src[pos+best.length-1] != src[mPos+best.length-1] || src[pos] != src[mPos] {
+				if *(*byte)(unsafe.Add(curPtr, best.length-1)) != *(*byte)(unsafe.Add(mPtr, best.length-1)) || *(*uint32)(curPtr) != *(*uint32)(mPtr) {
 					matchPos = e.prev[matchPos&dictMask]
 					chainLen++
 					continue
 				}
 			} else {
-				if binary.LittleEndian.Uint32(src[pos:]) != binary.LittleEndian.Uint32(src[mPos:]) {
+				if *(*uint32)(curPtr) != *(*uint32)(mPtr) {
 					matchPos = e.prev[matchPos&dictMask]
 					chainLen++
 					continue
 				}
 			}
-			matchLen := findMatchLength(src[pos:endPos], src[mPos:])
+			matchLen := findMatchLengthPtr(curPtr, mPtr, min(avail, srcLen-mPos))
 			if matchLen >= 4 {
 				savings := matchSavings(matchLen, d, false, 0)
 				if savings > best.savings || (savings == best.savings && matchLen > best.length) {
@@ -186,7 +203,8 @@ func (e *EncoderCore) findBestMatch(src []byte, pos, endPos int) matchCandidate 
 		for matchPos != 0xFFFFFFFF && uint32(pos)-matchPos < dictSize && chainLen < chainLimit {
 			d := int(uint32(pos) - matchPos)
 			mPos := int(matchPos)
-			matchLen := findMatchLength(src[pos:endPos], src[mPos:])
+			mPtr := unsafe.Add(srcPtr, mPos)
+			matchLen := findMatchLengthPtr(curPtr, mPtr, min(avail, srcLen-mPos))
 			if matchLen >= kMatchMinLen {
 				savings := matchSavings(matchLen, d, false, 0)
 				if savings > best.savings || (savings == best.savings && matchLen > best.length) {
@@ -205,3 +223,4 @@ func (e *EncoderCore) findBestMatch(src []byte, pos, endPos int) matchCandidate 
 
 	return best
 }
+

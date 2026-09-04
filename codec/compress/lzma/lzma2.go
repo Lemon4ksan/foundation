@@ -22,6 +22,25 @@ var decoderPool = pool.NewPerPStorage(func() *DecoderCore {
 	return NewDecoderCore(3, 0, 2, 8*1024*1024, 65536)
 })
 
+var encoderPool = pool.NewPerPStorage(func() *EncoderCore {
+	return NewEncoderCoreWithOptions(Options{
+		Lc:          3,
+		Lp:          0,
+		Pb:          2,
+		DictSize:    2 * 1024 * 1024,
+		ChainLength: 16,
+		FastBytes:   32,
+		Level:       LevelFast,
+	})
+})
+
+var batchBufPool = sync.Pool{
+	New: func() any {
+		b := make([]byte, 8*1024*1024)
+		return &b
+	},
+}
+
 // ErrInvalidLZMA2Property indicates an invalid LZMA2 dictionary property byte (> 40).
 var ErrInvalidLZMA2Property = errors.New("lzma2: invalid property byte")
 
@@ -591,11 +610,9 @@ func (c *Compressor2) Compress(src io.Reader, dest io.Writer) (int64, error) {
 	}
 	chunkSize := 64 * 1024
 
-	batchBufSize := numWorkers * blockSize
-	if batchBufSize < 8*1024*1024 {
-		batchBufSize = 8 * 1024 * 1024
-	}
-	batchBuf := make([]byte, batchBufSize)
+	batchBufPtr := batchBufPool.Get().(*[]byte)
+	batchBuf := *batchBufPtr
+	defer batchBufPool.Put(batchBufPtr)
 
 	// Scope worker options so match finder tables match the worker's block window
 	workerOpts := c.Options
@@ -603,10 +620,18 @@ func (c *Compressor2) Compress(src io.Reader, dest io.Writer) (int64, error) {
 		workerOpts.DictSize = uint32(blockSize)
 	}
 
-	// Pre-allocate worker cores ONCE for the whole operation to eliminate GC pressure
+	canUsePool := workerOpts.Lc == 3 && workerOpts.Lp == 0 && workerOpts.Pb == 2 && workerOpts.DictSize <= 2*1024*1024
+
+	// Acquire worker cores
 	workerCores := make([]*EncoderCore, numWorkers)
 	for i := range workerCores {
-		workerCores[i] = NewEncoderCoreWithOptions(workerOpts)
+		if canUsePool {
+			workerCores[i] = encoderPool.Get()
+			defer encoderPool.Put(workerCores[i])
+			workerCores[i].Reset()
+		} else {
+			workerCores[i] = NewEncoderCoreWithOptions(workerOpts)
+		}
 	}
 
 	type encodedChunk struct {

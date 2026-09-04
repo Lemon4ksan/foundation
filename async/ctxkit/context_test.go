@@ -211,3 +211,59 @@ func TestFastContext_Pool(t *testing.T) {
 	assert.Nil(t, c2.Value("k1"))
 	pool.Release(c2)
 }
+
+func BenchmarkStdContext_Lookup_Hit(b *testing.B) {
+	ctx := context.Background()
+	for i := 0; i < 5; i++ {
+		ctx = context.WithValue(ctx, i, i*10)
+	}
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		_ = ctx.Value(0)
+	}
+}
+
+func BenchmarkFastContext_Lookup_Hit(b *testing.B) {
+	ctx := context.Context(ctxkit.Background())
+	for i := 0; i < 5; i++ {
+		ctx = ctxkit.WithValue(ctx, i, i*10)
+	}
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		_ = ctx.Value(0)
+	}
+}
+
+func BenchmarkStdContext_Lookup_Miss(b *testing.B) {
+	ctx := context.Background()
+	for i := 0; i < 5; i++ {
+		ctx = context.WithValue(ctx, i, i*10)
+	}
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		_ = ctx.Value(999)
+	}
+}
+
+func BenchmarkFastContext_Lookup_Miss_FastReject(b *testing.B) {
+	ctx := context.Context(ctxkit.Background())
+	for i := 0; i < 5; i++ {
+		ctx = ctxkit.WithValue(ctx, i, i*10)
+	}
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		_ = ctx.Value(999)
+	}
+}
