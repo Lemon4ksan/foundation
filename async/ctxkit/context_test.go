@@ -254,7 +254,7 @@ func BenchmarkStdContext_Lookup_Miss(b *testing.B) {
 	}
 }
 
-func BenchmarkFastContext_Lookup_Miss_FastReject(b *testing.B) {
+func BenchmarkFastContext_Lookup_Miss(b *testing.B) {
 	ctx := context.Context(ctxkit.Background())
 	for i := 0; i < 5; i++ {
 		ctx = ctxkit.WithValue(ctx, i, i*10)

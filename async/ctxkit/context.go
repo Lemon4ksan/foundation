@@ -8,25 +8,11 @@ import (
 	"context"
 	"sync"
 	"time"
-	"unsafe"
 
 	"github.com/lemon4ksan/foundation/generic"
 )
 
 const inlineCapacity = 8
-
-type eface struct {
-	_type unsafe.Pointer
-	data  unsafe.Pointer
-}
-
-//go:inline
-func keyBit(key any) uint64 {
-	ef := *(*eface)(unsafe.Pointer(&key))
-	h := uint64(uintptr(ef._type)) ^ uint64(uintptr(ef.data))
-	h = (h ^ (h >> 16) ^ (h >> 32)) & 63
-	return uint64(1) << h
-}
 
 type kvEntry struct {
 	key   any
@@ -39,13 +25,12 @@ type kvEntry struct {
 // [Context] aggregates key-value pairs into a single, contiguous array buffer.
 //
 // For up to 8 key-value pairs, [Context] requires zero slice allocations and performs
-// value resolution with L1/L2 cache locality and 64-bit bitmask fast rejection.
+// value resolution with L1/L2 cache locality.
 type Context struct {
-	parent  context.Context
-	keyMask uint64
-	inline  [inlineCapacity]kvEntry
-	extra   []kvEntry
-	count   int
+	parent context.Context
+	inline [inlineCapacity]kvEntry
+	extra  []kvEntry
+	count  int
 }
 
 // Background returns a non-nil, empty [Context] wrapping [context.Background].
@@ -105,14 +90,6 @@ func (c *Context) Value(key any) any {
 		return nil
 	}
 
-	bit := keyBit(key)
-	if (c.keyMask & bit) == 0 {
-		if c.parent != nil {
-			return c.parent.Value(key)
-		}
-		return nil
-	}
-
 	for i := len(c.extra) - 1; i >= 0; i-- {
 		if c.extra[i].key == key {
 			return c.extra[i].value
@@ -141,8 +118,6 @@ func (c *Context) Set(key, val any) *Context {
 	if c == nil || key == nil {
 		return c
 	}
-
-	c.keyMask |= keyBit(key)
 
 	for i := len(c.extra) - 1; i >= 0; i-- {
 		if c.extra[i].key == key {
@@ -179,12 +154,10 @@ func WithValue(parent context.Context, key, val any) *Context {
 		fc = &Context{parent: parent}
 	}
 
-	bit := keyBit(key)
 	// Clone flat context to guarantee immutability across branches
 	clone := &Context{
-		parent:  fc.parent,
-		keyMask: fc.keyMask | bit,
-		count:   fc.count + 1,
+		parent: fc.parent,
+		count:  fc.count + 1,
 	}
 	copy(clone.inline[:], fc.inline[:])
 
@@ -281,7 +254,6 @@ func (p *Pool) Acquire(parent context.Context) *Context {
 
 	fc := p.pool.Get().(*Context)
 	fc.parent = parent
-	fc.keyMask = 0
 	fc.count = 0
 	fc.extra = fc.extra[:0]
 	clear(fc.inline[:])
@@ -296,7 +268,6 @@ func (p *Pool) Release(fc *Context) {
 	}
 
 	fc.parent = nil
-	fc.keyMask = 0
 	fc.count = 0
 	fc.extra = fc.extra[:0]
 	clear(fc.inline[:])
