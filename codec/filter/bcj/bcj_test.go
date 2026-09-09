@@ -7,6 +7,7 @@ package bcj
 import (
 	"bytes"
 	"io"
+	"os"
 	"testing"
 )
 
@@ -70,5 +71,50 @@ func TestBCJ_Streaming(t *testing.T) {
 
 	if !bytes.Equal(decoded, original) {
 		t.Fatalf("Streaming roundtrip mismatch")
+	}
+}
+
+func TestBCJ_RealExe(t *testing.T) {
+	data, err := os.ReadFile(`C:\Program Files\go\bin\go.exe`)
+	if err != nil {
+		t.Skip("go.exe not found")
+	}
+	buf := make([]byte, len(data))
+	copy(buf, data)
+
+	Filter(X86, buf, 0, true)
+	Filter(X86, buf, 0, false)
+
+	if !bytes.Equal(buf, data) {
+		for i := 0; i < len(data); i++ {
+			if buf[i] != data[i] {
+				t.Fatalf("Mismatch at offset %d: orig=%d, dec=%d", i, data[i], buf[i])
+			}
+		}
+	}
+	t.Logf("100%% EXACT bit-for-bit roundtrip on all %d bytes of go.exe!", len(data))
+}
+
+func BenchmarkFilterX86(b *testing.B) {
+	data := make([]byte, 256*1024)
+	for i := range data {
+		data[i] = byte((i * 37) & 0xFF)
+	}
+	for i := 0; i < len(data)-10; i += 32 {
+		data[i] = 0xE8
+		data[i+1] = 0x12
+		data[i+2] = 0x34
+		data[i+3] = 0x56
+		data[i+4] = 0x00
+	}
+
+	buf := make([]byte, len(data))
+	b.SetBytes(int64(len(data)))
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		copy(buf, data)
+		Filter(X86, buf, 0, false)
 	}
 }

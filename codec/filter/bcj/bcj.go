@@ -10,7 +10,6 @@ package bcj
 import (
 	"encoding/binary"
 	"io"
-	"math/bits"
 )
 
 // Architecture represents the target CPU instruction set architecture for branch filtering.
@@ -59,86 +58,118 @@ func Filter(arch Architecture, data []byte, ip uint32, encode bool) int {
 	}
 }
 
-// filterX86 implements the 7-Zip x86 branch converter (Bra86).
+// filterX86 implements the official 7-Zip x86 branch converter (Bra86).
 func filterX86(data []byte, ip uint32, state *uint32, encode bool) int {
 	size := len(data)
 	if size < 5 {
 		return 0
 	}
 
-	p := 0
 	lim := size - 4
 	mask := *state
-	ip += 4
+	pc := ip + 4
+	p := 0
 
-	for p < lim {
-		if mask == 0 && p+8 <= lim {
-			v := binary.LittleEndian.Uint64(data[p:])
-			hasE8 := ((v ^ 0xE8E8E8E8E8E8E8E8) - 0x0101010101010101) & ^(v ^ 0xE8E8E8E8E8E8E8E8) & 0x8080808080808080
-			hasE9 := ((v ^ 0xE9E9E9E9E9E9E9E9) - 0x0101010101010101) & ^(v ^ 0xE9E9E9E9E9E9E9E9) & 0x8080808080808080
-			matchMask := hasE8 | hasE9
-			if matchMask == 0 {
-				p += 8
-				continue
-			}
-			tz := bits.TrailingZeros64(matchMask) >> 3
-			if tz > 0 {
-				p += tz
-			}
+	for {
+	start:
+		if p >= lim {
+			break
 		}
-
 		b := data[p]
 		if b != 0xE8 && b != 0xE9 {
 			p++
 			mask >>= 1
 			continue
 		}
+		p++ // point to displacement
 
-		offset := p + 1
-		src := binary.LittleEndian.Uint32(data[offset : offset+4])
-
+		if mask == 0 {
+			goto a3
+		}
 		if mask > 4 || mask == 3 {
 			mask >>= 1
-			p++
+			mask |= 4
 			continue
 		}
 		mask >>= 1
-
-		msb := byte(src >> 24)
-		if (msb+1)&0xFE != 0 {
-			p++
+		if ((data[p+int(mask)] + 1) & 0xFE) == 0 {
+			mask |= 4
 			continue
 		}
-
-		var dest uint32
-		pc := ip + uint32(p)
-		if encode {
-			dest = src + pc
-		} else {
-			dest = src - pc
+		{
+			v := binary.LittleEndian.Uint32(data[p : p+4])
+			v += 1 << 24
+			if (v & 0xFE000000) != 0 {
+				mask |= 4
+				continue
+			}
+			c := pc + uint32(p)
+			if encode {
+				v += c
+			} else {
+				v -= c
+			}
+			{
+				mask <<= 3
+				if ((byte(v>>mask) + 1) & 0xFE) == 0 {
+					v ^= (uint32(0x100) << mask) - 1
+					if encode {
+						v += c
+					} else {
+						v -= c
+					}
+				}
+				mask = 0
+			}
+			v &= (1 << 25) - 1
+			v -= 1 << 24
+			binary.LittleEndian.PutUint32(data[p:p+4], v)
+			p += 4
+			goto mainLoop
 		}
 
-		if (mask << 3) != 0 {
-			shift := mask << 3
-			testMsb := byte((dest >> shift) & 0xFF)
-			if (testMsb+1)&0xFE == 0 {
-				dest ^= (uint32(0x100) << shift) - 1
-				if encode {
-					dest += pc
-				} else {
-					dest -= pc
-				}
+	mainLoop:
+		if p >= lim {
+			break
+		}
+		for {
+			b = data[p]
+			if b == 0xE8 || b == 0xE9 {
+				p++
+				goto a3
+			}
+			p++
+			if p >= lim {
+				goto fin
 			}
 		}
 
-		dest &= (1 << 25) - 1
-		dest -= (1 << 24)
-
-		binary.LittleEndian.PutUint32(data[offset:offset+4], dest)
-		p += 5
-		mask = 0
+	a3:
+		if p > lim {
+			break
+		}
+		{
+			v := binary.LittleEndian.Uint32(data[p : p+4])
+			v += 1 << 24
+			if (v & 0xFE000000) != 0 {
+				mask |= 4
+				goto start
+			}
+			c := pc + uint32(p)
+			if encode {
+				v += c
+			} else {
+				v -= c
+			}
+			v &= (1 << 25) - 1
+			v -= 1 << 24
+			binary.LittleEndian.PutUint32(data[p:p+4], v)
+			p += 4
+			goto mainLoop
+		}
 	}
 
+fin:
 	*state = mask
 	return p
 }
