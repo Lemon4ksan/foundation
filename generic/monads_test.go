@@ -7,6 +7,7 @@ package generic
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -292,4 +293,102 @@ func TestMustValue(t *testing.T) {
 	assert.Panics(t, func() {
 		typedErr.MustValue()
 	})
+}
+
+func TestEither(t *testing.T) {
+	// Constructors & inspection
+	l := Left[string, int]("failure")
+	assert.True(t, l.IsLeft())
+	assert.False(t, l.IsRight())
+	assert.Equal(t, "failure", l.Left())
+	assert.Equal(t, 0, l.Right())
+	assert.Equal(t, 42, l.ValueOr(42))
+
+	r := Right[string, int](100)
+	assert.False(t, r.IsLeft())
+	assert.True(t, r.IsRight())
+	assert.Equal(t, "", r.Left())
+	assert.Equal(t, 100, r.Right())
+	assert.Equal(t, 100, r.ValueOr(42))
+
+	// FromError
+	errSample := errors.New("sample error")
+	eFromErr := FromError(50, errSample)
+	assert.True(t, eFromErr.IsLeft())
+	assert.Equal(t, errSample, eFromErr.Left())
+
+	eFromNilErr := FromError(50, nil)
+	assert.True(t, eFromNilErr.IsRight())
+	assert.Equal(t, 50, eFromNilErr.Right())
+
+	// Optionals
+	assert.True(t, l.LeftOptional().IsPresent())
+	assert.False(t, l.RightOptional().IsPresent())
+	assert.False(t, r.LeftOptional().IsPresent())
+	assert.True(t, r.RightOptional().IsPresent())
+
+	// Fold
+	var foldedLeft string
+	l.Fold(func(s string) { foldedLeft = s }, func(i int) { t.Fatal("unexpected right call") })
+	assert.Equal(t, "failure", foldedLeft)
+
+	var foldedRight int
+	r.Fold(func(s string) { t.Fatal("unexpected left call") }, func(i int) { foldedRight = i })
+	assert.Equal(t, 100, foldedRight)
+
+	// Swap
+	swappedL := l.Swap()
+	assert.True(t, swappedL.IsRight())
+	assert.Equal(t, "failure", swappedL.Right())
+
+	swappedR := r.Swap()
+	assert.True(t, swappedR.IsLeft())
+	assert.Equal(t, 100, swappedR.Left())
+
+	// AsResult
+	resSuccess := r.AsResult()
+	assert.True(t, resSuccess.IsSuccess())
+	val, err := resSuccess.Unwrap()
+	assert.Equal(t, 100, val)
+	assert.Nil(t, err)
+
+	resFail := l.AsResult()
+	assert.False(t, resFail.IsSuccess())
+	_, err = resFail.Unwrap()
+	assert.Equal(t, "failure", err.Error())
+
+	errEither := Left[error, int](errSample)
+	resFromErr := errEither.AsResult()
+	assert.False(t, resFromErr.IsSuccess())
+	_, err = resFromErr.Unwrap()
+	assert.Equal(t, errSample, err)
+
+	// MapEither & MapLeft
+	mappedRight := MapEither(r, func(v int) string { return fmt.Sprintf("val:%d", v) })
+	assert.True(t, mappedRight.IsRight())
+	assert.Equal(t, "val:100", mappedRight.Right())
+
+	mappedLeft := MapLeft(l, func(s string) string { return "prefix:" + s })
+	assert.True(t, mappedLeft.IsLeft())
+	assert.Equal(t, "prefix:failure", mappedLeft.Left())
+
+	// FlatMapEither
+	flatMapRight := FlatMapEither(r, func(v int) Either[string, string] {
+		return Right[string, string](fmt.Sprintf("flat:%d", v))
+	})
+	assert.True(t, flatMapRight.IsRight())
+	assert.Equal(t, "flat:100", flatMapRight.Right())
+
+	flatMapLeft := FlatMapEither(l, func(v int) Either[string, string] {
+		return Right[string, string]("unexpected")
+	})
+	assert.True(t, flatMapLeft.IsLeft())
+	assert.Equal(t, "failure", flatMapLeft.Left())
+
+	// FoldMap
+	valLeft := FoldMap(l, func(s string) int { return len(s) }, func(i int) int { return i * 2 })
+	assert.Equal(t, 7, valLeft)
+
+	valRight := FoldMap(r, func(s string) int { return len(s) }, func(i int) int { return i * 2 })
+	assert.Equal(t, 200, valRight)
 }

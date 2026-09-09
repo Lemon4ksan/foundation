@@ -6,6 +6,7 @@ package generic
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 )
 
@@ -397,4 +398,175 @@ func isInterfaceNil(err error) bool {
 	default:
 		return false
 	}
+}
+
+// Either represents a value of one of two possible types (a disjoint union).
+//
+// By convention, [Left] represents an error, fallback, or alternative outcome,
+// while [Right] represents a successful computation or preferred value.
+type Either[L, R any] struct {
+	left    L
+	right   R
+	isRight bool
+}
+
+// Left instantiates a left-biased [Either] wrapping the provided value.
+func Left[L, R any](val L) Either[L, R] {
+	return Either[L, R]{left: val, isRight: false}
+}
+
+// Right instantiates a right-biased [Either] wrapping the provided value.
+func Right[L, R any](val R) Either[L, R] {
+	return Either[L, R]{right: val, isRight: true}
+}
+
+// FromError creates an [Either] from a value and an error.
+// If err is not nil, it returns [Left](err). Otherwise, it returns [Right](v).
+func FromError[R any](v R, err error) Either[error, R] {
+	if err != nil {
+		return Left[error, R](err)
+	}
+
+	return Right[error, R](v)
+}
+
+// IsLeft returns true if the either represents a Left value.
+func (e Either[L, R]) IsLeft() bool {
+	return !e.isRight
+}
+
+// IsRight returns true if the either represents a Right value.
+func (e Either[L, R]) IsRight() bool {
+	return e.isRight
+}
+
+// Left returns the Left value if present, or the zero value of type L if Right.
+func (e Either[L, R]) Left() L {
+	return e.left
+}
+
+// Right returns the Right value if present, or the zero value of type R if Left.
+func (e Either[L, R]) Right() R {
+	return e.right
+}
+
+// LeftOptional returns the Left value wrapped in an [Optional].
+func (e Either[L, R]) LeftOptional() Optional[L] {
+	return From(e.left, !e.isRight)
+}
+
+// RightOptional returns the Right value wrapped in an [Optional].
+func (e Either[L, R]) RightOptional() Optional[R] {
+	return From(e.right, e.isRight)
+}
+
+// ValueOr returns the Right value if present, otherwise returning the fallback value.
+func (e Either[L, R]) ValueOr(fallback R) R {
+	if !e.isRight {
+		return fallback
+	}
+
+	return e.right
+}
+
+// Fold invokes onLeft if the value is Left, or onRight if the value is Right.
+func (e Either[L, R]) Fold(onLeft func(L), onRight func(R)) {
+	if e.isRight {
+		if onRight != nil {
+			onRight(e.right)
+		}
+	} else {
+		if onLeft != nil {
+			onLeft(e.left)
+		}
+	}
+}
+
+// Swap inverts the [Either], transforming Left into Right and Right into Left.
+func (e Either[L, R]) Swap() Either[R, L] {
+	if e.isRight {
+		return Left[R, L](e.right)
+	}
+
+	return Right[R, L](e.left)
+}
+
+// AsResult converts the [Either] into a [Result].
+//
+// If e is Right, it returns a successful [Result] wrapping the Right value.
+// If e is Left and type-asserts to error, it returns a failed [Result] wrapping that error.
+// Otherwise, it formats the Left value into an error using [fmt.Errorf].
+func (e Either[L, R]) AsResult() Result[R] {
+	if e.isRight {
+		return Success(e.right)
+	}
+
+	if err, ok := any(e.left).(error); ok && err != nil {
+		return Failure[R](err)
+	}
+
+	return Failure[R](fmt.Errorf("%v", e.left))
+}
+
+// MapEither transforms the Right value using fn, returning a new [Either] while preserving Left.
+// Due to Go generic limitations where methods cannot introduce new type parameters,
+// this is implemented as a package-level function.
+func MapEither[L, R, NewR any](e Either[L, R], fn func(R) NewR) Either[L, NewR] {
+	if e.isRight {
+		if fn == nil {
+			var zero NewR
+			return Right[L, NewR](zero)
+		}
+
+		return Right[L, NewR](fn(e.right))
+	}
+
+	return Left[L, NewR](e.left)
+}
+
+// MapLeft transforms the Left value using fn, returning a new [Either] while preserving Right.
+func MapLeft[L, R, NewL any](e Either[L, R], fn func(L) NewL) Either[NewL, R] {
+	if !e.isRight {
+		if fn == nil {
+			var zero NewL
+			return Left[NewL, R](zero)
+		}
+
+		return Left[NewL, R](fn(e.left))
+	}
+
+	return Right[NewL, R](e.right)
+}
+
+// FlatMapEither transforms the Right value using fn, returning a new [Either] if e is Right.
+func FlatMapEither[L, R, NewR any](e Either[L, R], fn func(R) Either[L, NewR]) Either[L, NewR] {
+	if e.isRight {
+		if fn == nil {
+			var zero NewR
+			return Right[L, NewR](zero)
+		}
+
+		return fn(e.right)
+	}
+
+	return Left[L, NewR](e.left)
+}
+
+// FoldMap evaluates onLeft if e is Left, or onRight if e is Right, returning the mapped value.
+func FoldMap[L, R, T any](e Either[L, R], onLeft func(L) T, onRight func(R) T) T {
+	if e.isRight {
+		if onRight != nil {
+			return onRight(e.right)
+		}
+
+		var zero T
+		return zero
+	}
+
+	if onLeft != nil {
+		return onLeft(e.left)
+	}
+
+	var zero T
+	return zero
 }

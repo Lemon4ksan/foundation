@@ -12,7 +12,7 @@
 //   - Lazy Pipeline Sequences (lazy.go): Stream-like deferred transformations (Map, Filter, Take, Drop) and folding
 //     operations (Reduce) powered by Go iterators, eliminating intermediate memory allocations.
 //   - Monadic Abstractions (monads.go): Swift-inspired type-safe error and nullability wrappers (Optional, Result,
-//     and TypedResult) to enforce deterministic state checking and safe concurrent data transfer.
+//     TypedResult, and Either) to enforce deterministic state checking and safe concurrent data transfer.
 //   - Custom Collections (collections.go): Thread-safe, generic collections, including sets and TTL-based in-memory caches.
 //   - Advanced Concurrency (concurrency.go): Parallel maps, asynchronous Futures, SingleFlight task-suppressors,
 //     resilient backoff/retry algorithms, and batch DataLoaders.
@@ -72,7 +72,7 @@
 //
 // # Monadic Safety Abstractions & Application Guidelines
 //
-// The package introduces Swift-inspired monadic types - [Optional], [Result], and [TypedResult] - to
+// The package introduces Swift-inspired monadic types - [Optional], [Result], [TypedResult], and [Either] - to
 // provide deterministic state checking. While idiomatic Go prefers returning tuples like (T, error)
 // or (T, bool) for linear execution, monadic abstractions solve specific architectural challenges where
 // tuples cannot be easily expressed or where type ambiguity exists.
@@ -104,6 +104,12 @@
 //     In Go, assigning a nil concrete pointer to an error interface creates a non-nil interface value
 //     (where err != nil evaluates to true). [TypedResult] uses an internal state flag to dynamically
 //     prevent false-positive error checks across domain layer boundaries.
+//
+//  5. Dual Status Outcomes & Disjoint Unions ([Either]):
+//     Use [Either] when an operation yields one of two distinct successful or domain-specific payloads
+//     (e.g., HTTP 2xx success payload versus HTTP 4xx validation error DTO):
+//
+//     var outcome generic.Either[ValidationErrorDTO, UserDTO]
 //
 // ## Architectural Boundaries (Where NOT to use)
 //
