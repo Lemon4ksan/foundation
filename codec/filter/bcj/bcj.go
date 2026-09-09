@@ -70,11 +70,7 @@ func filterX86(data []byte, ip uint32, state *uint32, encode bool) int {
 	pc := ip + 4
 	p := 0
 
-	for {
-	start:
-		if p >= lim {
-			break
-		}
+	for p < lim {
 		b := data[p]
 		if b != 0xE8 && b != 0xE9 {
 			p++
@@ -153,7 +149,7 @@ func filterX86(data []byte, ip uint32, state *uint32, encode bool) int {
 			v += 1 << 24
 			if (v & 0xFE000000) != 0 {
 				mask |= 4
-				goto start
+				continue
 			}
 			c := pc + uint32(p)
 			if encode {

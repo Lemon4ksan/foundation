@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -77,24 +78,24 @@ var spinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "�
 
 // Progress manages live terminal feedback, throughput, ETA calculations, and progress rendering.
 type Progress struct {
-	mu           sync.Mutex
-	writer       io.Writer
-	prefix       string
-	total        int64
-	current      int64
-	extraBytes   int64 // secondary counter (e.g. byte size when primary is item count)
-	unit         ProgressUnit
-	barWidth     int
-	isTTY        bool
-	ttyForced    bool
-	startTime    time.Time
-	lastRender   time.Time
-	lastLogTime  time.Time
-	lastLogVal   int64
-	spinnerIdx   int
-	throttle     time.Duration
-	logInterval  time.Duration
-	done         bool
+	mu          sync.Mutex
+	writer      io.Writer
+	prefix      string
+	total       int64
+	current     int64
+	extraBytes  int64 // secondary counter (e.g. byte size when primary is item count)
+	unit        ProgressUnit
+	barWidth    int
+	isTTY       bool
+	ttyForced   bool
+	startTime   time.Time
+	lastRender  time.Time
+	lastLogTime time.Time
+	lastLogVal  int64
+	spinnerIdx  int
+	throttle    time.Duration
+	logInterval time.Duration
+	done        bool
 }
 
 // NewProgress creates and initializes a new Progress widget.
@@ -211,32 +212,32 @@ func (p *Progress) renderTTY(now time.Time, elapsed float64) {
 		bar := RenderBar(ratio, p.barWidth)
 		sb.WriteString("[")
 		sb.WriteString(bar)
-		sb.WriteString(fmt.Sprintf("] %3d%% ", pct))
+		fmt.Fprintf(&sb, "] %3d%% ", pct)
 
 		if p.unit == UnitBytes {
-			sb.WriteString(fmt.Sprintf("(%s / %s)", FormatBytes(uint64(p.current)), FormatBytes(uint64(p.total))))
+			fmt.Fprintf(&sb, "(%s / %s)", FormatBytes(uint64(p.current)), FormatBytes(uint64(p.total)))
 		} else {
-			sb.WriteString(fmt.Sprintf("(%s / %s)", formatNumber(p.current), formatNumber(p.total)))
+			fmt.Fprintf(&sb, "(%s / %s)", formatNumber(p.current), formatNumber(p.total))
 			if p.extraBytes > 0 {
-				sb.WriteString(fmt.Sprintf(" [%s]", FormatBytes(uint64(p.extraBytes))))
+				fmt.Fprintf(&sb, " [%s]", FormatBytes(uint64(p.extraBytes)))
 			}
 		}
 
 		// Throughput & ETA
 		rate := float64(p.current) / elapsed
 		if p.unit == UnitBytes {
-			sb.WriteString(fmt.Sprintf("  %.1f MB/s", rate/(1024*1024)))
+			fmt.Fprintf(&sb, "  %.1f MB/s", rate/(1024*1024))
 		} else if rate > 0 {
-			sb.WriteString(fmt.Sprintf("  %.0f/s", rate))
+			fmt.Fprintf(&sb, "  %.0f/s", rate)
 			if p.extraBytes > 0 {
 				byteRate := float64(p.extraBytes) / elapsed
-				sb.WriteString(fmt.Sprintf(" (%.1f MB/s)", byteRate/(1024*1024)))
+				fmt.Fprintf(&sb, " (%.1f MB/s)", byteRate/(1024*1024))
 			}
 		}
 
 		if rate > 0 && p.current < p.total {
 			remSec := float64(p.total-p.current) / rate
-			sb.WriteString(fmt.Sprintf("  [ETA: %s]", formatDuration(time.Duration(remSec)*time.Second)))
+			fmt.Fprintf(&sb, "  [ETA: %s]", formatDuration(time.Duration(remSec)*time.Second))
 		}
 	} else {
 		// Indeterminate / streaming progress
@@ -246,19 +247,19 @@ func (p *Progress) renderTTY(now time.Time, elapsed float64) {
 		if p.unit == UnitBytes {
 			sb.WriteString(FormatBytes(uint64(p.current)))
 			rate := float64(p.current) / elapsed
-			sb.WriteString(fmt.Sprintf("  (%.1f MB/s)", rate/(1024*1024)))
+			fmt.Fprintf(&sb, "  (%.1f MB/s)", rate/(1024*1024))
 		} else {
-			sb.WriteString(fmt.Sprintf("%s items", formatNumber(p.current)))
+			sb.WriteString(formatNumber(p.current) + " items")
 			if p.extraBytes > 0 {
-				sb.WriteString(fmt.Sprintf(" (%s)", FormatBytes(uint64(p.extraBytes))))
+				fmt.Fprintf(&sb, " (%s)", FormatBytes(uint64(p.extraBytes)))
 			}
 			rate := float64(p.current) / elapsed
 			if rate > 0 {
-				sb.WriteString(fmt.Sprintf("  %.0f items/s", rate))
+				fmt.Fprintf(&sb, "  %.0f items/s", rate)
 			}
 			if p.extraBytes > 0 {
 				byteRate := float64(p.extraBytes) / elapsed
-				sb.WriteString(fmt.Sprintf(" (%.1f MB/s)", byteRate/(1024*1024)))
+				fmt.Fprintf(&sb, " (%.1f MB/s)", byteRate/(1024*1024))
 			}
 		}
 	}
@@ -283,26 +284,38 @@ func (p *Progress) renderNonTTY(now time.Time, elapsed float64, force bool) {
 	if p.total > 0 {
 		pct := int(float64(p.current) / float64(p.total) * 100)
 		if p.unit == UnitBytes {
-			sb.WriteString(fmt.Sprintf("%d%% (%s / %s)", pct, FormatBytes(uint64(p.current)), FormatBytes(uint64(p.total))))
+			fmt.Fprintf(
+				&sb,
+				"%d%% (%s / %s)",
+				pct,
+				FormatBytes(uint64(p.current)),
+				FormatBytes(uint64(p.total)),
+			)
 		} else {
-			sb.WriteString(fmt.Sprintf("%d%% (%s / %s)", pct, formatNumber(p.current), formatNumber(p.total)))
+			fmt.Fprintf(
+				&sb,
+				"%d%% (%s / %s)",
+				pct,
+				formatNumber(p.current),
+				formatNumber(p.total),
+			)
 		}
 	} else {
 		if p.unit == UnitBytes {
 			sb.WriteString(FormatBytes(uint64(p.current)))
 		} else {
-			sb.WriteString(fmt.Sprintf("%s items", formatNumber(p.current)))
+			sb.WriteString(formatNumber(p.current) + " items")
 			if p.extraBytes > 0 {
-				sb.WriteString(fmt.Sprintf(" (%s)", FormatBytes(uint64(p.extraBytes))))
+				fmt.Fprintf(&sb, " (%s)", FormatBytes(uint64(p.extraBytes)))
 			}
 		}
 	}
 
 	rate := float64(p.current) / elapsed
 	if p.unit == UnitBytes {
-		sb.WriteString(fmt.Sprintf(" [%.1f MB/s]\n", rate/(1024*1024)))
+		fmt.Fprintf(&sb, " [%.1f MB/s]\n", rate/(1024*1024))
 	} else {
-		sb.WriteString(fmt.Sprintf(" [%.0f items/s]\n", rate))
+		fmt.Fprintf(&sb, " [%.0f items/s]\n", rate)
 	}
 
 	_, _ = io.WriteString(p.writer, sb.String())
@@ -370,9 +383,9 @@ func FormatBytes(bytes uint64) string {
 
 func formatNumber(n int64) string {
 	if n < 0 {
-		return fmt.Sprintf("%d", n)
+		return strconv.FormatInt(n, 10)
 	}
-	s := fmt.Sprintf("%d", n)
+	s := strconv.FormatInt(n, 10)
 	if len(s) <= 3 {
 		return s
 	}
