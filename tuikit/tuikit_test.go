@@ -101,4 +101,20 @@ func TestTUI_App(t *testing.T) {
 	if !strings.Contains(stdout.String(), "PONG") {
 		t.Errorf("expected PONG output, got %q", stdout.String())
 	}
+
+	stdout.Reset()
+	app.PrintUsage(&stdout)
+	usage := stdout.String()
+	if !strings.Contains(usage, "testapp 1.0.0 — Test Description") {
+		t.Errorf("expected clean header in usage: %q", usage)
+	}
+	if !strings.Contains(usage, "ping") || !strings.Contains(usage, "Test ping command") {
+		t.Errorf("expected command listing in usage: %q", usage)
+	}
+	if strings.Contains(usage, "COMMAND") && strings.Contains(usage, "SYNOPSIS") {
+		t.Errorf("usage should not contain ASCII table headers: %q", usage)
+	}
+	if strings.Contains(usage, "────") {
+		t.Errorf("usage should not contain ASCII table divider lines: %q", usage)
+	}
 }

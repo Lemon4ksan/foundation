@@ -142,34 +142,50 @@ func (a *App) Run(ctx context.Context, args []string) error {
 	return fmt.Errorf("unknown command %q. Run '%s help' for available commands", first, a.Name)
 }
 
-// PrintUsage renders the application help screen using TUI tables and cards.
+// PrintUsage renders the application help screen cleanly and naturally without ASCII table grids or color noise.
 func (a *App) PrintUsage(w io.Writer) {
 	if a.Description != "" {
-		fmt.Fprintf(w, "\n%s\n\n", Bold(a.Description))
+		if a.Version != "" && !strings.Contains(a.Description, a.Version) {
+			fmt.Fprintf(w, "%s %s — %s\n\n", a.Name, a.Version, a.Description)
+		} else {
+			fmt.Fprintf(w, "%s\n\n", a.Description)
+		}
+	} else if a.Version != "" {
+		fmt.Fprintf(w, "%s %s\n\n", a.Name, a.Version)
 	}
 
-	fmt.Fprintf(w, "%s %s <command> [flags...] [arguments...]\n\n", Bold("Usage:"), a.Name)
+	fmt.Fprintf(w, "Usage:\n  %s <command> [flags] [arguments...]\n\n", a.Name)
+
+	cmdDisplay := func(c Command) string {
+		name := c.Name()
+		if len(c.Aliases()) > 0 {
+			name = fmt.Sprintf("%s, %s", c.Name(), strings.Join(c.Aliases(), ", "))
+		}
+		return name
+	}
+
+	maxLen := 12
+	for _, c := range a.Commands {
+		d := cmdDisplay(c)
+		if len(d) > maxLen && len(d) <= 30 {
+			maxLen = len(d)
+		}
+	}
 
 	if len(a.CommandGroups) > 0 {
 		rendered := make(map[string]bool)
 
 		for _, grp := range a.CommandGroups {
-			fmt.Fprintf(w, "%s:\n", Bold(grp.Title))
-			tbl := NewTable("COMMAND", "SYNOPSIS")
-			tbl.SetIndent(2)
+			fmt.Fprintf(w, "%s:\n", grp.Title)
 
 			for _, name := range grp.Commands {
 				if cmd, ok := a.cmdMap[name]; ok && !rendered[cmd.Name()] {
 					rendered[cmd.Name()] = true
-					cmdDisplay := cmd.Name()
-					if len(cmd.Aliases()) > 0 {
-						cmdDisplay = fmt.Sprintf("%s, %s", cmd.Name(), strings.Join(cmd.Aliases(), ", "))
-					}
-					tbl.AddRow(Cyan(cmdDisplay), cmd.Synopsis())
+					d := cmdDisplay(cmd)
+					fmt.Fprintf(w, "  %-*s  %s\n", maxLen, d, cmd.Synopsis())
 				}
 			}
 
-			_ = tbl.Render(w)
 			fmt.Fprintln(w)
 		}
 
@@ -183,23 +199,15 @@ func (a *App) PrintUsage(w io.Writer) {
 		}
 
 		if len(remaining) > 0 {
-			fmt.Fprintf(w, "%s:\n", Bold("Additional Commands"))
-			tbl := NewTable("COMMAND", "SYNOPSIS")
-			tbl.SetIndent(2)
+			fmt.Fprintf(w, "Additional Commands:\n")
 			for _, cmd := range remaining {
-				cmdDisplay := cmd.Name()
-				if len(cmd.Aliases()) > 0 {
-					cmdDisplay = fmt.Sprintf("%s, %s", cmd.Name(), strings.Join(cmd.Aliases(), ", "))
-				}
-				tbl.AddRow(Cyan(cmdDisplay), cmd.Synopsis())
+				d := cmdDisplay(cmd)
+				fmt.Fprintf(w, "  %-*s  %s\n", maxLen, d, cmd.Synopsis())
 			}
-			_ = tbl.Render(w)
 			fmt.Fprintln(w)
 		}
 	} else if len(a.Commands) > 0 {
-		fmt.Fprintf(w, "%s:\n", Bold("Available Commands"))
-		tbl := NewTable("COMMAND", "SYNOPSIS")
-		tbl.SetIndent(2)
+		fmt.Fprintf(w, "Available Commands:\n")
 
 		sortedCmds := make([]Command, len(a.Commands))
 		copy(sortedCmds, a.Commands)
@@ -208,27 +216,18 @@ func (a *App) PrintUsage(w io.Writer) {
 		})
 
 		for _, cmd := range sortedCmds {
-			cmdDisplay := cmd.Name()
-			if len(cmd.Aliases()) > 0 {
-				cmdDisplay = fmt.Sprintf("%s, %s", cmd.Name(), strings.Join(cmd.Aliases(), ", "))
-			}
-			tbl.AddRow(Cyan(cmdDisplay), cmd.Synopsis())
+			d := cmdDisplay(cmd)
+			fmt.Fprintf(w, "  %-*s  %s\n", maxLen, d, cmd.Synopsis())
 		}
-
-		_ = tbl.Render(w)
 		fmt.Fprintln(w)
 	}
 
-	fmt.Fprintf(w, "%s:\n", Bold("Flags"))
-	tbl := NewTable("FLAG", "DESCRIPTION")
-	tbl.SetIndent(2)
-	tbl.AddRow(Cyan("-h, --help"), "Show help context for command")
-	tbl.AddRow(Cyan("-v, --version"), "Show application version")
-	_ = tbl.Render(w)
-	fmt.Fprintln(w)
+	fmt.Fprintf(w, "Global Flags:\n")
+	fmt.Fprintf(w, "  -h, --help       Show help context for any command or %s itself\n", a.Name)
+	fmt.Fprintf(w, "  -v, --version    Show application version\n\n")
 
 	if len(a.Examples) > 0 {
-		fmt.Fprintf(w, "%s:\n", Bold("Quick Start Examples"))
+		fmt.Fprintf(w, "Quick Start Examples:\n")
 		for _, ex := range a.Examples {
 			fmt.Fprintf(w, "  %s\n", ex)
 		}
