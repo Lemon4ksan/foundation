@@ -131,7 +131,7 @@ func (km *KeyMutex[K]) Unlock(key K) {
 	km.mu.Lock()
 
 	ref, exists := km.locks[key]
-	if !exists {
+	if !exists || !ref.held {
 		km.mu.Unlock()
 		panic("foundation/keylock: unlock of unlocked key")
 	}
