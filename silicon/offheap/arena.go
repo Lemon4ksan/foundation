@@ -61,6 +61,10 @@ func (a *Arena) Alloc(n int) unsafe.Pointer {
 		return nil
 	}
 
+	if n > int(a.size-a.offset) {
+		return nil
+	}
+
 	alignedSize := (int32(n) + 7) &^ 7
 	if a.offset+alignedSize > a.size {
 		return nil
