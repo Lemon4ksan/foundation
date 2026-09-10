@@ -134,7 +134,11 @@ func TestShamir_FormatAndParse(t *testing.T) {
 	}
 
 	// Test tampering detection
-	tampered := formatted[0][:len(formatted[0])-1] + "0"
+	replacement := "0"
+	if formatted[0][len(formatted[0])-1] == '0' {
+		replacement = "1"
+	}
+	tampered := formatted[0][:len(formatted[0])-1] + replacement
 	if _, _, _, err := shamir.ParseShare(tampered); err == nil {
 		t.Fatalf("expected tamper detection to fail on modified share")
 	}
