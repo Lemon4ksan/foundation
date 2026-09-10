@@ -31,9 +31,16 @@ type RingBuffer[T any] struct {
 
 // NewRingBuffer instantiates a lock-free [RingBuffer] with power-of-two capacity.
 func NewRingBuffer[T any](capacity int) *RingBuffer[T] {
+	if capacity < 2 {
+		capacity = 2
+	}
+
 	capPow2 := uint64(1)
-	for capPow2 < uint64(capacity) {
+	for capPow2 < uint64(capacity) && capPow2 != 0 {
 		capPow2 <<= 1
+	}
+	if capPow2 == 0 {
+		capPow2 = 1 << 62
 	}
 
 	buf := make([]cell[T], capPow2)
