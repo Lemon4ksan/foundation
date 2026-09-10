@@ -76,8 +76,10 @@ func (l *AdaptiveLimiter) Acquire(ctx context.Context) error {
 
 		if !found {
 			// The slot was already allocated to us by Release before we processed
-			// the cancellation. We must return nil to ensure this slot is eventually released.
-			return nil
+			// the cancellation. Release the allocated slot back so it's not leaked.
+			l.Release(0)
+
+			return ctx.Err()
 		}
 
 		return ctx.Err()
@@ -100,7 +102,9 @@ func (l *AdaptiveLimiter) Release(rtt time.Duration) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	l.active--
+	if l.active > 0 {
+		l.active--
+	}
 
 	if time.Since(l.lastReset) > 30*time.Second {
 		l.minRTT = 0
@@ -294,6 +298,10 @@ type SlidingWindowLimiter struct {
 
 // NewSlidingWindowLimiter constructs a new sliding window rate limiter instance.
 func NewSlidingWindowLimiter(limit int, window time.Duration) *SlidingWindowLimiter {
+	if limit < 0 {
+		limit = 0
+	}
+
 	return &SlidingWindowLimiter{
 		limit:      limit,
 		window:     window,
@@ -305,6 +313,10 @@ func NewSlidingWindowLimiter(limit int, window time.Duration) *SlidingWindowLimi
 func (l *SlidingWindowLimiter) Allow(now time.Time) (bool, time.Duration) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
+
+	if l.limit <= 0 {
+		return false, l.window
+	}
 
 	cutoff := now.Add(-l.window)
 
