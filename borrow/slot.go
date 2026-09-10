@@ -58,9 +58,9 @@ func (s *Slot) Invalidate() {
 	if s == nil {
 		return
 	}
+	s.gen.Add(1)
 	s.writer.Store(false)
 	s.readers.Store(0)
-	s.gen.Add(1)
 }
 
 // TryAcquireShared attempts to acquire an immutable shared borrow.
@@ -72,9 +72,12 @@ func (s *Slot) TryAcquireShared(gen uint32) error {
 		return ErrAlreadyBorrowedMut
 	}
 	s.readers.Add(1)
-	// Double check writer didn't acquire in between
-	if s.writer.Load() {
-		s.readers.Add(-1)
+	// Double check writer didn't acquire in between and generation is still valid.
+	if s.writer.Load() || s.gen.Load() != gen {
+		s.ReleaseShared()
+		if s.gen.Load() != gen {
+			return ErrExpiredGeneration
+		}
 		return ErrAlreadyBorrowedMut
 	}
 	return nil
@@ -85,7 +88,15 @@ func (s *Slot) ReleaseShared() {
 	if s == nil {
 		return
 	}
-	s.readers.Add(-1)
+	for {
+		r := s.readers.Load()
+		if r <= 0 {
+			return
+		}
+		if s.readers.CompareAndSwap(r, r-1) {
+			return
+		}
+	}
 }
 
 // TryAcquireExclusive attempts to acquire an exclusive mutable borrow.
@@ -95,6 +106,10 @@ func (s *Slot) TryAcquireExclusive(gen uint32) error {
 	}
 	if !s.writer.CompareAndSwap(false, true) {
 		return ErrAlreadyBorrowedMut
+	}
+	if s.gen.Load() != gen {
+		s.writer.Store(false)
+		return ErrExpiredGeneration
 	}
 	if s.readers.Load() > 0 {
 		s.writer.Store(false)
