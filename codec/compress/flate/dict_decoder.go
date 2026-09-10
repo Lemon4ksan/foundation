@@ -186,14 +186,14 @@ func (dd *dictDecoder) tryWriteCopy(dist, length int) int {
 
 	// Non-overlapping match copy with 64-bit and 128-bit wildcopy
 	if dist >= length {
-		if length <= 8 {
+		if length <= 8 && dstPos+8 <= len(dd.hist) {
 			endian.Store64(dd.hist, dstPos, endian.Load64(dd.hist, srcPos))
 			dd.wrPos = endPos
 
 			return length
 		}
 
-		if length <= 16 && dist >= 16 {
+		if length <= 16 && dist >= 16 && dstPos+16 <= len(dd.hist) {
 			endian.Store64(dd.hist, dstPos, endian.Load64(dd.hist, srcPos))
 			endian.Store64(dd.hist, dstPos+8, endian.Load64(dd.hist, srcPos+8))
 			dd.wrPos = endPos
