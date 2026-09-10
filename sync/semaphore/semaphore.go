@@ -70,8 +70,10 @@ func (s *Semaphore) Acquire(ctx context.Context) error {
 
 		if !found {
 			// The slot was already allocated to us by notifyWaiters before we processed
-			// the cancellation. We must return nil to ensure this slot is eventually released.
-			return nil
+			// the cancellation. Release the allocated slot back to the pool and propagate ctx.Err().
+			s.Release()
+
+			return ctx.Err()
 		}
 
 		return ctx.Err()
@@ -87,8 +89,10 @@ func (s *Semaphore) Release() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.active--
-	s.notifyWaiters()
+	if s.active > 0 {
+		s.active--
+		s.notifyWaiters()
+	}
 }
 
 // Resize dynamically adjusts the maximum allowed limit of the semaphore on the fly.
