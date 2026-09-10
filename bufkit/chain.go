@@ -8,25 +8,29 @@ import (
 	"errors"
 	"io"
 	"sync"
+	"unsafe"
 )
 
 // DefaultChunkSize specifies the default fixed allocation size for memory chunks (4096 bytes / 4KB).
 const DefaultChunkSize = 4096
 
+type chunk [DefaultChunkSize]byte
+
 var chunkPool = sync.Pool{
 	New: func() any {
-		b := make([]byte, DefaultChunkSize)
-		return &b
+		return new(chunk)
 	},
 }
 
 func acquireChunk() []byte {
-	return *chunkPool.Get().(*[]byte)
+	c := chunkPool.Get().(*chunk)
+	return c[:]
 }
 
 func releaseChunk(b []byte) {
-	if cap(b) == DefaultChunkSize {
-		chunkPool.Put(&b)
+	if cap(b) == DefaultChunkSize && len(b) > 0 {
+		c := (*chunk)(unsafe.Pointer(unsafe.SliceData(b)))
+		chunkPool.Put(c)
 	}
 }
 

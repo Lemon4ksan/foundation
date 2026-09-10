@@ -195,3 +195,17 @@ func TestRing_AllMethods_And_Concurrency(t *testing.T) {
 
 	wg.Wait()
 }
+
+func BenchmarkChain_WriteReset(b *testing.B) {
+	c := bufkit.NewChain()
+	defer c.Release()
+
+	payload := make([]byte, 16384) // 4 chunks
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		_, _ = c.Write(payload)
+		c.Reset()
+	}
+}
