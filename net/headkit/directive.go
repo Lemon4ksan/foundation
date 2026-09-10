@@ -39,6 +39,10 @@ func Directives(header string) iter.Seq2[string, string] {
 
 			for end = 0; end < len(s); end++ {
 				c := s[end]
+				if inQuote && c == '\\' && end+1 < len(s) {
+					end++
+					continue
+				}
 				if c == '"' {
 					inQuote = !inQuote
 				} else if c == ',' && !inQuote {
@@ -96,6 +100,10 @@ func DirectivesBytes(b []byte) iter.Seq2[[]byte, []byte] {
 
 			for end = 0; end < len(s); end++ {
 				c := s[end]
+				if inQuote && c == '\\' && end+1 < len(s) {
+					end++
+					continue
+				}
 				if c == '"' {
 					inQuote = !inQuote
 				} else if c == ',' && !inQuote {
@@ -153,6 +161,10 @@ func ParamDirectives(header string) iter.Seq2[string, string] {
 
 			for end = 0; end < len(s); end++ {
 				c := s[end]
+				if inQuote && c == '\\' && end+1 < len(s) {
+					end++
+					continue
+				}
 				if c == '"' {
 					inQuote = !inQuote
 				} else if c == ';' && !inQuote {
