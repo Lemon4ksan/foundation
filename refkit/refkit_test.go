@@ -213,3 +213,87 @@ func TestTag_Parsing_And_Getters(t *testing.T) {
 	missingTag := refkit.GetTag(field, "xml")
 	assert.True(t, missingTag.IsEmpty())
 }
+
+type customTextMarshaler struct {
+	val string
+}
+
+func (c customTextMarshaler) MarshalText() ([]byte, error) {
+	return []byte("marshaled:" + c.val), nil
+}
+
+type customStringer struct {
+	val string
+}
+
+func (c customStringer) String() string {
+	return "stringer:" + c.val
+}
+
+func TestToString_And_TextRepresentation(t *testing.T) {
+	t.Parallel()
+
+	// 1. Primitive scalars
+	str, err := refkit.ToString("hello")
+	require.NoError(t, err)
+	assert.Equal(t, "hello", str)
+
+	str, err = refkit.ToString(123)
+	require.NoError(t, err)
+	assert.Equal(t, "123", str)
+
+	str, err = refkit.ToString(uint(456))
+	require.NoError(t, err)
+	assert.Equal(t, "456", str)
+
+	str, err = refkit.ToString(true)
+	require.NoError(t, err)
+	assert.Equal(t, "true", str)
+
+	str, err = refkit.ToString(3.14)
+	require.NoError(t, err)
+	assert.Equal(t, "3.14", str)
+
+	// 2. Nil and pointers
+	str, err = refkit.ToString(nil)
+	require.NoError(t, err)
+	assert.Equal(t, "", str)
+
+	num := 42
+	pNum := &num
+	str, err = refkit.ToString(pNum)
+	require.NoError(t, err)
+	assert.Equal(t, "42", str)
+
+	var nilPtr *int
+	str, err = refkit.ToString(nilPtr)
+	require.NoError(t, err)
+	assert.Equal(t, "", str)
+
+	// 3. TextMarshaler and Stringer
+	str, err = refkit.ToString(customTextMarshaler{val: "test"})
+	require.NoError(t, err)
+	assert.Equal(t, "marshaled:test", str)
+
+	str, err = refkit.ToString(customStringer{val: "test"})
+	require.NoError(t, err)
+	assert.Equal(t, "stringer:test", str)
+
+	// 4. ValueToString and DerefPointer
+	dp := refkit.DerefPointer(reflect.ValueOf(&pNum))
+	assert.Equal(t, 42, int(dp.Int()))
+
+	valStr, err := refkit.ValueToString(reflect.ValueOf(customTextMarshaler{val: "val"}))
+	require.NoError(t, err)
+	assert.Equal(t, "marshaled:val", valStr)
+
+	// 5. HasTextRepresentation
+	assert.True(t, refkit.HasTextRepresentation(customTextMarshaler{}))
+	assert.True(t, refkit.HasTextRepresentation(customStringer{}))
+	assert.False(t, refkit.HasTextRepresentation(123))
+	assert.False(t, refkit.HasTextRepresentation(nil))
+
+	// 6. Unsupported type
+	_, err = refkit.ToString(make(chan int))
+	assert.ErrorIs(t, err, refkit.ErrUnsupportedType)
+}
