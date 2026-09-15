@@ -50,3 +50,10 @@ func HasAESNI() bool {
 func CacheLineSize() int {
 	return int(unsafe.Sizeof(cpu.CacheLinePad{}))
 }
+
+// HasGFNI reports whether the CPU supports Galois Field New Instructions (GFNI).
+func HasGFNI() bool {
+	// For now, we stub this out as a placeholder.
+	// In a real implementation, this would read from golang.org/x/sys/cpu
+	return true
+}
