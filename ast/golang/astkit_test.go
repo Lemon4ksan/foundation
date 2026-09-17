@@ -2,18 +2,18 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package astkit_test
+package golang_test
 
 import (
 	"go/parser"
 	"go/token"
 	"testing"
 
-	"github.com/lemon4ksan/foundation/astkit"
+	"github.com/lemon4ksan/foundation/ast/golang"
 )
 
 func TestASTKit_ParseExpr(t *testing.T) {
-	expr, err := astkit.ParseExpr("1 + 2 * 3")
+	expr, err := golang.ParseExpr("1 + 2 * 3")
 	if err != nil {
 		t.Fatalf("ParseExpr failed: %v", err)
 	}
@@ -28,7 +28,7 @@ func TestASTKit_ParseScript(t *testing.T) {
 		y := x * 2
 		println(y)
 	`
-	stmts, err := astkit.ParseScript(script)
+	stmts, err := golang.ParseScript(script)
 	if err != nil {
 		t.Fatalf("ParseScript failed: %v", err)
 	}
@@ -55,7 +55,7 @@ func TestASTKit_IsComplete(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got := astkit.IsComplete(tt.code)
+		got := golang.IsComplete(tt.code)
 		if got != tt.complete {
 			t.Errorf("IsComplete(%q) = %v; want %v", tt.code, got, tt.complete)
 		}
@@ -80,7 +80,7 @@ func TestASTKit_FindStructsAndMethods(t *testing.T) {
 		t.Fatalf("ParseFile failed: %v", err)
 	}
 
-	structs := astkit.FindStructs(file)
+	structs := golang.FindStructs(file)
 	if len(structs) != 1 || structs[0].Name != "User" {
 		t.Fatalf("expected 1 struct named User, got %+v", structs)
 	}
@@ -88,7 +88,7 @@ func TestASTKit_FindStructsAndMethods(t *testing.T) {
 		t.Errorf("expected 2 fields, got %d", len(structs[0].Fields))
 	}
 
-	methods := astkit.FindMethods(file)
+	methods := golang.FindMethods(file)
 	if len(methods) != 1 || methods[0].Name != "Greet" {
 		t.Fatalf("expected 1 method named Greet, got %+v", methods)
 	}

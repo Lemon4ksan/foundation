@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package binkit_test
+package bin_test
 
 import (
 	"testing"
 
-	"github.com/lemon4ksan/foundation/binkit"
+	"github.com/lemon4ksan/foundation/encoding/bin"
 	"github.com/lemon4ksan/foundation/testing/assert"
 	"github.com/lemon4ksan/foundation/testing/require"
 )
@@ -25,7 +25,7 @@ type TestHeader struct {
 func TestReader_Writer_Roundtrip(t *testing.T) {
 	t.Parallel()
 
-	w := binkit.NewWriter(nil, 64)
+	w := bin.NewWriter(nil, 64)
 	w.U8(0x7F).
 		U16LE(0x1234).
 		U32LE(0xCAFEBABE).
@@ -39,7 +39,7 @@ func TestReader_Writer_Roundtrip(t *testing.T) {
 	buf := w.Bytes()
 	require.NotEmpty(t, buf)
 
-	r := binkit.NewReader(buf)
+	r := bin.NewReader(buf)
 	assert.Equal(t, uint8(0x7F), r.U8())
 	assert.Equal(t, uint16(0x1234), r.U16LE())
 	assert.Equal(t, uint32(0xCAFEBABE), r.U32LE())
@@ -53,7 +53,7 @@ func TestReader_Writer_Roundtrip(t *testing.T) {
 
 	// Sticky error on buffer overrun
 	_ = r.U32LE()
-	assert.Equal(t, binkit.ErrBufferTooShort, r.Err())
+	assert.Equal(t, bin.ErrBufferTooShort, r.Err())
 }
 
 func TestStruct_UnmarshalLE_MarshalLE(t *testing.T) {
@@ -68,12 +68,12 @@ func TestStruct_UnmarshalLE_MarshalLE(t *testing.T) {
 		Name:    "ignored string",
 	}
 
-	wire, err := binkit.MarshalLE(&orig, nil)
+	wire, err := bin.MarshalLE(&orig, nil)
 	require.NoError(t, err)
 	assert.Equal(t, 20, len(wire)) // 4 + 2 + 2 + 8 + 4 = 20
 
 	var decoded TestHeader
-	err = binkit.UnmarshalLE(wire, &decoded)
+	err = bin.UnmarshalLE(wire, &decoded)
 	require.NoError(t, err)
 
 	assert.Equal(t, orig.Magic, decoded.Magic)
@@ -95,12 +95,12 @@ func TestStruct_UnmarshalBE_MarshalBE(t *testing.T) {
 		Tag:     [4]byte{'E', 'L', 'F', '0'},
 	}
 
-	wire, err := binkit.MarshalBE(&orig, nil)
+	wire, err := bin.MarshalBE(&orig, nil)
 	require.NoError(t, err)
 	assert.Equal(t, 20, len(wire))
 
 	var decoded TestHeader
-	err = binkit.UnmarshalBE(wire, &decoded)
+	err = bin.UnmarshalBE(wire, &decoded)
 	require.NoError(t, err)
 
 	assert.Equal(t, orig.Magic, decoded.Magic)

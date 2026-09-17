@@ -4,4 +4,4 @@
 
 // Package binkit provides high-performance, zero-allocation binary encoding, decoding,
 // sequential fluent cursor I/O, and JIT-cached automatic struct serialization.
-package binkit
+package bin

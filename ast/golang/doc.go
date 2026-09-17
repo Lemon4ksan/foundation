@@ -4,4 +4,4 @@
 
 // Package astkit provides high-performance, zero-dependency Go AST parsing,
 // inspection, statement slicing, and multi-line completion checks.
-package astkit
+package golang
