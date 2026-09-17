@@ -86,9 +86,7 @@ func TestRingBufferConcurrentProduceConsume(t *testing.T) {
 	var consumeWg sync.WaitGroup
 
 	for range 4 {
-
 		consumeWg.Go(func() {
-
 			for {
 				item := rb.Pop()
 				if item != nil {

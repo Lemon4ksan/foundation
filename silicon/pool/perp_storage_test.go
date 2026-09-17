@@ -42,9 +42,7 @@ func TestPerPStorageParallel(t *testing.T) {
 	iters := 1000
 
 	for range workers {
-
 		wg.Go(func() {
-
 			for range iters {
 				buf := storage.Get()
 				if buf == nil {

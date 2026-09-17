@@ -8,9 +8,8 @@ import (
 	"crypto/rand"
 	"testing"
 
-	"github.com/lemon4ksan/foundation/testing/assert"
-
 	"github.com/lemon4ksan/foundation/encoding/varint"
+	"github.com/lemon4ksan/foundation/testing/assert"
 )
 
 func TestQUIC_Varint_AdversarialAndBoundaries(t *testing.T) {

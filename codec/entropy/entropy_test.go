@@ -7,8 +7,6 @@ package entropy
 import (
 	"crypto/rand"
 	"testing"
-
-	
 )
 
 func TestShannonEntropy(t *testing.T) {
@@ -34,5 +32,3 @@ func TestShannonEntropy(t *testing.T) {
 		t.Errorf("expected text sample to not be incompressible")
 	}
 }
-
-

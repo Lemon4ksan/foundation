@@ -18,10 +18,10 @@ import (
 )
 
 func TestPipeline_OrderPreservation(t *testing.T) {
-	cfg := PipelineConfig{
+	cfg := Config{
 		Workers: 12,
 	}
-	p := NewPipeline[int, int](cfg)
+	p := New[int, int](cfg)
 
 	inputs := make([]int, 1000)
 	for i := range inputs {
@@ -44,11 +44,11 @@ func TestPipeline_OrderPreservation(t *testing.T) {
 }
 
 func TestPipeline_FailFast(t *testing.T) {
-	cfg := PipelineConfig{
+	cfg := Config{
 		Workers:  1,
 		FailFast: true,
 	}
-	p := NewPipeline[int, int](cfg)
+	p := New[int, int](cfg)
 
 	inputs := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
 	errDummy := errors.New("dummy error")
@@ -75,11 +75,11 @@ func TestPipeline_FailFast(t *testing.T) {
 }
 
 func TestPipeline_NoFailFast(t *testing.T) {
-	cfg := PipelineConfig{
+	cfg := Config{
 		Workers:  3,
 		FailFast: false,
 	}
-	p := NewPipeline[int, int](cfg)
+	p := New[int, int](cfg)
 
 	inputs := []int{1, 2, 3}
 	errDummy := errors.New("dummy error")
@@ -99,12 +99,12 @@ func TestPipeline_NoFailFast(t *testing.T) {
 }
 
 func TestPipeline_RateLimiting(t *testing.T) {
-	cfg := PipelineConfig{
+	cfg := Config{
 		Workers: 2,
 		RPS:     50, // 50 requests per second, so 20ms per request
 		Burst:   1,
 	}
-	p := NewPipeline[int, int](cfg)
+	p := New[int, int](cfg)
 
 	inputs := []int{1, 2, 3}
 	start := time.Now()
@@ -122,10 +122,10 @@ func TestPipeline_RateLimiting(t *testing.T) {
 func TestPipeline_ContextCancelled_NoLeaks(t *testing.T) {
 	initialGoroutines := runtime.NumGoroutine()
 
-	cfg := PipelineConfig{
+	cfg := Config{
 		Workers: 5,
 	}
-	p := NewPipeline[int, int](cfg)
+	p := New[int, int](cfg)
 
 	inputs := make([]int, 100)
 	for i := range inputs {
@@ -156,10 +156,10 @@ func TestPipeline_ContextCancelled_NoLeaks(t *testing.T) {
 }
 
 func TestPipeline_Stream(t *testing.T) {
-	cfg := PipelineConfig{
+	cfg := Config{
 		Workers: 3,
 	}
-	p := NewPipeline[int, int](cfg)
+	p := New[int, int](cfg)
 
 	inCh := make(chan int, 10)
 	for i := 1; i <= 5; i++ {
@@ -187,11 +187,11 @@ func TestPipeline_Stream(t *testing.T) {
 }
 
 func TestPipeline_Stream_FailFast(t *testing.T) {
-	cfg := PipelineConfig{
+	cfg := Config{
 		Workers:  3,
 		FailFast: true,
 	}
-	p := NewPipeline[int, int](cfg)
+	p := New[int, int](cfg)
 
 	inCh := make(chan int, 10)
 	for i := 1; i <= 10; i++ {
@@ -226,7 +226,7 @@ func TestPipeline_Stream_FailFast(t *testing.T) {
 
 func TestMapAndForEach(t *testing.T) {
 	ctx := context.Background()
-	cfg := PipelineConfig{Workers: 4}
+	cfg := Config{Workers: 4}
 
 	// Test Map
 	res, err := Map(ctx, cfg, []int{1, 2, 3}, func(ctx context.Context, in int) (string, error) {
@@ -250,7 +250,7 @@ func TestPipeline_EmptyAndDefaults(t *testing.T) {
 	// Empty inputs
 	res, err := Map[int, int](
 		context.Background(),
-		PipelineConfig{Workers: 3},
+		Config{Workers: 3},
 		nil,
 		func(ctx context.Context, in int) (int, error) {
 			return in, nil
@@ -260,7 +260,7 @@ func TestPipeline_EmptyAndDefaults(t *testing.T) {
 	assert.Nil(t, res)
 
 	// Resolve defaults for Workers <= 0 and Burst <= 0
-	p := NewPipeline[int, int](PipelineConfig{Workers: 0, Burst: 0})
+	p := New[int, int](Config{Workers: 0, Burst: 0})
 	assert.Equal(t, 1, p.config.Workers)
 	assert.Equal(t, 1, p.config.Burst)
 
@@ -275,12 +275,12 @@ func TestPipeline_EmptyAndDefaults(t *testing.T) {
 }
 
 func TestPipeline_RateLimiting_Cancelled(t *testing.T) {
-	cfg := PipelineConfig{
+	cfg := Config{
 		Workers: 1,
 		RPS:     1, // very slow to force wait block
 		Burst:   1,
 	}
-	p := NewPipeline[int, int](cfg)
+	p := New[int, int](cfg)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	// Cancel context asynchronously so rate limiter Wait will fail
@@ -296,10 +296,10 @@ func TestPipeline_RateLimiting_Cancelled(t *testing.T) {
 }
 
 func TestPipeline_Stream_Cancelled(t *testing.T) {
-	cfg := PipelineConfig{
+	cfg := Config{
 		Workers: 2,
 	}
-	p := NewPipeline[int, int](cfg)
+	p := New[int, int](cfg)
 
 	inCh := make(chan int, 5)
 	inCh <- 1
@@ -332,12 +332,12 @@ func TestPipeline_Stream_Cancelled(t *testing.T) {
 }
 
 func TestPipeline_Stream_RateLimiting(t *testing.T) {
-	cfg := PipelineConfig{
+	cfg := Config{
 		Workers: 1,
 		RPS:     100,
 		Burst:   1,
 	}
-	p := NewPipeline[int, int](cfg)
+	p := New[int, int](cfg)
 
 	inCh := make(chan int, 2)
 	inCh <- 1
@@ -363,13 +363,13 @@ func TestPipeline_Stream_RateLimiting(t *testing.T) {
 }
 
 func TestPipeline_Stream_RateLimiting_Cancelled(t *testing.T) {
-	cfg := PipelineConfig{
+	cfg := Config{
 		Workers:  1,
 		RPS:      1, // slow
 		Burst:    1,
 		FailFast: true,
 	}
-	p := NewPipeline[int, int](cfg)
+	p := New[int, int](cfg)
 
 	inCh := make(chan int, 2)
 	inCh <- 1
@@ -402,7 +402,7 @@ func TestPipeline_Stream_RateLimiting_Cancelled(t *testing.T) {
 
 func TestPipeline_Helpers_EdgeCases(t *testing.T) {
 	ctx := context.Background()
-	cfg := PipelineConfig{Workers: 2}
+	cfg := Config{Workers: 2}
 
 	// Map nil check
 	_, err := Map[int, int](ctx, cfg, []int{1}, nil)
@@ -422,7 +422,7 @@ func TestPipeline_Helpers_EdgeCases(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Process nil mapper
-	p := NewPipeline[int, int](cfg)
+	p := New[int, int](cfg)
 	_, err = p.Process(ctx, []int{1}, nil)
 	assert.Error(t, err)
 
@@ -435,10 +435,10 @@ func TestPipeline_Helpers_EdgeCases(t *testing.T) {
 }
 
 func BenchmarkPipeline_Process(b *testing.B) {
-	cfg := PipelineConfig{
+	cfg := Config{
 		Workers: 8,
 	}
-	p := NewPipeline[int, int](cfg)
+	p := New[int, int](cfg)
 
 	inputs := make([]int, 100)
 	for i := range inputs {

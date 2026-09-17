@@ -13,9 +13,9 @@ import (
 	"golang.org/x/time/rate"
 )
 
-// PipelineConfig defines the operational scaling, rate limiting,
+// Config defines the operational scaling, rate limiting,
 // and error-propagation parameters for a [Pipeline].
-type PipelineConfig struct {
+type Config struct {
 	// Workers specifies the maximum number of concurrent goroutines processing tasks.
 	Workers int
 	// RPS defines the rate limit in requests per second. Set to 0.0 for unlimited rate.
@@ -27,7 +27,7 @@ type PipelineConfig struct {
 }
 
 // resolveDefaults applies safe fallback defaults for unconfigured scaling parameters.
-func (c *PipelineConfig) resolveDefaults() {
+func (c *Config) resolveDefaults() {
 	if c.Workers <= 0 {
 		c.Workers = 1
 	}
@@ -51,7 +51,7 @@ type task[In, Out any] struct {
 // It preserves the original index order of the inputs in the returned slice.
 func Map[In, Out any](
 	ctx context.Context,
-	cfg PipelineConfig,
+	cfg Config,
 	inputs []In,
 	mapper func(context.Context, In) (Out, error),
 ) ([]Out, error) {
@@ -59,7 +59,7 @@ func Map[In, Out any](
 		return nil, errors.New("pipeline: mapper function is nil")
 	}
 
-	p := NewPipeline[In, Out](cfg)
+	p := New[In, Out](cfg)
 
 	return p.Process(ctx, inputs, mapper)
 }
@@ -68,7 +68,7 @@ func Map[In, Out any](
 // for side-effects, ignoring individual successful return values.
 func ForEach[In any](
 	ctx context.Context,
-	cfg PipelineConfig,
+	cfg Config,
 	inputs []In,
 	fn func(context.Context, In) error,
 ) error {
@@ -76,7 +76,7 @@ func ForEach[In any](
 		return errors.New("pipeline: function is nil")
 	}
 
-	p := NewPipeline[In, struct{}](cfg)
+	p := New[In, struct{}](cfg)
 	_, err := p.Process(ctx, inputs, func(c context.Context, in In) (struct{}, error) {
 		return struct{}{}, fn(c, in)
 	})
@@ -89,13 +89,13 @@ func ForEach[In any](
 //
 // A Pipeline is safe for concurrent use by multiple goroutines.
 type Pipeline[In, Out any] struct {
-	config  PipelineConfig
+	config  Config
 	limiter *rate.Limiter
 	pool    sync.Pool
 }
 
-// NewPipeline instantiates and configures a new [Pipeline] with the given [PipelineConfig].
-func NewPipeline[In, Out any](cfg PipelineConfig) *Pipeline[In, Out] {
+// New instantiates and configures a new [Pipeline] with the given [Config].
+func New[In, Out any](cfg Config) *Pipeline[In, Out] {
 	cfg.resolveDefaults()
 
 	p := &Pipeline[In, Out]{
@@ -123,11 +123,11 @@ func (p *Pipeline[In, Out]) Process(
 	mapper func(context.Context, In) (Out, error),
 ) ([]Out, error) {
 	if p == nil {
-		return nil, errors.New("yumi: pipeline is nil")
+		return nil, errors.New("pipeline: pipeline is nil")
 	}
 
 	if mapper == nil {
-		return nil, errors.New("yumi: mapper function is nil")
+		return nil, errors.New("pipeline: mapper function is nil")
 	}
 
 	if len(inputs) == 0 {
@@ -191,7 +191,7 @@ func (p *Pipeline[In, Out]) Process(
 				// and causing deadlocks in the results collector.
 				if r := recover(); r != nil {
 					if currentTask != nil {
-						currentTask.err = fmt.Errorf("yumi: mapper panicked: %v", r)
+						currentTask.err = fmt.Errorf("pipeline: mapper panicked: %v", r)
 						resultsCh <- currentTask
 					}
 				}
@@ -328,7 +328,7 @@ func (p *Pipeline[In, Out]) Stream(
 				defer func() {
 					// Safe panic recovery for streaming worker goroutines.
 					if r := recover(); r != nil {
-						err := fmt.Errorf("yumi: stream mapper panicked: %v", r)
+						err := fmt.Errorf("pipeline: stream mapper panicked: %v", r)
 						select {
 						case errs <- err:
 						default:

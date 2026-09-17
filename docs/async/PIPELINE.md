@@ -91,7 +91,7 @@ func main() {
 	ctx := context.Background()
 	userIDs := []UserID{"u1", "u2", "u3", "u4", "u5"}
 
-	profiles, err := pipeline.Map(ctx, pipeline.PipelineConfig{
+	profiles, err := pipeline.Map(ctx, pipeline.Config{
 		Workers:  5,
 		RPS:      100.0, // 100 req/sec limit
 		Burst:    10,

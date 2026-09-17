@@ -33,7 +33,7 @@
 // # Error Handling
 //
 // In default mode, all errors are collected and returned via [errors.Join].
-// With [PipelineConfig.FailFast] enabled, the first error cancels the context
+// With [Config.FailFast] enabled, the first error cancels the context
 // for all workers and is returned immediately. Context cancellation propagates
 // to all workers for clean shutdown.
 //
@@ -52,7 +52,7 @@
 //	func main() {
 //	    inputs := []string{"hello", "world", "foo", "bar"}
 //
-//	    results, err := yumi.Map(context.Background(), yumi.PipelineConfig{
+//	    results, err := pipeline.Map(context.Background(), pipeline.Config{
 //	        Workers: 2,
 //	    }, inputs, func(ctx context.Context, s string) (string, error) {
 //	        return strings.ToUpper(s), nil
@@ -67,7 +67,7 @@
 //
 // # Example - Streaming
 //
-//	p := yumi.NewPipeline[string, string](yumi.PipelineConfig{Workers: 4})
+//	p := pipeline.New[string, string](pipeline.Config{Workers: 4})
 //
 //	out, errs := p.Stream(ctx, inputChan, func(ctx context.Context, s string) (string, error) {
 //	    return transform(s), nil

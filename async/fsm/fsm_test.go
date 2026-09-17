@@ -241,9 +241,7 @@ func TestFSM_ConcurrentTransitions(t *testing.T) {
 	)
 
 	for range goroutines {
-
 		wg.Go(func() {
-
 			err := fsm.Transition(context.Background(), eventGo)
 			if err != nil {
 				errCount.Add(1)

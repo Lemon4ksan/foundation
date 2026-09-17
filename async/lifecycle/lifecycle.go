@@ -218,7 +218,6 @@ func (o *Orchestrator) StopAll(ctx context.Context) error {
 // The caller must hold o.mu's write lock.
 func (o *Orchestrator) stopRunning(ctx context.Context) {
 	for _, s := range slices.Backward(o.running) {
-
 		_ = s.Stop(ctx)
 	}
 
