@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package entropy_test
+package entropy
 
 import (
 	"crypto/rand"
@@ -34,4 +34,5 @@ func TestShannonEntropy(t *testing.T) {
 		t.Errorf("expected text sample to not be incompressible")
 	}
 }
+
 
