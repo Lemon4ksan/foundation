@@ -74,7 +74,7 @@ go generate ./...
 
 ## Package Index
 
-### 1. Hardware Substrate (`silicon/`, `bufkit/`, `encoding/bin/`)
+### 1. Hardware Substrate & Memory (`silicon/`, `bufkit/`, `encoding/bin/`, `borrow/`)
 * **`simd`**: AVX2/BMI2 vector processing for frame scanning and match lengths.
 * **`hexkit`**: SIMD hex encoder/decoder (13.0 GB/s).
 * **`bytesconv`**: Vector casing, Base64 codecs, zero-copy converters, tokenizers (31.8 GB/s).
@@ -85,6 +85,8 @@ go generate ./...
 * **`trie`**: Compressed radix search trees.
 * **`bufkit`**: Cacheline-aligned (64B) buffers, scatter-gather `BufferChain`, SPSC `RingBuffer`.
 * **`encoding/bin`**: Sequential zero-alloc binary Reader/Writer, JIT struct codecs.
+* **`encoding/varint`**: QUIC Varint encoding using SIMD intrinsics.
+* **`borrow`**: Generational borrow checker and memory arenas avoiding UAF.
 
 ### 2. Codecs & Filesystem (`codec/`, `fskit/`, `pathkit/`, `vfs/`, `iokit/`)
 * **`codec`**: Multi-algorithm compression (`brotli`, `zstd`, `gzip`, `flate`, `lz4`, `lzma`, `fse`, `huff0`), filters (`bcj`, `delta`, `shuffle`), SIMD JSON.
@@ -111,16 +113,21 @@ go generate ./...
 * **`scheduler`**: Microsecond-precision recurring task schedulers and cron runners.
 * **`logkit`**: Zero-allocation structured logging facade, asynchronous flushing.
 
-### 5. Synchronization & Generics (`sync/`, `generic/`)
+### 5. Synchronization & Generics (`sync/`, `generic/`, `structures/`)
 * **`sync`**: Striped key-based locks, Vegas adaptive limiters, circuit breakers, jittered backoff.
 * **`generic`**: Thread-safe `Safe[T]`, `LRU[K, V]` cache, `ResourcePool[T]`, in-memory TTL `Cache[K, V]`, monadic `Optional`/`Result`, lazy `Stream[T]` (`iter.Seq`).
+* **`structures`**: Zero-allocation typed data structures (`minheap`, `ringbuffer`, `linkedlist`).
 
 ### 6. Network Primitives (`net/`)
 * **`net/http/header`**: Canonical HTTP constants, pseudo-headers, zero-allocation header map parser.
 * **`net/urlkit`**: CRC32 sharded URL cache, path variable expansion, query param appending.
 * **`net`**: HPACK compression, gRPC-Web framing, RFC 9211 Cache-Status, DoH/DoQ/DoT DNS, Proxy connectors.
 
-### 7. Types (`text/`, `types/`)
+### 7. Types & Text (`text/`, `types/`)
 * **`text/htmlkit`**: Zero-allocation HTML entity unescaping.
+* **`text`**: Casing converters, differentials, charset decoders, stream transformers.
 * **`types/uuid`**: RFC 9562 UUIDv4/v7 generators, SIMD formatting and parsing.
 * **`types/values`**: Type conversions and structured extraction.
+
+### 8. Cryptography (`crypto/`)
+* **`crypto`**: AEAD wrappers, envelope encryption, KDFs, KMS handling, Shamir secret sharing, fast signatures.

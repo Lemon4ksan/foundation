@@ -10,7 +10,7 @@ graph TD
         SIMD["simd (256-bit AVX2/BMI2 & ARM64 NEON)"]
         MEM["offheap, pool (Direct Slabs, Arenas, Perpetual Storage)"]
         BUFKIT["bufkit (AlignedBuffer, BufferChain, RingBuffer)"]
-        BINKIT["encoding/bin (Sequential Reader/Writer, JIT Struct Codec)"]
+        BIN["encoding/bin (Sequential Reader/Writer, JIT Struct Codec)"]
         CONV["bytesconv, hexkit (Zero-Copy Slicers, SIMD Codecs)"]
         TIME["timekit, clock, randkit (Monotonic Fast-Clock, FastRand, UUID)"]
         STRUCT["ringbuf, trie (Lock-Free Ring Buffers, Radix Trie)"]

@@ -21,14 +21,21 @@ foundation/
 ├── ast/golang/                   // Go AST Code Inspection & Script Parsing
 │   └── GOLANG.md             // AST traversal, struct/method introspection, expression parsing
 │
-├── encoding/bin/                   // Binary Encoding & Fast Serialization
-│   └── BIN.md             // Sequential Reader/Writer, sticky errors, JIT struct codec
+├── borrow/                   // Generational Borrow Checker & Arenas
+│   └── BORROW.md             // Scope arenas, Safe References (Ref/Mut), Zero UAF
+│
+├── encoding/                 // Binary Encoding & Fast Serialization
+│   ├── bin/BIN.md            // Sequential Reader/Writer, sticky errors, JIT struct codec
+│   └── VARINT.md             // QUIC Varint Encoding (SIMD)
 │
 ├── bufkit/                   // High-Performance Memory Buffers
 │   └── BUFKIT.md             // Cache-aligned buffers, BufferChain, RingBuffer
 │
 ├── codec/                    // Compression & Format Codecs
 │   └── CODEC.md              // Brotli, Zstd, Gzip, Deflate, LZ4, LZMA, Filters (BCJ/Delta/Shuffle), JSON
+│
+├── crypto/                   // High-Performance Cryptography
+│   └── CRYPTO.md             // AEAD, Envelope, KDF, KMS, Shamir, Signatures
 │
 ├── fskit/                    // High-Throughput Filesystem Primitives
 │   └── FSKIT.md              // FastWalk directory traversal, cross-platform mmap
@@ -69,8 +76,14 @@ foundation/
 ├── sync/                     // Tactical Synchronization & Resilience
 │   └── SYNC.md               // KeyLock, Limiter (Vegas/Keyed), Breaker, Backoff, Semaphore, Lazy, SpinLock
 │
+├── structures/               // Data Structures
+│   └── STRUCTURES.md         // MinHeap, RingBuffer, LinkedList
+│
 ├── generic/                  // Type-Safe Generics & Collections
 │   └── GENERIC.md            // Safe[T], Cache[K,V], LRU, Pool, Optional/Result, Slices, Maps, Stream
+│
+├── text/                     // Text Processing
+│   └── TEXT.md               // Casing, Diff, Encoding, HTMLKit
 │
 ├── iokit/                    // Streaming I/O & Replayable Buffers
 │   └── IOKIT.md              // ReplayableBody, BytesReader, Stream Limits, Copy Pools
@@ -106,11 +119,13 @@ foundation/
 | :--- | :--- | :--- |
 | `ast/golang` | [`docs/ast/golang/GOLANG.md`](ast/golang/GOLANG.md) | Go AST traversal, struct tag extraction, method inspection, statement parsing. |
 
-### Binary Encoding & Layout Serialization (`encoding/bin/`)
+### Binary Encoding & Layout Serialization (`encoding/`, `borrow/`)
 
 | Module | Documentation | Focus Area |
 | :--- | :--- | :--- |
 | `encoding/bin` | [`docs/encoding/bin/BIN.md`](encoding/bin/BIN.md) | Sequential zero-allocation binary Reader/Writer, sticky errors, JIT struct serialization. |
+| `encoding/varint` | [`docs/encoding/VARINT.md`](encoding/VARINT.md) | QUIC Varint encoding using SIMD intrinsics. |
+| `borrow` | [`docs/borrow/BORROW.md`](borrow/BORROW.md) | Generational borrow checker, scope arenas, safe references (Ref/Mut) with zero UAF. |
 
 ### High-Performance Buffers (`bufkit/`)
 
@@ -123,6 +138,12 @@ foundation/
 | Module | Documentation | Focus Area |
 | :--- | :--- | :--- |
 | `codec` | [`docs/codec/CODEC.md`](codec/CODEC.md) | Brotli, Zstd, Gzip, Deflate, LZ4, LZMA, pre-compression filters (BCJ/Delta/Shuffle), SIMD JSON. |
+
+### Cryptography (`crypto/`)
+
+| Module | Documentation | Focus Area |
+| :--- | :--- | :--- |
+| `crypto` | [`docs/crypto/CRYPTO.md`](crypto/CRYPTO.md) | AEAD, Envelope Encryption, KDFs, KMS interfaces, Shamir's Secret Sharing, and High-throughput Signatures. |
 
 ### Filesystem Primitives (`fskit/`)
 
@@ -154,11 +175,12 @@ foundation/
 | :--- | :--- | :--- |
 | `tuikit` | [`docs/tuikit/TUIKIT.md`](tuikit/TUIKIT.md) | CLI subcommands, formatted data tables, bordered boxes, progress indicators, ANSI sniffer. |
 
-### Core Types (`types/`)
+### Core Types & Text Processing (`types/`, `text/`)
 
 | Module | Documentation | Focus Area |
 | :--- | :--- | :--- |
 | `types` | [`docs/types/TYPES.md`](types/TYPES.md) | RFC 9562 UUIDv4/v7 with SIMD parsers, zero-allocation dynamic value extraction. |
+| `text` | [`docs/text/TEXT.md`](text/TEXT.md) | Text processing: casing, diffs, charset encodings, and HTML entity sanitization. |
 
 ### Virtual Filesystem & Path Security (`vfs/`)
 
@@ -193,11 +215,12 @@ foundation/
 | :--- | :--- | :--- |
 | `sync` | [`docs/sync/SYNC.md`](sync/SYNC.md) | Striped KeyLock, Vegas AdaptiveLimiter, CircuitBreaker, Jittered Backoff, and Resizable Semaphore. |
 
-### Type-Safe Generics & Collections (`generic/`)
+### Type-Safe Generics & Collections (`generic/`, `structures/`)
 
 | Module | Documentation | Focus Area |
 | :--- | :--- | :--- |
 | `generic` | [`docs/generic/GENERIC.md`](generic/GENERIC.md) | Thread-safe `Safe[T]`, `LRU[K, V]`, `ResourcePool[T]`, in-memory `Cache[K, V]`, monadic `Optional`/`Result`, and lazy `Stream[T]` iterators. |
+| `structures` | [`docs/structures/STRUCTURES.md`](structures/STRUCTURES.md) | Zero-alloc, generic data structures like `MinHeap`, `RingBuffer`, and `LinkedList`. |
 
 ### Streaming I/O & Replay Buffers (`iokit/`)
 
