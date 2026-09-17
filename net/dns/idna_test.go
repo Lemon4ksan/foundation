@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/lemon4ksan/foundation/net/dns"
-	"github.com/lemon4ksan/foundation/testkit/assert"
+	"github.com/lemon4ksan/foundation/testing/assert"
 )
 
 func TestIDNA_IsLDH(t *testing.T) {

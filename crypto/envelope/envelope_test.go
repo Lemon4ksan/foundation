@@ -10,10 +10,10 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/lemon4ksan/foundation/cryptokit/aead"
-	"github.com/lemon4ksan/foundation/cryptokit/envelope"
-	"github.com/lemon4ksan/foundation/cryptokit/kdf"
-	"github.com/lemon4ksan/foundation/cryptokit/kms"
+	"github.com/lemon4ksan/foundation/crypto/aead"
+	"github.com/lemon4ksan/foundation/crypto/envelope"
+	"github.com/lemon4ksan/foundation/crypto/kdf"
+	"github.com/lemon4ksan/foundation/crypto/kms"
 	"github.com/lemon4ksan/foundation/silicon/randkit"
 )
 

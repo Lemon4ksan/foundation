@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/lemon4ksan/foundation/silicon/ringbuf"
-	"github.com/lemon4ksan/foundation/testkit/assert"
+	"github.com/lemon4ksan/foundation/testing/assert"
 )
 
 func TestRingBufferPushPop(t *testing.T) {

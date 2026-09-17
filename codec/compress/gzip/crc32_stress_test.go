@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/lemon4ksan/foundation/codec/compress/gzip"
-	"github.com/lemon4ksan/foundation/testkit/assert"
+	"github.com/lemon4ksan/foundation/testing/assert"
 )
 
 func TestCRC32_DifferentialAgainstStdlib(t *testing.T) {

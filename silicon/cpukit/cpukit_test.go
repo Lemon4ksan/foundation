@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/lemon4ksan/foundation/silicon/cpukit"
-	"github.com/lemon4ksan/foundation/testkit/assert"
+	"github.com/lemon4ksan/foundation/testing/assert"
 )
 
 func TestCPUKitProbes(t *testing.T) {

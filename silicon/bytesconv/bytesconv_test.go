@@ -9,7 +9,7 @@ import (
 	"maps"
 	"testing"
 
-	"github.com/lemon4ksan/foundation/testkit/assert"
+	"github.com/lemon4ksan/foundation/testing/assert"
 )
 
 func TestB2SAndS2B(t *testing.T) {

@@ -9,7 +9,7 @@ import (
 	"crypto/rand"
 	"testing"
 
-	"github.com/lemon4ksan/foundation/cryptokit/shamir"
+	"github.com/lemon4ksan/foundation/crypto/shamir"
 )
 
 func TestGF256_Properties(t *testing.T) {

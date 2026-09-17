@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/lemon4ksan/foundation/sync/limiter"
-	"github.com/lemon4ksan/foundation/testkit/assert"
+	"github.com/lemon4ksan/foundation/testing/assert"
 )
 
 func TestVegasEngine(t *testing.T) {

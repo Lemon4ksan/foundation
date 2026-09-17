@@ -11,7 +11,7 @@ import (
 	"encoding/hex"
 	"testing"
 
-	"github.com/lemon4ksan/foundation/cryptokit/kdf"
+	"github.com/lemon4ksan/foundation/crypto/kdf"
 )
 
 func decodeHex(s string) []byte {

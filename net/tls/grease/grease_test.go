@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/lemon4ksan/foundation/net/tls/grease"
-	"github.com/lemon4ksan/foundation/testkit/assert"
-	"github.com/lemon4ksan/foundation/testkit/require"
+	"github.com/lemon4ksan/foundation/testing/assert"
+	"github.com/lemon4ksan/foundation/testing/require"
 )
 
 func TestRFC8701_16BitValues(t *testing.T) {

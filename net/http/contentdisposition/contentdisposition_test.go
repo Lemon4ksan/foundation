@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/lemon4ksan/foundation/net/http/contentdisposition"
-	"github.com/lemon4ksan/foundation/testkit/assert"
+	"github.com/lemon4ksan/foundation/testing/assert"
 )
 
 func TestContentDisposition_RFC6266_And_RFC8187(t *testing.T) {

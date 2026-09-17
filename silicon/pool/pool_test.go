@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/lemon4ksan/foundation/silicon/pool"
-	"github.com/lemon4ksan/foundation/testkit/assert"
+	"github.com/lemon4ksan/foundation/testing/assert"
 )
 
 func TestTimerPool(t *testing.T) {

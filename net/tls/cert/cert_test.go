@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/lemon4ksan/foundation/net/tls/cert"
-	"github.com/lemon4ksan/foundation/testkit/assert"
-	"github.com/lemon4ksan/foundation/testkit/require"
+	"github.com/lemon4ksan/foundation/testing/assert"
+	"github.com/lemon4ksan/foundation/testing/require"
 )
 
 func generateTestCert(t *testing.T) *x509.Certificate {

@@ -9,7 +9,7 @@ import (
 
 	"github.com/lemon4ksan/foundation/net/tls/grease"
 	"github.com/lemon4ksan/foundation/net/tls/ja4"
-	"github.com/lemon4ksan/foundation/testkit/assert"
+	"github.com/lemon4ksan/foundation/testing/assert"
 )
 
 func TestIsGREASE(t *testing.T) {

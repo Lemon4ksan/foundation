@@ -7,7 +7,7 @@
 package gomock
 
 import (
-	"github.com/lemon4ksan/foundation/testkit/mock"
+	"github.com/lemon4ksan/foundation/testing/mock"
 )
 
 // Re-exported types and functions for drop-in GoMock compatibility.

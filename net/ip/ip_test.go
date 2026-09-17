@@ -10,8 +10,8 @@ import (
 	"testing"
 
 	"github.com/lemon4ksan/foundation/net/ip"
-	"github.com/lemon4ksan/foundation/testkit/assert"
-	"github.com/lemon4ksan/foundation/testkit/require"
+	"github.com/lemon4ksan/foundation/testing/assert"
+	"github.com/lemon4ksan/foundation/testing/require"
 )
 
 func TestSourceIPRotator_RoundRobin(t *testing.T) {

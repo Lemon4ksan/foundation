@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/lemon4ksan/foundation/binkit"
-	"github.com/lemon4ksan/foundation/testkit/assert"
-	"github.com/lemon4ksan/foundation/testkit/require"
+	"github.com/lemon4ksan/foundation/testing/assert"
+	"github.com/lemon4ksan/foundation/testing/require"
 )
 
 type TestHeader struct {

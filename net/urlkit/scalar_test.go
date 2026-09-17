@@ -7,8 +7,8 @@ package urlkit
 import (
 	"testing"
 
-	"github.com/lemon4ksan/foundation/testkit/assert"
-	"github.com/lemon4ksan/foundation/testkit/require"
+	"github.com/lemon4ksan/foundation/testing/assert"
+	"github.com/lemon4ksan/foundation/testing/require"
 )
 
 func TestUnescapeScalar_FallbackAndHex(t *testing.T) {

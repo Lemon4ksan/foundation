@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lemon4ksan/foundation/cryptokit/sign"
+	"github.com/lemon4ksan/foundation/crypto/sign"
 )
 
 func TestSign_Roundtrip(t *testing.T) {

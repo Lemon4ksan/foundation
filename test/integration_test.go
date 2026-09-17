@@ -24,8 +24,8 @@ import (
 	"github.com/lemon4ksan/foundation/sync/keylock"
 	"github.com/lemon4ksan/foundation/sync/limiter"
 	"github.com/lemon4ksan/foundation/sync/semaphore"
-	"github.com/lemon4ksan/foundation/testkit/assert"
-	"github.com/lemon4ksan/foundation/testkit/require"
+	"github.com/lemon4ksan/foundation/testing/assert"
+	"github.com/lemon4ksan/foundation/testing/require"
 )
 
 // DownstreamMock represents a simulated flaky downstream service.

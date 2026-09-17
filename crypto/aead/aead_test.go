@@ -11,7 +11,7 @@ import (
 	"io"
 	"testing"
 
-	"github.com/lemon4ksan/foundation/cryptokit/aead"
+	"github.com/lemon4ksan/foundation/crypto/aead"
 )
 
 func TestAEAD_Algorithms(t *testing.T) {

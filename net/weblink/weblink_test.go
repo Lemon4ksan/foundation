@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/lemon4ksan/foundation/net/weblink"
-	"github.com/lemon4ksan/foundation/testkit/assert"
-	"github.com/lemon4ksan/foundation/testkit/require"
+	"github.com/lemon4ksan/foundation/testing/assert"
+	"github.com/lemon4ksan/foundation/testing/require"
 )
 
 func TestWebLink_RFC8288_Section3_5_Examples(t *testing.T) {

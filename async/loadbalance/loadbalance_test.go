@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/lemon4ksan/foundation/async/loadbalance"
-	"github.com/lemon4ksan/foundation/testkit/assert"
-	"github.com/lemon4ksan/foundation/testkit/require"
+	"github.com/lemon4ksan/foundation/testing/assert"
+	"github.com/lemon4ksan/foundation/testing/require"
 )
 
 func TestBalancer_Constructors_And_TargetMetrics(t *testing.T) {

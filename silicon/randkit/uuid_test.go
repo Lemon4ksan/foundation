@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/lemon4ksan/foundation/silicon/randkit"
-	"github.com/lemon4ksan/foundation/testkit/require"
+	"github.com/lemon4ksan/foundation/testing/require"
 )
 
 func TestUUIDv7(t *testing.T) {

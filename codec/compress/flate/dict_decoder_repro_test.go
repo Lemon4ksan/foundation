@@ -7,7 +7,7 @@ package flate
 import (
 	"testing"
 
-	"github.com/lemon4ksan/foundation/testkit/assert"
+	"github.com/lemon4ksan/foundation/testing/assert"
 )
 
 func TestRepro_DictDecoder_WildcopyBufferOverflow_8Bytes(t *testing.T) {

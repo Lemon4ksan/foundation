@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/lemon4ksan/foundation/net/cachestatus"
-	"github.com/lemon4ksan/foundation/testkit/assert"
-	"github.com/lemon4ksan/foundation/testkit/require"
+	"github.com/lemon4ksan/foundation/testing/assert"
+	"github.com/lemon4ksan/foundation/testing/require"
 )
 
 func TestCacheStatus_RFC9211_Examples(t *testing.T) {

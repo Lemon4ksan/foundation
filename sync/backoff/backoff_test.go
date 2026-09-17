@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/lemon4ksan/foundation/sync/backoff"
-	"github.com/lemon4ksan/foundation/testkit/assert"
+	"github.com/lemon4ksan/foundation/testing/assert"
 )
 
 func TestExponentialBackoff_Deterministic(t *testing.T) {

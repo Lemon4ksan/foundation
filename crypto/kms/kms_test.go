@@ -15,7 +15,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lemon4ksan/foundation/cryptokit/kms"
+	"github.com/lemon4ksan/foundation/crypto/kms"
 )
 
 func TestMockKMS(t *testing.T) {

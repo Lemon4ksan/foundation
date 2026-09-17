@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/lemon4ksan/foundation/silicon/pool"
-	"github.com/lemon4ksan/foundation/testkit/assert"
+	"github.com/lemon4ksan/foundation/testing/assert"
 )
 
 func TestRepro_RequestArena_IntegerOverflowGuard(t *testing.T) {
