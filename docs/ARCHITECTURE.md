@@ -6,11 +6,11 @@
 
 ```mermaid
 graph TD
-    subgraph Silicon["Silicon & Hardware Substrate (silicon, bufkit, binkit)"]
+    subgraph Silicon["Silicon & Hardware Substrate (silicon, bufkit, encoding/bin)"]
         SIMD["simd (256-bit AVX2/BMI2 & ARM64 NEON)"]
         MEM["offheap, pool (Direct Slabs, Arenas, Perpetual Storage)"]
         BUFKIT["bufkit (AlignedBuffer, BufferChain, RingBuffer)"]
-        BINKIT["binkit (Sequential Reader/Writer, JIT Struct Codec)"]
+        BINKIT["encoding/bin (Sequential Reader/Writer, JIT Struct Codec)"]
         CONV["bytesconv, hexkit (Zero-Copy Slicers, SIMD Codecs)"]
         TIME["timekit, clock, randkit (Monotonic Fast-Clock, FastRand, UUID)"]
         STRUCT["ringbuf, trie (Lock-Free Ring Buffers, Radix Trie)"]
@@ -25,11 +25,11 @@ graph TD
         TYPES["types (UUIDv4/v7, Dynamic Values)"]
     end
 
-    subgraph CLI["CLI & Tooling (argkit, astkit, tuikit, testkit)"]
+    subgraph CLI["CLI & Tooling (argkit, ast/golang, tuikit, testing)"]
         ARG["argkit (POSIX Flags, Stacking, Typo Suggestions)"]
-        AST["astkit (AST Parser, Struct/Method Inspection)"]
+        AST["ast/golang (AST Parser, Struct/Method Inspection)"]
         TUI["tuikit (Subcommands, Box, Tables, ANSI Probe)"]
-        TEST["testkit (Zero-Dependency Assert, Require, Mock)"]
+        TEST["testing (Zero-Dependency Assert, Require, Mock)"]
     end
 
     subgraph Async["Concurrency Runtime (async, sync, generic, net)"]
@@ -52,7 +52,7 @@ graph TD
     Async --> Core
 ```
 
-### Pillar 1: `silicon/`, `bufkit/`, `binkit/` (Hardware Substrate)
+### Pillar 1: `silicon/`, `bufkit/`, `encoding/bin/` (Hardware Substrate)
 * **Design Goal**: Nanosecond compute, zero garbage collection overhead, direct register and memory layout utilization.
 * **Constraints**: Zero external dependencies, pure Go runtime + Plan 9 Go Assembly, zero heap allocations on hot paths.
 
@@ -76,13 +76,13 @@ graph TD
 | | `hexkit` | [`docs/silicon/BYTESCONV.md`](silicon/BYTESCONV.md) | Vectorized AVX2 hexadecimal encoding and decoding. |
 | | `trie` | [`docs/silicon/TRIE.md`](silicon/TRIE.md) | Zero-allocation prefix and radix search trees. |
 | **`argkit/`** | `argkit` | [`docs/argkit/ARGKIT.md`](argkit/ARGKIT.md) | POSIX flag interspersing, short flag stacking (`-la`), attached values, typo suggestions. |
-| **`astkit/`** | `astkit` | [`docs/astkit/ASTKIT.md`](astkit/ASTKIT.md) | Go AST traversal, struct tag extraction, method inspection, statement parsing. |
-| **`binkit/`** | `binkit` | [`docs/binkit/BINKIT.md`](binkit/BINKIT.md) | Sequential zero-allocation binary Reader/Writer, sticky errors, JIT struct serialization. |
+| **`ast/golang/`** | `ast/golang` | [`docs/ast/golang/GOLANG.md`](ast/golang/GOLANG.md) | Go AST traversal, struct tag extraction, method inspection, statement parsing. |
+| **`encoding/bin/`** | `encoding/bin` | [`docs/encoding/bin/BIN.md`](encoding/bin/BIN.md) | Sequential zero-allocation binary Reader/Writer, sticky errors, JIT struct serialization. |
 | **`bufkit/`** | `bufkit` | [`docs/bufkit/BUFKIT.md`](bufkit/BUFKIT.md) | Cacheline-aligned buffers, scatter-gather BufferChain, and SPSC RingBuffer. |
 | **`codec/`** | `codec` | [`docs/codec/CODEC.md`](codec/CODEC.md) | Brotli, Zstd, Gzip, Deflate, LZ4, LZMA, filters (BCJ/Delta/Shuffle), SIMD JSON. |
 | **`fskit/`** | `fskit` | [`docs/fskit/FSKIT.md`](fskit/FSKIT.md) | Parallel multi-threaded directory walking (`FastWalk`), cross-platform mmap. |
 | **`pathkit/`** | `pathkit` | [`docs/pathkit/PATHKIT.md`](pathkit/PATHKIT.md) | Unified immutable Path type, RFC 8089 file:// URIs, clean normalization. |
-| **`testkit/`** | `testkit` | [`docs/testkit/TESTKIT.md`](testkit/TESTKIT.md) | Zero-dependency test assertions (`assert`), immediate failure (`require`), method `mock`. |
+| **`testing/`** | `testing` | [`docs/testing/TESTING.md`](testing/TESTING.md) | Zero-dependency test assertions (`assert`), immediate failure (`require`), method `mock`. |
 | **`timekit/`** | `timekit` | [`docs/timekit/TIMEKIT.md`](timekit/TIMEKIT.md) | Coarse atomic clock, zero-alloc HTTP-date / ISO 8601 formatting, stopwatch. |
 | **`tuikit/`** | `tuikit` | [`docs/tuikit/TUIKIT.md`](tuikit/TUIKIT.md) | CLI subcommands, formatted data tables, bordered boxes, progress indicators, ANSI sniffer. |
 | **`types/`** | `types` | [`docs/types/TYPES.md`](types/TYPES.md) | RFC 9562 UUIDv4/v7 with SIMD parsers, zero-allocation dynamic value extraction. |

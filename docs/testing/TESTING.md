@@ -1,13 +1,13 @@
-# Zero-Dependency Test & Mocking Toolkit (`testkit`)
+# Zero-Dependency Test & Mocking Toolkit (`testing`)
 
-[![Go Reference](https://img.shields.io/badge/go-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/lemon4ksan/foundation/testkit)
+[![Go Reference](https://img.shields.io/badge/go-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/lemon4ksan/foundation/testing)
 
-`testkit` provides a zero-dependency testing toolkit containing full `assert`, `require`, and `mock` primitives, replacing bulky external testing packages with minimal CPU overhead.
+`testing` provides a zero-dependency testing toolkit containing full `assert`, `require`, and `mock` primitives, replacing bulky external testing packages with minimal CPU overhead.
 
 ## Architectural Components
 
 ```text
-foundation/testkit/
+foundation/testing/
 ├── assert/              # Non-terminating assertion library (Equal, True, Nil, Len, ElementsMatch...)
 ├── require/             # Immediate-terminating assertions (calls t.FailNow on failure)
 ├── mock/                # Fluent method mocking and call expectations
@@ -31,8 +31,8 @@ package main
 import (
     "testing"
 
-    "github.com/lemon4ksan/foundation/testkit/assert"
-    "github.com/lemon4ksan/foundation/testkit/require"
+    "github.com/lemon4ksan/foundation/testing/assert"
+    "github.com/lemon4ksan/foundation/testing/require"
 )
 
 func TestExample(t *testing.T) {
@@ -45,7 +45,7 @@ func TestExample(t *testing.T) {
 }
 ```
 
-### 2. Method Mocking (`testkit/mock`)
+### 2. Method Mocking (`testing/mock`)
 
 ```go
 package main
@@ -53,7 +53,7 @@ package main
 import (
     "testing"
 
-    "github.com/lemon4ksan/foundation/testkit/mock"
+    "github.com/lemon4ksan/foundation/testing/mock"
 )
 
 type DatabaseMock struct {

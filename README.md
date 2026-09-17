@@ -74,7 +74,7 @@ go generate ./...
 
 ## Package Index
 
-### 1. Hardware Substrate (`silicon/`, `bufkit/`, `binkit/`)
+### 1. Hardware Substrate (`silicon/`, `bufkit/`, `encoding/bin/`)
 * **`simd`**: AVX2/BMI2 vector processing for frame scanning and match lengths.
 * **`hexkit`**: SIMD hex encoder/decoder (13.0 GB/s).
 * **`bytesconv`**: Vector casing, Base64 codecs, zero-copy converters, tokenizers (31.8 GB/s).
@@ -84,7 +84,7 @@ go generate ./...
 * **`clock` & `randkit`**: Syscall-free monotonic clock, lock-free PRNG, UUIDv7.
 * **`trie`**: Compressed radix search trees.
 * **`bufkit`**: Cacheline-aligned (64B) buffers, scatter-gather `BufferChain`, SPSC `RingBuffer`.
-* **`binkit`**: Sequential zero-alloc binary Reader/Writer, JIT struct codecs.
+* **`encoding/bin`**: Sequential zero-alloc binary Reader/Writer, JIT struct codecs.
 
 ### 2. Codecs & Filesystem (`codec/`, `fskit/`, `pathkit/`, `vfs/`, `iokit/`)
 * **`codec`**: Multi-algorithm compression (`brotli`, `zstd`, `gzip`, `flate`, `lz4`, `lzma`, `fse`, `huff0`), filters (`bcj`, `delta`, `shuffle`), SIMD JSON.
@@ -93,11 +93,11 @@ go generate ./...
 * **`vfs`**: `io/fs.FS` integration with Zip Slip / Tar Slip defenses and resource limits.
 * **`iokit`**: Replayable body buffers, zero-alloc `BytesReader`, pooled stream copies.
 
-### 3. CLI & AST Tooling (`argkit/`, `astkit/`, `tuikit/`, `testkit/`)
+### 3. CLI & AST Tooling (`argkit/`, `ast/golang/`, `tuikit/`, `testing/`)
 * **`argkit`**: POSIX flag parsing, short flag stacking (`-la`), attached values, Levenshtein suggestions.
-* **`astkit`**: Zero-dependency Go AST inspection, struct field/tag extraction, method discovery.
+* **`ast/golang`**: Zero-dependency Go AST inspection, struct field/tag extraction, method discovery.
 * **`tuikit`**: Terminal UI framework, subcommand routing, auto-aligned tables, ANSI TrueColor.
-* **`testkit`**: Zero-dependency assertion (`assert`), termination (`require`), and method expectation (`mock`).
+* **`testing`**: Zero-dependency assertion (`assert`), termination (`require`), and method expectation (`mock`).
 
 ### 4. Concurrency Orchestration (`async/`)
 * **`ctxkit`**: Flat-array, L1-cache resident `context.Context` (0 allocs).

@@ -18,11 +18,11 @@ foundation/
 ├── argkit/                   // Command-Line Argument & Flag Parsing
 │   └── ARGKIT.md             // POSIX flag interspersing, short flag stacking, typo suggestions
 │
-├── astkit/                   // Go AST Code Inspection & Script Parsing
-│   └── ASTKIT.md             // AST traversal, struct/method introspection, expression parsing
+├── ast/golang/                   // Go AST Code Inspection & Script Parsing
+│   └── GOLANG.md             // AST traversal, struct/method introspection, expression parsing
 │
-├── binkit/                   // Binary Encoding & Fast Serialization
-│   └── BINKIT.md             // Sequential Reader/Writer, sticky errors, JIT struct codec
+├── encoding/bin/                   // Binary Encoding & Fast Serialization
+│   └── BIN.md             // Sequential Reader/Writer, sticky errors, JIT struct codec
 │
 ├── bufkit/                   // High-Performance Memory Buffers
 │   └── BUFKIT.md             // Cache-aligned buffers, BufferChain, RingBuffer
@@ -36,8 +36,8 @@ foundation/
 ├── pathkit/                  // Unified Path & URI Abstraction
 │   └── PATHKIT.md            // File URIs (RFC 8089), network URLs, OS paths
 │
-├── testkit/                  // Zero-Dependency Test Suite & Mocks
-│   └── TESTKIT.md            // Assertions, require, mock expectations, gomock
+├── testing/                  // Zero-Dependency Test Suite & Mocks
+│   └── TESTING.md            // Assertions, require, mock expectations, gomock
 │
 ├── timekit/                  // High-Throughput Time & Dates
 │   └── TIMEKIT.md            // CoarseNow, zero-alloc HTTP-date & ISO 8601, Stopwatch
@@ -100,17 +100,17 @@ foundation/
 | :--- | :--- | :--- |
 | `argkit` | [`docs/argkit/ARGKIT.md`](argkit/ARGKIT.md) | POSIX flag interspersing, short flag stacking (`-la`), attached values, typo suggestions. |
 
-### AST Inspection & Code Analysis (`astkit/`)
+### AST Inspection & Code Analysis (`ast/golang/`)
 
 | Module | Documentation | Focus Area |
 | :--- | :--- | :--- |
-| `astkit` | [`docs/astkit/ASTKIT.md`](astkit/ASTKIT.md) | Go AST traversal, struct tag extraction, method inspection, statement parsing. |
+| `ast/golang` | [`docs/ast/golang/GOLANG.md`](ast/golang/GOLANG.md) | Go AST traversal, struct tag extraction, method inspection, statement parsing. |
 
-### Binary Encoding & Layout Serialization (`binkit/`)
+### Binary Encoding & Layout Serialization (`encoding/bin/`)
 
 | Module | Documentation | Focus Area |
 | :--- | :--- | :--- |
-| `binkit` | [`docs/binkit/BINKIT.md`](binkit/BINKIT.md) | Sequential zero-allocation binary Reader/Writer, sticky errors, JIT struct serialization. |
+| `encoding/bin` | [`docs/encoding/bin/BIN.md`](encoding/bin/BIN.md) | Sequential zero-allocation binary Reader/Writer, sticky errors, JIT struct serialization. |
 
 ### High-Performance Buffers (`bufkit/`)
 
@@ -136,11 +136,11 @@ foundation/
 | :--- | :--- | :--- |
 | `pathkit` | [`docs/pathkit/PATHKIT.md`](pathkit/PATHKIT.md) | Unified immutable Path type, RFC 8089 file:// URIs, clean normalization. |
 
-### Testing & Mocking Toolkit (`testkit/`)
+### Testing & Mocking Toolkit (`testing/`)
 
 | Module | Documentation | Focus Area |
 | :--- | :--- | :--- |
-| `testkit` | [`docs/testkit/TESTKIT.md`](testkit/TESTKIT.md) | Zero-dependency test assertions (`assert`), immediate failure (`require`), method `mock`. |
+| `testing` | [`docs/testing/TESTING.md`](testing/TESTING.md) | Zero-dependency test assertions (`assert`), immediate failure (`require`), method `mock`. |
 
 ### High-Throughput Time & Dates (`timekit/`)
 

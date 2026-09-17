@@ -1,8 +1,8 @@
-# Go AST Parser & Code Introspection (`astkit`)
+# Go AST Parser & Code Introspection (`ast/golang`)
 
-[![Go Reference](https://img.shields.io/badge/go-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/lemon4ksan/foundation/astkit)
+[![Go Reference](https://img.shields.io/badge/go-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/lemon4ksan/foundation/ast/golang)
 
-`astkit` provides zero-dependency Go AST parsing, structural inspection, statement slicing, and syntax traversal helpers.
+`ast/golang` provides zero-dependency Go AST parsing, structural inspection, statement slicing, and syntax traversal helpers.
 
 ## Core Capabilities
 
@@ -14,7 +14,7 @@
 
 ## Key APIs & Usage
 
-### 1. Discover Structs and Fields (`astkit.FindStructs`)
+### 1. Discover Structs and Fields (`ast/golang.FindStructs`)
 
 ```go
 package main
@@ -24,7 +24,7 @@ import (
     "go/parser"
     "go/token"
 
-    "github.com/lemon4ksan/foundation/astkit"
+    "github.com/lemon4ksan/foundation/ast/golang"
 )
 
 func main() {
@@ -38,7 +38,7 @@ func main() {
     fset := token.NewFileSet()
     file, _ := parser.ParseFile(fset, "schema.go", src, 0)
 
-    structs := astkit.FindStructs(file)
+    structs := ast/golang.FindStructs(file)
     for _, s := range structs {
         fmt.Printf("Struct: %s\n", s.Name)
         for _, f := range s.Fields {
@@ -56,18 +56,18 @@ package main
 import (
     "fmt"
 
-    "github.com/lemon4ksan/foundation/astkit"
+    "github.com/lemon4ksan/foundation/ast/golang"
 )
 
 func main() {
     // Parse single expression
-    expr, err := astkit.ParseExpr("a + b * 2")
+    expr, err := ast/golang.ParseExpr("a + b * 2")
     if err == nil {
         fmt.Printf("Parsed expression: %T\n", expr)
     }
 
     // Parse statement block
-    stmts, err := astkit.ParseScript("x := 10\nif x > 0 { println(x) }")
+    stmts, err := ast/golang.ParseScript("x := 10\nif x > 0 { println(x) }")
     if err == nil {
         fmt.Printf("Parsed %d statements\n", len(stmts))
     }
