@@ -43,7 +43,7 @@ var (
 )
 
 func init() {
-	for i := 0; i < 16; i++ {
+	for i := range 16 {
 		globalURLCache.shards[i].m = make(map[string]*url.URL, 16)
 	}
 }

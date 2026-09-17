@@ -299,10 +299,7 @@ var UTF8Validator transform.Transformer = utf8Validator{}
 type utf8Validator struct{ transform.NopResetter }
 
 func (utf8Validator) Transform(dst, src []byte, atEOF bool) (nDst, nSrc int, err error) {
-	n := len(src)
-	if n > len(dst) {
-		n = len(dst)
-	}
+	n := min(len(src), len(dst))
 	for i := 0; i < n; {
 		if c := src[i]; c < utf8.RuneSelf {
 			dst[i] = c

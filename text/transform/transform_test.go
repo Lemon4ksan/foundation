@@ -738,7 +738,7 @@ func TestDiscard(t *testing.T) {
 
 // mkChain creates a Chain transformer. x must be alternating between transformer
 // and bufSize, like T, (sz, T)*
-func mkChain(x ...interface{}) *chain {
+func mkChain(x ...any) *chain {
 	t := []Transformer{}
 	for i := 0; i < len(x); i += 2 {
 		t = append(t, x[i].(Transformer))

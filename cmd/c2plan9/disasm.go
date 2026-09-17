@@ -6,6 +6,7 @@ package main
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"golang.org/x/arch/x86/x86asm"
@@ -430,10 +431,8 @@ func cleanPlan9Syntax(s string) string {
 		parts := strings.Split(str, ",")
 		if len(parts) >= 2 {
 			dest := strings.TrimSpace(parts[len(parts)-1])
-			for _, r := range sixtyFourBitRegs {
-				if dest == r {
-					return true
-				}
+			if slices.Contains(sixtyFourBitRegs, dest) {
+				return true
 			}
 		}
 		return false

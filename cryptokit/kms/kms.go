@@ -51,9 +51,9 @@ func ParseURI(rawURI string) (*KeyURI, error) {
 		return nil, fmt.Errorf("%w: URI is empty", ErrInvalidURI)
 	}
 
-	if idx := strings.Index(trimmed, "://"); idx != -1 {
-		scheme := strings.ToLower(trimmed[:idx])
-		path := trimmed[idx+3:]
+	if before, after, ok := strings.Cut(trimmed, "://"); ok {
+		scheme := strings.ToLower(before)
+		path := after
 		switch scheme {
 		case "vault":
 			return &KeyURI{Provider: "vault", KeyPath: strings.TrimPrefix(path, "transit/keys/"), Raw: trimmed}, nil

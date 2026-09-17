@@ -198,10 +198,7 @@ func (b *Box) Render(w io.Writer) error {
 			rightVis := VisibleWidth(e.right)
 			avail := innerW - 2
 
-			gap := avail - (leftVis + rightVis)
-			if gap < 1 {
-				gap = 1
-			}
+			gap := max(avail-(leftVis+rightVis), 1)
 
 			buf.WriteString(e.left)
 			buf.WriteString(strings.Repeat(" ", gap))

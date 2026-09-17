@@ -342,9 +342,9 @@ func ParseHeader(headerValue string) (*Policy, error) {
 
 	var hasMaxAge bool
 
-	directives := strings.Split(headerValue, ";")
+	directives := strings.SplitSeq(headerValue, ";")
 
-	for _, rawDir := range directives {
+	for rawDir := range directives {
 		dir := strings.TrimSpace(rawDir)
 		if dir == "" {
 			continue

@@ -79,12 +79,12 @@ func ParseBasic(authHeader string) (username, password string, ok bool) {
 
 	raw := bytesconv.B2S(decoded)
 
-	colonIdx := strings.IndexByte(raw, ':')
-	if colonIdx < 0 {
+	before, after, ok := strings.Cut(raw, ":")
+	if !ok {
 		return "", "", false
 	}
 
-	return raw[:colonIdx], raw[colonIdx+1:], true
+	return before, after, true
 }
 
 // ParseBasicChallenge extracts the realm and optional charset parameter from a "WWW-Authenticate: Basic ..." header (RFC 7617 §2).

@@ -6,6 +6,7 @@ package bytesconv
 
 import (
 	"bytes"
+	"maps"
 	"testing"
 
 	"github.com/lemon4ksan/foundation/testkit/assert"
@@ -220,10 +221,7 @@ func TestScannerRoutines(t *testing.T) {
 	}
 	assert.Len(t, tokenBytes, 3)
 
-	pairs := make(map[string]string)
-	for k, v := range ScanPairs("a=1; b=2; c=3", ';', '=') {
-		pairs[k] = v
-	}
+	pairs := maps.Collect(ScanPairs("a=1; b=2; c=3", ';', '='))
 	assert.Equal(t, map[string]string{"a": "1", "b": "2", "c": "3"}, pairs)
 
 	pairBytes := make(map[string]string)

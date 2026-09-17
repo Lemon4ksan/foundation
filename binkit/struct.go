@@ -52,7 +52,7 @@ func getLayout(t reflect.Type) (*structLayout, error) {
 	layout := &structLayout{}
 	numFields := elemType.NumField()
 
-	for i := 0; i < numFields; i++ {
+	for i := range numFields {
 		field := elemType.Field(i)
 		if !field.IsExported() {
 			continue

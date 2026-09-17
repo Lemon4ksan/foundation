@@ -44,7 +44,7 @@ func (rd *RangeDecoder) Init(r io.Reader) error {
 	rd.limit = 0
 	rd.eof = false
 
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		b, err := rd.readByte()
 		if err != nil {
 			return err
@@ -136,7 +136,7 @@ func (rd *RangeDecoder) DecodeBit(prob *uint16) (int, error) {
 // DecodeDirectBits decodes unmodeled direct bits (fixed 50/50 probability).
 func (rd *RangeDecoder) DecodeDirectBits(numBits int) (uint32, error) {
 	var val uint32
-	for i := 0; i < numBits; i++ {
+	for range numBits {
 		rd.range_ >>= 1
 		val <<= 1
 		if rd.code >= rd.range_ {
@@ -162,7 +162,7 @@ func (rd *RangeDecoder) DecodeDirectBits(numBits int) (uint32, error) {
 // DecodeTree decodes a binary probability decision tree of given depth.
 func (rd *RangeDecoder) DecodeTree(probs []uint16, numBits int) (uint32, error) {
 	var m uint32 = 1
-	for i := 0; i < numBits; i++ {
+	for range numBits {
 		bit, err := rd.DecodeBit(&probs[m])
 		if err != nil {
 			return 0, err
@@ -176,7 +176,7 @@ func (rd *RangeDecoder) DecodeTree(probs []uint16, numBits int) (uint32, error) 
 func (rd *RangeDecoder) DecodeReverseTree(probs []uint16, numBits int) (uint32, error) {
 	var m uint32 = 1
 	var symbol uint32
-	for i := 0; i < numBits; i++ {
+	for i := range numBits {
 		bit, err := rd.DecodeBit(&probs[m])
 		if err != nil {
 			return 0, err
@@ -304,7 +304,7 @@ func (re *RangeEncoder) EncodeTree(probs []uint16, numBits int, symbol uint32) e
 // EncodeReverseTree encodes a symbol through a reverse binary probability decision tree (lowest bit first).
 func (re *RangeEncoder) EncodeReverseTree(probs []uint16, numBits int, symbol uint32) error {
 	var m uint32 = 1
-	for i := 0; i < numBits; i++ {
+	for i := range numBits {
 		bit := int((symbol >> i) & 1)
 		if err := re.EncodeBit(&probs[m], bit); err != nil {
 			return err
@@ -316,7 +316,7 @@ func (re *RangeEncoder) EncodeReverseTree(probs []uint16, numBits int, symbol ui
 
 // Flush flushes all buffered arithmetic bits into the underlying writer.
 func (re *RangeEncoder) Flush() error {
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		if err := re.shiftLow(); err != nil {
 			return err
 		}

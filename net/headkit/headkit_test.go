@@ -5,6 +5,7 @@
 package headkit_test
 
 import (
+	"maps"
 	"net/http"
 	"testing"
 	"time"
@@ -19,10 +20,7 @@ func TestDirectives(t *testing.T) {
 
 	raw := `public, max-age=3600, must-revalidate, stale-while-revalidate=60, custom="val,ue"`
 
-	parsed := make(map[string]string)
-	for k, v := range headkit.Directives(raw) {
-		parsed[k] = v
-	}
+	parsed := maps.Collect(headkit.Directives(raw))
 
 	assert.Equal(t, "", parsed["public"])
 	assert.Equal(t, "3600", parsed["max-age"])

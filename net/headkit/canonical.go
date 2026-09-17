@@ -28,7 +28,7 @@ func IsCanonical(s string) bool {
 	_ = s[n-1]
 
 	upper := true
-	for i := 0; i < n; i++ {
+	for i := range n {
 		c := s[i]
 		if upper {
 			if 'a' <= c && c <= 'z' {
@@ -55,7 +55,7 @@ func CanonicalKeyBytes(b []byte) []byte {
 	_ = b[n-1]
 
 	upper := true
-	for i := 0; i < n; i++ {
+	for i := range n {
 		c := b[i]
 		if upper {
 			if 'a' <= c && c <= 'z' {

@@ -89,14 +89,12 @@ func TestSourceIPRotator_Concurrent(t *testing.T) {
 	iterations := 1000
 
 	for range workers {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for range iterations {
 				val := rot.Next()
 				assert.NotNil(t, val)
 			}
-		}()
+		})
 	}
 
 	wg.Wait()

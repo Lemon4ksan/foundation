@@ -34,7 +34,7 @@ func FuzzArenaAlloc(f *testing.F) {
 		}
 		defer arena.Release()
 
-		for i := 0; i < numAllocs; i++ {
+		for range numAllocs {
 			ptr := arena.Alloc(allocSize)
 			if allocSize <= 0 {
 				if ptr != nil {
@@ -126,7 +126,7 @@ func FuzzSlabPoolAlloc(f *testing.F) {
 		defer slab.Release()
 
 		allocated := make([]*PODSlot, 0, allocCount)
-		for i := 0; i < allocCount; i++ {
+		for i := range allocCount {
 			ptr := slab.Alloc()
 			if ptr != nil {
 				ptr.ID = uint64(i + 1)

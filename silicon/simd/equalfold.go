@@ -25,7 +25,7 @@ func EqualFoldVector(a, b []byte) bool {
 		) == 1
 	}
 
-	for i := 0; i < len(a); i++ {
+	for i := range a {
 		ca := a[i]
 		cb := b[i]
 		if ca >= 'A' && ca <= 'Z' {

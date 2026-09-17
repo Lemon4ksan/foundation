@@ -28,10 +28,10 @@ func buildSingleMatchBlock(prefix, offset, mlen int) (compressed, decoded []byte
 	}
 
 	decoded = make([]byte, prefix+mlen)
-	for i := 0; i < prefix; i++ {
+	for i := range prefix {
 		decoded[i] = byte(i%253 + 1) // non-zero so errors are obvious
 	}
-	for i := 0; i < mlen; i++ {
+	for i := range mlen {
 		decoded[prefix+i] = decoded[prefix+i-offset]
 	}
 
@@ -48,14 +48,8 @@ func buildSingleMatchBlock(prefix, offset, mlen int) (compressed, decoded []byte
 }
 
 func writeToken(buf *bytes.Buffer, litlen, rawMatch int) {
-	tokLit := litlen
-	if tokLit > 15 {
-		tokLit = 15
-	}
-	tokM := rawMatch
-	if tokM > 15 {
-		tokM = 15
-	}
+	tokLit := min(litlen, 15)
+	tokM := min(rawMatch, 15)
 	buf.WriteByte(byte((tokLit << 4) | tokM))
 	if litlen >= 15 {
 		writeExtended(buf, litlen-15)
@@ -115,7 +109,7 @@ func TestMatchCopySingle(t *testing.T) {
 				t.Fatalf("decode returned %d, want %d", n, len(want))
 			}
 			if !bytes.Equal(dst[:n], want) {
-				for i := 0; i < n; i++ {
+				for i := range n {
 					if dst[i] != want[i] {
 						t.Fatalf("first mismatch at byte %d: got 0x%02x want 0x%02x",
 							i, dst[i], want[i])
@@ -150,10 +144,7 @@ func TestMatchCopyMatrix(t *testing.T) {
 
 	for _, off := range offsets {
 		for _, mlen := range mlens {
-			prefix := off
-			if prefix < 16 {
-				prefix = 16
-			}
+			prefix := max(off, 16)
 			src, want := buildSingleMatchBlock(prefix, off, mlen)
 			dst := make([]byte, len(want))
 			n := decodeBlock(dst, src, nil)
@@ -162,7 +153,7 @@ func TestMatchCopyMatrix(t *testing.T) {
 					off, mlen, n, len(want))
 			}
 			if !bytes.Equal(dst[:n], want) {
-				for i := 0; i < n; i++ {
+				for i := range n {
 					if dst[i] != want[i] {
 						t.Fatalf("off=%d mlen=%d: first mismatch at byte %d: got 0x%02x want 0x%02x",
 							off, mlen, i, dst[i], want[i])
@@ -199,14 +190,14 @@ func TestMatchCopyChained(t *testing.T) {
 			writeExtended(&buf, rawM-15)
 		}
 		start := len(want)
-		for i := 0; i < mlen; i++ {
+		for i := range mlen {
 			want = append(want, want[start-off+i])
 		}
 	}
 
 	// Many follow-on matches with no literals between them, varying offset
 	// and match length across thresholds.
-	for i := 0; i < 40; i++ {
+	for i := range 40 {
 		off := 8 + (i*3)%120 // sweep small + medium + large offsets
 		mlen := 16 + (i*7)%200
 		writeToken(&buf, 0, mlen-minMatch)
@@ -217,7 +208,7 @@ func TestMatchCopyChained(t *testing.T) {
 			writeExtended(&buf, rawM-15)
 		}
 		start := len(want)
-		for j := 0; j < mlen; j++ {
+		for j := range mlen {
 			want = append(want, want[start-off+j])
 		}
 	}
@@ -234,7 +225,7 @@ func TestMatchCopyChained(t *testing.T) {
 		t.Fatalf("decode returned %d, want %d", n, len(want))
 	}
 	if !bytes.Equal(dst[:n], want) {
-		for i := 0; i < n; i++ {
+		for i := range n {
 			if dst[i] != want[i] {
 				t.Fatalf("first mismatch at byte %d: got 0x%02x want 0x%02x", i, dst[i], want[i])
 			}

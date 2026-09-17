@@ -246,7 +246,7 @@ func TestAllocStruct_AlignmentCorrectness(t *testing.T) {
 
 	err := offheap.Scope(256*1024, func(a *offheap.Arena) {
 		// Alternate small + large to provoke alignment padding
-		for i := 0; i < 100; i++ {
+		for range 100 {
 			p1 := offheap.AllocStruct[aligned1](a)
 			require.NotNil(t, p1)
 
@@ -311,7 +311,7 @@ func TestArena_ResetAndReuse(t *testing.T) {
 
 	defer arena.Release()
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		hdr := offheap.AllocStruct[testFrameHeader](arena)
 		require.NotNil(t, hdr)
 		hdr.StreamID = uint32(i * 100)
@@ -363,11 +363,11 @@ func TestArenaPool_Concurrent(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(goroutines)
 
-	for g := 0; g < goroutines; g++ {
+	for range goroutines {
 		go func() {
 			defer wg.Done()
 
-			for i := 0; i < iters; i++ {
+			for i := range iters {
 				a := pool.Acquire()
 				if a == nil {
 					continue
@@ -409,7 +409,7 @@ func FuzzArena_AllocStruct(f *testing.F) {
 		}
 		defer arena.Release()
 
-		for i := 0; i < allocCount; i++ {
+		for i := range allocCount {
 			hdr := offheap.AllocStruct[testFrameHeader](arena)
 			if hdr == nil {
 				// Arena exhausted, fell back to heap - expected.

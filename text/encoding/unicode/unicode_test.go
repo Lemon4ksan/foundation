@@ -300,7 +300,7 @@ func TestUTF16(t *testing.T) {
 		t:       utf16LEUB.NewDecoder(),
 	}}
 	for i, tc := range testCases {
-		for j := 0; j < 2; j++ {
+		for range 2 {
 			b := make([]byte, tc.sizeDst)
 			nDst, nSrc, err := tc.t.Transform(b, []byte(tc.src), !tc.notEOF)
 			if err != tc.err {

@@ -115,7 +115,7 @@ func (b Bytes) Slice(low, high int) Bytes {
 		return Bytes{slot: b.slot, gen: b.gen}
 	}
 
-	subPtr := unsafe.Pointer(uintptr(b.ptr) + uintptr(low))
+	subPtr := unsafe.Add(b.ptr, low)
 
 	return Bytes{
 		ptr:  subPtr,

@@ -79,10 +79,7 @@ func (q *queue) done() {
 // Walk traverses targetRoot concurrently using a worker pool and emits entries to outChan.
 // It closes outChan when traversal is complete.
 func Walk(targetRoot string, outChan chan<- Entry) {
-	numWorkers := runtime.GOMAXPROCS(0) * 2
-	if numWorkers < 8 {
-		numWorkers = 8
-	}
+	numWorkers := max(runtime.GOMAXPROCS(0)*2, 8)
 
 	q := newQueue()
 	cleanRoot := filepath.Clean(targetRoot)
@@ -92,9 +89,7 @@ func Walk(targetRoot string, outChan chan<- Entry) {
 
 	var wg sync.WaitGroup
 	for i := 0; i < numWorkers; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for {
 				dir, ok := q.pop()
 				if !ok {
@@ -133,7 +128,7 @@ func Walk(targetRoot string, outChan chan<- Entry) {
 				}
 				q.done()
 			}
-		}()
+		})
 	}
 
 	wg.Wait()

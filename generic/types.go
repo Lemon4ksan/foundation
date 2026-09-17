@@ -21,8 +21,10 @@ func ApplyOptions[T any](target *T, opts ...Option[*T]) {
 
 // Ptr returns a pointer to the provided value.
 // It is useful for inline initialization of pointer fields with literals.
+//
+//go:fix inline
 func Ptr[T any](v T) *T {
-	return &v
+	return new(v)
 }
 
 // PtrOrNil returns a pointer to the given value, or nil if the value is the zero value of its type.

@@ -27,13 +27,11 @@ func IsNotFound(err error) bool {
 		return true
 	}
 
-	var dnsErr *net.DNSError
-	if errors.As(err, &dnsErr) {
+	if dnsErr, ok := errors.AsType[*net.DNSError](err); ok {
 		return dnsErr.IsNotFound
 	}
 
-	var resErr *ResolutionError
-	if errors.As(err, &resErr) {
+	if resErr, ok := errors.AsType[*ResolutionError](err); ok {
 		return IsNotFound(resErr.Err)
 	}
 
@@ -49,13 +47,11 @@ func IsNXDomain(err error) bool {
 		return true
 	}
 
-	var dnsErr *net.DNSError
-	if errors.As(err, &dnsErr) {
+	if dnsErr, ok := errors.AsType[*net.DNSError](err); ok {
 		return dnsErr.IsNotFound
 	}
 
-	var resErr *ResolutionError
-	if errors.As(err, &resErr) {
+	if resErr, ok := errors.AsType[*ResolutionError](err); ok {
 		return IsNXDomain(resErr.Err)
 	}
 
@@ -108,9 +104,8 @@ func WrapDNSError(host, resolver, endpoint string, err error) error {
 		return nil
 	}
 
-	var netErr net.Error
 	isTimeout := false
-	if errors.As(err, &netErr) {
+	if netErr, ok := errors.AsType[net.Error](err); ok {
 		isTimeout = netErr.Timeout()
 	}
 

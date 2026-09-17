@@ -8,6 +8,7 @@ import (
 	"context"
 	"net"
 	"net/netip"
+	"slices"
 	"strings"
 )
 
@@ -83,10 +84,8 @@ func (p *PerHost) dialerForRequest(host string) Dialer {
 			return p.bypass
 		}
 	}
-	for _, bypassHost := range p.bypassHosts {
-		if bypassHost == host {
-			return p.bypass
-		}
+	if slices.Contains(p.bypassHosts, host) {
+		return p.bypass
 	}
 	return p.def
 }
@@ -97,8 +96,8 @@ func (p *PerHost) dialerForRequest(host string) Dialer {
 // (localhost). A best effort is made to parse the string and errors are
 // ignored.
 func (p *PerHost) AddFromString(s string) {
-	hosts := strings.Split(s, ",")
-	for _, host := range hosts {
+	hosts := strings.SplitSeq(s, ",")
+	for host := range hosts {
 		host = strings.TrimSpace(host)
 		if len(host) == 0 {
 			continue

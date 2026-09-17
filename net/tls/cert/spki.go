@@ -11,6 +11,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"errors"
+	"slices"
 )
 
 // Standard errors for SPKI verification.
@@ -61,10 +62,8 @@ func ValidateChainSPKI(chain []*x509.Certificate, expectedPins [][32]byte) error
 		}
 
 		spkiHash := sha256.Sum256(cert.RawSubjectPublicKeyInfo)
-		for _, pin := range expectedPins {
-			if spkiHash == pin {
-				return nil
-			}
+		if slices.Contains(expectedPins, spkiHash) {
+			return nil
 		}
 	}
 

@@ -99,7 +99,7 @@ func TestFastContext_Set_InPlace(t *testing.T) {
 	ctx.Set(nil, "val")
 
 	// Set within inline capacity (8 items)
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		ctx.Set(i, i*10)
 	}
 
@@ -124,11 +124,11 @@ func TestFastContext_OverflowCapacity(t *testing.T) {
 	ctx := context.Context(ctxkit.Background())
 
 	// Add 12 values (exceeding inlineCapacity of 8)
-	for i := 0; i < 12; i++ {
+	for i := range 12 {
 		ctx = ctxkit.WithValue(ctx, i, i*10)
 	}
 
-	for i := 0; i < 12; i++ {
+	for i := range 12 {
 		assert.Equal(t, i*10, ctxkit.GetOr[int](ctx, i, -1))
 	}
 
@@ -214,7 +214,7 @@ func TestFastContext_Pool(t *testing.T) {
 
 func BenchmarkStdContext_Lookup_Hit(b *testing.B) {
 	ctx := context.Background()
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		ctx = context.WithValue(ctx, i, i*10)
 	}
 
@@ -228,7 +228,7 @@ func BenchmarkStdContext_Lookup_Hit(b *testing.B) {
 
 func BenchmarkFastContext_Lookup_Hit(b *testing.B) {
 	ctx := context.Context(ctxkit.Background())
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		ctx = ctxkit.WithValue(ctx, i, i*10)
 	}
 
@@ -242,7 +242,7 @@ func BenchmarkFastContext_Lookup_Hit(b *testing.B) {
 
 func BenchmarkStdContext_Lookup_Miss(b *testing.B) {
 	ctx := context.Background()
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		ctx = context.WithValue(ctx, i, i*10)
 	}
 
@@ -256,7 +256,7 @@ func BenchmarkStdContext_Lookup_Miss(b *testing.B) {
 
 func BenchmarkFastContext_Lookup_Miss(b *testing.B) {
 	ctx := context.Context(ctxkit.Background())
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		ctx = ctxkit.WithValue(ctx, i, i*10)
 	}
 

@@ -63,12 +63,12 @@ func (f *Filter) Encode(buf []byte) {
 	size := len(buf)
 
 	var temp [StateSize]byte
-	for i := 0; i < delta; i++ {
+	for i := range delta {
 		temp[i] = f.state[i]
 	}
 
 	if size <= delta {
-		for i := 0; i < size; i++ {
+		for i := range size {
 			b := buf[i]
 			buf[i] = b - temp[i]
 			temp[i] = b
@@ -85,7 +85,7 @@ func (f *Filter) Encode(buf []byte) {
 
 	// For data larger than delta:
 	p := size - delta
-	for i := 0; i < delta; i++ {
+	for i := range delta {
 		f.state[i] = buf[p+i]
 	}
 
@@ -115,19 +115,19 @@ func (f *Filter) Decode(buf []byte) {
 	size := len(buf)
 
 	if size <= delta {
-		for i := 0; i < size; i++ {
+		for i := range size {
 			buf[i] += f.state[i]
 		}
 		for i := 0; i+size < delta; i++ {
 			f.state[i] = f.state[i+size]
 		}
-		for i := 0; i < size; i++ {
+		for i := range size {
 			f.state[delta-size+i] = buf[i]
 		}
 		return
 	}
 
-	for i := 0; i < delta; i++ {
+	for i := range delta {
 		buf[i] += f.state[i]
 	}
 
@@ -145,7 +145,7 @@ func (f *Filter) Decode(buf []byte) {
 		buf[i] += buf[i-delta]
 	}
 
-	for i := 0; i < delta; i++ {
+	for i := range delta {
 		f.state[i] = buf[size-delta+i]
 	}
 }

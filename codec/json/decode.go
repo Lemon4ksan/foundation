@@ -20,8 +20,8 @@ import (
 )
 
 var (
-	unmarshalerType     = reflect.TypeOf((*Unmarshaler)(nil)).Elem()
-	textUnmarshalerType = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
+	unmarshalerType     = reflect.TypeFor[Unmarshaler]()
+	textUnmarshalerType = reflect.TypeFor[encoding.TextUnmarshaler]()
 )
 
 // DecoderConfig specifies decoding flags and options.
@@ -636,7 +636,7 @@ type structFieldDecoder struct {
 
 func compileStructFieldDecoders(t reflect.Type, baseOffset uintptr, fieldMap map[string]structFieldDecoder) error {
 	numFields := t.NumField()
-	for i := 0; i < numFields; i++ {
+	for i := range numFields {
 		sf := t.Field(i)
 		if sf.PkgPath != "" && !sf.Anonymous {
 			continue
@@ -760,7 +760,7 @@ func compileStructDecoder(t reflect.Type) (decodeFunc, error) {
 				field, exists = fieldMap[strings.ToLower(key)]
 			}
 			if exists {
-				fieldPtr := unsafe.Pointer(uintptr(p) + field.offset)
+				fieldPtr := unsafe.Add(p, field.offset)
 				if field.quoted {
 					cursor = skipWhitespace(data, cursor)
 					if cursor < len(data) && data[cursor] == '"' {

@@ -40,12 +40,12 @@ func Between(src []byte, prefix, suffix string) ([]byte, error) {
 
 	remaining := src[startIdx:]
 	if suffix != "" {
-		sIdx := bytes.Index(remaining, []byte(suffix))
-		if sIdx == -1 {
+		before, _, ok := bytes.Cut(remaining, []byte(suffix))
+		if !ok {
 			return nil, ErrBetweenNotFound
 		}
 
-		return remaining[:sIdx], nil
+		return before, nil
 	}
 
 	return remaining, nil

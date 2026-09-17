@@ -60,7 +60,7 @@ func TestBalancer_AllStrategies(t *testing.T) {
 	// 1. Random
 	lbRandom, err := loadbalance.New(loadbalance.Random, time.Second, t1, t2, t3)
 	require.NoError(t, err)
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		target, err := lbRandom.Select()
 		require.NoError(t, err)
 		assert.NotEmpty(t, target.Value)
@@ -69,7 +69,7 @@ func TestBalancer_AllStrategies(t *testing.T) {
 	// 2. Weighted
 	lbWeighted, err := loadbalance.New(loadbalance.Weighted, time.Second, t1, t2, t3)
 	require.NoError(t, err)
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		target, err := lbWeighted.Select()
 		require.NoError(t, err)
 		assert.NotEmpty(t, target.Value)

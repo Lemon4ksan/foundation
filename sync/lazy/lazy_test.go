@@ -65,10 +65,10 @@ func TestLazy_Error(t *testing.T) {
 }
 
 func TestLazy_Reset(t *testing.T) {
-	var calls int32
+	var calls atomic.Int32
 
 	l := New(func() (int, error) {
-		c := atomic.AddInt32(&calls, 1)
+		c := calls.Add(1)
 		return int(c), nil
 	})
 
@@ -98,7 +98,7 @@ func TestLazy_Concurrent(t *testing.T) {
 	numGoroutines := 50
 	wg.Add(numGoroutines)
 
-	for i := 0; i < numGoroutines; i++ {
+	for range numGoroutines {
 		go func() {
 			defer wg.Done()
 

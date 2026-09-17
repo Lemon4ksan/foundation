@@ -133,7 +133,7 @@ func TestMockController_AllMatchers(t *testing.T) {
 	}
 
 	// 5. AssignableToTypeOf Matcher
-	assignM := AssignableToTypeOf(reflect.TypeOf(0))
+	assignM := AssignableToTypeOf(reflect.TypeFor[int]())
 	if !assignM.Matches(42) || assignM.Matches("str") || assignM.Matches(nil) ||
 		assignM.String() != "is assignable to int" {
 		t.Fatalf("AssignableToTypeOf matcher failed with reflect.Type")

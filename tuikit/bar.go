@@ -22,10 +22,7 @@ func RenderBar(ratio float64, width int) string {
 		ratio = 1.0
 	}
 
-	filled := int(math.Round(ratio * float64(width)))
-	if filled > width {
-		filled = width
-	}
+	filled := min(int(math.Round(ratio*float64(width))), width)
 
 	empty := width - filled
 

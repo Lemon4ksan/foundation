@@ -84,7 +84,7 @@ func (t *headerFieldTable) evictOldest(n int) {
 		panic(fmt.Sprintf("evictOldest(%v) on table with %v entries", n, t.len()))
 	}
 	if t.byName != nil {
-		for k := 0; k < n; k++ {
+		for k := range n {
 			f := t.ents[k]
 			id := t.evictCount + uint64(k) + 1
 			if t.byName[f.Name] == id {

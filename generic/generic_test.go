@@ -567,7 +567,7 @@ func TestApplyOptions(t *testing.T) {
 func TestPtr(t *testing.T) {
 	v := 42
 
-	p := Ptr(v)
+	p := new(v)
 	if p == nil || *p != 42 {
 		t.Fatalf("expected pointer to 42, got %v", p)
 	}
@@ -663,8 +663,8 @@ func TestKeysAndValues(t *testing.T) {
 
 func TestCoalesceNil(t *testing.T) {
 	var a *int
-	b := Ptr(10)
-	c := Ptr(20)
+	b := new(10)
+	c := new(20)
 
 	res := CoalesceNil(a, b, c)
 	if res == nil || *res != 10 {

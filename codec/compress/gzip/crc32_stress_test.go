@@ -58,7 +58,7 @@ func TestCRC32_DifferentialAgainstStdlib(t *testing.T) {
 	buf := make([]byte, 4096)
 	_, _ = rand.Read(buf)
 
-	for i := 0; i < 5000; i++ {
+	for i := range 5000 {
 		start := i % 2048
 		end := start + (i % 2000)
 		sub := buf[start:end]

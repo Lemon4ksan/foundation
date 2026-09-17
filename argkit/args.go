@@ -246,10 +246,7 @@ func levenshtein(s1, s2 string) int {
 			if r1[i-1] != r2[j-1] {
 				cost = 1
 			}
-			cur := row[j] + 1
-			if prev+1 < cur {
-				cur = prev + 1
-			}
+			cur := min(prev+1, row[j]+1)
 			if row[j-1]+cost < cur {
 				cur = row[j-1] + cost
 			}

@@ -175,7 +175,7 @@ func Compact(dst *bytes.Buffer, src []byte) error {
 // HTMLEscape appends to dst the JSON-encoded src with <, >, &, U+2028, and U+2029
 // characters escaped inside string literals.
 func HTMLEscape(dst *bytes.Buffer, src []byte) {
-	for i := 0; i < len(src); i++ {
+	for i := range src {
 		b := src[i]
 		switch b {
 		case '<':

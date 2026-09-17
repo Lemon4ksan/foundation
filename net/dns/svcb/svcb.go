@@ -525,7 +525,7 @@ func ParseResponseRecords(dnsMsg []byte, expectedType uint16) ([]*Record, error)
 	offset := 12
 
 	// Skip Question section
-	for i := 0; i < qdCount; i++ {
+	for range qdCount {
 		newOffset, err := skipName(dnsMsg, offset)
 		if err != nil {
 			return nil, err

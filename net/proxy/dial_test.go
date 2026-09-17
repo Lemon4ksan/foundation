@@ -24,8 +24,7 @@ func TestDial(t *testing.T) {
 			t.Fatal(err)
 		}
 		defer l.Close()
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		ctx := t.Context()
 		c, err := Dial(ctx, l.Addr().Network(), l.Addr().String())
 		if err != nil {
 			t.Fatal(err)

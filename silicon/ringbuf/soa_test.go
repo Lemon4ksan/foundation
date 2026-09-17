@@ -47,7 +47,7 @@ func BenchmarkBatch_SoA_Vs_AoS(b *testing.B) {
 	soa := ringbuf.NewPacketBatchSoA(batchSize)
 	aos := make([]PacketAoS, batchSize)
 
-	for i := 0; i < batchSize; i++ {
+	for i := range batchSize {
 		proto := byte(6)
 		if i%2 == 0 {
 			proto = 17

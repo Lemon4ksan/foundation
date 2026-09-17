@@ -123,7 +123,7 @@ func TestKeyMutex_ConcurrentDifferentKeys(t *testing.T) {
 	wg.Add(10)
 
 	// Locks on different keys should run in parallel without blocking each other
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		go func(key int) {
 			defer wg.Done()
 
@@ -147,11 +147,11 @@ func TestKeyMutex_ConcurrentSameKey(t *testing.T) {
 
 	wg.Add(numGoroutines)
 
-	for i := 0; i < numGoroutines; i++ {
+	for range numGoroutines {
 		go func() {
 			defer wg.Done()
 
-			for j := 0; j < numIterations; j++ {
+			for range numIterations {
 				km.Lock("shared-key")
 				counter++
 				km.Unlock("shared-key")
@@ -178,7 +178,7 @@ func TestKeyMutex_TryLockConcurrent(t *testing.T) {
 
 	wg.Add(numGoroutines)
 
-	for i := 0; i < numGoroutines; i++ {
+	for range numGoroutines {
 		go func() {
 			defer wg.Done()
 

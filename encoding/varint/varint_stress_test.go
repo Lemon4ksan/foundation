@@ -42,7 +42,7 @@ func TestQUIC_Varint_AdversarialAndBoundaries(t *testing.T) {
 	// Truncated buffer checks: must return error on incomplete bytes, never panic
 	for _, val := range []uint64{64, 16384, 1073741824} {
 		encoded := varint.Append(nil, val)
-		for cut := 0; cut < len(encoded); cut++ {
+		for cut := range encoded {
 			_, _, err := varint.Parse(encoded[:cut])
 			assert.Error(t, err)
 		}
@@ -50,7 +50,7 @@ func TestQUIC_Varint_AdversarialAndBoundaries(t *testing.T) {
 
 	// Fuzzing Parse with random payloads
 	fuzzBuf := make([]byte, 16)
-	for i := 0; i < 50000; i++ {
+	for i := range 50000 {
 		_, _ = rand.Read(fuzzBuf)
 		_, _, _ = varint.Parse(fuzzBuf[:(i%16)+1])
 	}

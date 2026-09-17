@@ -25,7 +25,7 @@ const (
 // Cookie represents an HTTP cookie structure, capturing attributes from Set-Cookie headers
 // and formatted for storage and persistence (RFC 6265 §4.1.1, §4.1.2 & §5.3, RFC 6265bis §5.7).
 type Cookie struct {
-	Expires      time.Time `json:"expires,omitempty"`
+	Expires      time.Time `json:"expires"`
 	Name         string    `json:"name"`
 	Value        string    `json:"value"`
 	Domain       string    `json:"domain"`

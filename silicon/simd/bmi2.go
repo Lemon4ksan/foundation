@@ -31,7 +31,7 @@ func extractBitsSWAR(val, mask uint64) uint64 {
 	res := uint64(0)
 	outBit := uint64(0)
 
-	for i := 0; i < 64; i++ {
+	for i := range 64 {
 		if (mask & (1 << i)) != 0 {
 			if (val & (1 << i)) != 0 {
 				res |= (1 << outBit)
@@ -49,7 +49,7 @@ func depositBitsSWAR(val, mask uint64) uint64 {
 	res := uint64(0)
 	inBit := uint64(0)
 
-	for i := 0; i < 64; i++ {
+	for i := range 64 {
 		if (mask & (1 << i)) != 0 {
 			if (val & (1 << inBit)) != 0 {
 				res |= (1 << i)

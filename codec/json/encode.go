@@ -18,9 +18,9 @@ import (
 )
 
 var (
-	marshalerType     = reflect.TypeOf((*Marshaler)(nil)).Elem()
-	textMarshalerType = reflect.TypeOf((*encoding.TextMarshaler)(nil)).Elem()
-	rawMessageType    = reflect.TypeOf(RawMessage(nil))
+	marshalerType     = reflect.TypeFor[Marshaler]()
+	textMarshalerType = reflect.TypeFor[encoding.TextMarshaler]()
+	rawMessageType    = reflect.TypeFor[RawMessage]()
 )
 
 type encodeState struct {
@@ -363,7 +363,7 @@ func compileStructFields(t reflect.Type, baseOffset uintptr) ([]structFieldEncod
 	numFields := t.NumField()
 	var fields []structFieldEncoder
 
-	for i := 0; i < numFields; i++ {
+	for i := range numFields {
 		sf := t.Field(i)
 		if sf.PkgPath != "" && !sf.Anonymous { // private unexported field
 			continue
@@ -425,7 +425,7 @@ func compileStructEncoder(t reflect.Type) (encoderFunc, error) {
 
 		for i := range fields {
 			f := &fields[i]
-			fp := unsafe.Pointer(uintptr(p) + f.offset)
+			fp := unsafe.Add(p, f.offset)
 
 			if f.omitEmpty && f.isZero(fp) {
 				continue
@@ -544,7 +544,7 @@ func compileSliceEncoder(t reflect.Type) (encoderFunc, error) {
 
 		e.buf = append(e.buf, '[')
 		n := sliceVal.Len()
-		for i := 0; i < n; i++ {
+		for i := range n {
 			if i > 0 {
 				e.buf = append(e.buf, ',')
 			}
@@ -572,7 +572,7 @@ func compileArrayEncoder(t reflect.Type) (encoderFunc, error) {
 		arrVal := reflect.NewAt(t, p).Elem()
 		e.buf = append(e.buf, '[')
 		n := arrVal.Len()
-		for i := 0; i < n; i++ {
+		for i := range n {
 			if i > 0 {
 				e.buf = append(e.buf, ',')
 			}

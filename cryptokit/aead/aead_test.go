@@ -125,10 +125,7 @@ func TestStreamAEAD_Roundtrip(t *testing.T) {
 				// Write in irregular chunk pieces to test internal buffering
 				pieceSize := 333
 				for offset := 0; offset < len(data); offset += pieceSize {
-					end := offset + pieceSize
-					if end > len(data) {
-						end = len(data)
-					}
+					end := min(offset+pieceSize, len(data))
 					if _, err := writer.Write(data[offset:end]); err != nil {
 						t.Fatalf("writer.Write failed: %v", err)
 					}

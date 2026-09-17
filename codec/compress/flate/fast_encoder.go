@@ -19,10 +19,10 @@ type fastEnc interface {
 
 func newFastEnc(level int) fastEnc {
 	if level <= 1 {
-		return &fastEncL1{fastGen: fastGen{cur: maxStoreBlockSize}}
+		return &fastEncL1{cur: maxStoreBlockSize}
 	}
 
-	return &fastEncL2{fastGen: fastGen{cur: maxStoreBlockSize}}
+	return &fastEncL2{cur: maxStoreBlockSize}
 }
 
 const (

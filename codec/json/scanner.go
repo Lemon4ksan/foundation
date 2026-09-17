@@ -176,7 +176,7 @@ func parseHex4(b []byte) (rune, error) {
 	}
 
 	var r rune
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		c := b[i]
 		r <<= 4
 		switch {

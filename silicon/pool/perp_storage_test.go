@@ -41,13 +41,11 @@ func TestPerPStorageParallel(t *testing.T) {
 	workers := 64
 	iters := 1000
 
-	for i := 0; i < workers; i++ {
-		wg.Add(1)
+	for range workers {
 
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 
-			for j := 0; j < iters; j++ {
+			for range iters {
 				buf := storage.Get()
 				if buf == nil {
 					t.Errorf("got nil buffer")
@@ -56,7 +54,7 @@ func TestPerPStorageParallel(t *testing.T) {
 
 				storage.Put(buf)
 			}
-		}()
+		})
 	}
 
 	wg.Wait()

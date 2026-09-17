@@ -52,10 +52,7 @@ var (
 // avoids scanning the entire buffer from index 0 on each read iteration.
 // Instead, it starts scanning from max(0, prevLen - 3) to find the "\r\n\r\n" or "\n\n" terminator.
 func IsCompleteFast(buf []byte, prevLen int) bool {
-	start := prevLen - 3
-	if start < 0 {
-		start = 0
-	}
+	start := max(prevLen-3, 0)
 	if start >= len(buf) {
 		return false
 	}
@@ -68,7 +65,7 @@ func IsCompleteFast(buf []byte, prevLen int) bool {
 
 	_ = tail[n-1]
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		switch tail[i] {
 		case '\r':
 			if i+3 < n && *(*uint32)(unsafe.Pointer(&tail[i])) == CRLFCRLFUint32 {

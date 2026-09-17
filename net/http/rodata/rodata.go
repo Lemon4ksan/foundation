@@ -222,7 +222,7 @@ func equalsIgnoreCase(a, b []byte) bool {
 		return false
 	}
 
-	for i := 0; i < len(a); i++ {
+	for i := range a {
 		ca, cb := a[i], b[i]
 		if ca >= 'A' && ca <= 'Z' {
 			ca += 'a' - 'A'

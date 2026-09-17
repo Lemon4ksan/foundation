@@ -316,7 +316,7 @@ func TestBus_SetOnDropped(t *testing.T) {
 
 	sub := b.Subscribe(TestEventA{})
 	// Fill sub buffer (buffer size is 128)
-	for i := 0; i < 128; i++ {
+	for range 128 {
 		b.Publish(TestEventA{})
 	}
 

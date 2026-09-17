@@ -34,13 +34,13 @@ func TestRingBufferConcurrent(t *testing.T) {
 	numProducers := 16
 	itemsPerProducer := 100
 
-	for i := 0; i < numProducers; i++ {
+	for i := range numProducers {
 		wg.Add(1)
 
 		go func(id int) {
 			defer wg.Done()
 
-			for j := 0; j < itemsPerProducer; j++ {
+			for j := range itemsPerProducer {
 				val := id*1000 + j
 				for !rb.Push(&val) {
 					// Retry if full
@@ -63,13 +63,13 @@ func TestRingBufferConcurrentProduceConsume(t *testing.T) {
 
 	doneProducing := make(chan struct{})
 
-	for i := 0; i < numProducers; i++ {
+	for i := range numProducers {
 		producerWg.Add(1)
 
 		go func(id int) {
 			defer producerWg.Done()
 
-			for j := 0; j < itemsPerProducer; j++ {
+			for j := range itemsPerProducer {
 				val := id*10000 + j
 				for !rb.Push(&val) {
 					// Retry if full
@@ -85,11 +85,9 @@ func TestRingBufferConcurrentProduceConsume(t *testing.T) {
 
 	var consumeWg sync.WaitGroup
 
-	for i := 0; i < 4; i++ {
-		consumeWg.Add(1)
+	for range 4 {
 
-		go func() {
-			defer consumeWg.Done()
+		consumeWg.Go(func() {
 
 			for {
 				item := rb.Pop()
@@ -105,7 +103,7 @@ func TestRingBufferConcurrentProduceConsume(t *testing.T) {
 					}
 				}
 			}
-		}()
+		})
 	}
 
 	consumeWg.Wait()

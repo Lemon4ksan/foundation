@@ -208,8 +208,7 @@ func TestBehaviorRunner_WithLogger(t *testing.T) {
 	runner.Register(errBehavior)
 	runner.Register(normalBehavior)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	err := runner.Start(ctx)
 	require.NoError(t, err)

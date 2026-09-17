@@ -7,6 +7,7 @@ package headkit
 import (
 	"bytes"
 	"iter"
+	"maps"
 	"strconv"
 	"strings"
 	"time"
@@ -209,20 +210,14 @@ type DirectivesMap struct {
 
 // ParseDirectives eagerly parses comma-separated directives into a [DirectivesMap].
 func ParseDirectives(header string) DirectivesMap {
-	m := make(map[string]string)
-	for k, v := range Directives(header) {
-		m[k] = v
-	}
+	m := maps.Collect(Directives(header))
 
 	return DirectivesMap{m: m}
 }
 
 // ParseParamDirectives eagerly parses semicolon-separated directives into a [DirectivesMap].
 func ParseParamDirectives(header string) DirectivesMap {
-	m := make(map[string]string)
-	for k, v := range ParamDirectives(header) {
-		m[k] = v
-	}
+	m := maps.Collect(ParamDirectives(header))
 
 	return DirectivesMap{m: m}
 }

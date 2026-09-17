@@ -91,7 +91,7 @@ func TestPerPStorage(t *testing.T) {
 		storageNoFactory.Put(i)
 	}
 
-	for i := 0; i < 50; i++ {
+	for range 50 {
 		_ = storageNoFactory.Get()
 	}
 
@@ -100,10 +100,10 @@ func TestPerPStorage(t *testing.T) {
 	const goroutines = 32
 	wg.Add(goroutines)
 
-	for g := 0; g < goroutines; g++ {
+	for range goroutines {
 		go func() {
 			defer wg.Done()
-			for i := 0; i < 100; i++ {
+			for range 100 {
 				b := storage.Get()
 				storage.Put(b)
 			}

@@ -16,8 +16,8 @@ const shardCapacity = 32
 type bufferShard[T any] struct {
 	_     cpu.CacheLinePad
 	items [shardCapacity]T
-	head  uint32
-	mu    uint32
+	head  atomic.Uint32
+	mu    atomic.Uint32
 	_     cpu.CacheLinePad
 }
 
@@ -65,30 +65,30 @@ func (p *PerPStorage[T]) Get() T {
 	numShards := uint64(len(p.shards))
 	startIdx := p.cursor.Add(1) & p.mask
 
-	for i := uint64(0); i < numShards; i++ {
+	for i := range numShards {
 		idx := (startIdx + i) & p.mask
 		shard := &p.shards[idx]
 
 		// Lockless Shared-state pre-check: skip empty shards without CAS bus lock
-		if atomic.LoadUint32(&shard.head) == 0 {
+		if shard.head.Load() == 0 {
 			continue
 		}
 
-		if atomic.CompareAndSwapUint32(&shard.mu, 0, 1) {
-			head := atomic.LoadUint32(&shard.head)
+		if shard.mu.CompareAndSwap(0, 1) {
+			head := shard.head.Load()
 			if head > 0 {
 				item := shard.items[head-1]
 
 				var zero T
 
 				shard.items[head-1] = zero
-				atomic.StoreUint32(&shard.head, head-1)
-				atomic.StoreUint32(&shard.mu, 0)
+				shard.head.Store(head - 1)
+				shard.mu.Store(0)
 
 				return item
 			}
 
-			atomic.StoreUint32(&shard.mu, 0)
+			shard.mu.Store(0)
 		}
 	}
 
@@ -106,26 +106,26 @@ func (p *PerPStorage[T]) Put(item T) {
 	numShards := uint64(len(p.shards))
 	startIdx := p.cursor.Add(1) & p.mask
 
-	for i := uint64(0); i < numShards; i++ {
+	for i := range numShards {
 		idx := (startIdx + i) & p.mask
 		shard := &p.shards[idx]
 
 		// Lockless Shared-state pre-check: skip full shards without CAS bus lock
-		if atomic.LoadUint32(&shard.head) >= shardCapacity {
+		if shard.head.Load() >= shardCapacity {
 			continue
 		}
 
-		if atomic.CompareAndSwapUint32(&shard.mu, 0, 1) {
-			head := atomic.LoadUint32(&shard.head)
+		if shard.mu.CompareAndSwap(0, 1) {
+			head := shard.head.Load()
 			if head < shardCapacity {
 				shard.items[head] = item
-				atomic.StoreUint32(&shard.head, head+1)
-				atomic.StoreUint32(&shard.mu, 0)
+				shard.head.Store(head + 1)
+				shard.mu.Store(0)
 
 				return
 			}
 
-			atomic.StoreUint32(&shard.mu, 0)
+			shard.mu.Store(0)
 		}
 	}
 }

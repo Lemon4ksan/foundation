@@ -112,10 +112,7 @@ func (b *OffHeapBuffer) Read(p []byte) (int, error) {
 		return 0, io.EOF
 	}
 
-	n := len(p)
-	if n > available {
-		n = available
-	}
+	n := min(len(p), available)
 
 	src := unsafe.Slice((*byte)(unsafe.Add(b.ptr, b.readPos)), n)
 	copy(p, src)

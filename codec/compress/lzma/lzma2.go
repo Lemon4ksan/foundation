@@ -63,7 +63,7 @@ func PropFromDictSize(size uint32) byte {
 	if size <= (1 << 12) {
 		return 0
 	}
-	for i := byte(0); i < 40; i++ {
+	for i := range byte(40) {
 		calc, _ := DictSizeFromProp(i)
 		if calc >= size {
 			return i
@@ -260,9 +260,7 @@ func (d *Decompressor2) Decompress(src io.Reader) (io.ReadCloser, error) {
 	var decErr atomic.Pointer[error]
 
 	for w := 0; w < numWorkers; w++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			core := decoderPool.Get()
 			if d.DictSize > core.dictSize {
 				core = NewDecoderCore(3, 0, 2, d.DictSize, 0)
@@ -326,7 +324,7 @@ func (d *Decompressor2) Decompress(src io.Reader) (io.ReadCloser, error) {
 					}
 				}
 			}
-		}()
+		})
 	}
 
 	wg.Wait()
@@ -494,10 +492,7 @@ func (d *Decompressor2) DecompressStream(r io.Reader) ([]byte, int, error) {
 			}
 		}
 
-		numWorkers := runtime.GOMAXPROCS(0)
-		if numWorkers > len(tasks) {
-			numWorkers = len(tasks)
-		}
+		numWorkers := min(runtime.GOMAXPROCS(0), len(tasks))
 		if numWorkers < 1 {
 			numWorkers = 1
 		}
@@ -507,9 +502,7 @@ func (d *Decompressor2) DecompressStream(r io.Reader) ([]byte, int, error) {
 		var decErr atomic.Pointer[error]
 
 		for range numWorkers {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
+			wg.Go(func() {
 				core := decoderPool.Get()
 				defer decoderPool.Put(core)
 				var rd RangeDecoder
@@ -546,7 +539,7 @@ func (d *Decompressor2) DecompressStream(r io.Reader) ([]byte, int, error) {
 						return
 					}
 				}
-			}()
+			})
 		}
 		wg.Wait()
 		if ptr := decErr.Load(); ptr != nil {
@@ -674,11 +667,9 @@ func (c *Compressor2) Compress(src io.Reader, dest io.Writer) (int64, error) {
 		var compErr atomic.Pointer[error]
 
 		workersForBatch := min(numWorkers, numBlocks)
-		for w := 0; w < workersForBatch; w++ {
+		for w := range workersForBatch {
 			workerID := w
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
+			wg.Go(func() {
 				core := workerCores[workerID]
 				var re RangeEncoder
 				var compBuf bytes.Buffer
@@ -698,7 +689,7 @@ func (c *Compressor2) Compress(src io.Reader, dest io.Writer) (int64, error) {
 					chunks := make([]encodedChunk, 0, numChunksInBlock)
 					propsSent := false
 
-					for cIdx := 0; cIdx < numChunksInBlock; cIdx++ {
+					for cIdx := range numChunksInBlock {
 						cStart := cIdx * chunkSize
 						cEnd := min(cStart+chunkSize, blockLen)
 						cLen := cEnd - cStart
@@ -751,7 +742,7 @@ func (c *Compressor2) Compress(src io.Reader, dest io.Writer) (int64, error) {
 					}
 					results[bIdx] = blockResult{chunks: chunks}
 				}
-			}()
+			})
 		}
 
 		wg.Wait()
@@ -761,7 +752,7 @@ func (c *Compressor2) Compress(src io.Reader, dest io.Writer) (int64, error) {
 		}
 
 		// Write completed blocks and chunks directly to dest
-		for bIdx := 0; bIdx < numBlocks; bIdx++ {
+		for bIdx := range numBlocks {
 			for _, res := range results[bIdx].chunks {
 				if res.isRaw {
 					var uncompHeader [3]byte

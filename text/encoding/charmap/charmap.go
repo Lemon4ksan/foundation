@@ -156,7 +156,7 @@ func (m charmapDecoder) Transform(dst, src []byte, atEOF bool) (nDst, nSrc int, 
 			break
 		}
 		// It's 15% faster to avoid calling copy for these tiny slices.
-		for j := 0; j < n; j++ {
+		for j := range n {
 			dst[nDst] = decode.data[j]
 			nDst++
 		}

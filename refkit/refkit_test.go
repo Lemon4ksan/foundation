@@ -30,7 +30,7 @@ func TestDerefType_And_DerefValue(t *testing.T) {
 	// 1. DerefType
 	var m ***SampleModel
 	dt := refkit.DerefType(reflect.TypeOf(m))
-	assert.Equal(t, reflect.TypeOf(SampleModel{}), dt)
+	assert.Equal(t, reflect.TypeFor[SampleModel](), dt)
 	assert.Nil(t, refkit.DerefType(nil))
 
 	// 2. DerefValue non-nil
@@ -48,8 +48,8 @@ func TestDerefType_And_DerefValue(t *testing.T) {
 	assert.False(t, dvNil.IsValid())
 
 	// 4. IndirectType and IndirectValue
-	assert.Equal(t, reflect.TypeOf(SampleModel{}), refkit.IndirectType(reflect.TypeOf(val)))
-	assert.Equal(t, reflect.TypeOf(SampleModel{}), refkit.IndirectType(reflect.TypeOf(SampleModel{})))
+	assert.Equal(t, reflect.TypeFor[SampleModel](), refkit.IndirectType(reflect.TypeOf(val)))
+	assert.Equal(t, reflect.TypeFor[SampleModel](), refkit.IndirectType(reflect.TypeFor[SampleModel]()))
 
 	iv := refkit.IndirectValue(reflect.ValueOf(val))
 	assert.Equal(t, "alice", iv.FieldByName("Name").String())
@@ -137,7 +137,7 @@ func TestAlloc_New_And_EnsureAlloc(t *testing.T) {
 	assert.Equal(t, "", ptr.Name)
 
 	// 2. NewOf
-	valOf := refkit.NewOf(reflect.TypeOf(SampleModel{}))
+	valOf := refkit.NewOf(reflect.TypeFor[SampleModel]())
 	assert.True(t, valOf.IsValid())
 	assert.False(t, refkit.NewOf(nil).IsValid())
 
@@ -168,7 +168,7 @@ func TestAlloc_New_And_EnsureAlloc(t *testing.T) {
 func TestTag_Parsing_And_Getters(t *testing.T) {
 	t.Parallel()
 
-	field, _ := reflect.TypeOf(SampleModel{}).FieldByName("Name")
+	field, _ := reflect.TypeFor[SampleModel]().FieldByName("Name")
 	tag := refkit.GetTag(field, "json")
 
 	assert.Equal(t, "name", tag.Name)
@@ -201,7 +201,7 @@ func TestTag_Parsing_And_Getters(t *testing.T) {
 	assert.Nil(t, tag.SplitOption("missing", "|"))
 
 	// Ignored field `json:"-"`
-	skipField, _ := reflect.TypeOf(SampleModel{}).FieldByName("Skip")
+	skipField, _ := reflect.TypeFor[SampleModel]().FieldByName("Skip")
 	skipTag := refkit.GetTag(skipField, "json")
 	assert.True(t, skipTag.IsIgnored())
 

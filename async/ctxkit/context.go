@@ -6,6 +6,7 @@ package ctxkit
 
 import (
 	"context"
+	"slices"
 	"sync"
 	"time"
 
@@ -90,9 +91,9 @@ func (c *Context) Value(key any) any {
 		return nil
 	}
 
-	for i := len(c.extra) - 1; i >= 0; i-- {
-		if c.extra[i].key == key {
-			return c.extra[i].value
+	for _, v := range slices.Backward(c.extra) {
+		if v.key == key {
+			return v.value
 		}
 	}
 

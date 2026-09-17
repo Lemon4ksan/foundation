@@ -113,9 +113,7 @@ func (z *Writer) init(w io.Writer, level int) {
 	}
 
 	*z = Writer{
-		Header: Header{
-			OS: 255,
-		},
+		OS:         255,
 		w:          w,
 		level:      flateLevel,
 		digest:     crc32.ChecksumIEEE(nil),

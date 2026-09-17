@@ -88,7 +88,7 @@ func SplitWords(s string) []string {
 	n := len(runes)
 
 	start := 0
-	for i := 0; i < n; i++ {
+	for i := range n {
 		r := runes[i]
 
 		if r == '_' || r == '-' || r == ' ' || r == '.' || r == '/' {

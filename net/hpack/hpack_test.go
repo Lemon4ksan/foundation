@@ -601,7 +601,7 @@ func TestHuffmanDecodeFuzz(t *testing.T) {
 			// Start with at least one invalid one.
 			zbuf.WriteString("00\x91\xff\xff\xff\xff\xc8")
 		} else {
-			for l := 0; l < Len; l++ {
+			for range Len {
 				zbuf.WriteByte(byte(src.Intn(256)))
 			}
 		}
@@ -753,7 +753,7 @@ func TestSlowIncrementalDecode(t *testing.T) {
 			t.Errorf("decoded Value does not match input")
 		}
 	})
-	for i := 0; i < len(hbuf); i++ {
+	for i := range hbuf {
 		dec.Write(hbuf[i : i+1])
 	}
 }

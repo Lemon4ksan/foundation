@@ -27,14 +27,14 @@ var hexLUT16 [256]uint16
 var decodeLUT [256]uint8
 
 func init() {
-	for i := 0; i < 256; i++ {
+	for i := range 256 {
 		hi := hextable[i>>4]
 		lo := hextable[i&0x0f]
 		// Little-endian uint16 representation of [hi, lo]
 		hexLUT16[i] = uint16(hi) | (uint16(lo) << 8)
 	}
 
-	for i := 0; i < 256; i++ {
+	for i := range 256 {
 		decodeLUT[i] = 0xff
 	}
 	for i := byte('0'); i <= byte('9'); i++ {
@@ -156,7 +156,7 @@ func Decode(dst, src []byte) (int, error) {
 
 func decodeScalar(dst, src []byte) (int, error) {
 	needed := len(src) / 2
-	for i := 0; i < needed; i++ {
+	for i := range needed {
 		hi := decodeLUT[src[i*2]]
 		lo := decodeLUT[src[i*2+1]]
 		if (hi|lo)&0xf0 != 0 {
@@ -191,7 +191,7 @@ func Decode32[T ~[16]byte](dst *T, s string) bool {
 	}
 	src := unsafe.Slice(unsafe.StringData(s), len(s))
 	d := (*[16]byte)(unsafe.Pointer(dst))
-	for i := 0; i < 16; i++ {
+	for i := range 16 {
 		hi := decodeLUT[src[i*2]]
 		lo := decodeLUT[src[i*2+1]]
 		if (hi|lo)&0xf0 != 0 {
@@ -212,7 +212,7 @@ func Decode16[T ~[8]byte](dst *T, s string) bool {
 	}
 	src := unsafe.Slice(unsafe.StringData(s), len(s))
 	d := (*[8]byte)(unsafe.Pointer(dst))
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		hi := decodeLUT[src[i*2]]
 		lo := decodeLUT[src[i*2+1]]
 		if (hi|lo)&0xf0 != 0 {

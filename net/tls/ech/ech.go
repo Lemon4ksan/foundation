@@ -348,10 +348,7 @@ func CalculatePadding(innerLen, sniLen int, maxNameLen uint8) int {
 	}
 
 	currentTotal := innerLen + padding
-	n := 31 - ((currentTotal - 1) % 32)
-	if n < 0 {
-		n = 0
-	}
+	n := max(31-((currentTotal-1)%32), 0)
 
 	return padding + n
 }

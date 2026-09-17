@@ -90,7 +90,7 @@ func EqualFoldASCII(a, b string) bool {
 	_ = b[n-1]
 	_ = toLowerTable[255]
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		if toLowerTable[a[i]] != toLowerTable[b[i]] {
 			return false
 		}
@@ -187,7 +187,7 @@ func ContainsFoldASCII(src []byte, target string) bool {
 
 	for i := 0; i <= n-m; i++ {
 		match := true
-		for j := 0; j < m; j++ {
+		for j := range m {
 			if toLowerTable[src[i+j]] != toLowerTable[target[j]] {
 				match = false
 				break
@@ -215,7 +215,7 @@ func ParseUintFast(b []byte) (int64, bool) {
 	_ = b[n-1]
 
 	var val int64
-	for i := 0; i < n; i++ {
+	for i := range n {
 		ch := b[i]
 		if ch < '0' || ch > '9' {
 			return 0, false

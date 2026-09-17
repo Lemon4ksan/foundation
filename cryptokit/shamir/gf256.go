@@ -11,7 +11,7 @@ var (
 
 func init() {
 	x := byte(1)
-	for i := 0; i < 255; i++ {
+	for i := range 255 {
 		expTable[i] = x
 		expTable[i+255] = x
 		logTable[x] = byte(i)
@@ -73,10 +73,10 @@ func evalPoly(coeffs []byte, x byte) byte {
 func lagrange0(xs, ys []byte) byte {
 	var secret byte
 	k := len(xs)
-	for j := 0; j < k; j++ {
+	for j := range k {
 		num := byte(1)
 		den := byte(1)
-		for m := 0; m < k; m++ {
+		for m := range k {
 			if m == j {
 				continue
 			}

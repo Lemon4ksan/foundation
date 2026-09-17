@@ -169,7 +169,7 @@ func Indent(dst *bytes.Buffer, src []byte, prefix, indent string) error {
 		escape   bool
 	)
 
-	for i := 0; i < len(src); i++ {
+	for i := range src {
 		c := src[i]
 		if inString {
 			dst.WriteByte(c)

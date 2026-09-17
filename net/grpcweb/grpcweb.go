@@ -195,12 +195,12 @@ func VerifyTrailer(trailerPayload []byte) error {
 }
 
 func parseTrailerKeyValue(line []byte) (keyBytes, valBytes []byte, ok bool) {
-	idx := bytes.IndexByte(line, ':')
-	if idx < 0 {
+	before, after, ok := bytes.Cut(line, []byte{':'})
+	if !ok {
 		return nil, nil, false
 	}
 
-	return bytes.TrimSpace(line[:idx]), bytes.TrimSpace(line[idx+1:]), true
+	return bytes.TrimSpace(before), bytes.TrimSpace(after), true
 }
 
 // IsBase64Header checks whether a 5-byte header prefix matches Base64 text encoding.

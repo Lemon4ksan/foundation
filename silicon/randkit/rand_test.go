@@ -29,7 +29,7 @@ func TestGlobalRand_Basic(t *testing.T) {
 	assert.Equal(t, 0, randkit.Intn(0))
 	assert.Equal(t, int64(0), randkit.Int64n(0))
 
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		u32n := randkit.Uint32n(100)
 		assert.Less(t, u32n, uint32(100))
 
@@ -125,7 +125,7 @@ func TestRNG_Local(t *testing.T) {
 	assert.Equal(t, 0, r2.Intn(0))
 	assert.Equal(t, int64(0), r2.Int64n(0))
 
-	for i := 0; i < 500; i++ {
+	for range 500 {
 		assert.Less(t, r2.Uint32n(100), uint32(100))
 		assert.Less(t, r2.Uint64n(1000), uint64(1000))
 		in := r2.Intn(50)
@@ -163,10 +163,10 @@ func TestConcurrent_Safety(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(goroutines)
 
-	for g := 0; g < goroutines; g++ {
+	for range goroutines {
 		go func() {
 			defer wg.Done()
-			for i := 0; i < iterations; i++ {
+			for range iterations {
 				_ = randkit.Uint32()
 				_ = randkit.Uint32n(1000)
 				_ = randkit.Uint64()
@@ -183,7 +183,7 @@ func TestConcurrent_Safety(t *testing.T) {
 	wg.Wait()
 }
 
-var benchSink uint64
+var benchSink atomic.Uint64
 
 func BenchmarkGlobalUint32n(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
@@ -191,7 +191,7 @@ func BenchmarkGlobalUint32n(b *testing.B) {
 		for pb.Next() {
 			s += randkit.Uint32n(1e6)
 		}
-		atomic.AddUint64(&benchSink, uint64(s))
+		benchSink.Add(uint64(s))
 	})
 }
 
@@ -201,7 +201,7 @@ func BenchmarkGlobalUint64n(b *testing.B) {
 		for pb.Next() {
 			s += randkit.Uint64n(1e6)
 		}
-		atomic.AddUint64(&benchSink, s)
+		benchSink.Add(s)
 	})
 }
 
@@ -212,7 +212,7 @@ func BenchmarkRNGUint64n(b *testing.B) {
 		for pb.Next() {
 			s += r.Uint64n(1e6)
 		}
-		atomic.AddUint64(&benchSink, s)
+		benchSink.Add(s)
 	})
 }
 
@@ -223,6 +223,6 @@ func BenchmarkRNGUint32n(b *testing.B) {
 		for pb.Next() {
 			s += r.Uint32n(1e6)
 		}
-		atomic.AddUint64(&benchSink, uint64(s))
+		benchSink.Add(uint64(s))
 	})
 }

@@ -78,7 +78,7 @@ func TestSPSCRingBuffer_ConcurrentProducerConsumer(t *testing.T) {
 	go func() {
 		defer wg.Done()
 
-		for i := 0; i < itemCount; i++ {
+		for i := range itemCount {
 			val := i
 
 			for !buf.Push(&val) {
@@ -105,7 +105,7 @@ func TestSPSCRingBuffer_ConcurrentProducerConsumer(t *testing.T) {
 
 	require.Len(t, received, itemCount)
 
-	for i := 0; i < itemCount; i++ {
+	for i := range itemCount {
 		assert.Equal(t, i, received[i])
 	}
 }

@@ -51,7 +51,7 @@ func writeVectorBuffersFD(fd uintptr, buffers [][]byte) (int64, error) {
 		wsaBufs = make([]windows.WSABuf, nBuf)
 	}
 
-	for i := 0; i < nBuf; i++ {
+	for i := range nBuf {
 		if len(buffers[i]) > 0 {
 			wsaBufs[i] = windows.WSABuf{
 				Len: uint32(len(buffers[i])),

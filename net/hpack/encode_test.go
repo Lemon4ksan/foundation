@@ -356,12 +356,12 @@ func BenchmarkEncoderSearchTable(b *testing.B) {
 			possible = append(possible, f)
 		}
 	}
-	for k := 0; k < 10; k++ {
+	for k := range 10 {
 		f := HeaderField{
 			Name:      fmt.Sprintf("x-header-%d", k),
 			Sensitive: rand.Int()%2 == 0,
 		}
-		for i := 0; i < 5; i++ {
+		for i := range 5 {
 			f.Value = fmt.Sprintf("%s-%d", f.Name, i)
 			possible = append(possible, f)
 		}
@@ -369,7 +369,7 @@ func BenchmarkEncoderSearchTable(b *testing.B) {
 
 	// Add a random sample to the dynamic table. This very loosely simulates
 	// a history of 100 requests with 20 header fields per request.
-	for r := 0; r < 100*20; r++ {
+	for range 100 * 20 {
 		f := possible[rand.Int31n(int32(len(possible)))]
 		// Skip if this is in the staticTable verbatim.
 		if _, has := staticTable.search(f); !has {

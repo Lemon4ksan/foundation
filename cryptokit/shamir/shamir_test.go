@@ -23,7 +23,7 @@ func TestGF256_Properties(t *testing.T) {
 	}
 
 	// 2. Identity and zero
-	for a := 0; a < 256; a++ {
+	for a := range 256 {
 		if shamir.Mul(byte(a), 0) != 0 || shamir.Mul(0, byte(a)) != 0 {
 			t.Fatalf("multiplication by zero failed for %d", a)
 		}

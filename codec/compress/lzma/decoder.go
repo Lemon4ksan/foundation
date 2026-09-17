@@ -455,7 +455,7 @@ func (fd *fastDecoder) normalize() {
 
 func (fd *fastDecoder) decodeDirectBits(numBits int) uint32 {
 	var val uint32
-	for i := 0; i < numBits; i++ {
+	for range numBits {
 		fd.range_ >>= 1
 		if fd.code >= fd.range_ {
 			fd.code -= fd.range_
@@ -479,7 +479,7 @@ func (fd *fastDecoder) decodeDirectBits(numBits int) uint32 {
 
 func (fd *fastDecoder) decodeTree(probs []uint16, numBits int) uint32 {
 	var m uint32 = 1
-	for i := 0; i < numBits; i++ {
+	for range numBits {
 		bit := fd.decodeBit(&probs[m])
 		m = (m << 1) | uint32(bit)
 	}
@@ -489,7 +489,7 @@ func (fd *fastDecoder) decodeTree(probs []uint16, numBits int) uint32 {
 func (fd *fastDecoder) decodeReverseTree(probs []uint16, numBits int) uint32 {
 	var m uint32 = 1
 	var symbol uint32
-	for i := 0; i < numBits; i++ {
+	for i := range numBits {
 		bit := fd.decodeBit(&probs[m])
 		m = (m << 1) | uint32(bit)
 		symbol |= uint32(bit) << i
@@ -516,7 +516,7 @@ func (fd *fastDecoder) decodeLen(ld *LenDecoder, posState int) int {
 	}
 	probs := ld.high[:]
 	var m uint32 = 1
-	for i := 0; i < kLenNumHighBits; i++ {
+	for range kLenNumHighBits {
 		m = (m << 1) | uint32(fd.decodeBit(&probs[m]))
 	}
 	return int(m-(1<<kLenNumHighBits)) + kLenNumLowSymbols + kLenNumMidSymbols

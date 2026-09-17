@@ -54,7 +54,7 @@ func Encode(src, dst []byte, width int) ([]byte, error) {
 		// Specialized 2-byte word (FP16 / BF16 / INT16)
 		p0 := 0
 		p1 := elements
-		for i := 0; i < elements; i++ {
+		for i := range elements {
 			idx := i << 1
 			dst[p0+i] = src[idx]
 			dst[p1+i] = src[idx+1]
@@ -65,7 +65,7 @@ func Encode(src, dst []byte, width int) ([]byte, error) {
 		p1 := elements
 		p2 := elements * 2
 		p3 := elements * 3
-		for i := 0; i < elements; i++ {
+		for i := range elements {
 			idx := i << 2
 			dst[p0+i] = src[idx]
 			dst[p1+i] = src[idx+1]
@@ -82,7 +82,7 @@ func Encode(src, dst []byte, width int) ([]byte, error) {
 		p5 := elements * 5
 		p6 := elements * 6
 		p7 := elements * 7
-		for i := 0; i < elements; i++ {
+		for i := range elements {
 			idx := i << 3
 			dst[p0+i] = src[idx]
 			dst[p1+i] = src[idx+1]
@@ -95,9 +95,9 @@ func Encode(src, dst []byte, width int) ([]byte, error) {
 		}
 	default:
 		// Generic N-byte word
-		for b := 0; b < width; b++ {
+		for b := range width {
 			offset := b * elements
-			for i := 0; i < elements; i++ {
+			for i := range elements {
 				dst[offset+i] = src[i*width+b]
 			}
 		}
@@ -140,7 +140,7 @@ func Decode(src, dst []byte, width int) ([]byte, error) {
 	case 2:
 		p0 := 0
 		p1 := elements
-		for i := 0; i < elements; i++ {
+		for i := range elements {
 			idx := i << 1
 			dst[idx] = src[p0+i]
 			dst[idx+1] = src[p1+i]
@@ -150,7 +150,7 @@ func Decode(src, dst []byte, width int) ([]byte, error) {
 		p1 := elements
 		p2 := elements * 2
 		p3 := elements * 3
-		for i := 0; i < elements; i++ {
+		for i := range elements {
 			idx := i << 2
 			dst[idx] = src[p0+i]
 			dst[idx+1] = src[p1+i]
@@ -166,7 +166,7 @@ func Decode(src, dst []byte, width int) ([]byte, error) {
 		p5 := elements * 5
 		p6 := elements * 6
 		p7 := elements * 7
-		for i := 0; i < elements; i++ {
+		for i := range elements {
 			idx := i << 3
 			dst[idx] = src[p0+i]
 			dst[idx+1] = src[p1+i]
@@ -178,9 +178,9 @@ func Decode(src, dst []byte, width int) ([]byte, error) {
 			dst[idx+7] = src[p7+i]
 		}
 	default:
-		for b := 0; b < width; b++ {
+		for b := range width {
 			offset := b * elements
-			for i := 0; i < elements; i++ {
+			for i := range elements {
 				dst[i*width+b] = src[offset+i]
 			}
 		}

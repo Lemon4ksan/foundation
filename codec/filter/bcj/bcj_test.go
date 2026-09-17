@@ -86,7 +86,7 @@ func TestBCJ_RealExe(t *testing.T) {
 	Filter(X86, buf, 0, false)
 
 	if !bytes.Equal(buf, data) {
-		for i := 0; i < len(data); i++ {
+		for i := range data {
 			if buf[i] != data[i] {
 				t.Fatalf("Mismatch at offset %d: orig=%d, dec=%d", i, data[i], buf[i])
 			}

@@ -132,7 +132,7 @@ func (c *Call) execute(args []any) []any {
 		numOut := c.methodType.NumOut()
 		if numOut > 0 {
 			rets := make([]any, numOut)
-			for i := 0; i < numOut; i++ {
+			for i := range numOut {
 				rets[i] = reflect.Zero(c.methodType.Out(i)).Interface()
 			}
 

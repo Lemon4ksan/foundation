@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 )
 
@@ -216,8 +217,8 @@ func (o *Orchestrator) StopAll(ctx context.Context) error {
 // stopRunning is an internal helper that stops active services in reverse order.
 // The caller must hold o.mu's write lock.
 func (o *Orchestrator) stopRunning(ctx context.Context) {
-	for i := len(o.running) - 1; i >= 0; i-- {
-		s := o.running[i]
+	for _, s := range slices.Backward(o.running) {
+
 		_ = s.Stop(ctx)
 	}
 

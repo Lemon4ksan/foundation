@@ -62,7 +62,7 @@ func CutByte(s string, sep byte) (before, after string, found bool) {
 //
 //go:inline
 func CutByteBytes(b []byte, sep byte) (before, after []byte, found bool) {
-	for i := 0; i < len(b); i++ {
+	for i := range b {
 		if b[i] == sep {
 			return b[:i], b[i+1:], true
 		}
@@ -82,7 +82,7 @@ func ScanTokens(s string, delim byte) iter.Seq[string] {
 		start := 0
 		n := len(s)
 
-		for i := 0; i < n; i++ {
+		for i := range n {
 			c := s[i]
 			if c == '"' {
 				inQuote = !inQuote
@@ -117,7 +117,7 @@ func ScanTokensBytes(b []byte, delim byte) iter.Seq[[]byte] {
 		start := 0
 		n := len(b)
 
-		for i := 0; i < n; i++ {
+		for i := range n {
 			c := b[i]
 			if c == '"' {
 				inQuote = !inQuote

@@ -5,6 +5,7 @@
 package headkit
 
 import (
+	"maps"
 	"testing"
 )
 
@@ -12,10 +13,7 @@ func TestRepro_Directives_EscapedQuotesWithDelimiter(t *testing.T) {
 	// A header with an odd number of escaped quotes followed by a comma inside a quoted string, then another directive
 	raw := `custom="say \"hello, world", other=456`
 
-	parsed := make(map[string]string)
-	for k, v := range Directives(raw) {
-		parsed[k] = v
-	}
+	parsed := maps.Collect(Directives(raw))
 
 	if _, ok := parsed["other"]; !ok {
 		t.Fatalf(
@@ -43,10 +41,7 @@ func TestRepro_Directives_EscapedQuotesWithDelimiter(t *testing.T) {
 
 	// Also test ParamDirectives
 	rawParam := `custom="say \"hello; world"; other=456`
-	parsedParam := make(map[string]string)
-	for k, v := range ParamDirectives(rawParam) {
-		parsedParam[k] = v
-	}
+	parsedParam := maps.Collect(ParamDirectives(rawParam))
 	if _, ok := parsedParam["other"]; !ok {
 		t.Fatalf("CRITICAL: 'other' directive was lost in ParamDirectives! Parsed: %#v", parsedParam)
 	}

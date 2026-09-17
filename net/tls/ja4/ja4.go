@@ -246,7 +246,7 @@ func parseSigAlgorithmsPayload(payload []byte) []uint16 {
 	sigs := make([]uint16, count)
 	_ = payload[count*2-1]
 
-	for i := 0; i < count; i++ {
+	for i := range count {
 		sigs[i] = binary.BigEndian.Uint16(payload[i*2 : i*2+2])
 	}
 
@@ -332,7 +332,7 @@ func compareLowerASCII(a, b string) int {
 	_ = a[minLen-1]
 	_ = b[minLen-1]
 
-	for i := 0; i < minLen; i++ {
+	for i := range minLen {
 		la := bytesconv.LowercaseByte(a[i])
 		lb := bytesconv.LowercaseByte(b[i])
 

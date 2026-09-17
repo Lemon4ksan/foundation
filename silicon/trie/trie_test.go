@@ -196,7 +196,7 @@ func TestRadixTree_EdgeCases(t *testing.T) {
 
 func BenchmarkRadixTree_Get_ZeroAlloc(b *testing.B) {
 	tree := trie.New[int]()
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		tree.Insert(fmt.Sprintf("/api/v1/service/%d/method", i), i)
 	}
 

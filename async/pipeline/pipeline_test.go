@@ -24,7 +24,7 @@ func TestPipeline_OrderPreservation(t *testing.T) {
 	p := NewPipeline[int, int](cfg)
 
 	inputs := make([]int, 1000)
-	for i := 0; i < len(inputs); i++ {
+	for i := range inputs {
 		inputs[i] = i + 1
 	}
 
@@ -128,7 +128,7 @@ func TestPipeline_ContextCancelled_NoLeaks(t *testing.T) {
 	p := NewPipeline[int, int](cfg)
 
 	inputs := make([]int, 100)
-	for i := 0; i < len(inputs); i++ {
+	for i := range inputs {
 		inputs[i] = i
 	}
 
@@ -441,7 +441,7 @@ func BenchmarkPipeline_Process(b *testing.B) {
 	p := NewPipeline[int, int](cfg)
 
 	inputs := make([]int, 100)
-	for i := 0; i < len(inputs); i++ {
+	for i := range inputs {
 		inputs[i] = i
 	}
 

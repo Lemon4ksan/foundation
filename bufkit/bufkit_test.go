@@ -139,7 +139,7 @@ func TestRing_AllMethods_And_Concurrency(t *testing.T) {
 	assert.False(t, ok)
 
 	// 3. Fill ring to capacity
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		assert.True(t, ring.Push(i+100))
 	}
 	assert.Equal(t, 8, ring.Len())
@@ -148,7 +148,7 @@ func TestRing_AllMethods_And_Concurrency(t *testing.T) {
 	assert.False(t, ring.Push(999))
 
 	// 5. Pop all items
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		val, ok := ring.Pop()
 		assert.True(t, ok)
 		assert.Equal(t, i+100, val)
@@ -172,7 +172,7 @@ func TestRing_AllMethods_And_Concurrency(t *testing.T) {
 
 	go func() {
 		defer wg.Done()
-		for i := 0; i < count; i++ {
+		for i := range count {
 			for !spscRing.Push(i) {
 				// spin wait
 			}

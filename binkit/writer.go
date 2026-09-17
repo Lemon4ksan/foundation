@@ -136,7 +136,7 @@ func (w *Writer) RawString(s string) *Writer {
 //
 //go:inline
 func (w *Writer) Pad(n int, b byte) *Writer {
-	for i := 0; i < n; i++ {
+	for range n {
 		w.buf = append(w.buf, b)
 	}
 	return w

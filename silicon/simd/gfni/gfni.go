@@ -4,7 +4,7 @@ package gfni
 // This is a software fallback/stub for the VGF2P8MULB instruction.
 func MultiplyGF2P8(a, b byte) byte {
 	var p byte = 0
-	for i := 0; i < 8; i++ {
+	for range 8 {
 		if (b & 1) == 1 {
 			p ^= a
 		}
@@ -20,7 +20,7 @@ func MultiplyGF2P8(a, b byte) byte {
 
 // MultiplyGF2P8Vector multiplies a vector of bytes by a scalar in GF(2^8).
 func MultiplyGF2P8Vector(dst, src []byte, scalar byte) {
-	for i := 0; i < len(src); i++ {
+	for i := range src {
 		dst[i] = MultiplyGF2P8(src[i], scalar)
 	}
 }

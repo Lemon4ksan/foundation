@@ -24,7 +24,7 @@ func Example_decodeWindows1252() {
 }
 
 func ExampleUTF8Validator() {
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		var transformer transform.Transformer
 		transformer = unicode.UTF16(unicode.BigEndian, unicode.IgnoreBOM).NewEncoder()
 		if i == 1 {

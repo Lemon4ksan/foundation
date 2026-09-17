@@ -5,6 +5,7 @@
 package bytesconv_test
 
 import (
+	"maps"
 	"testing"
 
 	"github.com/lemon4ksan/foundation/silicon/bytesconv"
@@ -90,11 +91,7 @@ func TestScanPairs(t *testing.T) {
 	t.Parallel()
 
 	cookieHeader := "session_id=xyz123; Path=/; Secure; HttpOnly; SameSite=Lax; custom=\"with=equals;and;semicolon\""
-	pairs := make(map[string]string)
-
-	for k, v := range bytesconv.ScanPairs(cookieHeader, ';', '=') {
-		pairs[k] = v
-	}
+	pairs := maps.Collect(bytesconv.ScanPairs(cookieHeader, ';', '='))
 
 	assert.Equal(t, "xyz123", pairs["session_id"])
 	assert.Equal(t, "/", pairs["Path"])

@@ -65,14 +65,8 @@ func NewEncoderCore(lc, lp, pb uint, dictSize uint32) *EncoderCore {
 
 // NewEncoderCoreWithOptions creates an LZMA encoder core configured with custom options.
 func NewEncoderCoreWithOptions(opts Options) *EncoderCore {
-	dictSize := opts.DictSize
-	if dictSize < 4096 {
-		dictSize = 4096
-	}
-	prevSize := uint32(1) << bits.Len32(dictSize-1)
-	if prevSize < 65536 {
-		prevSize = 65536
-	}
+	dictSize := max(opts.DictSize, 4096)
+	prevSize := max(uint32(1)<<bits.Len32(dictSize-1), 65536)
 	maxPrev := uint32(16 * 1024 * 1024)
 	switch {
 	case opts.Level <= LevelFastest:
@@ -314,7 +308,7 @@ func (fe *fastRangeEncoder) encodeTree(probs []uint16, numBits int, symbol uint3
 
 func (fe *fastRangeEncoder) encodeReverseTree(probs []uint16, numBits int, symbol uint32) {
 	var m uint32 = 1
-	for i := 0; i < numBits; i++ {
+	for i := range numBits {
 		bit := int((symbol >> i) & 1)
 		fe.encodeBit(&probs[m], bit)
 		m = (m << 1) | uint32(bit)

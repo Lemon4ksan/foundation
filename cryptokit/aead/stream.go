@@ -43,7 +43,7 @@ func deriveChunkNonce(baseNonce []byte, chunkIdx uint64) []byte {
 	binary.BigEndian.PutUint64(ctr[:], chunkIdx)
 
 	offset := len(nonce) - 8
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		nonce[offset+i] ^= ctr[i]
 	}
 	return nonce

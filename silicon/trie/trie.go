@@ -372,7 +372,7 @@ func (n *node[V]) findEdge(b byte) int {
 
 	_ = edges[numEdges-1]
 
-	for i := 0; i < numEdges; i++ {
+	for i := range numEdges {
 		if edges[i].label == b {
 			return i
 		}
@@ -397,8 +397,8 @@ func commonPrefixLength(a, b string) int {
 
 	i := 0
 	for i+8 <= maxLen {
-		wa := *(*uint64)(unsafe.Pointer(uintptr(unsafe.Pointer(unsafe.StringData(a))) + uintptr(i)))
-		wb := *(*uint64)(unsafe.Pointer(uintptr(unsafe.Pointer(unsafe.StringData(b))) + uintptr(i)))
+		wa := *(*uint64)(unsafe.Add(unsafe.Pointer(unsafe.StringData(a)), i))
+		wb := *(*uint64)(unsafe.Add(unsafe.Pointer(unsafe.StringData(b)), i))
 		if wa != wb {
 			diff := wa ^ wb
 			return i + (bits.TrailingZeros64(diff) >> 3)

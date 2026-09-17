@@ -749,10 +749,7 @@ func readAllSlice(r io.Reader, dst []byte, estimatedCap int) ([]byte, error) {
 			if len(dst) >= DefaultMaxDecompressedSize {
 				return nil, ErrDecompressionBomb
 			}
-			newCap := cap(dst) * 2
-			if newCap < 4096 {
-				newCap = 4096
-			}
+			newCap := max(cap(dst)*2, 4096)
 			newDst := make([]byte, len(dst), newCap)
 			copy(newDst, dst)
 			dst = newDst

@@ -38,7 +38,7 @@ func PBKDF2(h func() hash.Hash, password, salt []byte, iter, keyLen int) []byte 
 			prf.Reset()
 			prf.Write(u)
 			u = prf.Sum(u[:0])
-			for x := 0; x < hashLen; x++ {
+			for x := range hashLen {
 				t[x] ^= u[x]
 			}
 		}
