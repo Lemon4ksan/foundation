@@ -10,7 +10,7 @@ import (
 
 	"github.com/lemon4ksan/foundation/testkit/assert"
 
-	"github.com/lemon4ksan/mach/quic/quicvarint"
+	"github.com/lemon4ksan/foundation/encoding/varint"
 )
 
 func TestQUIC_Varint_AdversarialAndBoundaries(t *testing.T) {
@@ -25,15 +25,15 @@ func TestQUIC_Varint_AdversarialAndBoundaries(t *testing.T) {
 		16384,               // 4-byte min
 		1073741823,          // 4-byte max (2^30 - 1)
 		1073741824,          // 8-byte min
-		4611686018427387903, // 8-byte max (2^62 - 1 / quicvarint.Max)
+		4611686018427387903, // 8-byte max (2^62 - 1 / varint.Max)
 	}
 
 	for _, val := range boundaryValues {
-		encoded := quicvarint.Append(nil, val)
-		expectedLen := quicvarint.Len(val)
+		encoded := varint.Append(nil, val)
+		expectedLen := varint.Len(val)
 		assert.Equal(t, expectedLen, len(encoded))
 
-		decoded, consumed, err := quicvarint.Parse(encoded)
+		decoded, consumed, err := varint.Parse(encoded)
 		assert.NoError(t, err)
 		assert.Equal(t, expectedLen, consumed)
 		assert.Equal(t, val, decoded)
@@ -41,9 +41,9 @@ func TestQUIC_Varint_AdversarialAndBoundaries(t *testing.T) {
 
 	// Truncated buffer checks: must return error on incomplete bytes, never panic
 	for _, val := range []uint64{64, 16384, 1073741824} {
-		encoded := quicvarint.Append(nil, val)
+		encoded := varint.Append(nil, val)
 		for cut := 0; cut < len(encoded); cut++ {
-			_, _, err := quicvarint.Parse(encoded[:cut])
+			_, _, err := varint.Parse(encoded[:cut])
 			assert.Error(t, err)
 		}
 	}
@@ -52,6 +52,6 @@ func TestQUIC_Varint_AdversarialAndBoundaries(t *testing.T) {
 	fuzzBuf := make([]byte, 16)
 	for i := 0; i < 50000; i++ {
 		_, _ = rand.Read(fuzzBuf)
-		_, _, _ = quicvarint.Parse(fuzzBuf[:(i%16)+1])
+		_, _, _ = varint.Parse(fuzzBuf[:(i%16)+1])
 	}
 }

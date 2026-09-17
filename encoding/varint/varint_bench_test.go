@@ -7,7 +7,7 @@ package varint_test
 import (
 	"testing"
 
-	"github.com/lemon4ksan/mach/quic/quicvarint"
+	"github.com/lemon4ksan/foundation/encoding/varint"
 )
 
 func BenchmarkVarint_Parse_1Byte(b *testing.B) {
@@ -18,7 +18,7 @@ func BenchmarkVarint_Parse_1Byte(b *testing.B) {
 
 	var total uint64
 	for i := 0; i < b.N; i++ {
-		val, _, _ := quicvarint.Parse(buf)
+		val, _, _ := varint.Parse(buf)
 		total += val
 	}
 
@@ -33,7 +33,7 @@ func BenchmarkVarint_Parse_2Byte(b *testing.B) {
 
 	var total uint64
 	for i := 0; i < b.N; i++ {
-		val, _, _ := quicvarint.Parse(buf)
+		val, _, _ := varint.Parse(buf)
 		total += val
 	}
 
@@ -48,7 +48,7 @@ func BenchmarkVarint_Parse_4Byte(b *testing.B) {
 
 	var total uint64
 	for i := 0; i < b.N; i++ {
-		val, _, _ := quicvarint.Parse(buf)
+		val, _, _ := varint.Parse(buf)
 		total += val
 	}
 
@@ -63,7 +63,7 @@ func BenchmarkVarint_Parse_8Byte(b *testing.B) {
 
 	var total uint64
 	for i := 0; i < b.N; i++ {
-		val, _, _ := quicvarint.Parse(buf)
+		val, _, _ := varint.Parse(buf)
 		total += val
 	}
 
@@ -78,7 +78,7 @@ func BenchmarkVarint_Append_4Byte(b *testing.B) {
 	b.ReportAllocs()
 
 	for i := 0; i < b.N; i++ {
-		buf = quicvarint.Append(buf[:0], val)
+		buf = varint.Append(buf[:0], val)
 	}
 
 	_ = buf
@@ -92,7 +92,7 @@ func BenchmarkVarint_Append_8Byte(b *testing.B) {
 	b.ReportAllocs()
 
 	for i := 0; i < b.N; i++ {
-		buf = quicvarint.Append(buf[:0], val)
+		buf = varint.Append(buf[:0], val)
 	}
 
 	_ = buf
@@ -106,7 +106,7 @@ func BenchmarkVarint_Len(b *testing.B) {
 
 	var total int
 	for i := 0; i < b.N; i++ {
-		total += quicvarint.Len(val)
+		total += varint.Len(val)
 	}
 
 	_ = total
