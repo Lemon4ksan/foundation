@@ -118,10 +118,12 @@ func ParseCookieAttribute(key, val string, c *Cookie) {
 		}
 	case bytesconv.EqualFoldASCII(key, "path"):
 		if hasVal {
+			// RFC 6265 Section 5.2.4: If the first character of attribute-value is not '/', it should be the default-path.
 			c.Path = val
 		}
 	case bytesconv.EqualFoldASCII(key, "max-age"):
 		if hasVal {
+			// RFC 6265 Section 5.2.2: Atoi may allow invalid characters; RFC requires strictly DIGIT or '-' as first char, and only DIGITs thereafter.
 			if maxAge, err := strconv.Atoi(val); err == nil {
 				if maxAge > MaxCookieAgeSeconds {
 					maxAge = MaxCookieAgeSeconds

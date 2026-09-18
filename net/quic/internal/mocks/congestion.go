@@ -12,9 +12,9 @@ package mocks
 import (
 	reflect "reflect"
 
-	gomock "github.com/lemon4ksan/foundation/testing/gomock"
 	monotime "github.com/lemon4ksan/foundation/net/quic/internal/monotime"
 	protocol "github.com/lemon4ksan/foundation/net/quic/internal/protocol"
+	gomock "github.com/lemon4ksan/foundation/testing/gomock"
 )
 
 // MockSendAlgorithmWithDebugInfos is a mock of SendAlgorithmWithDebugInfos interface.

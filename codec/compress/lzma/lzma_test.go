@@ -178,4 +178,3 @@ func BenchmarkLZMA2_Compress_64K(b *testing.B) {
 		}
 	}
 }
-

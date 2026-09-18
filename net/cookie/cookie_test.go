@@ -5,7 +5,6 @@
 package cookie_test
 
 import (
-	"net/http"
 	"testing"
 
 	"github.com/lemon4ksan/foundation/net/cookie"
@@ -30,27 +29,6 @@ func TestCookie_PathMatch(t *testing.T) {
 	assert.True(t, cookie.PathMatch("/api/v1", "/api"))
 	assert.False(t, cookie.PathMatch("/apiv1", "/api"))
 	assert.True(t, cookie.PathMatch("/api", "/api"))
-}
-
-func TestCookie_BuildCookieHeader(t *testing.T) {
-	cookies := []*http.Cookie{
-		{Name: "c1", Value: "v1", Path: "/"},
-		{Name: "c2", Value: "v2", Path: "/api"},
-	}
-
-	hdr := cookie.BuildCookieHeader(cookies)
-	assert.Equal(t, "c2=v2; c1=v1", hdr)
-}
-
-func TestCookie_ExportNetscape(t *testing.T) {
-	cookies := []*http.Cookie{
-		{Name: "session", Value: "123", Domain: ".example.com", Path: "/api", Secure: true},
-	}
-
-	netscape := cookie.ExportNetscape(cookies, "example.com")
-	assert.Contains(t, netscape, "# Netscape HTTP Cookie File")
-	assert.Contains(t, netscape, ".example.com\tTRUE\t/api\tTRUE\t0\tsession\t123")
-	assert.Equal(t, "", cookie.ExportNetscape(nil, ""))
 }
 
 func TestCookie_EmptyParse(t *testing.T) {

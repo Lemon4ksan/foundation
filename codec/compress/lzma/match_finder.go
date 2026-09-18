@@ -223,4 +223,3 @@ func (e *EncoderCore) findBestMatch(src []byte, pos, endPos int) matchCandidate 
 
 	return best
 }
-

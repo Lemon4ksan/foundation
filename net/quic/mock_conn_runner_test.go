@@ -13,8 +13,8 @@ import (
 	reflect "reflect"
 	time "time"
 
-	gomock "github.com/lemon4ksan/foundation/testing/gomock"
 	protocol "github.com/lemon4ksan/foundation/net/quic/internal/protocol"
+	gomock "github.com/lemon4ksan/foundation/testing/gomock"
 )
 
 // MockConnRunner is a mock of ConnRunner interface.

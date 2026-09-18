@@ -13,9 +13,9 @@ import (
 	context "context"
 	reflect "reflect"
 
-	gomock "github.com/lemon4ksan/foundation/testing/gomock"
 	handshake "github.com/lemon4ksan/foundation/net/quic/internal/handshake"
 	protocol "github.com/lemon4ksan/foundation/net/quic/internal/protocol"
+	gomock "github.com/lemon4ksan/foundation/testing/gomock"
 )
 
 // MockCryptoSetup is a mock of CryptoSetup interface.

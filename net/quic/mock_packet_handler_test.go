@@ -12,8 +12,8 @@ package quic
 import (
 	reflect "reflect"
 
-	gomock "github.com/lemon4ksan/foundation/testing/gomock"
 	qerr "github.com/lemon4ksan/foundation/net/quic/internal/qerr"
+	gomock "github.com/lemon4ksan/foundation/testing/gomock"
 )
 
 // MockPacketHandler is a mock of PacketHandler interface.

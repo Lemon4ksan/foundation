@@ -12,10 +12,10 @@ package quic
 import (
 	reflect "reflect"
 
-	gomock "github.com/lemon4ksan/foundation/testing/gomock"
 	monotime "github.com/lemon4ksan/foundation/net/quic/internal/monotime"
 	protocol "github.com/lemon4ksan/foundation/net/quic/internal/protocol"
 	wire "github.com/lemon4ksan/foundation/net/quic/internal/wire"
+	gomock "github.com/lemon4ksan/foundation/testing/gomock"
 )
 
 // MockAckFrameSource is a mock of AckFrameSource interface.

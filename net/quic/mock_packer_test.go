@@ -12,11 +12,11 @@ package quic
 import (
 	reflect "reflect"
 
-	gomock "github.com/lemon4ksan/foundation/testing/gomock"
 	ackhandler "github.com/lemon4ksan/foundation/net/quic/internal/ackhandler"
 	monotime "github.com/lemon4ksan/foundation/net/quic/internal/monotime"
 	protocol "github.com/lemon4ksan/foundation/net/quic/internal/protocol"
 	qerr "github.com/lemon4ksan/foundation/net/quic/internal/qerr"
+	gomock "github.com/lemon4ksan/foundation/testing/gomock"
 )
 
 // MockPacker is a mock of Packer interface.

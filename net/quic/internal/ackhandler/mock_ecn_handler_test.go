@@ -12,8 +12,8 @@ package ackhandler
 import (
 	reflect "reflect"
 
-	gomock "github.com/lemon4ksan/foundation/testing/gomock"
 	protocol "github.com/lemon4ksan/foundation/net/quic/internal/protocol"
+	gomock "github.com/lemon4ksan/foundation/testing/gomock"
 )
 
 // MockECNHandler is a mock of ECNHandler interface.

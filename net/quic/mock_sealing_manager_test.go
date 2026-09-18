@@ -12,8 +12,8 @@ package quic
 import (
 	reflect "reflect"
 
-	gomock "github.com/lemon4ksan/foundation/testing/gomock"
 	handshake "github.com/lemon4ksan/foundation/net/quic/internal/handshake"
+	gomock "github.com/lemon4ksan/foundation/testing/gomock"
 )
 
 // MockSealingManager is a mock of SealingManager interface.

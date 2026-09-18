@@ -12,10 +12,10 @@ package quic
 import (
 	reflect "reflect"
 
-	gomock "github.com/lemon4ksan/foundation/testing/gomock"
 	ackhandler "github.com/lemon4ksan/foundation/net/quic/internal/ackhandler"
 	protocol "github.com/lemon4ksan/foundation/net/quic/internal/protocol"
 	wire "github.com/lemon4ksan/foundation/net/quic/internal/wire"
+	gomock "github.com/lemon4ksan/foundation/testing/gomock"
 )
 
 // MockStreamFrameGetter is a mock of StreamFrameGetter interface.

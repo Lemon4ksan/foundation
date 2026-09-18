@@ -13,8 +13,8 @@ import (
 	net "net"
 	reflect "reflect"
 
-	gomock "github.com/lemon4ksan/foundation/testing/gomock"
 	protocol "github.com/lemon4ksan/foundation/net/quic/internal/protocol"
+	gomock "github.com/lemon4ksan/foundation/testing/gomock"
 )
 
 // MockSendConn is a mock of SendConn interface.
