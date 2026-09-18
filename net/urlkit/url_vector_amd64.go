@@ -17,11 +17,11 @@ var ErrInvalidEscape = errors.New("url: invalid URL escape sequence")
 
 var hasAVX2 = cpu.X86.HasAVX2
 
-func unescapeVector(dst, src []byte) (int, error) {
+func unescapeVector(dst, src []byte, mode UnescapeMode) (int, error) {
 	if len(src) == 0 {
 		return 0, nil
 	}
-	if hasAVX2 {
+	if hasAVX2 && mode == UnescapeModeQuery {
 		res := url_unescape_avx2(
 			uint64(uintptr(unsafe.Pointer(&src[0]))),
 			uint64(len(src)),
@@ -34,5 +34,5 @@ func unescapeVector(dst, src []byte) (int, error) {
 		}
 		return n, nil
 	}
-	return unescapeScalar(dst, src)
+	return unescapeScalar(dst, src, mode)
 }

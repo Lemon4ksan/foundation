@@ -27,15 +27,15 @@ func TestUnescapeScalar_FallbackAndHex(t *testing.T) {
 	// unescapeScalar valid
 	src := []byte("hello%20world+plus%21")
 	dst := make([]byte, len(src))
-	n, err := unescapeScalar(dst, src)
+	n, err := unescapeScalar(dst, src, UnescapeModeQuery)
 	require.NoError(t, err)
 	assert.Equal(t, "hello world plus!", string(dst[:n]))
 
 	// unescapeScalar truncated %
-	_, err = unescapeScalar(dst, []byte("hello%2"))
+	_, err = unescapeScalar(dst, []byte("hello%2"), UnescapeModeQuery)
 	assert.ErrorIs(t, err, ErrInvalidEscape)
 
 	// unescapeScalar invalid hex
-	_, err = unescapeScalar(dst, []byte("hello%2Z"))
+	_, err = unescapeScalar(dst, []byte("hello%2Z"), UnescapeModeQuery)
 	assert.ErrorIs(t, err, ErrInvalidEscape)
 }

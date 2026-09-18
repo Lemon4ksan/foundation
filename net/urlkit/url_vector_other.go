@@ -10,6 +10,6 @@ import "errors"
 
 var ErrInvalidEscape = errors.New("url: invalid URL escape sequence")
 
-func unescapeVector(dst, src []byte) (int, error) {
-	return unescapeScalar(dst, src)
+func unescapeVector(dst, src []byte, mode UnescapeMode) (int, error) {
+	return unescapeScalar(dst, src, mode)
 }

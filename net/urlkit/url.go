@@ -7,12 +7,21 @@
 package urlkit
 
 import (
+	"errors"
 	"hash/crc32"
 	"net/url"
 	"strings"
 	"sync"
 
 	"github.com/lemon4ksan/foundation/silicon/bytesconv"
+)
+
+
+type UnescapeMode int
+
+const (
+	UnescapeModeQuery UnescapeMode = iota
+	UnescapeModePath
 )
 
 // fastHash computes a hardware CRC32 hash of string s to select a cache shard index.
@@ -267,6 +276,15 @@ func ParseView(rawURL string) (URLView, error) {
 		}
 	} else {
 		view.Path = rest
+	}
+
+
+	// 5. Host Validation
+	for i := 0; i < len(view.Host); i++ {
+		b := view.Host[i]
+		if b <= ' ' || b == '<' || b == '>' || b == '"' || b == 92 || b == '^' || b == 96 || b == '{' || b == '|' || b == '}' {
+			return URLView{}, errors.New("url: invalid character in host name")
+		}
 	}
 
 	return view, nil
@@ -608,7 +626,7 @@ func QueryUnescape(s string) (string, error) {
 	}
 	src := bytesconv.S2B(s)
 	buf := make([]byte, len(src))
-	n, err := unescapeVector(buf, src)
+	n, err := unescapeVector(buf, src, UnescapeModeQuery)
 	if err != nil {
 		return "", err
 	}
@@ -628,14 +646,14 @@ func QueryUnescapeBytes(dst, src []byte) ([]byte, error) {
 	} else {
 		dst = dst[:start+len(src)]
 	}
-	n, err := unescapeVector(dst[start:], src)
+	n, err := unescapeVector(dst[start:], src, UnescapeModeQuery)
 	if err != nil {
 		return nil, err
 	}
 	return dst[:start+n], nil
 }
 
-func unescapeScalar(dst, src []byte) (int, error) {
+func unescapeScalar(dst, src []byte, mode UnescapeMode) (int, error) {
 	out := 0
 	for i := 0; i < len(src); {
 		c := src[i]
@@ -653,7 +671,11 @@ func unescapeScalar(dst, src []byte) (int, error) {
 			out++
 			i += 3
 		case '+':
-			dst[out] = ' '
+			if mode == UnescapeModeQuery {
+				dst[out] = ' '
+			} else {
+				dst[out] = '+'
+			}
 			out++
 			i++
 		default:
