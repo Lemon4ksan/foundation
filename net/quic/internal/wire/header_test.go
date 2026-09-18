@@ -12,10 +12,9 @@ import (
 	mrand "math/rand/v2"
 	"testing"
 
-	"github.com/lemon4ksan/foundation/testing/require"
-
 	"github.com/lemon4ksan/foundation/net/quic/internal/protocol"
 	"github.com/lemon4ksan/foundation/net/quic/internal/utils"
+	"github.com/lemon4ksan/foundation/testing/require"
 )
 
 func TestParseConnIDLongHeaderPacket(t *testing.T) {

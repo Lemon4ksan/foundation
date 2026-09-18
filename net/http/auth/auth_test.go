@@ -18,8 +18,8 @@ func TestBasicAuth_RFC7617(t *testing.T) {
 	formatted := auth.FormatBasic("aladdin", "opensesame")
 	assert.Equal(t, "Basic YWxhZGRpbjpvcGVuc2VzYW1l", formatted)
 
-	u, p, ok := auth.ParseBasic(formatted)
-	assert.True(t, ok)
+	u, p, err := auth.ParseBasic(formatted)
+	assert.NoError(t, err)
 	assert.Equal(t, "aladdin", u)
 	assert.Equal(t, "opensesame", p)
 

@@ -12,11 +12,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lemon4ksan/foundation/testing/gomock"
-	"github.com/lemon4ksan/foundation/testing/require"
-
 	"github.com/lemon4ksan/foundation/net/quic/internal/protocol"
 	"github.com/lemon4ksan/foundation/net/quic/internal/utils"
+	"github.com/lemon4ksan/foundation/testing/gomock"
+	"github.com/lemon4ksan/foundation/testing/require"
 )
 
 // Only if appendUDPSegmentSizeMsg actually appends a message (and isn't only a stub implementation),

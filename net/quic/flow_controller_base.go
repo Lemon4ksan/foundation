@@ -8,15 +8,13 @@ package quic
 import (
 	"time"
 
-	"github.com/lemon4ksan/foundation/sync/spinlock"
-
 	"github.com/lemon4ksan/foundation/net/quic/internal/monotime"
 	"github.com/lemon4ksan/foundation/net/quic/internal/protocol"
 	"github.com/lemon4ksan/foundation/net/quic/internal/utils"
+	"github.com/lemon4ksan/foundation/sync/spinlock"
 )
 
 type receiveFlowController struct {
-	//nolint:structcheck // The spinlock is used both by the stream and the connection flow controller
 	mutex                spinlock.SpinLock
 	bytesRead            protocol.ByteCount
 	highestReceived      protocol.ByteCount

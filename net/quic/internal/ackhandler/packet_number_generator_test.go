@@ -8,9 +8,8 @@ import (
 	"math"
 	"testing"
 
-	"github.com/lemon4ksan/foundation/testing/require"
-
 	"github.com/lemon4ksan/foundation/net/quic/internal/protocol"
+	"github.com/lemon4ksan/foundation/testing/require"
 )
 
 func TestSequentialPacketNumberGenerator(t *testing.T) {

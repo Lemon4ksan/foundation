@@ -17,12 +17,12 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/lemon4ksan/foundation/testing/assert"
-	"github.com/lemon4ksan/foundation/testing/require"
 	"golang.org/x/crypto/cryptobyte"
 
 	"github.com/lemon4ksan/foundation/net/quic/internal/protocol"
 	"github.com/lemon4ksan/foundation/net/quic/internal/testdata"
+	"github.com/lemon4ksan/foundation/testing/assert"
+	"github.com/lemon4ksan/foundation/testing/require"
 )
 
 func checkClientHello(clientHello []byte) error {

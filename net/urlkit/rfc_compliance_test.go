@@ -2,8 +2,9 @@ package urlkit_test
 
 import (
 	"testing"
-	"github.com/stretchr/testify/assert"
+
 	"github.com/lemon4ksan/foundation/net/urlkit"
+	"github.com/lemon4ksan/foundation/testing/assert"
 )
 
 func TestURLView_Hostname_IPv6Zone(t *testing.T) {

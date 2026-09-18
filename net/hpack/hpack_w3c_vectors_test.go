@@ -10,7 +10,7 @@ import (
 
 	"github.com/lemon4ksan/foundation/testing/assert"
 
-	"github.com/lemon4ksan/mach/proto/h2"
+	hpack "github.com/lemon4ksan/foundation/net/hpack"
 )
 
 // Official Test Vectors from RFC 7541 Appendix C (W3C HPACK Test Specification)
@@ -32,8 +32,8 @@ func TestHPACK_W3C_RFC7541_AppendixC(t *testing.T) {
 	t.Run("C.2.1_Literal_With_Indexing", func(t *testing.T) {
 		encoded := hexToBytes("400a637573746f6d2d6b65790d637573746f6d2d686561646572")
 
-		hp := h2.AcquireHPACK()
-		defer h2.ReleaseHPACK(hp)
+		hp := hpack.AcquireHPACK()
+		defer hpack.ReleaseHPACK(hp)
 
 		fields, err := hp.DecodeAll(nil, encoded)
 		assert.NoError(t, err)
@@ -47,8 +47,8 @@ func TestHPACK_W3C_RFC7541_AppendixC(t *testing.T) {
 	t.Run("C.2.2_Literal_Without_Indexing", func(t *testing.T) {
 		encoded := hexToBytes("04162f6d792d6578616d706c652f696e6465782e68746d6c")
 
-		hp := h2.AcquireHPACK()
-		defer h2.ReleaseHPACK(hp)
+		hp := hpack.AcquireHPACK()
+		defer hpack.ReleaseHPACK(hp)
 
 		fields, err := hp.DecodeAll(nil, encoded)
 		assert.NoError(t, err)
@@ -62,8 +62,8 @@ func TestHPACK_W3C_RFC7541_AppendixC(t *testing.T) {
 	t.Run("C.2.4_Indexed_Header_Field", func(t *testing.T) {
 		encoded := hexToBytes("82")
 
-		hp := h2.AcquireHPACK()
-		defer h2.ReleaseHPACK(hp)
+		hp := hpack.AcquireHPACK()
+		defer hpack.ReleaseHPACK(hp)
 
 		fields, err := hp.DecodeAll(nil, encoded)
 		assert.NoError(t, err)
@@ -74,8 +74,8 @@ func TestHPACK_W3C_RFC7541_AppendixC(t *testing.T) {
 
 	// Appendix C.3: Request Examples with Huffman Coding (3 consecutive requests with dynamic table mutation)
 	t.Run("C.3_Request_Huffman_Stream", func(t *testing.T) {
-		hp := h2.AcquireHPACK()
-		defer h2.ReleaseHPACK(hp)
+		hp := hpack.AcquireHPACK()
+		defer hpack.ReleaseHPACK(hp)
 
 		// Request 1:
 		// :method: GET
@@ -124,8 +124,8 @@ func TestHPACK_W3C_RFC7541_AppendixC(t *testing.T) {
 
 	// Appendix C.5: Response Examples with Huffman Coding
 	t.Run("C.5_Response_Huffman_Stream", func(t *testing.T) {
-		hp := h2.AcquireHPACK()
-		defer h2.ReleaseHPACK(hp)
+		hp := hpack.AcquireHPACK()
+		defer hpack.ReleaseHPACK(hp)
 
 		// Response 1:
 		// :status: 302

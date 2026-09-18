@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package sse implements the W3C Server-Sent Events (SSE) stream parsing protocol.
+// Package sse implements the WHATWG HTML Living Standard Server-Sent Events (SSE) protocol (formerly W3C).
 package sse
 
 import (

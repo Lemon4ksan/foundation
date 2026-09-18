@@ -7,9 +7,8 @@ package wire
 import (
 	"testing"
 
-	"github.com/lemon4ksan/foundation/testing/require"
-
 	"github.com/lemon4ksan/foundation/net/quic/internal/protocol"
+	"github.com/lemon4ksan/foundation/testing/require"
 )
 
 func TestWritePingFrame(t *testing.T) {

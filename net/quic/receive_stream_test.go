@@ -14,14 +14,13 @@ import (
 	"testing/synctest"
 	"time"
 
-	"github.com/lemon4ksan/foundation/testing/assert"
-	"github.com/lemon4ksan/foundation/testing/gomock"
-	"github.com/lemon4ksan/foundation/testing/require"
-
 	"github.com/lemon4ksan/foundation/net/quic/internal/monotime"
 	"github.com/lemon4ksan/foundation/net/quic/internal/protocol"
 	"github.com/lemon4ksan/foundation/net/quic/internal/utils"
 	"github.com/lemon4ksan/foundation/net/quic/internal/wire"
+	"github.com/lemon4ksan/foundation/testing/assert"
+	"github.com/lemon4ksan/foundation/testing/gomock"
+	"github.com/lemon4ksan/foundation/testing/require"
 )
 
 type readerWithTimeout struct {

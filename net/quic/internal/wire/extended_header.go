@@ -11,7 +11,6 @@ import (
 	"io"
 
 	"github.com/lemon4ksan/foundation/encoding/varint"
-
 	"github.com/lemon4ksan/foundation/net/quic/internal/protocol"
 	"github.com/lemon4ksan/foundation/net/quic/internal/utils"
 )

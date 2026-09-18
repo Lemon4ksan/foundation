@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/lemon4ksan/foundation/async/rate"
-	"github.com/lemon4ksan/foundation/net/hpack"
 	"github.com/lemon4ksan/foundation/net/idna"
 	"github.com/lemon4ksan/foundation/net/psl"
 	"github.com/lemon4ksan/foundation/net/urlkit"
@@ -201,38 +200,6 @@ func BenchmarkCompare_IDNA_ToASCII_ASCII_FastPath(b *testing.B) {
 	for b.Loop() {
 		res, err := idna.ToASCII(asciiDomain)
 		if err != nil || res != asciiDomain {
-			b.Fatal(err)
-		}
-	}
-}
-
-// -----------------------------------------------------------------------------
-// 7. HPACK Huffman Decoding: Buffered vs Zero-Alloc Append
-// -----------------------------------------------------------------------------
-
-var sampleHuffman = hpack.AppendHuffmanString(
-	nil,
-	"https://api.gateway.internal:8443/v2/telemetry/events?session_id=9876543210",
-)
-
-func BenchmarkCompare_HPACK_Huffman_Decode_Buffered(b *testing.B) {
-	b.ReportAllocs()
-
-	for b.Loop() {
-		str, err := hpack.HuffmanDecodeToString(sampleHuffman)
-		if err != nil || len(str) == 0 {
-			b.Fatal(err)
-		}
-	}
-}
-
-func BenchmarkCompare_HPACK_Huffman_Decode_ZeroAlloc(b *testing.B) {
-	buf := make([]byte, 0, 256)
-	b.ReportAllocs()
-
-	for b.Loop() {
-		out, err := hpack.AppendHuffmanDecode(buf[:0], sampleHuffman)
-		if err != nil || len(out) == 0 {
 			b.Fatal(err)
 		}
 	}

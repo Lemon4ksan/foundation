@@ -7,11 +7,15 @@ package auth
 
 import (
 	"encoding/base64"
+	"errors"
 	"net/url"
 	"strings"
 
+	"github.com/lemon4ksan/foundation/generic"
 	"github.com/lemon4ksan/foundation/silicon/bytesconv"
 )
+
+var ErrInvalidBase64 = errors.New("auth: invalid base64 encoding")
 
 // BasicChallenge represents an RFC 7617 HTTP Basic Authentication challenge from a WWW-Authenticate header.
 type BasicChallenge struct {
@@ -64,85 +68,49 @@ func FormatBasic(username, password string) string {
 }
 
 // ParseBasic extracts the username and password from a standard "Authorization: Basic <credentials>" header (RFC 7617 §2).
-func ParseBasic(authHeader string) (username, password string, ok bool) {
+func ParseBasic(authHeader string) (username, password string, err error) {
 	authHeader = strings.TrimSpace(authHeader)
-	if !strings.HasPrefix(authHeader, "Basic ") && !strings.HasPrefix(authHeader, "basic ") {
-		return "", "", false
+	if len(authHeader) < 6 || !strings.EqualFold(authHeader[:6], "Basic ") {
+		return "", "", errors.New("auth: not a Basic scheme")
 	}
 
 	payload := strings.TrimSpace(authHeader[6:])
 
-	decoded, err := base64.StdEncoding.DecodeString(payload)
-	if err != nil {
-		return "", "", false
+	decoded, errDecode := base64.StdEncoding.DecodeString(payload)
+	if errDecode != nil {
+		return "", "", ErrInvalidBase64
 	}
 
 	raw := bytesconv.B2S(decoded)
 
 	before, after, ok := strings.Cut(raw, ":")
 	if !ok {
-		return "", "", false
+		return "", "", errors.New("auth: missing colon in credentials")
 	}
 
-	return before, after, true
+	return before, after, nil
 }
 
 // ParseBasicChallenge extracts the realm and optional charset parameter from a "WWW-Authenticate: Basic ..." header (RFC 7617 §2).
 func ParseBasicChallenge(challengeHeader string) (BasicChallenge, bool) {
 	challengeHeader = strings.TrimSpace(challengeHeader)
-	if !strings.HasPrefix(challengeHeader, "Basic ") && !strings.HasPrefix(challengeHeader, "basic ") {
+	if len(challengeHeader) < 6 || !strings.EqualFold(challengeHeader[:6], "Basic ") {
 		return BasicChallenge{}, false
 	}
 
-	params := challengeHeader[6:]
+	parsedParams, _ := ExtractChallengeParams(challengeHeader, "Basic")
 
 	var ch BasicChallenge
-
 	foundRealm := false
 
-	for len(params) > 0 {
-		params = strings.TrimLeft(params, " ,")
-		if len(params) == 0 {
-			break
-		}
+	if realm, ok := parsedParams["realm"]; ok {
+		ch.Realm = realm
+		foundRealm = true
+	}
 
-		eqIdx := strings.IndexByte(params, '=')
-		if eqIdx < 0 {
-			break
-		}
-
-		key := strings.ToLower(strings.TrimSpace(params[:eqIdx]))
-		params = params[eqIdx+1:]
-
-		var val string
-		if len(params) > 0 && params[0] == '"' {
-			params = params[1:]
-
-			endQuote := strings.IndexByte(params, '"')
-			if endQuote < 0 {
-				val = params
-				params = ""
-			} else {
-				val = params[:endQuote]
-				params = params[endQuote+1:]
-			}
-		} else {
-			commaIdx := strings.IndexByte(params, ',')
-			if commaIdx < 0 {
-				val = strings.TrimSpace(params)
-				params = ""
-			} else {
-				val = strings.TrimSpace(params[:commaIdx])
-				params = params[commaIdx+1:]
-			}
-		}
-
-		switch key {
-		case "realm":
-			ch.Realm = val
-			foundRealm = true
-		case "charset":
-			ch.Charset = strings.ToUpper(val)
+	if charset, ok := parsedParams["charset"]; ok {
+		if strings.EqualFold(charset, "UTF-8") {
+			ch.Charset = "UTF-8"
 		}
 	}
 
@@ -165,21 +133,14 @@ func InScope(reqURL, scopeRootURL string) bool {
 		return false
 	}
 
-	scopePath := parsedScope.Path
-	if scopePath == "" {
-		scopePath = "/"
-	}
-
+	scopePath := generic.Coalesce(parsedScope.Path, "/")
 	if !strings.HasSuffix(scopePath, "/") {
 		scopePath += "/"
 	}
 
-	reqPath := parsedReq.Path
-	if reqPath == "" {
-		reqPath = "/"
-	}
+	reqPath := generic.Coalesce(parsedReq.Path, "/")
 
-	if reqPath == parsedScope.Path {
+	if reqPath == scopePath {
 		return true
 	}
 

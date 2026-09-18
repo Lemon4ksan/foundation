@@ -5,7 +5,6 @@
 package qpack
 
 import (
-
 	"errors"
 	"io"
 

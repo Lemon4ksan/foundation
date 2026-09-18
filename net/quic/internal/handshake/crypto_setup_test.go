@@ -17,13 +17,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lemon4ksan/foundation/testing/require"
-
 	"github.com/lemon4ksan/foundation/net/quic/internal/protocol"
 	"github.com/lemon4ksan/foundation/net/quic/internal/qerr"
 	"github.com/lemon4ksan/foundation/net/quic/internal/testdata"
 	"github.com/lemon4ksan/foundation/net/quic/internal/utils"
 	"github.com/lemon4ksan/foundation/net/quic/internal/wire"
+	"github.com/lemon4ksan/foundation/testing/require"
 )
 
 const (

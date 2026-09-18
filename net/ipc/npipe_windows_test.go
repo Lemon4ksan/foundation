@@ -9,10 +9,9 @@ package ipc_test
 import (
 	"testing"
 
+	"github.com/lemon4ksan/foundation/net/ipc"
 	"github.com/lemon4ksan/foundation/testing/assert"
 	"github.com/lemon4ksan/foundation/testing/require"
-
-	"github.com/lemon4ksan/foundation/net/ipc"
 )
 
 func TestNewNamedPipeTransport(t *testing.T) {

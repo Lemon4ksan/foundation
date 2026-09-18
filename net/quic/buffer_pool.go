@@ -6,9 +6,8 @@
 package quic
 
 import (
-	"github.com/lemon4ksan/foundation/silicon/pool"
-
 	"github.com/lemon4ksan/foundation/net/quic/internal/protocol"
+	"github.com/lemon4ksan/foundation/silicon/pool"
 )
 
 type packetBuffer struct {

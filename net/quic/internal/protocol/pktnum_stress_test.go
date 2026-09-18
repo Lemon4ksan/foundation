@@ -8,9 +8,8 @@ import (
 	"math"
 	"testing"
 
-	"github.com/lemon4ksan/foundation/testing/assert"
-
 	"github.com/lemon4ksan/foundation/net/quic/internal/protocol"
+	"github.com/lemon4ksan/foundation/testing/assert"
 )
 
 func TestQUIC_DecodePacketNumber_RFC9000AppendixA(t *testing.T) {

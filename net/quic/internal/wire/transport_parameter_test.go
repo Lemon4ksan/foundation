@@ -16,10 +16,9 @@ import (
 	"time"
 
 	"github.com/lemon4ksan/foundation/encoding/varint"
-	"github.com/lemon4ksan/foundation/testing/require"
-
 	"github.com/lemon4ksan/foundation/net/quic/internal/protocol"
 	"github.com/lemon4ksan/foundation/net/quic/internal/qerr"
+	"github.com/lemon4ksan/foundation/testing/require"
 )
 
 func getRandomValueUpTo(max uint64) uint64 {

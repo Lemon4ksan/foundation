@@ -6,7 +6,6 @@ package wire
 
 import (
 	"github.com/lemon4ksan/foundation/generic"
-
 	"github.com/lemon4ksan/foundation/net/quic/internal/protocol"
 )
 

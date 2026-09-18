@@ -36,7 +36,7 @@ func decodeHuffman(src []byte, arena *[]byte) (string, error) {
 
 	start := len(*arena)
 	dst := hpack.HuffmanDecode(*arena, src)
-	
+
 	*arena = dst
 
 	return bytesconv.B2S((*arena)[start:]), nil

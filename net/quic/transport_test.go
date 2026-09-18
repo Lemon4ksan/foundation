@@ -15,13 +15,12 @@ import (
 	"testing/synctest"
 	"time"
 
-	"github.com/lemon4ksan/foundation/testing/assert"
-	"github.com/lemon4ksan/foundation/testing/require"
-
 	"github.com/lemon4ksan/foundation/net/quic/internal/protocol"
 	"github.com/lemon4ksan/foundation/net/quic/internal/qerr"
 	"github.com/lemon4ksan/foundation/net/quic/internal/utils"
 	"github.com/lemon4ksan/foundation/net/quic/internal/wire"
+	"github.com/lemon4ksan/foundation/testing/assert"
+	"github.com/lemon4ksan/foundation/testing/require"
 )
 
 type mockPacketConn struct {

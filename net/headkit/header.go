@@ -5,9 +5,8 @@
 package headkit
 
 import (
-	"iter"
-
 	"encoding/binary"
+	"iter"
 	"math/bits"
 
 	"github.com/lemon4ksan/foundation/net/http/header"

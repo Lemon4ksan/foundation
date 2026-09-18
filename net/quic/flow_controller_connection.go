@@ -8,12 +8,11 @@ package quic
 import (
 	"fmt"
 
-	"github.com/lemon4ksan/foundation/sync/spinlock"
-
 	"github.com/lemon4ksan/foundation/net/quic/internal/monotime"
 	"github.com/lemon4ksan/foundation/net/quic/internal/protocol"
 	"github.com/lemon4ksan/foundation/net/quic/internal/qerr"
 	"github.com/lemon4ksan/foundation/net/quic/internal/utils"
+	"github.com/lemon4ksan/foundation/sync/spinlock"
 )
 
 type connectionFlowController struct {

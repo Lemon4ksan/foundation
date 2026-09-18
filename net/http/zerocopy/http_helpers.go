@@ -57,7 +57,6 @@ func InitHeaderValueString(bufV []byte, value string) []byte {
 }
 
 func InitHeaderValueBytes(bufV, value []byte) []byte {
-
 	bufV = append(bufV[:0], value...)
 	bufV = RemoveNewLines(bufV)
 	return bufV
@@ -70,7 +69,6 @@ func GetHeaderKeyBytes(bufK []byte, key string, disableNormalizing bool) []byte 
 }
 
 func NormalizeHeaderKey(b []byte, disableNormalizing bool) {
-
 	b = RemoveNewLines(b)
 
 	if disableNormalizing {
@@ -116,7 +114,6 @@ func NormalizeHeaderKeyValidated(b []byte, disableNormalizing bool) {
 
 // RemoveNewLines will replace `\r` and `\n` with an empty space.
 func RemoveNewLines(raw []byte) []byte {
-
 	foundR := bytes.IndexByte(raw, rChar)
 	foundN := bytes.IndexByte(raw, nChar)
 	start := 0

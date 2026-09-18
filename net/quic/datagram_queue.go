@@ -9,10 +9,9 @@ import (
 	"context"
 	"sync"
 
-	"github.com/lemon4ksan/foundation/structures/ringbuffer"
-
 	"github.com/lemon4ksan/foundation/net/quic/internal/utils"
 	"github.com/lemon4ksan/foundation/net/quic/internal/wire"
+	"github.com/lemon4ksan/foundation/structures/ringbuffer"
 )
 
 const (

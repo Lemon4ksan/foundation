@@ -7,10 +7,9 @@ package wire
 import (
 	"testing"
 
-	"github.com/lemon4ksan/foundation/testing/require"
-
 	"github.com/lemon4ksan/foundation/net/quic/internal/protocol"
 	"github.com/lemon4ksan/foundation/net/quic/internal/qerr"
+	"github.com/lemon4ksan/foundation/testing/require"
 )
 
 func TestParseResetStream(t *testing.T) {

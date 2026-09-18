@@ -66,7 +66,11 @@ func wrapConn(pc net.PacketConn) (rawConn, error) {
 					return
 				}
 
-				slog.Warn("Failed to set buffer. See https://github.com/lemon4ksan/sein/internal/quic/wiki/UDP-Buffer-Sizes for details.", "error", err)
+				slog.Warn(
+					"Failed to set buffer. See https://github.com/lemon4ksan/sein/internal/quic/wiki/UDP-Buffer-Sizes for details.",
+					"error",
+					err,
+				)
 			})
 		}
 	}
@@ -78,7 +82,11 @@ func wrapConn(pc net.PacketConn) (rawConn, error) {
 					return
 				}
 
-				slog.Warn("Failed to set buffer. See https://github.com/lemon4ksan/sein/internal/quic/wiki/UDP-Buffer-Sizes for details.", "error", err)
+				slog.Warn(
+					"Failed to set buffer. See https://github.com/lemon4ksan/sein/internal/quic/wiki/UDP-Buffer-Sizes for details.",
+					"error",
+					err,
+				)
 			})
 		}
 	}

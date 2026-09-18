@@ -9,9 +9,8 @@ import (
 	"io"
 	"testing"
 
-	"github.com/lemon4ksan/foundation/testing/require"
-
 	"github.com/lemon4ksan/foundation/net/quic/internal/protocol"
+	"github.com/lemon4ksan/foundation/testing/require"
 )
 
 func TestParseShortHeader(t *testing.T) {

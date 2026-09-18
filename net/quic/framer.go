@@ -10,13 +10,12 @@ import (
 	"sync"
 
 	"github.com/lemon4ksan/foundation/encoding/varint"
-	"github.com/lemon4ksan/foundation/structures/minheap"
-	"github.com/lemon4ksan/foundation/structures/ringbuffer"
-
 	"github.com/lemon4ksan/foundation/net/quic/internal/ackhandler"
 	"github.com/lemon4ksan/foundation/net/quic/internal/monotime"
 	"github.com/lemon4ksan/foundation/net/quic/internal/protocol"
 	"github.com/lemon4ksan/foundation/net/quic/internal/wire"
+	"github.com/lemon4ksan/foundation/structures/minheap"
+	"github.com/lemon4ksan/foundation/structures/ringbuffer"
 )
 
 const (

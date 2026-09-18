@@ -8,10 +8,9 @@ package quic
 import (
 	"errors"
 
+	"github.com/lemon4ksan/foundation/net/quic/internal/protocol"
 	"github.com/lemon4ksan/foundation/silicon/pool"
 	list "github.com/lemon4ksan/foundation/structures/linkedlist"
-
-	"github.com/lemon4ksan/foundation/net/quic/internal/protocol"
 )
 
 // byteInterval is an interval from one ByteCount to the other

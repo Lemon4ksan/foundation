@@ -19,11 +19,11 @@ func FuzzBasicAuth(f *testing.F) {
 
 	f.Fuzz(func(t *testing.T, user, pass string) {
 		hdr := auth.FormatBasic(user, pass)
-		u, p, ok := auth.ParseBasic(hdr)
+		u, p, err := auth.ParseBasic(hdr)
 
 		// RFC 7617: username cannot contain colon, neither can contain CRLF or null
 		if !strings.Contains(user, ":") && !strings.ContainsAny(user+pass, "\r\n\x00") {
-			if !ok {
+			if err != nil {
 				t.Fatalf("failed to parse formatted Basic auth header: %s", hdr)
 			}
 			if u != user || p != pass {

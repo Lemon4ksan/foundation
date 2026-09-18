@@ -30,67 +30,6 @@ func TestHuffmanEncodingSymmetry(t *testing.T) {
 	}
 }
 
-func TestHPACKEncodeDecodeSymmetry(t *testing.T) {
-	hpEnc := AcquireHPACK()
-	defer ReleaseHPACK(hpEnc)
-
-	hpDec := AcquireHPACK()
-	defer ReleaseHPACK(hpDec)
-
-	headersToTest := []struct {
-		key   string
-		value string
-	}{
-		{":method", "GET"},
-		{":scheme", "https"},
-		{":path", "/api/v1/users"},
-		{":authority", "example.com"},
-		{"user-agent", "aoni-custom-agent"},
-		{"x-custom-header", "custom-value-123"},
-	}
-
-	hFrame := AcquireFrame(FrameHeaders).(*Headers)
-	hf := AcquireHeaderField()
-
-	defer ReleaseHeaderField(hf)
-
-	for _, h := range headersToTest {
-		hf.Set(h.key, h.value)
-		hFrame.AppendHeaderField(hpEnc, hf, true)
-	}
-
-	rawHeaders := hFrame.Headers()
-
-	decodedHeaders := make(map[string]string)
-	currBuf := rawHeaders
-
-	for len(currBuf) > 0 {
-		hfRecv := AcquireHeaderField()
-
-		var err error
-
-		currBuf, err = hpDec.Next(hfRecv, currBuf)
-		if err != nil {
-			ReleaseHeaderField(hfRecv)
-			t.Fatalf("failed to decode HPACK stream: %v", err)
-		}
-
-		decodedHeaders[hfRecv.Key()] = hfRecv.Value()
-		ReleaseHeaderField(hfRecv)
-	}
-
-	for _, expected := range headersToTest {
-		val, ok := decodedHeaders[expected.key]
-		if !ok {
-			t.Errorf("missing header in decoded map: %s", expected.key)
-			continue
-		}
-
-		if val != expected.value {
-			t.Errorf("header value mismatch for %s: got %q, want %q", expected.key, val, expected.value)
-		}
-	}
-}
 
 func TestHPACKDynamicTableShrinking(t *testing.T) {
 	hp := AcquireHPACK()

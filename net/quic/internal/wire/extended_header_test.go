@@ -9,9 +9,8 @@ import (
 	"testing"
 
 	"github.com/lemon4ksan/foundation/encoding/varint"
-	"github.com/lemon4ksan/foundation/testing/require"
-
 	"github.com/lemon4ksan/foundation/net/quic/internal/protocol"
+	"github.com/lemon4ksan/foundation/testing/require"
 )
 
 func TestWritesLongHeaderVersion1(t *testing.T) {

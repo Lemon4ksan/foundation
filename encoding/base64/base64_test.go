@@ -9,9 +9,8 @@ import (
 	stdbase64 "encoding/base64"
 	"testing"
 
-	"github.com/lemon4ksan/foundation/testing/assert"
-
 	"github.com/lemon4ksan/foundation/encoding/base64"
+	"github.com/lemon4ksan/foundation/testing/assert"
 )
 
 func TestBase64EncodeURL(t *testing.T) {

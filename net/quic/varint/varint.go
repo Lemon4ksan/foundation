@@ -55,7 +55,7 @@ func EncodeVarint(val uint64) []byte {
 		b := make([]byte, 8)
 		binary.BigEndian.PutUint64(b, val|0xc000000000000000)
 		return b
-		
+
 	default:
 		panic("quic/varint: value too large for QUIC varint")
 	}

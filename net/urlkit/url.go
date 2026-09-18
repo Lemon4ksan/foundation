@@ -16,7 +16,6 @@ import (
 	"github.com/lemon4ksan/foundation/silicon/bytesconv"
 )
 
-
 type UnescapeMode int
 
 const (
@@ -278,11 +277,11 @@ func ParseView(rawURL string) (URLView, error) {
 		view.Path = rest
 	}
 
-
 	// 5. Host Validation
 	for i := 0; i < len(view.Host); i++ {
 		b := view.Host[i]
-		if b <= ' ' || b == '<' || b == '>' || b == '"' || b == 92 || b == '^' || b == 96 || b == '{' || b == '|' || b == '}' {
+		if b <= ' ' || b == '<' || b == '>' || b == '"' || b == 92 || b == '^' || b == 96 || b == '{' || b == '|' ||
+			b == '}' {
 			return URLView{}, errors.New("url: invalid character in host name")
 		}
 	}
@@ -399,7 +398,7 @@ func ResolveString(baseURL *url.URL, path string) (string, error) {
 	if path == "" {
 		return baseURL.String(), nil
 	}
-	
+
 	rel, err := url.Parse(path)
 	if err != nil {
 		return "", err

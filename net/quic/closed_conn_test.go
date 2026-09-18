@@ -9,9 +9,8 @@ import (
 	"net"
 	"testing"
 
-	"github.com/lemon4ksan/foundation/testing/require"
-
 	"github.com/lemon4ksan/foundation/net/quic/internal/utils"
+	"github.com/lemon4ksan/foundation/testing/require"
 )
 
 func TestClosedLocalConnection(t *testing.T) {

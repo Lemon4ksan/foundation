@@ -19,6 +19,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/lemon4ksan/foundation/net/http/auth"
 )
 
 var (
@@ -144,69 +146,18 @@ func (dt *Transport) CloneTransport(next http.RoundTripper) http.RoundTripper {
 
 func (dt *Transport) cloneReq(r *http.Request, first bool) *http.Request {
 	r1 := r.Clone(r.Context())
-	if first {
-		r1.Body = http.NoBody
-		r1.ContentLength = 0
-		r1.GetBody = nil
-	}
 
 	return r1
 }
 
 func (dt *Transport) parseChallenge(input string) (*digestChallenge, error) {
-	const ws = " \n\r\t"
-
-	s := strings.Trim(input, ws)
-	if !strings.HasPrefix(s, "Digest ") {
+	params, ok := auth.ExtractChallengeParams(input, "Digest")
+	if !ok {
 		return nil, ErrDigestBadChallenge
 	}
 
-	s = strings.Trim(s[7:], ws)
 	c := &digestChallenge{}
-
-	var sb strings.Builder
-
-	key := ""
-	quoted := false
-
-	for _, r := range s {
-		switch r {
-		case '"':
-			quoted = !quoted
-		case ',':
-			if quoted {
-				sb.WriteRune(r)
-			} else {
-				val := strings.Trim(sb.String(), ws)
-				sb.Reset()
-
-				if err := c.setValue(key, val); err != nil {
-					return nil, err
-				}
-
-				key = ""
-			}
-
-		case '=':
-			if quoted {
-				sb.WriteRune(r)
-			} else {
-				key = strings.Trim(sb.String(), ws)
-				sb.Reset()
-			}
-
-		default:
-			sb.WriteRune(r)
-		}
-	}
-
-	key = strings.TrimSpace(key)
-	if quoted || (key == "" && sb.Len() > 0) {
-		return nil, ErrDigestBadChallenge
-	}
-
-	if key != "" {
-		val := strings.Trim(sb.String(), ws)
+	for key, val := range params {
 		if err := c.setValue(key, val); err != nil {
 			return nil, err
 		}

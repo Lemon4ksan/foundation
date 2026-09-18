@@ -207,7 +207,7 @@ func (c *oobConn) ReadPacket() (receivedPacket, error) {
 					p.info.ifIndex = ifIndex
 				} else {
 					invalidCmsgOnceV4.Do(func() {
-						slog.Warn("Received invalid IPv4 packet info control message", "data", +"This should never occur, please open a new issue and include details about the architecture.", body)
+						slog.Warn("Received invalid IPv4 packet info control message", "message", "This should never occur, please open a new issue and include details about the architecture.", "body", body)
 					})
 				}
 			}
@@ -233,7 +233,7 @@ func (c *oobConn) ReadPacket() (receivedPacket, error) {
 					p.info.ifIndex = binary.NativeEndian.Uint32(body[16:])
 				} else {
 					invalidCmsgOnceV6.Do(func() {
-						slog.Warn("Received invalid IPv6 packet info control message", "data", +"This should never occur, please open a new issue and include details about the architecture.", body)
+						slog.Warn("Received invalid IPv6 packet info control message", "message", "This should never occur, please open a new issue and include details about the architecture.", "body", body)
 					})
 				}
 			}
