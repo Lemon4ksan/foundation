@@ -64,7 +64,11 @@ func (u URLView) Hostname() string {
 	if strings.HasPrefix(h, "[") {
 		// IPv6 literal
 		if end := strings.IndexByte(h, ']'); end >= 0 {
-			return h[1:end]
+			ip := h[1:end]
+			if zoneIdx := strings.Index(ip, "%25"); zoneIdx >= 0 {
+				ip = ip[:zoneIdx] + "%" + ip[zoneIdx+3:]
+			}
+			return ip
 		}
 	}
 	if colon := strings.LastIndexByte(h, ':'); colon >= 0 {
@@ -132,7 +136,7 @@ func (u URLView) QueryValue(key string) (string, bool) {
 		}
 		if k == key {
 			if strings.IndexByte(val, '%') >= 0 || strings.IndexByte(val, '+') >= 0 {
-				unesc, err := Unescape(val)
+				unesc, err := QueryUnescape(val)
 				if err == nil {
 					return unesc, true
 				}
@@ -374,26 +378,14 @@ func ResolveString(baseURL *url.URL, path string) (string, error) {
 	if IsAbsURL(path) || baseURL == nil || baseURL.Host == "" {
 		return path, nil
 	}
-
-	if path == "" || path == "/" {
+	if path == "" {
 		return baseURL.String(), nil
 	}
-
-	baseStr := strings.TrimSuffix(baseURL.String(), "/")
-	if path[0] == '/' {
-		return baseStr + path, nil
-	}
-
-	if !strings.HasPrefix(path, ".") {
-		return baseStr + "/" + path, nil
-	}
-
-	// If relative path with dot segments (e.g. "../api"), use RFC 3986 reference resolution
-	rel, err := Parse(path)
+	
+	rel, err := url.Parse(path)
 	if err != nil {
 		return "", err
 	}
-
 	return baseURL.ResolveReference(rel).String(), nil
 }
 
@@ -610,7 +602,7 @@ func AppendQueryEscapeString(dst []byte, src string) []byte {
 
 // Unescape unescapes URL percent-encoded characters (%XX) and replaces '+' with ' '
 // using hardware vector acceleration.
-func Unescape(s string) (string, error) {
+func QueryUnescape(s string) (string, error) {
 	if len(s) == 0 {
 		return "", nil
 	}
@@ -624,7 +616,7 @@ func Unescape(s string) (string, error) {
 }
 
 // UnescapeBytes unescapes URL percent-encoded characters from src into dst.
-func UnescapeBytes(dst, src []byte) ([]byte, error) {
+func QueryUnescapeBytes(dst, src []byte) ([]byte, error) {
 	if len(src) == 0 {
 		return dst, nil
 	}
@@ -684,4 +676,44 @@ func fromHexChar(c byte) int {
 		return int(c - 'A' + 10)
 	}
 	return -1
+}
+
+// PathUnescape unescapes URL percent-encoded characters (%XX) without touching '+'.
+// It complies with RFC 3986 Section 2.2 for URI components.
+func PathUnescape(s string) (string, error) {
+	if len(s) == 0 {
+		return "", nil
+	}
+	src := bytesconv.S2B(s)
+	buf := make([]byte, len(src))
+	n, err := pathUnescapeScalar(buf, src)
+	if err != nil {
+		return "", err
+	}
+	return string(buf[:n]), nil
+}
+
+func pathUnescapeScalar(dst, src []byte) (int, error) {
+	out := 0
+	for i := 0; i < len(src); {
+		c := src[i]
+		if c == '%' {
+			if i+2 >= len(src) {
+				return 0, ErrInvalidEscape
+			}
+			hi := fromHexChar(src[i+1])
+			lo := fromHexChar(src[i+2])
+			if hi < 0 || lo < 0 {
+				return 0, ErrInvalidEscape
+			}
+			dst[out] = byte((hi << 4) | lo)
+			out++
+			i += 3
+		} else {
+			dst[out] = c
+			out++
+			i++
+		}
+	}
+	return out, nil
 }

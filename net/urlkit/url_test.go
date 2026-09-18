@@ -100,10 +100,10 @@ func TestResolve(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "https://api.example.com/v1/users", u.String())
 
-	// 2. Relative path with leading slash -> /v1/users (safe normalization!)
+	// 2. Relative path with leading slash -> /users (RFC 3986 compliant absolute path)
 	u, err = urlkit.Resolve(base1, "/users")
 	require.NoError(t, err)
-	assert.Equal(t, "https://api.example.com/v1/users", u.String())
+	assert.Equal(t, "https://api.example.com/users", u.String())
 
 	// 3. Absolute URL -> bypasses base
 	u, err = urlkit.Resolve(base1, "https://other.com/auth")
@@ -118,21 +118,21 @@ func TestResolve(t *testing.T) {
 }
 
 func TestUnescape(t *testing.T) {
-	unescaped, err := urlkit.Unescape("Hello%20World%21+From+Silicon%2FEngine")
+	unescaped, err := urlkit.QueryUnescape("Hello%20World%21+From+Silicon%2FEngine")
 	require.NoError(t, err)
 	assert.Equal(t, "Hello World! From Silicon/Engine", unescaped)
 
 	// Clean string fast-path
-	clean, err := urlkit.Unescape("clean_alphanumeric_string_without_escapes_12345")
+	clean, err := urlkit.QueryUnescape("clean_alphanumeric_string_without_escapes_12345")
 	require.NoError(t, err)
 	assert.Equal(t, "clean_alphanumeric_string_without_escapes_12345", clean)
 
 	// Invalid escape
-	_, err = urlkit.Unescape("invalid%2")
+	_, err = urlkit.QueryUnescape("invalid%2")
 	assert.Error(t, err)
 
 	// Empty string
-	empty, err := urlkit.Unescape("")
+	empty, err := urlkit.QueryUnescape("")
 	require.NoError(t, err)
 	assert.Equal(t, "", empty)
 }
@@ -168,17 +168,17 @@ func TestQueryEscape_And_UnescapeBytes(t *testing.T) {
 	assert.Equal(t, escapedBytes, escapedStr)
 
 	// 2. UnescapeBytes
-	unescapedBytes, err := urlkit.UnescapeBytes(nil, escapedBytes)
+	unescapedBytes, err := urlkit.QueryUnescapeBytes(nil, escapedBytes)
 	require.NoError(t, err)
 	assert.Equal(t, []byte(raw), unescapedBytes)
 
 	// Empty src
-	emptyBytes, err := urlkit.UnescapeBytes([]byte("prefix"), nil)
+	emptyBytes, err := urlkit.QueryUnescapeBytes([]byte("prefix"), nil)
 	require.NoError(t, err)
 	assert.Equal(t, []byte("prefix"), emptyBytes)
 
 	// Invalid hex in UnescapeBytes
-	_, err = urlkit.UnescapeBytes(nil, []byte("bad%ZZ"))
+	_, err = urlkit.QueryUnescapeBytes(nil, []byte("bad%ZZ"))
 	assert.Error(t, err)
 }
 
@@ -230,7 +230,7 @@ func BenchmarkUnescape1KB(b *testing.B) {
 	b.ReportAllocs()
 
 	for i := 0; i < b.N; i++ {
-		_, _ = urlkit.Unescape(s)
+		_, _ = urlkit.QueryUnescape(s)
 	}
 }
 
