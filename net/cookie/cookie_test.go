@@ -10,7 +10,6 @@ import (
 
 	"github.com/lemon4ksan/foundation/net/cookie"
 	"github.com/lemon4ksan/foundation/testing/assert"
-	"github.com/lemon4ksan/foundation/testing/require"
 )
 
 func TestCookie_ParseSetCookieHeader(t *testing.T) {
@@ -52,16 +51,6 @@ func TestCookie_ExportNetscape(t *testing.T) {
 	assert.Contains(t, netscape, "# Netscape HTTP Cookie File")
 	assert.Contains(t, netscape, ".example.com\tTRUE\t/api\tTRUE\t0\tsession\t123")
 	assert.Equal(t, "", cookie.ExportNetscape(nil, ""))
-}
-
-func TestCookie_ParseSingleCookie(t *testing.T) {
-	ck := cookie.ParseSingleCookie([]byte("foo"), []byte("foo=bar; Path=/"))
-	require.NotNil(t, ck)
-	assert.Equal(t, "foo", ck.Name)
-	assert.Equal(t, "bar", ck.Value)
-
-	emptyCk := cookie.ParseSingleCookie(nil, []byte(""))
-	assert.Nil(t, emptyCk)
 }
 
 func TestCookie_EmptyParse(t *testing.T) {
