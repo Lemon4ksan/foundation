@@ -247,10 +247,10 @@ func BenchmarkAppendToLower1KB(b *testing.B) {
 	src := bytes.Repeat([]byte("The Quick Brown Fox Jumps Over The Lazy Dog. "), 23) // ~1KB
 	dst := make([]byte, 0, len(src))
 	b.SetBytes(int64(len(src)))
-	b.ResetTimer()
+
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = AppendToLower(dst[:0], src)
 	}
 }
@@ -262,10 +262,10 @@ func BenchmarkBase64Encode1KB(b *testing.B) {
 	}
 	dst := make([]byte, 2048)
 	b.SetBytes(1024)
-	b.ResetTimer()
+
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = Base64Encode(dst, src)
 	}
 }
