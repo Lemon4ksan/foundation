@@ -1268,6 +1268,7 @@ func TestConnectionIdleTimeout(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		sph := mockackhandler.NewMockSentPacketHandler(mockCtrl)
+		sph.EXPECT().AmplificationAllowance().Return(protocol.MaxByteCount).AnyTimes()
 		tc := newServerTestConnection(t,
 			mockCtrl,
 			&Config{MaxIdleTimeout: time.Minute},
@@ -1328,6 +1329,7 @@ func TestConnectionGSOBatch(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		sph := mockackhandler.NewMockSentPacketHandler(mockCtrl)
+		sph.EXPECT().AmplificationAllowance().Return(protocol.MaxByteCount).AnyTimes()
 		tc := newServerTestConnection(t,
 			mockCtrl,
 			nil,
@@ -1403,6 +1405,7 @@ func TestConnectionGSOBatchPacketSize(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		sph := mockackhandler.NewMockSentPacketHandler(mockCtrl)
+		sph.EXPECT().AmplificationAllowance().Return(protocol.MaxByteCount).AnyTimes()
 		tc := newServerTestConnection(t,
 			mockCtrl,
 			nil,
@@ -1510,6 +1513,7 @@ func TestConnectionGSOBatchECN(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		sph := mockackhandler.NewMockSentPacketHandler(mockCtrl)
+		sph.EXPECT().AmplificationAllowance().Return(protocol.MaxByteCount).AnyTimes()
 		tc := newServerTestConnection(t,
 			mockCtrl,
 			nil,
@@ -1629,6 +1633,7 @@ func testConnectionPTOProbePackets(t *testing.T, encLevel protocol.EncryptionLev
 	synctest.Test(t, func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		sph := mockackhandler.NewMockSentPacketHandler(mockCtrl)
+		sph.EXPECT().AmplificationAllowance().Return(protocol.MaxByteCount).AnyTimes()
 		tc := newServerTestConnection(t,
 			mockCtrl,
 			nil,
@@ -1702,6 +1707,7 @@ func testConnectionSendQueue(t *testing.T, enableGSO bool) {
 	synctest.Test(t, func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		sph := mockackhandler.NewMockSentPacketHandler(mockCtrl)
+		sph.EXPECT().AmplificationAllowance().Return(protocol.MaxByteCount).AnyTimes()
 		sender := NewMockSender(mockCtrl)
 		tc := newServerTestConnection(t,
 			mockCtrl,

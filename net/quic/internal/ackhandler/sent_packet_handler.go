@@ -1068,6 +1068,17 @@ func (h *sentPacketHandler) isAmplificationLimited() bool {
 	return h.bytesSent >= amplificationFactor*h.bytesReceived
 }
 
+func (h *sentPacketHandler) AmplificationAllowance() protocol.ByteCount {
+	if h.peerAddressValidated {
+		return protocol.MaxByteCount
+	}
+	limit := amplificationFactor * h.bytesReceived
+	if h.bytesSent >= limit {
+		return 0
+	}
+	return limit - h.bytesSent
+}
+
 func (h *sentPacketHandler) QueueProbePacket(encLevel protocol.EncryptionLevel) bool {
 	pnSpace := h.getPacketNumberSpace(encLevel)
 

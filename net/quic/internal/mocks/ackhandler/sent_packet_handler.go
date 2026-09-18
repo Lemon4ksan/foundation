@@ -26,6 +26,14 @@ type MockSentPacketHandler struct {
 	isgomock struct{}
 }
 
+// AmplificationAllowance mocks base method.
+func (m *MockSentPacketHandler) AmplificationAllowance() protocol.ByteCount {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AmplificationAllowance")
+	ret0, _ := ret[0].(protocol.ByteCount)
+	return ret0
+}
+
 // MockSentPacketHandlerMockRecorder is the mock recorder for MockSentPacketHandler.
 type MockSentPacketHandlerMockRecorder struct {
 	mock *MockSentPacketHandler
@@ -607,6 +615,12 @@ func (m *MockSentPacketHandler) TimeUntilSend() monotime.Time {
 	ret := m.ctrl.Call(m, "TimeUntilSend")
 	ret0, _ := ret[0].(monotime.Time)
 	return ret0
+}
+
+// AmplificationAllowance indicates an expected call of AmplificationAllowance.
+func (mr *MockSentPacketHandlerMockRecorder) AmplificationAllowance() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AmplificationAllowance", reflect.TypeOf((*MockSentPacketHandler)(nil).AmplificationAllowance))
 }
 
 // TimeUntilSend indicates an expected call of TimeUntilSend.

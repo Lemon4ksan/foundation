@@ -27,9 +27,11 @@ func EncodeVarintSlice(v uint64, b []byte) int {
 	case v < 1<<30:
 		binary.BigEndian.PutUint32(b[:4], uint32(v)|0x80000000)
 		return 4
-	default:
+	case v < 1<<62:
 		binary.BigEndian.PutUint64(b[:8], v|0xc000000000000000)
 		return 8
+	default:
+		panic("quic/varint: value too large for QUIC varint")
 	}
 }
 
@@ -49,10 +51,13 @@ func EncodeVarint(val uint64) []byte {
 		binary.BigEndian.PutUint32(b, uint32(val)|0x80000000)
 		return b
 
-	default:
+	case val < 1<<62:
 		b := make([]byte, 8)
 		binary.BigEndian.PutUint64(b, val|0xc000000000000000)
 		return b
+		
+	default:
+		panic("quic/varint: value too large for QUIC varint")
 	}
 }
 

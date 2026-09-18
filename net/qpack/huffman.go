@@ -16,11 +16,11 @@ var huffmanDecStorage = pool.NewPerPStorage(func() *[]byte {
 })
 
 func appendHuffman(dst []byte, s string) []byte {
-	return hpack.AppendHuffmanString(dst, s)
+	return hpack.HuffmanEncode(dst, bytesconv.S2B(s))
 }
 
 func huffmanLen(s string) int {
-	return int(hpack.HuffmanEncodeLength(s))
+	return int(hpack.HuffmanEncodeLength(bytesconv.S2B(s)))
 }
 
 func decodeHuffman(src []byte, arena *[]byte) (string, error) {
@@ -28,20 +28,15 @@ func decodeHuffman(src []byte, arena *[]byte) (string, error) {
 		bufPtr := huffmanDecStorage.Get()
 		defer huffmanDecStorage.Put(bufPtr)
 
-		dst, err := hpack.AppendHuffmanDecode((*bufPtr)[:0], src)
-		if err != nil {
-			return "", err
-		}
+		dst := hpack.HuffmanDecode((*bufPtr)[:0], src)
 		*bufPtr = dst
 
 		return string(dst), nil
 	}
 
 	start := len(*arena)
-	dst, err := hpack.AppendHuffmanDecode(*arena, src)
-	if err != nil {
-		return "", err
-	}
+	dst := hpack.HuffmanDecode(*arena, src)
+	
 	*arena = dst
 
 	return bytesconv.B2S((*arena)[start:]), nil

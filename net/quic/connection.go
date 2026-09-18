@@ -2545,23 +2545,22 @@ func (c *Conn) sendConnectionClose(e error) ([]byte, error) {
 }
 
 func (c *Conn) maxPacketSize() protocol.ByteCount {
+	var size protocol.ByteCount
 	if c.mtuDiscoverer == nil {
-		// Use the configured packet size on the client side.
-		// If the server sends a max_udp_payload_size that's smaller than this size, we can ignore this:
-		// Apparently the server still processed the (fully padded) Initial packet anyway.
 		if c.perspective == protocol.PerspectiveClient {
-			return protocol.ByteCount(c.config.InitialPacketSize)
+			size = protocol.ByteCount(c.config.InitialPacketSize)
+		} else {
+			size = protocol.MinInitialPacketSize
 		}
-
-		// On the server side, there's no downside to using 1200 bytes until we received the client's transport
-		// parameters:
-		// * If the first packet didn't contain the entire ClientHello, all we can do is ACK that packet. We don't
-		//   need a lot of bytes for that.
-		// * If it did, we will have processed the transport parameters and initialized the MTU discoverer.
-		return protocol.MinInitialPacketSize
+	} else {
+		size = c.mtuDiscoverer.CurrentSize()
 	}
 
-	return c.mtuDiscoverer.CurrentSize()
+	allowance := c.sentPacketHandler.AmplificationAllowance()
+	if allowance < size {
+		return allowance
+	}
+	return size
 }
 
 // AcceptStream returns the next stream opened by the peer, blocking until one is available.
