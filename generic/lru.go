@@ -102,6 +102,18 @@ func (l *LRU[K, V]) Len() int {
 }
 
 // Cap returns the maximum capacity of the cache.
+
+// Values returns a slice of all values currently in the cache.
+func (l *LRU[K, V]) Values() []V {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	vals := make([]V, 0, len(l.items))
+	for _, node := range l.items {
+		vals = append(vals, node.val)
+	}
+	return vals
+}
+
 func (l *LRU[K, V]) Cap() int {
 	return l.capacity
 }
