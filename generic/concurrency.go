@@ -207,9 +207,10 @@ func (f *Future[T]) Set(val T, err error) {
 }
 
 type sfCall[T any] struct {
-	wg  sync.WaitGroup
-	val T
-	err error
+	wg    sync.WaitGroup
+	val   T
+	err   error
+	panic *PanicError
 }
 
 // SingleFlight prevents duplicate concurrent executions of identical tasks (De-duplicator).
@@ -246,6 +247,11 @@ func (g *SingleFlight[T]) Do(key string, fn func() (T, error)) (T, error) {
 	if c, ok := g.m[key]; ok {
 		g.mu.Unlock()
 		c.wg.Wait()
+
+		if c.panic != nil {
+			var zero T
+			return zero, c.panic
+		}
 		return c.val, c.err
 	}
 
@@ -254,13 +260,28 @@ func (g *SingleFlight[T]) Do(key string, fn func() (T, error)) (T, error) {
 	g.m[key] = c
 	g.mu.Unlock()
 
+	var panicked bool
+	defer func() {
+		if r := recover(); r != nil {
+			panicked = true
+			c.panic = newPanicError(r)
+			c.err = c.panic
+		}
+
+		g.mu.Lock()
+		if g.m[key] == c {
+			delete(g.m, key)
+		}
+		g.mu.Unlock()
+
+		c.wg.Done()
+
+		if panicked {
+			panic(c.panic)
+		}
+	}()
+
 	c.val, c.err = fn()
-	c.wg.Done()
-
-	g.mu.Lock()
-	delete(g.m, key)
-	g.mu.Unlock()
-
 	return c.val, c.err
 }
 
@@ -375,6 +396,20 @@ func (b *Backoff) Reset() {
 	b.mu.Unlock()
 }
 
+var (
+	// ErrDataLoaderNil is returned when Load is called on a nil DataLoader.
+	ErrDataLoaderNil = errors.New("dataloader is nil")
+
+	// ErrBatchFnNil is returned when Load is called on a DataLoader with a nil batchFn.
+	ErrBatchFnNil = errors.New("dataloader batchFn is nil")
+
+	// ErrKeyNotFound is returned when a batch execution does not contain a result for a requested key.
+	ErrKeyNotFound = errors.New("foundation dataloader: key not found in batch results")
+
+	// ErrBatchPanicked is returned when the batch loader function panics during execution.
+	ErrBatchPanicked = errors.New("foundation dataloader: batch function panicked")
+)
+
 type loaderResult[V any] struct {
 	val V
 	err error
@@ -411,12 +446,21 @@ func NewDataLoader[K comparable, V any](
 func (l *DataLoader[K, V]) Load(ctx context.Context, key K) (V, error) {
 	if l == nil {
 		var zero V
-		return zero, errors.New("dataloader is nil")
+		return zero, ErrDataLoaderNil
 	}
 
 	if l.batchFn == nil {
 		var zero V
-		return zero, errors.New("dataloader batchFn is nil")
+		return zero, ErrBatchFnNil
+	}
+
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	if err := ctx.Err(); err != nil {
+		var zero V
+		return zero, err
 	}
 
 	ch := make(chan loaderResult[V], 1)
@@ -438,6 +482,26 @@ func (l *DataLoader[K, V]) Load(ctx context.Context, key K) (V, error) {
 
 	select {
 	case <-ctx.Done():
+		// Clean up pending channel registration if batch has not yet executed
+		l.mu.Lock()
+		if chans, ok := l.pending[key]; ok {
+			for i, c := range chans {
+				if c == ch {
+					if len(chans) == 1 {
+						delete(l.pending, key)
+					} else {
+						l.pending[key] = append(chans[:i], chans[i+1:]...)
+					}
+					break
+				}
+			}
+			if len(l.pending) == 0 && l.timer != nil {
+				l.timer.Stop()
+				l.timer = nil
+			}
+		}
+		l.mu.Unlock()
+
 		var zero V
 		return zero, ctx.Err()
 	case res := <-ch:
@@ -451,9 +515,12 @@ func (l *DataLoader[K, V]) executeBatch() {
 	}
 
 	l.mu.Lock()
+	if l.timer != nil {
+		l.timer.Stop()
+		l.timer = nil
+	}
 	pending := l.pending
 	l.pending = make(map[K][]chan loaderResult[V])
-	l.timer = nil
 	l.mu.Unlock()
 
 	if len(pending) == 0 {
@@ -465,7 +532,31 @@ func (l *DataLoader[K, V]) executeBatch() {
 		keys = append(keys, k)
 	}
 
-	results, err := l.batchFn(context.Background(), keys)
+	var (
+		results map[K]V
+		err     error
+	)
+
+	// Recover from panics in batchFn to ensure waiting callers are unblocked
+	// and the process does not terminate unexpectedly.
+	defer func() {
+		if r := recover(); r != nil {
+			var panicErr error
+			switch val := r.(type) {
+			case error:
+				panicErr = fmt.Errorf("%w: %w", ErrBatchPanicked, val)
+			default:
+				panicErr = fmt.Errorf("%w: %v", ErrBatchPanicked, val)
+			}
+			for _, chans := range pending {
+				for _, ch := range chans {
+					ch <- loaderResult[V]{err: panicErr}
+				}
+			}
+		}
+	}()
+
+	results, err = l.batchFn(context.Background(), keys)
 
 	for _, k := range keys {
 		chans := pending[k]
@@ -480,7 +571,7 @@ func (l *DataLoader[K, V]) executeBatch() {
 		} else if v, ok := results[k]; ok {
 			val = v
 		} else {
-			itemErr = errors.New("foundation dataloader: key not found in batch results")
+			itemErr = ErrKeyNotFound
 		}
 
 		for _, ch := range chans {

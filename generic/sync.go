@@ -5,6 +5,10 @@
 package generic
 
 import (
+	"bytes"
+	"errors"
+	"fmt"
+	"runtime/debug"
 	"sync"
 	"sync/atomic"
 )
@@ -382,10 +386,39 @@ func (m *ConcurrentMap[K, V]) Clear() {
 	m.m.Clear()
 }
 
+// PanicError records a recovered panic value and stack trace.
+type PanicError struct {
+	Value any
+	Stack []byte
+}
+
+func (p *PanicError) Error() string {
+	return fmt.Sprintf("singleflight: panic: %v\n\n%s", p.Value, p.Stack)
+}
+
+func (p *PanicError) Unwrap() error {
+	if err, ok := p.Value.(error); ok {
+		return err
+	}
+	return nil
+}
+
+func newPanicError(v any) *PanicError {
+	if pe, ok := v.(*PanicError); ok {
+		return pe
+	}
+	stack := debug.Stack()
+	if line := bytes.IndexByte(stack, '\n'); line >= 0 {
+		stack = stack[line+1:]
+	}
+	return &PanicError{Value: v, Stack: stack}
+}
+
 type singleflightCall[V any] struct {
-	val V
-	err error
-	sig Signal
+	val   V
+	err   error
+	panic *PanicError
+	sig   Signal
 }
 
 // Singleflight provides duplicate function call suppression across concurrent callers.
@@ -405,11 +438,27 @@ func NewSingleflight[K comparable, V any]() *Singleflight[K, V] {
 // sure that only one execution is in-flight for a given key at a
 // time.
 func (g *Singleflight[K, V]) Do(key K, fn func() (V, error)) (V, error) {
+	if g == nil {
+		var zero V
+		return zero, errors.New("singleflight is nil")
+	}
+	if fn == nil {
+		var zero V
+		return zero, errors.New("singleflight fn is nil")
+	}
+
 	g.mu.Lock()
+	if g.m == nil {
+		g.m = make(map[K]*singleflightCall[V])
+	}
 	if c, ok := g.m[key]; ok {
 		g.mu.Unlock()
 		<-c.sig.Done()
 
+		if c.panic != nil {
+			var zero V
+			return zero, c.panic
+		}
 		return c.val, c.err
 	}
 
@@ -419,12 +468,27 @@ func (g *Singleflight[K, V]) Do(key K, fn func() (V, error)) (V, error) {
 	g.m[key] = c
 	g.mu.Unlock()
 
+	var panicked bool
+	defer func() {
+		if r := recover(); r != nil {
+			panicked = true
+			c.panic = newPanicError(r)
+			c.err = c.panic
+		}
+
+		g.mu.Lock()
+		if g.m[key] == c {
+			delete(g.m, key)
+		}
+		g.mu.Unlock()
+
+		c.sig.Emit()
+
+		if panicked {
+			panic(c.panic)
+		}
+	}()
+
 	c.val, c.err = fn()
-	c.sig.Emit()
-
-	g.mu.Lock()
-	delete(g.m, key)
-	g.mu.Unlock()
-
 	return c.val, c.err
 }

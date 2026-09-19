@@ -7,8 +7,6 @@ package qpack
 import (
 	"errors"
 	"io"
-
-	"github.com/lemon4ksan/foundation/silicon/bytesconv"
 )
 
 var (
@@ -79,56 +77,4 @@ func readInt(prefixLen uint8, data []byte) (uint64, int, error) {
 	}
 
 	return val, idx, nil
-}
-
-func appendString(dst []byte, s string) []byte {
-	hLen := huffmanLen(s)
-	if hLen < len(s) {
-		dst = append(dst, 0x80) // Huffman bit = 1
-		dst = appendInt(dst, 7, uint64(hLen))
-		return appendHuffman(dst, s)
-	}
-
-	dst = append(dst, 0x00) // Huffman bit = 0
-	dst = appendInt(dst, 7, uint64(len(s)))
-
-	return append(dst, s...)
-}
-
-func readString(data []byte, arena *[]byte) (string, int, error) {
-	if len(data) == 0 {
-		return "", 0, io.ErrUnexpectedEOF
-	}
-
-	isHuffman := (data[0] & 0x80) != 0
-
-	strLen, n, err := readInt(7, data)
-	if err != nil {
-		return "", 0, err
-	}
-
-	if n < 0 || int(strLen) < 0 || n+int(strLen) > len(data) {
-		return "", 0, io.ErrUnexpectedEOF
-	}
-
-	raw := data[n : n+int(strLen)]
-	totalConsumed := n + int(strLen)
-
-	if isHuffman {
-		s, err := decodeHuffman(raw, arena)
-		if err != nil {
-			return "", 0, err
-		}
-
-		return s, totalConsumed, nil
-	}
-
-	if arena == nil {
-		return bytesconv.B2S(raw), totalConsumed, nil
-	}
-
-	start := len(*arena)
-	*arena = append(*arena, raw...)
-
-	return bytesconv.B2S((*arena)[start:]), totalConsumed, nil
 }

@@ -4,305 +4,293 @@
 
 package qpack
 
-import (
-	"errors"
-	"io"
+// EncoderStreamErrorHandler receives notifications of fatal errors on the encoder stream.
+type EncoderStreamErrorHandler func(errorCode uint64, errorMessage string)
 
-	"github.com/lemon4ksan/foundation/silicon/bytesconv"
-)
+// Decoder decodes QPACK header blocks and manages dynamic table state.
+// Exactly one instance should exist per QUIC connection.
+// Direct 1:1 structural translation of Chromium's quiche::Decoder.
+type Decoder struct {
+	encoderStreamErrorHandler EncoderStreamErrorHandler
+	encoderStreamReceiver     *EncoderStreamReceiver
+	decoderStreamSender       *DecoderStreamSender
+	headerTable               *DecoderHeaderTable
+	blockedStreams            map[uint64]struct{}
+	maximumBlockedStreams     uint64
+	knownReceivedCount        uint64
+}
 
+// NewDecoder creates a new Decoder.
+func NewDecoder(
+	maximumDynamicTableCapacity uint64,
+	maximumBlockedStreams uint64,
+	encoderStreamErrorHandler EncoderStreamErrorHandler,
+) *Decoder {
+	if encoderStreamErrorHandler == nil {
+		encoderStreamErrorHandler = func(errorCode uint64, errorMessage string) {}
+	}
+
+	d := &Decoder{
+		encoderStreamErrorHandler: encoderStreamErrorHandler,
+		decoderStreamSender:       NewDecoderStreamSender(nil),
+		headerTable:               NewDecoderHeaderTable(),
+		blockedStreams:            make(map[uint64]struct{}),
+		maximumBlockedStreams:     maximumBlockedStreams,
+		knownReceivedCount:        0,
+	}
+
+	d.headerTable.SetMaximumDynamicTableCapacity(maximumDynamicTableCapacity)
+	d.encoderStreamReceiver = NewEncoderStreamReceiver(d)
+
+	return d
+}
+
+// OnStreamReset signals to the peer's encoder that a stream is reset.
+// This lets the peer's encoder know that no more header blocks will be processed on this stream,
+// allowing references to dynamic table entries to be safely evicted.
+// RFC 9204 §2.2.2.2 & Chromium Decoder::OnStreamReset.
+func (d *Decoder) OnStreamReset(streamID uint64) {
+	delete(d.blockedStreams, streamID)
+	if d.headerTable.MaximumDynamicTableCapacity() > 0 {
+		d.decoderStreamSender.SendStreamCancellation(streamID)
+	}
+}
+
+// OnStreamBlocked is called by ProgressiveDecoder when decoding is blocked.
+// Returns true if allowed, or false if the blocked stream limit is exceeded.
+func (d *Decoder) OnStreamBlocked(streamID uint64) bool {
+	d.blockedStreams[streamID] = struct{}{}
+	return uint64(len(d.blockedStreams)) <= d.maximumBlockedStreams
+}
+
+// OnStreamUnblocked is called by ProgressiveDecoder when the stream becomes unblocked.
+func (d *Decoder) OnStreamUnblocked(streamID uint64) {
+	delete(d.blockedStreams, streamID)
+}
+
+// OnDecodingCompleted implements DecodingCompletedVisitor.
+// Direct 1:1 structural translation of Chromium's quiche::Decoder::OnDecodingCompleted.
+func (d *Decoder) OnDecodingCompleted(streamID, requiredInsertCount uint64) {
+	if requiredInsertCount > 0 {
+		d.decoderStreamSender.SendHeaderAcknowledgement(streamID)
+
+		if d.knownReceivedCount < requiredInsertCount {
+			d.knownReceivedCount = requiredInsertCount
+		}
+	}
+
+	// Send an Insert Count Increment instruction if not all dynamic table entries
+	// have been acknowledged yet. RFC 9204 §2.1.4.
+	if d.knownReceivedCount < d.headerTable.InsertedEntryCount() {
+		increment := d.headerTable.InsertedEntryCount() - d.knownReceivedCount
+		d.decoderStreamSender.SendInsertCountIncrement(increment)
+		d.knownReceivedCount = d.headerTable.InsertedEntryCount()
+	}
+}
+
+// CreateProgressiveDecoder creates a ProgressiveDecoder for decoding a header block on streamID.
+func (d *Decoder) CreateProgressiveDecoder(
+	streamID uint64,
+	handler HeadersHandlerInterface,
+) *ProgressiveDecoder {
+	return d.CreateProgressiveDecoderWithMaxBufferedData(streamID, 0, handler)
+}
+
+// CreateProgressiveDecoderWithMaxBufferedData creates a ProgressiveDecoder with an explicit buffer limit.
+func (d *Decoder) CreateProgressiveDecoderWithMaxBufferedData(
+	streamID uint64,
+	maxBufferedData uint64,
+	handler HeadersHandlerInterface,
+) *ProgressiveDecoder {
+	return NewProgressiveDecoder(
+		streamID,
+		maxBufferedData,
+		d,
+		d,
+		d.headerTable,
+		handler,
+	)
+}
+
+// InsertWithNameReference handles RFC 9204 §4.3.1 on encoder stream.
+func (d *Decoder) InsertWithNameReference(isStatic bool, nameIndex uint64, value string) {
+	if isStatic {
+		entry := d.headerTable.LookupEntry(true, nameIndex)
+		if entry == nil {
+			d.OnErrorDetected(QUIC_QPACK_ENCODER_STREAM_INVALID_STATIC_ENTRY, "Invalid static table entry.")
+			return
+		}
+
+		if !d.headerTable.EntryFitsDynamicTableCapacity(entry.Name, value) {
+			d.OnErrorDetected(
+				QUIC_QPACK_ENCODER_STREAM_ERROR_INSERTING_STATIC,
+				"Error inserting entry with name reference.",
+			)
+			return
+		}
+
+		d.headerTable.InsertEntry(entry.Name, value)
+		return
+	}
+
+	absoluteIndex, ok := EncoderStreamRelativeIndexToAbsoluteIndex(
+		nameIndex, d.headerTable.InsertedEntryCount(),
+	)
+	if !ok {
+		d.OnErrorDetected(QUIC_QPACK_ENCODER_STREAM_INSERTION_INVALID_RELATIVE_INDEX, "Invalid relative index.")
+		return
+	}
+
+	entry := d.headerTable.LookupEntry(false, absoluteIndex)
+	if entry == nil {
+		d.OnErrorDetected(QUIC_QPACK_ENCODER_STREAM_INSERTION_DYNAMIC_ENTRY_NOT_FOUND, "Dynamic table entry not found.")
+		return
+	}
+
+	if !d.headerTable.EntryFitsDynamicTableCapacity(entry.Name, value) {
+		d.OnErrorDetected(
+			QUIC_QPACK_ENCODER_STREAM_ERROR_INSERTING_DYNAMIC,
+			"Error inserting entry with name reference.",
+		)
+		return
+	}
+
+	d.headerTable.InsertEntry(entry.Name, value)
+}
+
+// InsertWithoutNameReference handles RFC 9204 §4.3.2 on encoder stream.
+func (d *Decoder) InsertWithoutNameReference(name, value string) {
+	if !d.headerTable.EntryFitsDynamicTableCapacity(name, value) {
+		d.OnErrorDetected(QUIC_QPACK_ENCODER_STREAM_ERROR_INSERTING_LITERAL, "Error inserting literal entry.")
+		return
+	}
+
+	d.headerTable.InsertEntry(name, value)
+}
+
+// Duplicate handles RFC 9204 §4.3.3 on encoder stream.
+func (d *Decoder) Duplicate(index uint64) {
+	absoluteIndex, ok := EncoderStreamRelativeIndexToAbsoluteIndex(
+		index, d.headerTable.InsertedEntryCount(),
+	)
+	if !ok {
+		d.OnErrorDetected(QUIC_QPACK_ENCODER_STREAM_DUPLICATE_INVALID_RELATIVE_INDEX, "Invalid relative index.")
+		return
+	}
+
+	entry := d.headerTable.LookupEntry(false, absoluteIndex)
+	if entry == nil {
+		d.OnErrorDetected(QUIC_QPACK_ENCODER_STREAM_DUPLICATE_DYNAMIC_ENTRY_NOT_FOUND, "Dynamic table entry not found.")
+		return
+	}
+
+	if !d.headerTable.EntryFitsDynamicTableCapacity(entry.Name, entry.Value) {
+		d.OnErrorDetected(QUIC_INTERNAL_ERROR, "Error inserting duplicate entry.")
+		return
+	}
+
+	d.headerTable.InsertEntry(entry.Name, entry.Value)
+}
+
+// SetDynamicTableCapacity handles RFC 9204 §4.3.4 on encoder stream.
+func (d *Decoder) SetDynamicTableCapacity(capacity uint64) {
+	if !d.headerTable.SetDynamicTableCapacity(capacity) {
+		d.OnErrorDetected(
+			QUIC_QPACK_ENCODER_STREAM_SET_DYNAMIC_TABLE_CAPACITY,
+			"Error updating dynamic table capacity.",
+		)
+	}
+}
+
+// Error receives decoder or wire parsing errors from EncoderStreamReceiver.
+func (d *Decoder) Error(qpackError uint64, errorMessage string) {
+	errorCode := qpackError
+	if qpackError == QPACK_ENCODER_STREAM_ERROR {
+		switch errorMessage {
+		case "Encoded integer too large.":
+			errorCode = QUIC_QPACK_ENCODER_STREAM_INTEGER_TOO_LARGE
+		case "String literal too long.":
+			errorCode = QUIC_QPACK_ENCODER_STREAM_STRING_LITERAL_TOO_LONG
+		case "Error in Huffman-encoded string.":
+			errorCode = QUIC_QPACK_ENCODER_STREAM_HUFFMAN_ENCODING_ERROR
+		}
+	}
+	d.OnErrorDetected(errorCode, errorMessage)
+}
+
+// OnErrorDetected notifies the encoder stream error delegate.
+func (d *Decoder) OnErrorDetected(errorCode uint64, errorMessage string) {
+	d.encoderStreamErrorHandler(errorCode, errorMessage)
+}
+
+// SetStreamSenderDelegate sets the stream sender delegate for transmitting feedback to peer.
+func (d *Decoder) SetStreamSenderDelegate(delegate StreamSenderDelegate) {
+	d.decoderStreamSender.SetDelegate(delegate)
+}
+
+// EncoderStreamReceiver returns the stream receiver for peer encoder stream data.
+func (d *Decoder) EncoderStreamReceiver() *EncoderStreamReceiver {
+	return d.encoderStreamReceiver
+}
+
+// DecoderStreamSender returns the stream sender for decoder stream feedback.
+func (d *Decoder) DecoderStreamSender() *DecoderStreamSender {
+	return d.decoderStreamSender
+}
+
+// HeaderTable returns the decoder's dynamic and static header table.
+func (d *Decoder) HeaderTable() *DecoderHeaderTable {
+	return d.headerTable
+}
+
+// DynamicTableEntryReferenced returns true if any dynamic table entries have been referenced.
+func (d *Decoder) DynamicTableEntryReferenced() bool {
+	return d.headerTable.DynamicTableEntryReferenced()
+}
+
+// FlushDecoderStream flushes buffered instructions on the decoder stream.
+func (d *Decoder) FlushDecoderStream() {
+	d.decoderStreamSender.Flush()
+}
+
+// MaximumDynamicTableCapacity returns the maximum dynamic table capacity in bytes.
+func (d *Decoder) MaximumDynamicTableCapacity() uint64 {
+	return d.headerTable.MaximumDynamicTableCapacity()
+}
+
+// DynamicTableCapacity returns the current dynamic table capacity in bytes.
+func (d *Decoder) DynamicTableCapacity() uint64 {
+	return d.headerTable.DynamicTableCapacity()
+}
+
+// KnownReceivedCount returns the current known received count.
+func (d *Decoder) KnownReceivedCount() uint64 {
+	return d.knownReceivedCount
+}
+
+// SendInsertCountIncrement sends an Insert Count Increment instruction on decoder stream.
+func (d *Decoder) SendInsertCountIncrement(increment uint64) {
+	d.decoderStreamSender.SendInsertCountIncrement(increment)
+}
+
+// SendSectionAcknowledgement sends a Section Acknowledgment instruction on decoder stream.
+func (d *Decoder) SendSectionAcknowledgement(streamID uint64) {
+	d.decoderStreamSender.SendSectionAcknowledgement(streamID)
+}
+
+// SendHeaderAcknowledgement is an alias for SendSectionAcknowledgement.
+func (d *Decoder) SendHeaderAcknowledgement(streamID uint64) {
+	d.decoderStreamSender.SendHeaderAcknowledgement(streamID)
+}
+
+// SendStreamCancellation sends a Stream Cancellation instruction on decoder stream.
+func (d *Decoder) SendStreamCancellation(streamID uint64) {
+	d.decoderStreamSender.SendStreamCancellation(streamID)
+}
+
+// Interface compliance assertions
 var (
-	errInvalidHeaderBlock = errors.New("qpack: invalid header block")
-	errInvalidStaticIndex = errors.New("qpack: invalid static table index")
+	_ EncoderStreamReceiverDelegate = (*Decoder)(nil)
+	_ BlockedStreamLimitEnforcer    = (*Decoder)(nil)
+	_ DecodingCompletedVisitor      = (*Decoder)(nil)
 )
-
-// Decoder parses QPACK header blocks (RFC 9204 §4.5).
-type Decoder struct{}
-
-// NewDecoder creates a new QPACK Decoder.
-func NewDecoder() *Decoder {
-	return &Decoder{}
-}
-
-// DecodeFields iterates over all QPACK header fields in data, calling emit for each field with zero closure allocations.
-func (d *Decoder) DecodeFields(data []byte, arena *[]byte, emit func(hf HeaderField) bool) error {
-	if len(data) == 0 {
-		return nil
-	}
-
-	offset := 0
-
-	// RFC 9204 §4.5.1: Encoded Field Section Prefix
-	// 1. Required Insert Count (8-bit prefix integer)
-	_, n1, err := readInt(8, data[offset:])
-	if err != nil {
-		return err
-	}
-
-	offset += n1
-	if offset >= len(data) {
-		return io.EOF
-	}
-
-	// 2. Base (Delta Base: 7-bit prefix integer)
-	_, n2, err := readInt(7, data[offset:])
-	if err != nil {
-		return err
-	}
-
-	offset += n2
-
-	for offset < len(data) {
-		b := data[offset]
-
-		switch {
-		case (b & 0x80) != 0:
-			// RFC 9204 §4.5.2: Indexed Field Line
-			isStatic := (b & 0x40) != 0
-
-			idx, n, err := readInt(6, data[offset:])
-			if err != nil {
-				return err
-			}
-
-			offset += n
-
-			if isStatic {
-				if int(idx) >= len(staticTable) {
-					return errInvalidStaticIndex
-				}
-
-				if !emit(staticTable[idx]) {
-					return nil
-				}
-			} else {
-				return errInvalidHeaderBlock
-			}
-
-		case (b & 0xc0) == 0x40:
-			// RFC 9204 §4.5.4: Literal Field Line With Name Reference
-			isStatic := (b & 0x10) != 0
-
-			idx, n, err := readInt(4, data[offset:])
-			if err != nil {
-				return err
-			}
-
-			offset += n
-
-			var name string
-			if isStatic {
-				if int(idx) >= len(staticTable) {
-					return errInvalidStaticIndex
-				}
-
-				name = staticTable[idx].Name
-			} else {
-				return errInvalidHeaderBlock
-			}
-
-			val, vn, err := readString(data[offset:], arena)
-			if err != nil {
-				return err
-			}
-
-			offset += vn
-
-			if !emit(HeaderField{Name: name, Value: val}) {
-				return nil
-			}
-
-		case (b&0xe0) == 0x20 || (b&0xf0) == 0x00:
-			// RFC 9204 §4.5.6: Literal Field Line With Literal Name
-			isHuffmanName := (b & 0x08) != 0
-
-			nameLen, n, err := readInt(3, data[offset:])
-			if err != nil {
-				return err
-			}
-
-			offset += n
-			if offset+int(nameLen) > len(data) {
-				return io.ErrUnexpectedEOF
-			}
-
-			nameRaw := data[offset : offset+int(nameLen)]
-			offset += int(nameLen)
-
-			var name string
-			if isHuffmanName {
-				name, err = decodeHuffman(nameRaw, arena)
-				if err != nil {
-					return err
-				}
-			} else {
-				if arena != nil {
-					start := len(*arena)
-					*arena = append(*arena, nameRaw...)
-					name = bytesconv.B2S((*arena)[start:])
-				} else {
-					name = string(nameRaw)
-				}
-			}
-
-			val, vn, err := readString(data[offset:], arena)
-			if err != nil {
-				return err
-			}
-
-			offset += vn
-
-			if !emit(HeaderField{Name: name, Value: val}) {
-				return nil
-			}
-
-		default:
-			return errInvalidHeaderBlock
-		}
-	}
-
-	return nil
-}
-
-// Decode returns an iterator function that parses HeaderField items sequentially until io.EOF.
-func (d *Decoder) Decode(data []byte, arena *[]byte) func() (HeaderField, error) {
-	offset := 0
-	prefixParsed := false
-
-	return func() (HeaderField, error) {
-		if offset >= len(data) {
-			return HeaderField{}, io.EOF
-		}
-
-		if !prefixParsed {
-			// RFC 9204 §4.5.1: Encoded Field Section Prefix
-			// 1. Required Insert Count (8-bit prefix integer)
-			_, n1, err := readInt(8, data[offset:])
-			if err != nil {
-				return HeaderField{}, err
-			}
-
-			offset += n1
-			if offset >= len(data) {
-				return HeaderField{}, io.EOF
-			}
-
-			// 2. Base (Delta Base: 7-bit prefix integer)
-			_, n2, err := readInt(7, data[offset:])
-			if err != nil {
-				return HeaderField{}, err
-			}
-
-			offset += n2
-			prefixParsed = true
-
-			if offset >= len(data) {
-				return HeaderField{}, io.EOF
-			}
-		}
-
-		b := data[offset]
-
-		switch {
-		case (b & 0x80) != 0:
-			// RFC 9204 §4.5.2: Indexed Field Line
-			// 1 T [6-bit Index]
-			isStatic := (b & 0x40) != 0
-
-			idx, n, err := readInt(6, data[offset:])
-			if err != nil {
-				return HeaderField{}, err
-			}
-
-			offset += n
-
-			if isStatic {
-				if int(idx) >= len(staticTable) {
-					return HeaderField{}, errInvalidStaticIndex
-				}
-
-				return staticTable[idx], nil
-			}
-
-			return HeaderField{}, errInvalidHeaderBlock
-
-		case (b & 0xc0) == 0x40:
-			// RFC 9204 §4.5.4: Literal Field Line With Name Reference
-			// 0 1 N T [4-bit Index]
-			isStatic := (b & 0x10) != 0
-
-			idx, n, err := readInt(4, data[offset:])
-			if err != nil {
-				return HeaderField{}, err
-			}
-
-			offset += n
-
-			var name string
-			if isStatic {
-				if int(idx) >= len(staticTable) {
-					return HeaderField{}, errInvalidStaticIndex
-				}
-
-				name = staticTable[idx].Name
-			} else {
-				return HeaderField{}, errInvalidHeaderBlock
-			}
-
-			val, vn, err := readString(data[offset:], arena)
-			if err != nil {
-				return HeaderField{}, err
-			}
-
-			offset += vn
-
-			return HeaderField{Name: name, Value: val}, nil
-
-		case (b&0xe0) == 0x20 || (b&0xf0) == 0x00:
-			// RFC 9204 §4.5.6: Literal Field Line With Literal Name
-			// 0 0 1 N H [3-bit Name Length] OR 0 0 0 0 H [3-bit Name Length]
-			isHuffmanName := (b & 0x08) != 0
-
-			nameLen, n, err := readInt(3, data[offset:])
-			if err != nil {
-				return HeaderField{}, err
-			}
-
-			offset += n
-			if offset+int(nameLen) > len(data) {
-				return HeaderField{}, io.ErrUnexpectedEOF
-			}
-
-			nameRaw := data[offset : offset+int(nameLen)]
-			offset += int(nameLen)
-
-			var name string
-			if isHuffmanName {
-				name, err = decodeHuffman(nameRaw, arena)
-				if err != nil {
-					return HeaderField{}, err
-				}
-			} else {
-				if arena != nil {
-					start := len(*arena)
-					*arena = append(*arena, nameRaw...)
-					name = bytesconv.B2S((*arena)[start:])
-				} else {
-					name = string(nameRaw)
-				}
-			}
-
-			val, vn, err := readString(data[offset:], arena)
-			if err != nil {
-				return HeaderField{}, err
-			}
-
-			offset += vn
-
-			return HeaderField{Name: name, Value: val}, nil
-
-		default:
-			return HeaderField{}, errInvalidHeaderBlock
-		}
-	}
-}

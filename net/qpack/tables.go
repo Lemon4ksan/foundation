@@ -54,7 +54,7 @@ var staticTable = [99]HeaderField{
 	{Name: "content-type", Value: "application/javascript"},
 	{Name: "content-type", Value: "application/json"},
 	{Name: "content-type", Value: "application/x-www-form-urlencoded"},
-	{Name: "image/gif", Value: "image/gif"},
+	{Name: "content-type", Value: "image/gif"},
 	{Name: "content-type", Value: "image/jpeg"},
 	{Name: "content-type", Value: "image/png"},
 	{Name: "content-type", Value: "text/css"},
@@ -105,11 +105,6 @@ var staticTable = [99]HeaderField{
 	{Name: "x-forwarded-for", Value: ""},
 	{Name: "x-frame-options", Value: "deny"},
 	{Name: "x-frame-options", Value: "sameorigin"},
-}
-
-// Fix index 48: RFC 9204 defines index 48 as content-type: image/gif
-func init() {
-	staticTable[48] = HeaderField{Name: "content-type", Value: "image/gif"}
 }
 
 var (

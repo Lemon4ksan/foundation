@@ -534,7 +534,7 @@ func (c *Conn) preSetup() {
 	c.largestRcvdAppData = protocol.InvalidPacketNumber
 	c.initialStream = newInitialCryptoStream(c.perspective == protocol.PerspectiveClient)
 	c.handshakeStream = newCryptoStream()
-	c.sendQueue = newSendQueue(c.conn, func(err error) { c.setCloseError(&closeError{err: err}) })
+	c.sendQueue = newSendQueue(c.conn, func(err error) { c.closeLocal(err) })
 	c.retransmissionQueue = newRetransmissionQueue()
 	c.frameParser = *wire.NewFrameParser(
 		c.config.EnableDatagrams,
@@ -829,10 +829,10 @@ func (c *Conn) switchToNewPath(tr *Transport, now monotime.Time) {
 	c.conn = newSendConn(tr.conn, c.conn.RemoteAddr(), packetInfo{}, utils.DefaultLogger) // TODO: find a better way
 	c.sendQueue.Close()
 
-	c.sendQueue = newSendQueue(c.conn, func(err error) { c.setCloseError(&closeError{err: err}) })
+	c.sendQueue = newSendQueue(c.conn, func(err error) { c.closeLocal(err) })
 	go func() {
 		if err := c.sendQueue.Run(); err != nil {
-			c.destroyImpl(err)
+			c.destroy(err)
 		}
 	}()
 }
@@ -1806,12 +1806,16 @@ func (c *Conn) setCloseError(e *closeError) {
 
 // closeLocal closes the connection and send a CONNECTION_CLOSE containing the error
 func (c *Conn) closeLocal(e error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	c.setCloseError(&closeError{err: e, immediate: false})
 }
 
 // destroy closes the connection without sending the error on the wire
 func (c *Conn) destroy(e error) {
+	c.mu.Lock()
 	c.destroyImpl(e)
+	c.mu.Unlock()
 	<-c.ctx.Done()
 }
 

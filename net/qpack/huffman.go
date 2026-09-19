@@ -15,14 +15,6 @@ var huffmanDecStorage = pool.NewPerPStorage(func() *[]byte {
 	return &b
 })
 
-func appendHuffman(dst []byte, s string) []byte {
-	return hpack.HuffmanEncode(dst, bytesconv.S2B(s))
-}
-
-func huffmanLen(s string) int {
-	return int(hpack.HuffmanEncodeLength(bytesconv.S2B(s)))
-}
-
 func decodeHuffman(src []byte, arena *[]byte) (string, error) {
 	if arena == nil {
 		bufPtr := huffmanDecStorage.Get()
