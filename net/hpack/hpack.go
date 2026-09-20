@@ -158,6 +158,7 @@ func (hf *HeaderField) AppendBytes(dst []byte) []byte {
 var hpackStorage = pool.NewPerPStorage(func() *HPACK {
 	return &HPACK{
 		maxTableSize: 4096,
+		MaxCapacity:  4096,
 		dynamic:      make([]*HeaderField, 0, 16),
 	}
 })
@@ -190,6 +191,7 @@ func ReleaseHPACK(hp *HPACK) {
 func (hp *HPACK) Reset() {
 	hp.releaseDynamic()
 	hp.maxTableSize = 4096
+	hp.MaxCapacity = 4096
 	hp.dynamicSize = 0
 	hp.DisableCompression = false
 	hp.DisableDynamicTable = false
@@ -204,9 +206,22 @@ func (hp *HPACK) releaseDynamic() {
 	hp.dynamicSize = 0
 }
 
+// SetMaxCapacity sets the upper bound on dynamic table size (RFC 7541 §4.2).
+// A dynamic table size update cannot exceed this capacity.
+func (hp *HPACK) SetMaxCapacity(capacity uint32) {
+	hp.MaxCapacity = capacity
+	if hp.maxTableSize > capacity {
+		hp.maxTableSize = capacity
+		hp.shrink()
+	}
+}
+
 // SetMaxTableSize updates the maximum dynamic table size capacity (RFC 7541 §4.2 & §6.3).
 func (hp *HPACK) SetMaxTableSize(size uint32) {
 	hp.maxTableSize = size
+	if size > hp.MaxCapacity {
+		hp.MaxCapacity = size
+	}
 	if hp.dynamicSize > size {
 		hp.shrink()
 	}
