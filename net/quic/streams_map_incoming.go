@@ -159,12 +159,30 @@ func (m *incomingStreamsMap[T]) GetOrOpenStream(id protocol.StreamID) (T, error)
 		return s, nil
 	}
 
+	if m.closeErr != nil {
+		m.mutex.RUnlock()
+
+		return *new(T), m.closeErr
+	}
+
 	m.mutex.RUnlock()
 
 	m.mutex.Lock()
-	// no need to check the two error conditions from above again
-	// * maxStream can only increase, so if the id was valid before, it definitely is valid now
-	// * highestStream is only modified by this function
+	defer m.mutex.Unlock()
+
+	if m.closeErr != nil {
+		return *new(T), m.closeErr
+	}
+
+	if id < m.nextStreamToOpen {
+		var s T
+		if entry, ok := m.streams.get(id); ok && !entry.shouldDelete {
+			s = entry.stream
+		}
+
+		return s, nil
+	}
+
 	for newNum := m.nextStreamToOpen; newNum <= id; newNum += 4 {
 		m.streams.set(newNum, incomingStreamEntry[T]{stream: m.newStream(newNum)})
 
@@ -176,7 +194,6 @@ func (m *incomingStreamsMap[T]) GetOrOpenStream(id protocol.StreamID) (T, error)
 
 	m.nextStreamToOpen = id + 4
 	entry, _ := m.streams.get(id)
-	m.mutex.Unlock()
 
 	return entry.stream, nil
 }
@@ -233,12 +250,16 @@ func (m *incomingStreamsMap[T]) deleteStream(id protocol.StreamID) error {
 
 func (m *incomingStreamsMap[T]) CloseWithError(err error) {
 	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	if m.closeErr != nil {
+		return
+	}
 
 	m.closeErr = err
 	m.streams.iterate(func(entry incomingStreamEntry[T]) {
 		entry.stream.closeForShutdown(err)
 	})
 
-	m.mutex.Unlock()
 	close(m.newStreamChan)
 }

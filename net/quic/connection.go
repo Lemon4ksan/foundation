@@ -581,12 +581,12 @@ func (c *Conn) preSetup() {
 
 // Start starts the FSM.
 func (c *Conn) Start() error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
 	if err := c.cryptoStreamHandler.StartHandshake(c.ctx); err != nil {
 		return err
 	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	if err := c.handleHandshakeEvents(monotime.Now()); err != nil {
 		return err

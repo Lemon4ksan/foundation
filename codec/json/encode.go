@@ -184,6 +184,10 @@ func encodeRawMessage(e *encodeState, p unsafe.Pointer) error {
 func compileMarshalerEncoder(t reflect.Type) encoderFunc {
 	return func(e *encodeState, p unsafe.Pointer) error {
 		val := reflect.NewAt(t, p).Elem()
+		if val.Kind() == reflect.Pointer && val.IsNil() {
+			e.buf = append(e.buf, "null"...)
+			return nil
+		}
 		m := val.Interface().(Marshaler)
 		data, err := m.MarshalJSON()
 		if err != nil {
@@ -212,6 +216,10 @@ func compileAddrMarshalerEncoder(t reflect.Type) encoderFunc {
 func compileTextMarshalerEncoder(t reflect.Type) encoderFunc {
 	return func(e *encodeState, p unsafe.Pointer) error {
 		val := reflect.NewAt(t, p).Elem()
+		if val.Kind() == reflect.Pointer && val.IsNil() {
+			e.buf = append(e.buf, "null"...)
+			return nil
+		}
 		m := val.Interface().(encoding.TextMarshaler)
 		text, err := m.MarshalText()
 		if err != nil {

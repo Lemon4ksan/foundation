@@ -13,8 +13,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/lemon4ksan/foundation/testing/require"
 	"golang.org/x/sys/unix"
+
+	"github.com/lemon4ksan/foundation/testing/require"
 )
 
 var (

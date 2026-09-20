@@ -13,11 +13,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lemon4ksan/foundation/testing/require"
 	"golang.org/x/net/ipv4"
 	"golang.org/x/sys/unix"
 
 	"github.com/lemon4ksan/foundation/net/quic/internal/protocol"
+	"github.com/lemon4ksan/foundation/testing/require"
 )
 
 func isIPv4(ip net.IP) bool { return ip.To4() != nil }
