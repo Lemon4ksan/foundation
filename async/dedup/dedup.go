@@ -7,6 +7,7 @@ package dedup
 import (
 	"context"
 	"errors"
+	"iter"
 	"sync"
 )
 
@@ -47,6 +48,40 @@ type call[V any] struct {
 type Group[K comparable, V any] struct {
 	mu    sync.Mutex
 	calls map[K]*call[V]
+}
+
+// KeysSeq returns an iterator over the in-flight deduplication keys currently executing.
+// A snapshot of active keys is captured under the group mutex.
+//
+// Concurrency Guarantees:
+// KeysSeq is safe for concurrent use.
+func (group *Group[K, V]) KeysSeq() iter.Seq[K] {
+	return func(yield func(K) bool) {
+		if group == nil {
+			return
+		}
+		group.mu.Lock()
+		if len(group.calls) == 0 {
+			group.mu.Unlock()
+			return
+		}
+		keys := make([]K, 0, len(group.calls))
+		for k := range group.calls {
+			keys = append(keys, k)
+		}
+		group.mu.Unlock()
+
+		for _, k := range keys {
+			if !yield(k) {
+				return
+			}
+		}
+	}
+}
+
+// KeysSeq returns an iterator over in-flight keys in group.
+func KeysSeq[K comparable, V any](group *Group[K, V]) iter.Seq[K] {
+	return group.KeysSeq()
 }
 
 // CallFn represents a context-aware generic function executed by a [Group].

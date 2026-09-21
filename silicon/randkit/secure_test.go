@@ -59,3 +59,13 @@ func TestConstantTime(t *testing.T) {
 		t.Fatal("expected ConstantTimeEqual with different lengths == false")
 	}
 }
+
+func BenchmarkConstantTimeEqual(b *testing.B) {
+	s1 := "super-secret-token-abcdef1234567890"
+	s2 := "super-secret-token-abcdef1234567890"
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = randkit.ConstantTimeEqual(s1, s2)
+	}
+}

@@ -14,8 +14,6 @@ import (
 	"github.com/lemon4ksan/foundation/testing/require"
 )
 
-// ── SlabAllocator ────────────────────────────────────────────────────────────
-
 func TestSlabAllocator_BasicAllocFree(t *testing.T) {
 	slab, err := offheap.NewSlabAllocator[testFrameHeader](64)
 	require.NoError(t, err)
@@ -41,6 +39,48 @@ func TestSlabAllocator_BasicAllocFree(t *testing.T) {
 
 	assert.Equal(t, 64, slab.Available())
 	assert.Equal(t, 0, slab.Len())
+}
+
+func TestSlabAllocator_Chunks(t *testing.T) {
+	slab, err := offheap.NewSlabAllocator[testFrameHeader](8)
+	require.NoError(t, err)
+	defer slab.Release()
+
+	// Empty slab yields 0 chunks
+	emptyCount := 0
+	for range slab.Chunks() {
+		emptyCount++
+	}
+	assert.Equal(t, 0, emptyCount)
+
+	p0 := slab.Alloc()
+	p1 := slab.Alloc()
+	p2 := slab.Alloc()
+	require.NotNil(t, p0)
+	require.NotNil(t, p1)
+	require.NotNil(t, p2)
+
+	// Free middle element p1
+	slab.Free(p1)
+
+	var chunks []unsafe.Pointer
+	for ptr := range slab.Chunks() {
+		chunks = append(chunks, ptr)
+	}
+
+	assert.Equal(t, 2, len(chunks))
+	assert.Contains(t, chunks, unsafe.Pointer(p0))
+	assert.Contains(t, chunks, unsafe.Pointer(p2))
+
+	// Early break
+	breakCount := 0
+	for range slab.Chunks() {
+		breakCount++
+		if breakCount == 1 {
+			break
+		}
+	}
+	assert.Equal(t, 1, breakCount)
 }
 
 func TestSlabAllocator_FreeAndReallocate(t *testing.T) {
@@ -194,8 +234,6 @@ func TestSlabAllocator_InvalidArgs(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// ── CastBytes ────────────────────────────────────────────────────────────────
-
 func TestCastBytes_Float32(t *testing.T) {
 	// Build a []byte representation of 4 float32 values.
 	orig := []float32{1.0, 2.5, -3.14, 0.0}
@@ -243,8 +281,6 @@ func TestCastBytes_EmptySlice(t *testing.T) {
 	result2 := offheap.CastBytes[testFrameHeader]([]byte{})
 	assert.Nil(t, result2)
 }
-
-// ── WriteStruct ───────────────────────────────────────────────────────────────
 
 func TestWriteStruct_RoundTrip(t *testing.T) {
 	buf, err := offheap.NewBuffer(4096)

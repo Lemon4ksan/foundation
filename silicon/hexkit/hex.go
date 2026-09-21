@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package hex provides ultra-high-performance, zero-allocation hexadecimal encoding and decoding primitives
+// Package hexkit provides ultra-high-performance, zero-allocation hexadecimal encoding and decoding primitives
 // optimized with mechanical sympathy for CPU L1 cache, branchless arithmetic, and 16-bit LUT stores.
 package hexkit
 

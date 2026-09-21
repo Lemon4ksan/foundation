@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// Package icmp implements ICMPv4 and ICMPv6 packet construction and MTU signaling (RFC 792, RFC 4443, RFC 1191, RFC 4884).
 package icmp
 
 import (
@@ -10,6 +11,21 @@ import (
 	"net/netip"
 
 	"github.com/lemon4ksan/foundation/net/packet"
+)
+
+const (
+	// IPv4MinMTU is the minimum MTU required by RFC 791 (68 octets).
+	IPv4MinMTU = 68
+	// IPv6MinMTU is the minimum MTU required by RFC 8200 (1280 octets).
+	IPv6MinMTU = 1280
+
+	// ICMPv4 Type and Code constants.
+	ICMPv4TypeDestinationUnreachable = 3
+	ICMPv4CodeFragmentationNeeded    = 4
+
+	// ICMPv6 Type and Code constants.
+	ICMPv6TypePacketTooBig = 2
+	ICMPv6CodePacketTooBig = 0
 )
 
 var (
@@ -23,12 +39,12 @@ func BuildPacketTooBig4(ipPacket []byte, nextHopMTU uint16) ([]byte, error) {
 		return nil, ErrInvalidIPHeader
 	}
 
-	if nextHopMTU < 68 {
+	if nextHopMTU < IPv4MinMTU {
 		return nil, ErrMTUTooSmall
 	}
 
 	ipHdrLen := int(ipPacket[0]&0x0f) * 4
-	if len(ipPacket) < ipHdrLen {
+	if ipHdrLen < 20 || len(ipPacket) < ipHdrLen {
 		return nil, ErrInvalidIPHeader
 	}
 
@@ -47,8 +63,8 @@ func BuildPacketTooBig4(ipPacket []byte, nextHopMTU uint16) ([]byte, error) {
 	copy(out[12:16], ipPacket[16:20])
 	copy(out[16:20], ipPacket[12:16])
 
-	out[20] = 3
-	out[21] = 4
+	out[20] = ICMPv4TypeDestinationUnreachable
+	out[21] = ICMPv4CodeFragmentationNeeded
 	out[22] = 0
 	out[23] = 0
 	out[24] = 0
@@ -69,7 +85,7 @@ func BuildPacketTooBig6(ipPacket []byte, nextHopMTU uint32) ([]byte, error) {
 		return nil, ErrInvalidIPHeader
 	}
 
-	if nextHopMTU < 1280 {
+	if nextHopMTU < IPv6MinMTU {
 		return nil, ErrMTUTooSmall
 	}
 
@@ -85,8 +101,8 @@ func BuildPacketTooBig6(ipPacket []byte, nextHopMTU uint32) ([]byte, error) {
 	copy(out[8:24], ipPacket[24:40])
 	copy(out[24:40], ipPacket[8:24])
 
-	out[40] = 2
-	out[41] = 0
+	out[40] = ICMPv6TypePacketTooBig
+	out[41] = ICMPv6CodePacketTooBig
 	out[42] = 0
 	out[43] = 0
 	binary.BigEndian.PutUint32(out[44:48], nextHopMTU)

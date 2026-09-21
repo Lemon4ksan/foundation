@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package backoff provides zero-allocation mathematical backoff calculators with full, equal,
-// and decorrelated jitter distributions for high-throughput resilience pipelines.
 package backoff
 
 import (

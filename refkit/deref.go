@@ -8,6 +8,36 @@ import (
 	"reflect"
 )
 
+// Deref safely dereferences ptr, returning its pointed-to value if non-nil,
+// or the zero value of T if ptr is nil.
+//
+// Concurrency & Zero-Allocation Semantics:
+// Deref is strictly zero-allocation and safe for concurrent execution.
+func Deref[T any](ptr *T) T {
+	if ptr == nil {
+		var zero T
+		return zero
+	}
+	return *ptr
+}
+
+// DerefOr safely dereferences ptr, returning its pointed-to value if non-nil,
+// or fallback if ptr is nil.
+//
+// Concurrency & Zero-Allocation Semantics:
+// DerefOr is strictly zero-allocation and safe for concurrent execution.
+func DerefOr[T any](ptr *T, fallback T) T {
+	if ptr == nil {
+		return fallback
+	}
+	return *ptr
+}
+
+// Ptr allocates and returns a pointer containing val.
+func Ptr[T any](val T) *T {
+	return &val
+}
+
 // DerefType resolves the underlying non-pointer type, unwrapping all consecutive pointer layers (e.g. ***T -> T).
 func DerefType(t reflect.Type) reflect.Type {
 	if t == nil {

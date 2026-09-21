@@ -6,6 +6,7 @@ package event
 
 import (
 	"context"
+	"iter"
 	"maps"
 	"reflect"
 	"slices"
@@ -74,6 +75,131 @@ func (s *Subscription) Unsubscribe() {
 	if s.closed.CompareAndSwap(false, true) {
 		s.bus.unsubscribe(s)
 	}
+}
+
+// EventsSeq returns an iterator over events received on this subscription until ctx is cancelled
+// or the subscription is closed. Iteration ceases immediately if yield returns false.
+//
+// Concurrency Guarantees:
+// EventsSeq is safe for concurrent use, though typically consumed by a single goroutine per subscription.
+func (s *Subscription) EventsSeq(ctx context.Context) iter.Seq[Event] {
+	return func(yield func(Event) bool) {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case ev, ok := <-s.ch:
+				if !ok {
+					return
+				}
+				if !yield(ev) {
+					return
+				}
+			}
+		}
+	}
+}
+
+// EventsSeq returns an iterator over events from subscription sub until ctx is cancelled or sub is closed.
+func EventsSeq(ctx context.Context, sub *Subscription) iter.Seq[Event] {
+	return sub.EventsSeq(ctx)
+}
+
+// TypedSubscription provides a type-safe subscription wrapper for event type E.
+type TypedSubscription[E any] struct {
+	sub    *Subscription
+	ch     chan E
+	closed atomic.Bool
+}
+
+// C returns the read-only channel for typed events.
+func (ts *TypedSubscription[E]) C() <-chan E {
+	return ts.ch
+}
+
+// Unsubscribe deregisters the subscription from its bus and closes its channel.
+func (ts *TypedSubscription[E]) Unsubscribe() {
+	if ts.closed.CompareAndSwap(false, true) {
+		ts.sub.Unsubscribe()
+	}
+}
+
+// EventsSeq returns an iterator over typed events received on this subscription.
+func (ts *TypedSubscription[E]) EventsSeq(ctx context.Context) iter.Seq[E] {
+	return func(yield func(E) bool) {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case ev, ok := <-ts.ch:
+				if !ok {
+					return
+				}
+				if !yield(ev) {
+					return
+				}
+			}
+		}
+	}
+}
+
+// SubscribeTyped registers a type-safe subscription on b for events of type E.
+// E can be a value or pointer type that satisfies [Event].
+// An optional custom bufferSize can be provided (default 128).
+func SubscribeTyped[E any](b *Bus, bufSize ...int) *TypedSubscription[E] {
+	size := 128
+	if len(bufSize) > 0 && bufSize[0] > 0 {
+		size = bufSize[0]
+	}
+
+	t := reflect.TypeFor[E]()
+	if t.Kind() == reflect.Pointer {
+		t = t.Elem()
+	}
+
+	b.mu.Lock()
+	id := b.nextID.Add(1)
+	sub := &Subscription{
+		id:    id,
+		types: []reflect.Type{t},
+		ch:    make(chan Event, size),
+		bus:   b,
+	}
+
+	if b.closed {
+		sub.closed.Store(true)
+		close(sub.ch)
+	} else {
+		if b.subs[t] == nil {
+			b.subs[t] = make(map[uint64]*Subscription)
+		}
+		b.subs[t][id] = sub
+	}
+	b.mu.Unlock()
+
+	ts := &TypedSubscription[E]{
+		sub: sub,
+		ch:  make(chan E, size),
+	}
+
+	go func() {
+		defer close(ts.ch)
+		for raw := range sub.C() {
+			if typed, ok := raw.(E); ok {
+				select {
+				case ts.ch <- typed:
+				default:
+				}
+			} else if typedPtr, ok := any(raw).(*E); ok && typedPtr != nil {
+				select {
+				case ts.ch <- *typedPtr:
+				default:
+				}
+			}
+		}
+	}()
+
+	return ts
 }
 
 // Bus implements a thread-safe, non-blocking, type-based event dispatcher.

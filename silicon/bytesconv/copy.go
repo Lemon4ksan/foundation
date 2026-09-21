@@ -60,6 +60,7 @@ func CopyZeroAlloc(w io.Writer, r io.Reader) (int64, error) {
 	return n, err
 }
 
+// CopyBuffer copies from src to dst using the provided buffer slice until either EOF is reached on src or an error occurs.
 func CopyBuffer(dst io.Writer, src io.Reader, buf []byte) (written int64, err error) {
 	for {
 		nr, er := src.Read(buf)
@@ -98,6 +99,7 @@ func CopyBuffer(dst io.Writer, src io.Reader, buf []byte) (written int64, err er
 	return written, err
 }
 
+// CopyBufPool is a sync.Pool providing reusable 4KB byte slices for zero-allocation copy operations.
 var CopyBufPool = sync.Pool{
 	New: func() any {
 		return make([]byte, 4096)
@@ -106,8 +108,9 @@ var CopyBufPool = sync.Pool{
 
 // ErrBodyTooLarge is returned if either request or response body exceeds
 // the given limit.
-var ErrBodyTooLarge = errors.New("mach: body size exceeds the given limit")
+var ErrBodyTooLarge = errors.New("bytesconv: body size exceeds the given limit")
 
+// CopyZeroAllocWithLimit copies up to maxBodySize bytes from r to w with zero heap allocations, returning ErrBodyTooLarge if the limit is exceeded.
 func CopyZeroAllocWithLimit(w io.Writer, r io.Reader, maxBodySize int) (int64, error) {
 	if maxBodySize <= 0 {
 		return CopyZeroAlloc(w, r)

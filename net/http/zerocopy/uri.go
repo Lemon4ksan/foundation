@@ -275,7 +275,7 @@ func (u *URI) SetHostBytes(host []byte) {
 	LowercaseBytes(u.host)
 }
 
-var ErrorInvalidURI = errors.New("mach: invalid uri")
+var ErrorInvalidURI = errors.New("zerocopy: invalid uri")
 
 // Parse initializes URI from the given host and uri.
 //

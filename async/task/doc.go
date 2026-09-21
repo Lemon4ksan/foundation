@@ -58,7 +58,7 @@
 //	)
 //
 //	func main() {
-//		mgr := jobs.NewManager[string, string](100)
+//		mgr := task.NewManager[string, string](100)
 //		id := mgr.NextID()
 //
 //		var wg sync.WaitGroup
@@ -96,11 +96,11 @@
 //	)
 //
 //	func main() {
-//		mgr := jobs.NewManager[string, string](0)
+//		mgr := task.NewManager[string, string](0)
 //		id := mgr.NextID()
 //
 //		// Configure with WithWait and a 1-second timeout limit
-//		err := mgr.Add(id, nil, jobs.WithWait[string](), jobs.WithTimeout[string](time.Second))
+//		err := mgr.Add(id, nil, task.WithWait[string](), task.WithTimeout[string](time.Second))
 //		if err != nil {
 //			log.Fatalf("Failed to add job: %v", err)
 //		}

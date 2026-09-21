@@ -40,8 +40,97 @@ func TestPanicOnEmptyBuffer(t *testing.T) {
 	r := RingBuffer[string]{}
 	require.True(t, r.Empty())
 	require.Zero(t, r.Len())
-	require.Panics(t, func() { r.PeekFront() })
-	require.Panics(t, func() { r.PopFront() })
+
+	func() {
+		defer func() {
+			val := recover()
+			require.Equal(t, "ringbuffer: peek from an empty queue", val)
+		}()
+		r.PeekFront()
+		t.Fatal("expected peek to panic")
+	}()
+
+	func() {
+		defer func() {
+			val := recover()
+			require.Equal(t, "ringbuffer: pop from an empty queue", val)
+		}()
+		r.PopFront()
+		t.Fatal("expected pop to panic")
+	}()
+}
+
+func TestRingBuffer_Iterators(t *testing.T) {
+	var r RingBuffer[int]
+	r.Init(4)
+
+	// Empty iterators
+	count := 0
+	for range r.All() {
+		count++
+	}
+	require.Equal(t, 0, count)
+
+	for range r.Values() {
+		count++
+	}
+	require.Equal(t, 0, count)
+
+	for range r.Drain() {
+		count++
+	}
+	require.Equal(t, 0, count)
+
+	// Push items with wrap-around
+	r.PushBack(10)
+	r.PushBack(20)
+	require.Equal(t, 10, r.PopFront())
+	r.PushBack(30)
+	r.PushBack(40)
+	r.PushBack(50) // Now elements: 20, 30, 40, 50 (wrapped)
+
+	// All() non-destructive
+	var items []int
+	for v := range r.All() {
+		items = append(items, v)
+		if len(items) == 2 {
+			break // test early exit
+		}
+	}
+	require.Equal(t, []int{20, 30}, items)
+
+	// Values() non-destructive full
+	items = nil
+	for v := range r.Values() {
+		items = append(items, v)
+	}
+	require.Equal(t, []int{20, 30, 40, 50}, items)
+	require.Equal(t, 4, r.Len())
+
+	// Backward() non-destructive reverse
+	items = nil
+	for v := range r.Backward() {
+		items = append(items, v)
+		if len(items) == 2 {
+			break // test early exit
+		}
+	}
+	require.Equal(t, []int{50, 40}, items)
+
+	items = nil
+	for v := range r.Backward() {
+		items = append(items, v)
+	}
+	require.Equal(t, []int{50, 40, 30, 20}, items)
+	require.Equal(t, 4, r.Len())
+
+	// Drain() consuming
+	items = nil
+	for v := range r.Drain() {
+		items = append(items, v)
+	}
+	require.Equal(t, []int{20, 30, 40, 50}, items)
+	require.True(t, r.Empty())
 }
 
 func TestClear(t *testing.T) {

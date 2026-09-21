@@ -181,3 +181,84 @@ func TestArgKit_StringSliceFlag(t *testing.T) {
 		t.Errorf("expected \"a,b\", got %q", s.String())
 	}
 }
+
+func TestArgKit_Levenshtein(t *testing.T) {
+	tests := []struct {
+		s1       string
+		s2       string
+		expected int
+	}{
+		{"", "", 0},
+		{"a", "", 1},
+		{"", "b", 1},
+		{"abc", "abc", 0},
+		{"kitten", "sitting", 3},
+		{"flaw", "lawn", 2},
+		{"whre", "where", 1},
+		{"verbose", "verbos", 1},
+		{"кот", "скат", 2},
+		{"привет", "привет", 0},
+		{"привет", "превед", 2},
+		// Long strings exceeding 64 chars to test heap fallback
+		{
+			"this_is_a_very_long_flag_name_that_exceeds_sixty_four_characters_for_testing_heap_allocation_fallback_path_1",
+			"this_is_a_very_long_flag_name_that_exceeds_sixty_four_characters_for_testing_heap_allocation_fallback_path_2",
+			1,
+		},
+	}
+
+	for _, tc := range tests {
+		dist := argkit.Levenshtein(tc.s1, tc.s2)
+		if dist != tc.expected {
+			t.Errorf("Levenshtein(%q, %q): expected %d, got %d", tc.s1, tc.s2, tc.expected, dist)
+		}
+	}
+}
+
+func BenchmarkLevenshtein_ASCII(b *testing.B) {
+	s1 := "verbose"
+	s2 := "verbos"
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for b.Loop() {
+		dist := argkit.Levenshtein(s1, s2)
+		if dist != 1 {
+			b.Fatalf("unexpected dist: %d", dist)
+		}
+	}
+}
+
+func BenchmarkLevenshtein_Unicode(b *testing.B) {
+	s1 := "привет"
+	s2 := "превед"
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for b.Loop() {
+		dist := argkit.Levenshtein(s1, s2)
+		if dist != 2 {
+			b.Fatalf("unexpected dist: %d", dist)
+		}
+	}
+}
+
+func BenchmarkSuggest(b *testing.B) {
+	fs := flag.NewFlagSet("bench", flag.ContinueOnError)
+	var v bool
+	var o string
+	var cfg string
+	argkit.BoolVar(fs, &v, "verbose", "v", false, "verbose")
+	argkit.StringVar(fs, &o, "output", "o", "", "output")
+	argkit.StringVar(fs, &cfg, "config", "c", "", "config")
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for b.Loop() {
+		match := argkit.Suggest(fs, "--whre")
+		_ = match
+	}
+}

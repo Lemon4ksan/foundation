@@ -202,3 +202,123 @@ func TestKeyMutex_TryLockConcurrent(t *testing.T) {
 		t.Errorf("expected counter to be %d, got %d", expected, counter)
 	}
 }
+
+func TestWithLock(t *testing.T) {
+	km := New[string]()
+	called := false
+	WithLock(km, "test-key", func() {
+		called = true
+		if !km.IsLocked("test-key") {
+			t.Fatal("expected test-key to be locked inside WithLock")
+		}
+	})
+	if !called {
+		t.Fatal("expected WithLock function to be called")
+	}
+	if km.IsLocked("test-key") {
+		t.Fatal("expected test-key to be unlocked after WithLock")
+	}
+}
+
+func TestWithLockResult(t *testing.T) {
+	km := New[string]()
+	res, err := WithLockResult(km, "test-key", func() (int, error) {
+		if !km.IsLocked("test-key") {
+			t.Fatal("expected test-key to be locked inside WithLockResult")
+		}
+		return 42, nil
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res != 42 {
+		t.Fatalf("expected 42, got %d", res)
+	}
+	if km.IsLocked("test-key") {
+		t.Fatal("expected test-key to be unlocked after WithLockResult")
+	}
+}
+
+func TestKeyMutex_KeysSeq(t *testing.T) {
+	km := New[string]()
+
+	// Empty
+	for k := range km.KeysSeq() {
+		t.Fatalf("unexpected key from empty KeysSeq: %v", k)
+	}
+
+	km.Lock("k1")
+	km.Lock("k2")
+
+	seen := make(map[string]bool)
+	for k := range km.KeysSeq() {
+		seen[k] = true
+	}
+	if len(seen) != 2 || !seen["k1"] || !seen["k2"] {
+		t.Fatalf("expected keys k1 and k2, got %v", seen)
+	}
+
+	// Early break
+	count := 0
+	for range km.KeysSeq() {
+		count++
+		break
+	}
+	if count != 1 {
+		t.Fatalf("expected early break after 1 key, got %d", count)
+	}
+
+	km.Unlock("k1")
+	km.Unlock("k2")
+}
+
+func BenchmarkKeyMutex_LockUnlock_Uncontended(b *testing.B) {
+	km := New[string]()
+	key := "benchmark-key"
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		km.Lock(key)
+		km.Unlock(key)
+	}
+}
+
+func BenchmarkKeyMutex_TryLockUnlock_Uncontended(b *testing.B) {
+	km := New[string]()
+	key := "benchmark-try-key"
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		if !km.TryLock(key) {
+			b.Fatal("TryLock failed")
+		}
+		km.Unlock(key)
+	}
+}
+
+func BenchmarkKeyMutex_WithLock_Uncontended(b *testing.B) {
+	km := New[string]()
+	key := "benchmark-withlock-key"
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		WithLock(km, key, func() {})
+	}
+}
+
+func BenchmarkKeyMutex_IsLocked(b *testing.B) {
+	km := New[string]()
+	key := "benchmark-islocked-key"
+	km.Lock(key)
+	defer km.Unlock(key)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		_ = km.IsLocked(key)
+	}
+}

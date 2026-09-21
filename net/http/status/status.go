@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// Package status defines HTTP status codes, reason phrases, and optimized byte slice lookup helpers.
 package status
 
 import (
@@ -16,7 +17,7 @@ const (
 	messageMax = 511
 )
 
-// HTTP status codes were stolen from net/http.
+// HTTP status codes defined by RFC 7231, RFC 7233, RFC 4918, and registered with IANA.
 const (
 	Continue           = 100 // RFC 7231, 6.2.1
 	SwitchingProtocols = 101 // RFC 7231, 6.2.2
@@ -67,6 +68,7 @@ const (
 	UnprocessableEntity          = 422 // RFC 4918, 11.2
 	Locked                       = 423 // RFC 4918, 11.3
 	FailedDependency             = 424 // RFC 4918, 11.4
+	TooEarly                     = 425 // RFC 8470
 	UpgradeRequired              = 426 // RFC 7231, 6.5.15
 	PreconditionRequired         = 428 // RFC 6585, 3
 	TooManyRequests              = 429 // RFC 6585, 4
@@ -129,7 +131,7 @@ var (
 		LengthRequired:               "Length Required",
 		PreconditionFailed:           "Precondition Failed",
 		RequestEntityTooLarge:        "Request Entity Too Large",
-		RequestURITooLong:            "Request zerocopy.URI Too Long",
+		RequestURITooLong:            "Request-URI Too Long",
 		UnsupportedMediaType:         "Unsupported Media Type",
 		RequestedRangeNotSatisfiable: "Requested Range Not Satisfiable",
 		ExpectationFailed:            "Expectation Failed",
@@ -138,6 +140,7 @@ var (
 		UnprocessableEntity:          "Unprocessable Entity",
 		Locked:                       "Locked",
 		FailedDependency:             "Failed Dependency",
+		TooEarly:                     "Too Early",
 		UpgradeRequired:              "Upgrade Required",
 		PreconditionRequired:         "Precondition Required",
 		TooManyRequests:              "Too Many Requests",
@@ -171,6 +174,32 @@ func Message(statusCode int) string {
 	return unknownStatusCode
 }
 
+// IsInformational reports whether the status code is informational (1xx).
+func IsInformational(statusCode int) bool {
+	return statusCode >= 100 && statusCode < 200
+}
+
+// IsSuccess reports whether the status code indicates success (2xx).
+func IsSuccess(statusCode int) bool {
+	return statusCode >= 200 && statusCode < 300
+}
+
+// IsRedirect reports whether the status code indicates redirection (3xx).
+func IsRedirect(statusCode int) bool {
+	return statusCode >= 300 && statusCode < 400
+}
+
+// IsClientError reports whether the status code indicates a client error (4xx).
+func IsClientError(statusCode int) bool {
+	return statusCode >= 400 && statusCode < 500
+}
+
+// IsServerError reports whether the status code indicates a server error (5xx).
+func IsServerError(statusCode int) bool {
+	return statusCode >= 500 && statusCode < 600
+}
+
+// FormatLine appends formatted HTTP status line to dst.
 func FormatLine(dst, protocol []byte, statusCode int, statusText []byte) []byte {
 	if len(statusText) == 0 {
 		statusText = bytesconv.S2B(Message(statusCode))

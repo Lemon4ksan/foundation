@@ -37,6 +37,21 @@ func TestPacketBatchSoA_Operations(t *testing.T) {
 	indices := batch.FilterByProtocol(6, nil)
 	assert.Equal(t, []int{0, 2}, indices)
 
+	// FilterProtocolSeq
+	var seqIndices []int
+	for idx := range batch.FilterProtocolSeq(6) {
+		seqIndices = append(seqIndices, idx)
+	}
+	assert.Equal(t, []int{0, 2}, seqIndices)
+
+	// Early exit
+	seqIndices = nil
+	for idx := range batch.FilterProtocolSeq(6) {
+		seqIndices = append(seqIndices, idx)
+		break
+	}
+	assert.Equal(t, []int{0}, seqIndices)
+
 	batch.Reset()
 	assert.Equal(t, 0, batch.Len)
 }

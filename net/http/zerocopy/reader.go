@@ -10,7 +10,7 @@ import (
 	"io"
 )
 
-var ErrBufferFull = errors.New("bytesutil: buffer full")
+var ErrBufferFull = errors.New("zerocopy: buffer full")
 
 type StreamReader struct {
 	buf []byte
@@ -44,7 +44,7 @@ func (b *StreamReader) Buffered() int {
 
 func (b *StreamReader) Peek(n int) ([]byte, error) {
 	if n < 0 {
-		return nil, errors.New("bytesutil: negative count")
+		return nil, errors.New("zerocopy: negative count")
 	}
 
 	for b.w-b.r < n && b.err == nil {
@@ -70,7 +70,7 @@ func (b *StreamReader) Peek(n int) ([]byte, error) {
 
 func (b *StreamReader) Discard(n int) (int, error) {
 	if n < 0 {
-		return 0, errors.New("bytesutil: negative count")
+		return 0, errors.New("zerocopy: negative count")
 	}
 
 	if n == 0 {

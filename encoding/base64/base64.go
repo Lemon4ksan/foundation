@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// Package base64 provides high-performance and SIMD-accelerated Base64 encoding.
 package base64
 
 import (
@@ -18,7 +19,7 @@ func Base64URLEncodedLen(n int) int {
 func Base64EncodeURL(src, dst []byte) int {
 	reqLen := Base64URLEncodedLen(len(src))
 	if len(dst) < reqLen {
-		panic("transport: dst buffer too small for Base64EncodeURL")
+		panic("base64: dst buffer too small for Base64EncodeURL")
 	}
 
 	if hasVectorBase64 {

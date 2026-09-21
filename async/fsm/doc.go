@@ -75,11 +75,11 @@
 //	}
 //
 //	func main() {
-//		fsm := kata.NewFSM[State, Event](Idle)
+//		fsm := fsm.NewFSM[State, Event](Idle)
 //
 //		fsm.AddRules(
-//			kata.TransitionRule[State, Event]{From: Idle, Event: Start, To: Running},
-//			kata.TransitionRule[State, Event]{From: Running, Event: Stop, To: Stopped},
+//			fsm.TransitionRule[State, Event]{From: Idle, Event: Start, To: Running},
+//			fsm.TransitionRule[State, Event]{From: Running, Event: Stop, To: Stopped},
 //		)
 //
 //		fsm.OnBefore(Start, func(ctx context.Context, from State, event Event, to State) error {

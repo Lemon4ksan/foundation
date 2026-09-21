@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"iter"
 	"sync"
 
 	"golang.org/x/time/rate"
@@ -82,6 +83,95 @@ func ForEach[In any](
 	})
 
 	return err
+}
+
+// ProcessSeq concurrently transforms elements from the input iterator using mapper
+// under bounded concurrency governed by cfg.Workers, yielding (Out, error) pairs.
+// If yield returns false or ctx is cancelled, workers are cancelled immediately
+// and iteration halts without leaking background goroutines.
+//
+// Concurrency Guarantees:
+// ProcessSeq is safe for concurrent invocation from multiple goroutines.
+func ProcessSeq[In, Out any](
+	ctx context.Context,
+	cfg Config,
+	in iter.Seq[In],
+	mapper func(context.Context, In) (Out, error),
+) iter.Seq2[Out, error] {
+	return func(yield func(Out, error) bool) {
+		if mapper == nil {
+			var zero Out
+			yield(zero, errors.New("pipeline: mapper function is nil"))
+			return
+		}
+		cfg.resolveDefaults()
+		runCtx, cancel := context.WithCancel(ctx)
+		defer cancel()
+
+		type resItem struct {
+			out Out
+			err error
+		}
+
+		inCh := make(chan In, cfg.Workers*2)
+		outCh := make(chan resItem, cfg.Workers*2)
+
+		var inWg sync.WaitGroup
+		inWg.Add(1)
+		go func() {
+			defer inWg.Done()
+			defer close(inCh)
+			for item := range in {
+				select {
+				case <-runCtx.Done():
+					return
+				case inCh <- item:
+				}
+			}
+		}()
+
+		var workerWg sync.WaitGroup
+		for range cfg.Workers {
+			workerWg.Add(1)
+			go func() {
+				defer workerWg.Done()
+				for item := range inCh {
+					select {
+					case <-runCtx.Done():
+						return
+					default:
+					}
+					out, err := mapper(runCtx, item)
+					select {
+					case <-runCtx.Done():
+						return
+					case outCh <- resItem{out: out, err: err}:
+					}
+				}
+			}()
+		}
+
+		go func() {
+			workerWg.Wait()
+			close(outCh)
+		}()
+
+		for res := range outCh {
+			if !yield(res.out, res.err) {
+				cancel()
+				break
+			}
+		}
+	}
+}
+
+// ProcessSeq concurrently transforms the input iterator using mapper under the pipeline's configuration.
+func (p *Pipeline[In, Out]) ProcessSeq(
+	ctx context.Context,
+	in iter.Seq[In],
+	mapper func(context.Context, In) (Out, error),
+) iter.Seq2[Out, error] {
+	return ProcessSeq(ctx, p.config, in, mapper)
 }
 
 // Pipeline coordinates concurrent data processing, rate limiting, and order preservation

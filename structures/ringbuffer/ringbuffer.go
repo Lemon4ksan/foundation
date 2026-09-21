@@ -2,7 +2,10 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// Package ringbuffer implements a growable, circular FIFO queue that reuses backing storage.
 package ringbuffer
+
+import "iter"
 
 // RingBuffer is a growable FIFO queue that reuses its backing storage.
 // The slice length stores the queue length, so wrapped positions are accessed by reslicing to capacity.
@@ -52,7 +55,7 @@ func (r *RingBuffer[T]) PushBack(t T) {
 // callers might need to check if there are elements in the buffer first.
 func (r *RingBuffer[T]) PopFront() T {
 	if r.Empty() {
-		panic("github.com/lemon4ksan/foundation/net/quic/internal/utils/ringbuffer: pop from an empty queue")
+		panic("ringbuffer: pop from an empty queue")
 	}
 
 	// Shrink first. The backing storage remains accessible through cap,
@@ -74,7 +77,7 @@ func (r *RingBuffer[T]) PopFront() T {
 // callers might need to check if there are elements in the buffer first.
 func (r *RingBuffer[T]) PeekFront() T {
 	if r.Empty() {
-		panic("github.com/lemon4ksan/foundation/net/quic/internal/utils/ringbuffer: peek from an empty queue")
+		panic("ringbuffer: peek from an empty queue")
 	}
 
 	return r.ring[:cap(r.ring)][r.headPos]
@@ -101,4 +104,63 @@ func (r *RingBuffer[T]) Clear() {
 	clear(r.ring[:cap(r.ring)])
 	r.ring = r.ring[:0]
 	r.headPos = 0
+}
+
+// All returns an iterator over queued elements in FIFO order without mutating the ring buffer.
+func (r *RingBuffer[T]) All() iter.Seq[T] {
+	return func(yield func(T) bool) {
+		n := len(r.ring)
+		c := cap(r.ring)
+		if n == 0 || c == 0 {
+			return
+		}
+		ringCap := r.ring[:c]
+		for i := 0; i < n; i++ {
+			pos := r.headPos + i
+			if pos >= c {
+				pos -= c
+			}
+			if !yield(ringCap[pos]) {
+				return
+			}
+		}
+	}
+}
+
+// Values returns an iterator over queued elements in FIFO order without mutating the ring buffer.
+func (r *RingBuffer[T]) Values() iter.Seq[T] {
+	return r.All()
+}
+
+// Drain pops and yields all buffered items in FIFO order until the buffer is empty.
+func (r *RingBuffer[T]) Drain() iter.Seq[T] {
+	return func(yield func(T) bool) {
+		for !r.Empty() {
+			item := r.PopFront()
+			if !yield(item) {
+				return
+			}
+		}
+	}
+}
+
+// Backward returns an iterator over queued elements in reverse order (LIFO) without mutating the ring buffer.
+func (r *RingBuffer[T]) Backward() iter.Seq[T] {
+	return func(yield func(T) bool) {
+		n := len(r.ring)
+		c := cap(r.ring)
+		if n == 0 || c == 0 {
+			return
+		}
+		ringCap := r.ring[:c]
+		for i := n - 1; i >= 0; i-- {
+			pos := r.headPos + i
+			if pos >= c {
+				pos -= c
+			}
+			if !yield(ringCap[pos]) {
+				return
+			}
+		}
+	}
 }

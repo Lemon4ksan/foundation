@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package iokit provides high-performance streaming I/O wrappers, replayable body decorators, and zero-allocation copy helpers.
 package iokit
 
 import (

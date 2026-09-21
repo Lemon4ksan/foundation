@@ -5,6 +5,7 @@
 package ringbuf
 
 import (
+	"iter"
 	"sync/atomic"
 
 	"golang.org/x/sys/cpu"
@@ -113,4 +114,20 @@ func (s *SPSCRingBuffer[T]) IsFull() bool {
 // IsEmpty reports whether the ring buffer contains zero items.
 func (s *SPSCRingBuffer[T]) IsEmpty() bool {
 	return s.Len() == 0
+}
+
+// Drain pops and yields all buffered items in FIFO order until the buffer is empty.
+// Thread Safety Invariant: Must be invoked from EXACTLY ONE Consumer goroutine.
+func (s *SPSCRingBuffer[T]) Drain() iter.Seq[*T] {
+	return func(yield func(*T) bool) {
+		for {
+			item := s.Pop()
+			if item == nil {
+				return
+			}
+			if !yield(item) {
+				return
+			}
+		}
+	}
 }

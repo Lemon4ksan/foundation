@@ -63,6 +63,37 @@ func TestSPSCRingBuffer_BasicOperations(t *testing.T) {
 	assert.Nil(t, buf.Pop())
 }
 
+func TestSPSCRingBuffer_Drain(t *testing.T) {
+	t.Parallel()
+
+	buf := ringbuf.NewSPSCRingBuffer[int](8)
+	// Empty drain
+	for range buf.Drain() {
+		t.Fatal("expected empty drain")
+	}
+
+	for i := 1; i <= 4; i++ {
+		val := i * 10
+		require.True(t, buf.Push(&val))
+	}
+
+	var drained []int
+	for ptr := range buf.Drain() {
+		drained = append(drained, *ptr)
+		if len(drained) == 2 {
+			break
+		}
+	}
+	assert.Equal(t, []int{10, 20}, drained)
+
+	drained = nil
+	for ptr := range buf.Drain() {
+		drained = append(drained, *ptr)
+	}
+	assert.Equal(t, []int{30, 40}, drained)
+	assert.True(t, buf.IsEmpty())
+}
+
 func TestSPSCRingBuffer_ConcurrentProducerConsumer(t *testing.T) {
 	t.Parallel()
 

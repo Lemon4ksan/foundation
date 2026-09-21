@@ -6,10 +6,11 @@ package ringbuf
 
 import (
 	"errors"
+	"iter"
 )
 
 // ErrBatchFull is returned when attempting to add items to a full PacketBatchSoA.
-var ErrBatchFull = errors.New("foundation/ringbuf: packet batch is full")
+var ErrBatchFull = errors.New("ringbuf: packet batch is full")
 
 // PacketBatchSoA implements a Structure-of-Arrays (SoA) memory layout for high-density
 // Layer-3/4 IP packet and network flow batch processing.
@@ -78,4 +79,17 @@ func (b *PacketBatchSoA) FilterByProtocol(targetProto byte, dstIndices []int) []
 	}
 
 	return dstIndices
+}
+
+// FilterProtocolSeq yields all packet indices in the batch whose protocol matches targetProto.
+func (b *PacketBatchSoA) FilterProtocolSeq(targetProto byte) iter.Seq[int] {
+	return func(yield func(int) bool) {
+		for i, p := range b.Protocols {
+			if p == targetProto {
+				if !yield(i) {
+					return
+				}
+			}
+		}
+	}
 }

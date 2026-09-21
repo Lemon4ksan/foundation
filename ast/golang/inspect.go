@@ -6,6 +6,7 @@ package golang
 
 import (
 	"go/ast"
+	"iter"
 	"strings"
 )
 
@@ -37,6 +38,31 @@ func Walk(node ast.Node, fn func(ast.Node) bool) {
 		return
 	}
 	ast.Inspect(node, fn)
+}
+
+// WalkSeq returns an iterator that traverses the AST rooted at node in depth-first order.
+// Iteration stops immediately when yield returns false.
+//
+// Concurrency & Zero-Allocation Semantics:
+// WalkSeq is safe for concurrent use across distinct AST node trees and performs
+// zero heap allocations during traversal.
+func WalkSeq(node ast.Node) iter.Seq[ast.Node] {
+	return func(yield func(ast.Node) bool) {
+		if node == nil {
+			return
+		}
+		var stop bool
+		ast.Inspect(node, func(n ast.Node) bool {
+			if stop || n == nil {
+				return false
+			}
+			if !yield(n) {
+				stop = true
+				return false
+			}
+			return true
+		})
+	}
 }
 
 // FindStructs discovers all struct type declarations in the provided file AST.

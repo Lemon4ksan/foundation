@@ -43,7 +43,7 @@
 //	)
 //
 //	func main() {
-//	    g := &batto.Group[string, string]{}
+//	    g := &dedup.Group[string, string]{}
 //	    ctx := context.Background()
 //
 //	    var callCounter int32

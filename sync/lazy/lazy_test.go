@@ -115,3 +115,95 @@ func TestLazy_Concurrent(t *testing.T) {
 		t.Fatalf("expected init to be called exactly once, got %d", calls)
 	}
 }
+
+func TestLazy_ConcurrentWithReset(t *testing.T) {
+	var calls atomic.Int32
+	l := New(func() (int, error) {
+		return int(calls.Add(1)), nil
+	})
+
+	stop := make(chan struct{})
+	var wg sync.WaitGroup
+
+	// Readers
+	for range 16 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for {
+				select {
+				case <-stop:
+					return
+				default:
+					val, err := l.Get()
+					if err != nil || val <= 0 {
+						t.Errorf("unexpected value: %v, %v", val, err)
+					}
+				}
+			}
+		}()
+	}
+
+	// Resetters
+	for range 2 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for {
+				select {
+				case <-stop:
+					return
+				default:
+					l.Reset()
+				}
+			}
+		}()
+	}
+
+	// Run for a short burst
+	for range 50 {
+		l.Get()
+	}
+	close(stop)
+	wg.Wait()
+}
+
+func BenchmarkLazy_Get_Initialized(b *testing.B) {
+	l := New(func() (int, error) {
+		return 42, nil
+	})
+	if _, err := l.Get(); err != nil {
+		b.Fatalf("unexpected error: %v", err)
+	}
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for b.Loop() {
+		val, _ := l.Get()
+		if val != 42 {
+			b.Fatalf("unexpected val: %d", val)
+		}
+	}
+}
+
+func BenchmarkLazy_Get_Parallel(b *testing.B) {
+	l := New(func() (int, error) {
+		return 42, nil
+	})
+	if _, err := l.Get(); err != nil {
+		b.Fatalf("unexpected error: %v", err)
+	}
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			val, _ := l.Get()
+			if val != 42 {
+				b.Fatalf("unexpected val: %d", val)
+			}
+		}
+	})
+}

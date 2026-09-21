@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// Package adaptive provides an adaptive read buffer sizing strategy with hysteresis decay.
 package adaptive
 
 import (

@@ -156,3 +156,44 @@ func TestSemaphore_NegativeLimitsAndEdgeCases(t *testing.T) {
 		t.Errorf("expected limit=0, got %d", sem.limit)
 	}
 }
+
+func BenchmarkSemaphore_AcquireRelease_Uncontended(b *testing.B) {
+	sem := New(1)
+	ctx := context.Background()
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		if err := sem.Acquire(ctx); err != nil {
+			b.Fatal(err)
+		}
+		sem.Release()
+	}
+}
+
+func BenchmarkSemaphore_AcquireRelease_Parallel(b *testing.B) {
+	sem := New(1000)
+	ctx := context.Background()
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			if err := sem.Acquire(ctx); err != nil {
+				b.Fatal(err)
+			}
+			sem.Release()
+		}
+	})
+}
+
+func BenchmarkSemaphore_Resize(b *testing.B) {
+	sem := New(10)
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		sem.Resize(20)
+		sem.Resize(10)
+	}
+}

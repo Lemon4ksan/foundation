@@ -110,7 +110,7 @@ var CopyBufPool = sync.Pool{
 
 // ErrBodyTooLarge is returned if either request or response body exceeds
 // the given limit.
-var ErrBodyTooLarge = errors.New("mach: body size exceeds the given limit")
+var ErrBodyTooLarge = errors.New("zerocopy: body size exceeds the given limit")
 
 func CopyZeroAllocWithLimit(w io.Writer, r io.Reader, maxBodySize int) (int64, error) {
 	if maxBodySize <= 0 {

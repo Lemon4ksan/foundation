@@ -7,6 +7,7 @@ package offheap
 import (
 	"errors"
 	"fmt"
+	"iter"
 	"math/bits"
 	"runtime"
 	"unsafe"
@@ -209,5 +210,25 @@ func (s *SlabAllocator[T]) Release() {
 		s.bitmap = nil
 		s.free = 0
 		s.cap = 0
+	}
+}
+
+// Chunks returns an iterator over all currently allocated (in-use) slot pointers in the slab.
+func (s *SlabAllocator[T]) Chunks() iter.Seq[unsafe.Pointer] {
+	return func(yield func(unsafe.Pointer) bool) {
+		if s == nil || s.page == nil || s.free == s.cap {
+			return
+		}
+		for idx := 0; idx < s.cap; idx++ {
+			wordIdx := idx / 64
+			bit := uint(idx % 64)
+			// A bit of 0 indicates the slot is currently allocated/in-use.
+			if (s.bitmap[wordIdx] & (1 << bit)) == 0 {
+				ptr := unsafe.Add(s.page, idx*s.stride)
+				if !yield(ptr) {
+					return
+				}
+			}
+		}
 	}
 }

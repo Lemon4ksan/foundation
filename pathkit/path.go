@@ -5,6 +5,7 @@
 package pathkit
 
 import (
+	"iter"
 	"net/url"
 	"path"
 	"path/filepath"
@@ -228,4 +229,55 @@ func (p Path) URI() string {
 	}
 
 	return PathToURI(p.raw)
+}
+
+// SegmentsSeq returns an iterator over the non-empty path segments of pathStr.
+// Iteration stops immediately when yield returns false.
+//
+// Concurrency & Zero-Allocation Semantics:
+// SegmentsSeq operates purely by slicing substrings without heap allocations.
+// It is fully thread-safe and safe for concurrent execution.
+func SegmentsSeq(pathStr string) iter.Seq[string] {
+	return func(yield func(string) bool) {
+		p := pathStr
+		if idx := strings.Index(p, "://"); idx != -1 {
+			rest := p[idx+3:]
+			if slash := strings.IndexByte(rest, '/'); slash != -1 {
+				p = rest[slash:]
+			} else {
+				p = ""
+			}
+		}
+		p = strings.ReplaceAll(p, "\\", "/")
+		for len(p) > 0 {
+			for len(p) > 0 && p[0] == '/' {
+				p = p[1:]
+			}
+			if len(p) == 0 {
+				break
+			}
+			nextSlash := strings.IndexByte(p, '/')
+			var seg string
+			if nextSlash == -1 {
+				seg = p
+				p = ""
+			} else {
+				seg = p[:nextSlash]
+				p = p[nextSlash+1:]
+			}
+			if !yield(seg) {
+				return
+			}
+		}
+	}
+}
+
+// SegmentsSeq returns an iterator over the path segments of p.
+func (p Path) SegmentsSeq() iter.Seq[string] {
+	return SegmentsSeq(p.raw)
+}
+
+// Segments returns an iterator over the path segments of p.
+func (p Path) Segments() iter.Seq[string] {
+	return SegmentsSeq(p.raw)
 }

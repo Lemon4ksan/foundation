@@ -2,11 +2,13 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// Package varint implements QUIC variable-length integer encoding and decoding.
 package varint
 
 import (
 	"fmt"
 	"io"
+	"iter"
 
 	"github.com/lemon4ksan/foundation/silicon/endian"
 )
@@ -228,4 +230,21 @@ func Len(i uint64) int {
 	// Don't use a fmt.Sprintf here to format the error message.
 	// The function would then exceed the inlining budget.
 	panic(&varintLengthError{Num: i})
+}
+
+// DecodeSeq returns an iterator yielding successive decoded varint values and their byte lengths from b.
+// Iteration stops upon reaching the end of the slice or encountered error.
+func DecodeSeq(b []byte) iter.Seq2[uint64, int] {
+	return func(yield func(uint64, int) bool) {
+		for len(b) > 0 {
+			val, readLen, err := Parse(b)
+			if err != nil {
+				return
+			}
+			if !yield(val, readLen) {
+				return
+			}
+			b = b[readLen:]
+		}
+	}
 }

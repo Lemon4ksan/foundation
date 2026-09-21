@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"iter"
 	"sync"
 	"time"
 )
@@ -231,6 +232,83 @@ func (pool *Pool[T]) Submit(ctx context.Context, fn func(context.Context) (T, er
 	}
 
 	return future, nil
+}
+
+// ItemsSeq executes a sequence of tasks using the pool and yields results as they complete.
+// Iteration stops immediately if yield returns false or if ctx is cancelled.
+//
+// Concurrency Guarantees:
+// ItemsSeq is safe for concurrent use.
+func (pool *Pool[T]) ItemsSeq(
+	ctx context.Context,
+	tasks iter.Seq[func(context.Context) (T, error)],
+) iter.Seq2[T, error] {
+	return func(yield func(T, error) bool) {
+		type resItem struct {
+			val T
+			err error
+		}
+
+		runCtx, cancel := context.WithCancel(ctx)
+		defer cancel()
+
+		resultsCh := make(chan resItem, pool.cfg.QueueLimit)
+		var futWg sync.WaitGroup
+
+		go func() {
+			for taskFn := range tasks {
+				select {
+				case <-runCtx.Done():
+					futWg.Wait()
+					close(resultsCh)
+					return
+				default:
+				}
+
+				fut, err := pool.Submit(runCtx, taskFn)
+				if err != nil {
+					var zero T
+					select {
+					case <-runCtx.Done():
+						futWg.Wait()
+						close(resultsCh)
+						return
+					case resultsCh <- resItem{val: zero, err: err}:
+						continue
+					}
+				}
+
+				futWg.Add(1)
+				go func(f *Future[T]) {
+					defer futWg.Done()
+					val, fErr := f.Get(runCtx)
+					select {
+					case <-runCtx.Done():
+					case resultsCh <- resItem{val: val, err: fErr}:
+					}
+				}(fut)
+			}
+
+			futWg.Wait()
+			close(resultsCh)
+		}()
+
+		for res := range resultsCh {
+			if !yield(res.val, res.err) {
+				cancel()
+				break
+			}
+		}
+	}
+}
+
+// ItemsSeq submits tasks from the input iterator to pool and yields results as they complete.
+func ItemsSeq[T any](
+	ctx context.Context,
+	pool *Pool[T],
+	tasks iter.Seq[func(context.Context) (T, error)],
+) iter.Seq2[T, error] {
+	return pool.ItemsSeq(ctx, tasks)
 }
 
 // Close initiates a graceful shutdown of the pool.

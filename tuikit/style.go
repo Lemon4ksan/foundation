@@ -5,6 +5,7 @@
 package tuikit
 
 import (
+	"iter"
 	"os"
 	"regexp"
 	"strings"
@@ -14,27 +15,27 @@ import (
 
 var (
 	ansiRegex = regexp.MustCompile(`\x1b\[[0-9;]*[a-zA-Z]`)
-	noColor   int32
+	noColor   atomic.Int32
 )
 
 func init() {
 	if os.Getenv("NO_COLOR") != "" || os.Getenv("TERM") == "dumb" {
-		atomic.StoreInt32(&noColor, 1)
+		noColor.Store(1)
 	}
 }
 
 // SetColorEnabled toggles ANSI color formatting globally.
 func SetColorEnabled(enabled bool) {
 	if enabled {
-		atomic.StoreInt32(&noColor, 0)
+		noColor.Store(0)
 	} else {
-		atomic.StoreInt32(&noColor, 1)
+		noColor.Store(1)
 	}
 }
 
 // ColorEnabled reports whether ANSI color styling is active.
 func ColorEnabled() bool {
-	return atomic.LoadInt32(&noColor) == 0
+	return noColor.Load() == 0
 }
 
 // StripANSI removes all ANSI escape sequences from the string.
@@ -141,4 +142,32 @@ func PadCenter(s string, width int) string {
 	right := width - w - left
 
 	return strings.Repeat(" ", left) + s + strings.Repeat(" ", right)
+}
+
+// LinesSeq returns an iterator over individual lines in text, supporting both LF (\n)
+// and CRLF (\r\n) line terminators. Traversal stops immediately if yield returns false.
+//
+// Concurrency & Zero-Allocation Semantics:
+// LinesSeq operates purely on string slices without heap allocations. It is safe for concurrent use.
+func LinesSeq(text string) iter.Seq[string] {
+	return func(yield func(string) bool) {
+		rem := text
+		for len(rem) > 0 {
+			idx := strings.IndexByte(rem, '\n')
+			var line string
+			if idx == -1 {
+				line = rem
+				rem = ""
+			} else {
+				line = rem[:idx]
+				rem = rem[idx+1:]
+			}
+			if len(line) > 0 && line[len(line)-1] == '\r' {
+				line = line[:len(line)-1]
+			}
+			if !yield(line) {
+				return
+			}
+		}
+	}
 }

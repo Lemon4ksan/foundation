@@ -5,8 +5,8 @@
 package zerocopy
 
 var (
-	DefaultServerName  = "fasthttp"
-	DefaultUserAgent   = "fasthttp"
+	DefaultServerName  = "foundation"
+	DefaultUserAgent   = "foundation"
 	DefaultContentType = []byte("text/plain; charset=utf-8")
 )
 

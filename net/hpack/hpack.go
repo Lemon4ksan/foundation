@@ -679,7 +679,7 @@ func appendInt(dst []byte, bits uint8, index uint64) []byte {
 
 	b0 := uint64(1<<bits - 1)
 
-	if index <= b0 { //nolint:gosec
+	if index < b0 { //nolint:gosec
 		dst[len(dst)-1] |= byte(index)
 		return dst
 	}
@@ -687,12 +687,12 @@ func appendInt(dst []byte, bits uint8, index uint64) []byte {
 	dst[len(dst)-1] |= byte(b0) //nolint:gosec
 	index -= b0
 
-	for index != 0 {
-		dst = append(dst, 128|byte(index&127))
+	for index >= 128 {
+		dst = append(dst, byte(index&127)|128)
 		index >>= 7
 	}
 
-	dst[len(dst)-1] &= 127
+	dst = append(dst, byte(index))
 
 	return dst
 }

@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package values provides lenient scalar data types for JSON, text, and SQL serialization
-// allowing seamless coercion between quoted strings, numbers, booleans, and timestamps.
 package values
 
 import (
@@ -254,4 +252,49 @@ func (t RFC3339Timestamp) String() string {
 	}
 
 	return time.Time(t).Format(time.RFC3339)
+}
+
+// NumberConstraint represents all signed, unsigned integer, and floating-point types.
+type NumberConstraint interface {
+	~int | ~int8 | ~int16 | ~int32 | ~int64 |
+		~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr |
+		~float32 | ~float64
+}
+
+// NumberString formats any integer or floating-point number into its decimal string representation.
+//
+// Concurrency & Zero-Allocation Semantics:
+// For integers and floats, formatting uses strconv with zero heap allocations beyond the returned string.
+// It is fully thread-safe and safe for concurrent execution.
+func NumberString[T NumberConstraint](v T) string {
+	switch x := any(v).(type) {
+	case int:
+		return strconv.FormatInt(int64(x), 10)
+	case int8:
+		return strconv.FormatInt(int64(x), 10)
+	case int16:
+		return strconv.FormatInt(int64(x), 10)
+	case int32:
+		return strconv.FormatInt(int64(x), 10)
+	case int64:
+		return strconv.FormatInt(x, 10)
+	case uint:
+		return strconv.FormatUint(uint64(x), 10)
+	case uint8:
+		return strconv.FormatUint(uint64(x), 10)
+	case uint16:
+		return strconv.FormatUint(uint64(x), 10)
+	case uint32:
+		return strconv.FormatUint(uint64(x), 10)
+	case uint64:
+		return strconv.FormatUint(x, 10)
+	case uintptr:
+		return strconv.FormatUint(uint64(x), 10)
+	case float32:
+		return strconv.FormatFloat(float64(x), 'f', -1, 32)
+	case float64:
+		return strconv.FormatFloat(x, 'f', -1, 64)
+	default:
+		return strconv.FormatInt(int64(v), 10)
+	}
 }

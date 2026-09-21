@@ -18,11 +18,121 @@ type Tag struct {
 }
 
 // ParseTag parses a struct tag string into a structured [Tag], respecting nested brackets and quotes.
+//
+// For standard ASCII tags, ParseTag executes an optimized lock-free and zero-copy
+// scanning path without allocating rune slices. For simple tags without directives,
+// ParseTag achieves 0 heap allocations.
 func ParseTag(tagStr string) Tag {
 	if tagStr == "" {
 		return Tag{}
 	}
 
+	for i := 0; i < len(tagStr); i++ {
+		if tagStr[i] >= 0x80 {
+			return parseTagUnicode(tagStr)
+		}
+	}
+
+	return parseTagASCII(tagStr)
+}
+
+func parseTagASCII(tagStr string) Tag {
+	// Fast check for tags with no delimiters or options (e.g. "name", "-", "user_id").
+	hasDelim := false
+	for i := 0; i < len(tagStr); i++ {
+		b := tagStr[i]
+		if b == ',' || b == '"' || b == '\'' || b == '{' || b == '(' || b == '[' {
+			hasDelim = true
+			break
+		}
+	}
+
+	if !hasDelim {
+		return Tag{
+			Name: strings.TrimSpace(tagStr),
+		}
+	}
+
+	var stackParts [8]string
+	parts := stackParts[:0]
+	var heapParts []string
+
+	var start int
+	var depth int
+	var inQuotes bool
+	var quoteChar byte
+
+	for i := 0; i < len(tagStr); i++ {
+		b := tagStr[i]
+		switch b {
+		case '"', '\'':
+			if !inQuotes {
+				inQuotes = true
+				quoteChar = b
+			} else if quoteChar == b {
+				inQuotes = false
+			}
+		case '{', '(', '[':
+			if !inQuotes {
+				depth++
+			}
+		case '}', ')', ']':
+			if !inQuotes && depth > 0 {
+				depth--
+			}
+		case ',':
+			if !inQuotes && depth == 0 {
+				part := tagStr[start:i]
+				if heapParts == nil && len(parts) < len(stackParts) {
+					parts = append(parts, part)
+				} else {
+					if heapParts == nil {
+						heapParts = make([]string, len(parts), len(parts)+8)
+						copy(heapParts, parts)
+					}
+					heapParts = append(heapParts, part)
+				}
+				start = i + 1
+			}
+		}
+	}
+
+	lastPart := tagStr[start:]
+	var allParts []string
+	if heapParts != nil {
+		heapParts = append(heapParts, lastPart)
+		allParts = heapParts
+	} else {
+		parts = append(parts, lastPart)
+		allParts = parts
+	}
+
+	name := strings.TrimSpace(allParts[0])
+	var options []string
+	if len(allParts) > 1 {
+		optCount := 0
+		for _, opt := range allParts[1:] {
+			if strings.TrimSpace(opt) != "" {
+				optCount++
+			}
+		}
+		if optCount > 0 {
+			options = make([]string, 0, optCount)
+			for _, opt := range allParts[1:] {
+				if opt = strings.TrimSpace(opt); opt != "" {
+					options = append(options, opt)
+				}
+			}
+		}
+	}
+
+	return Tag{
+		Name:    name,
+		Options: options,
+	}
+}
+
+func parseTagUnicode(tagStr string) Tag {
 	var parts []string
 	var start int
 	var depth int

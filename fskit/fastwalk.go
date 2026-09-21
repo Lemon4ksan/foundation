@@ -6,6 +6,7 @@ package fskit
 
 import (
 	"io/fs"
+	"iter"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -147,6 +148,27 @@ func FastWalk(root string, walkFn func(path string, d fs.DirEntry, err error) er
 		}
 	}
 	return nil
+}
+
+// WalkSeq returns an iterator over the directory tree rooted at root,
+// yielding each encountered path and its corresponding [os.DirEntry].
+// Traversal ceases immediately if yield returns false.
+//
+// Concurrency & Allocation Semantics:
+// WalkSeq executes sequentially in the calling goroutine and performs zero
+// channel allocations. It is safe for concurrent use across distinct root paths.
+func WalkSeq(root string) iter.Seq2[string, os.DirEntry] {
+	return func(yield func(string, os.DirEntry) bool) {
+		_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return nil //nolint:nilerr // Ignore file access errors to continue directory traversal
+			}
+			if !yield(path, d) {
+				return filepath.SkipAll
+			}
+			return nil
+		})
+	}
 }
 
 type entryDirEntry struct {

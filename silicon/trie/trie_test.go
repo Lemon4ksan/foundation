@@ -194,6 +194,50 @@ func TestRadixTree_EdgeCases(t *testing.T) {
 	assert.Equal(t, "3", val)
 }
 
+func TestRadixTree_All(t *testing.T) {
+	t.Parallel()
+
+	tree := trie.New[int]()
+
+	// Empty tree
+	count := 0
+	for range tree.All() {
+		count++
+	}
+	assert.Equal(t, 0, count)
+
+	// Populate tree
+	data := map[string]int{
+		"apple":       1,
+		"app":         2,
+		"application": 3,
+		"banana":      4,
+		"band":        5,
+	}
+	for k, v := range data {
+		tree.Insert(k, v)
+	}
+
+	collected := make(map[string]int)
+	for k, v := range tree.All() {
+		collected[k] = v
+	}
+	assert.Equal(t, len(data), len(collected))
+	for k, v := range data {
+		assert.Equal(t, v, collected[k])
+	}
+
+	// Early break
+	breakCount := 0
+	for range tree.All() {
+		breakCount++
+		if breakCount == 2 {
+			break
+		}
+	}
+	assert.Equal(t, 2, breakCount)
+}
+
 func BenchmarkRadixTree_Get_ZeroAlloc(b *testing.B) {
 	tree := trie.New[int]()
 	for i := range 1000 {

@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// Package packet provides low-level network packet primitives and Internet checksum calculations (RFC 1071, RFC 4443).
 package packet
 
 import (
@@ -59,4 +60,21 @@ func CalculateICMPv6Checksum(srcIP, dstIP netip.Addr, icmpMessage []byte) uint16
 	}
 
 	return ^uint16(sum)
+}
+
+// ValidateInternetChecksum verifies whether the 16-bit 1's complement checksum of b is valid (evaluates to 0 or 0xffff).
+func ValidateInternetChecksum(b []byte) bool {
+	if len(b) == 0 {
+		return false
+	}
+	c := CalculateInternetChecksum(b)
+	return c == 0 || c == 0xffff
+}
+
+// ValidateICMPv6Checksum verifies whether an ICMPv6 message has a valid checksum with the given IPv6 pseudo-header.
+func ValidateICMPv6Checksum(srcIP, dstIP netip.Addr, icmpMessage []byte) bool {
+	if len(icmpMessage) < 4 {
+		return false
+	}
+	return CalculateICMPv6Checksum(srcIP, dstIP, icmpMessage) == 0
 }

@@ -2,10 +2,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package uuid implements Universally Unique IDentifiers (UUIDs) strictly conforming to RFC 9562 (obsoletes RFC 4122).
-//
-// It provides zero-allocation parsing, formatting, and generation for UUIDv4 (random) and UUIDv7 (time-ordered),
-// along with predefined IANA namespaces, SQL driver interfaces, and sentinel Nil/Max UUID values.
 package uuid
 
 import (

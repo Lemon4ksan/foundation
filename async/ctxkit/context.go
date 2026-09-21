@@ -120,8 +120,8 @@ func (c *Context) Set(key, val any) *Context {
 		return c
 	}
 
-	for i := len(c.extra) - 1; i >= 0; i-- {
-		if c.extra[i].key == key {
+	for i, v := range slices.Backward(c.extra) {
+		if v.key == key {
 			c.extra[i].value = val
 			return c
 		}

@@ -2,9 +2,13 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// Package minheap provides a high-performance, generic binary minimum heap ordered by key.
 package minheap
 
-import "cmp"
+import (
+	"cmp"
+	"iter"
+)
 
 type entry[K, V any] struct {
 	key   K
@@ -14,7 +18,10 @@ type entry[K, V any] struct {
 // A Heap is a minimum heap ordered by key.
 type Heap[K cmp.Ordered, V any] []entry[K, V]
 
-func (h Heap[K, V]) Len() int    { return len(h) }
+// Len returns the number of elements currently in the heap.
+func (h Heap[K, V]) Len() int { return len(h) }
+
+// Empty reports whether the heap contains zero elements.
 func (h Heap[K, V]) Empty() bool { return len(h) == 0 }
 
 // Peek returns the smallest element in the heap.
@@ -56,6 +63,52 @@ func (h *Heap[K, V]) Pop() (K, V) {
 func (h *Heap[K, V]) Clear() {
 	clear(*h)
 	*h = (*h)[:0]
+}
+
+// All yields all key-value entries stored in the heap without consuming elements.
+func (h Heap[K, V]) All() iter.Seq2[K, V] {
+	return func(yield func(K, V) bool) {
+		for i := range h {
+			if !yield(h[i].key, h[i].value) {
+				return
+			}
+		}
+	}
+}
+
+// Values yields all values stored in the heap without consuming elements.
+func (h Heap[K, V]) Values() iter.Seq[V] {
+	return func(yield func(V) bool) {
+		for i := range h {
+			if !yield(h[i].value) {
+				return
+			}
+		}
+	}
+}
+
+// Drain pops and yields elements in ascending key priority order until the heap is empty.
+func (h *Heap[K, V]) Drain() iter.Seq2[K, V] {
+	return func(yield func(K, V) bool) {
+		for !h.Empty() {
+			k, v := h.Pop()
+			if !yield(k, v) {
+				return
+			}
+		}
+	}
+}
+
+// DrainValues pops and yields values in ascending key priority order until the heap is empty.
+func (h *Heap[K, V]) DrainValues() iter.Seq[V] {
+	return func(yield func(V) bool) {
+		for !h.Empty() {
+			_, v := h.Pop()
+			if !yield(v) {
+				return
+			}
+		}
+	}
 }
 
 func (h Heap[K, V]) up(i int) {

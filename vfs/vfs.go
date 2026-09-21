@@ -8,6 +8,7 @@ import (
 	"errors"
 	"io"
 	"io/fs"
+	"iter"
 	"path"
 	"sort"
 	"strings"
@@ -45,6 +46,59 @@ type FS struct {
 // NewFS constructs a virtual filesystem from an entry provider.
 func NewFS(provider EntryProvider) *FS {
 	return &FS{provider: provider}
+}
+
+// EntriesSeq returns an iterator yielding all [VFSEntry] elements registered with the VFS provider.
+// Traversal stops immediately if yield returns false.
+//
+// Concurrency & Zero-Allocation Semantics:
+// Iteration executes sequentially in the calling goroutine and performs zero heap allocations.
+func (v *FS) EntriesSeq() iter.Seq[VFSEntry] {
+	return func(yield func(VFSEntry) bool) {
+		if v == nil || v.provider == nil {
+			return
+		}
+		for _, e := range v.provider.GetEntries() {
+			if !yield(e) {
+				return
+			}
+		}
+	}
+}
+
+// OpenSeq returns an iterator yielding (path, file) pairs for non-directory files matching pattern.
+// If pattern is empty or "*", all files are matched.
+// The caller is responsible for closing each yielded [fs.File]. If iteration breaks early,
+// the current file that caused early break is automatically closed if yield returned false.
+func (v *FS) OpenSeq(pattern string) iter.Seq2[string, fs.File] {
+	return func(yield func(string, fs.File) bool) {
+		if v == nil || v.provider == nil {
+			return
+		}
+		for _, e := range v.provider.GetEntries() {
+			if e.EntryIsDir() {
+				continue
+			}
+			clean := CleanPath(e.EntryName())
+			if pattern != "" && pattern != "*" {
+				matched, err := path.Match(pattern, clean)
+				if err != nil || !matched {
+					matchedBase, err2 := path.Match(pattern, path.Base(clean))
+					if err2 != nil || !matchedBase {
+						continue
+					}
+				}
+			}
+			f, err := v.Open(clean)
+			if err != nil {
+				continue
+			}
+			if !yield(clean, f) {
+				_ = f.Close()
+				return
+			}
+		}
+	}
 }
 
 // Open opens the named virtual file conforming to [fs.FS].

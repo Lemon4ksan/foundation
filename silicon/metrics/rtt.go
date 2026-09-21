@@ -35,8 +35,9 @@ func NewRTTTracker(capacity int) *RTTTracker {
 	}
 
 	return &RTTTracker{
-		samples:  make([]time.Duration, capacity),
-		capacity: capacity,
+		samples:      make([]time.Duration, capacity),
+		capacity:     capacity,
+		cachedSorted: make([]time.Duration, 0, capacity),
 	}
 }
 
@@ -79,8 +80,10 @@ func (t *RTTTracker) Percentile(p float64) time.Duration {
 	}
 
 	if t.dirty || len(t.cachedSorted) != t.count {
-		if len(t.cachedSorted) != t.count {
-			t.cachedSorted = make([]time.Duration, t.count)
+		if cap(t.cachedSorted) >= t.count {
+			t.cachedSorted = t.cachedSorted[:t.count]
+		} else {
+			t.cachedSorted = make([]time.Duration, t.count, t.capacity)
 		}
 
 		copy(t.cachedSorted, t.samples[:t.count])
@@ -176,7 +179,7 @@ func (t *RTTTracker) Reset() {
 	t.minRTT = 0
 	t.smoothedRTT = 0
 	t.dirty = true
-	t.cachedSorted = nil
+	t.cachedSorted = t.cachedSorted[:0]
 
 	clear(t.samples)
 }

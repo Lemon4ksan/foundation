@@ -392,8 +392,8 @@ func (c *Cookie) WriteTo(w io.Writer) (int64, error) {
 }
 
 var (
-	ErrNoCookies          = errors.New("mach: no cookies found")
-	ErrInvalidCookieValue = errors.New("mach: invalid cookie value")
+	ErrNoCookies          = errors.New("zerocopy: no cookies found")
+	ErrInvalidCookieValue = errors.New("zerocopy: invalid cookie value")
 )
 
 // Parse parses Set-Cookie header.

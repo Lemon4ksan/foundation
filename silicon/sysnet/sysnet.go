@@ -44,9 +44,7 @@ func WriteVectorBuffers(conn net.Conn, buffers [][]byte) (int64, error) {
 		return 0, nil
 	}
 
-	if sysConn, ok := conn.(interface {
-		SyscallConn() (syscallConn, error)
-	}); ok {
+	if sysConn, ok := conn.(SyscallConnector); ok {
 		raw, err := sysConn.SyscallConn()
 		if err == nil {
 			var (
@@ -129,6 +127,7 @@ func (c *BatchUDPConn) WriteVector(buffers [][]byte) (int64, error) {
 	return total, nil
 }
 
+// SyscallConnector wraps the standard SyscallConn method allowing access to underlying OS file descriptors.
 type SyscallConnector interface {
 	SyscallConn() (syscallConn, error)
 }
@@ -229,9 +228,7 @@ func (c *BatchUDPConn) SetGRO(enable bool) error {
 
 // SyscallConn returns a raw network connection for OS syscall access.
 func (c *BatchUDPConn) SyscallConn() (syscallConn, error) {
-	if sys, ok := c.PacketConn.(interface {
-		SyscallConn() (syscallConn, error)
-	}); ok {
+	if sys, ok := c.PacketConn.(SyscallConnector); ok {
 		return sys.SyscallConn()
 	}
 

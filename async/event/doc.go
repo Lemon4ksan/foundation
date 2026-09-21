@@ -47,12 +47,12 @@
 //	)
 //
 //	type MyEvent struct {
-//		bus.BaseEvent
+//		event.BaseEvent
 //		Message string
 //	}
 //
 //	func main() {
-//		b := bus.New()
+//		b := event.New()
 //		sub := b.Subscribe(MyEvent{})
 //		defer sub.Unsubscribe()
 //

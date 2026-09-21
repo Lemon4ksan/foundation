@@ -2,14 +2,16 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package list implements a doubly linked list.
+// Package list implements a high-performance, array-backed generic doubly linked list.
 //
 // To iterate over a list (where l is a *List[T]):
 //
-//	for e := l.Front(); e != nil; e = e.Next() {
-//		// do something with e.Value
+//	for v := range l.Values() {
+//		// do something with v
 //	}
 package list
+
+import "iter"
 
 // Element is an element of a linked list.
 type Element[T any] struct {
@@ -37,6 +39,7 @@ func (e *Element[T]) Prev() *Element[T] {
 	return nil
 }
 
+// List returns the list that element e belongs to, or nil if e is detached.
 func (e *Element[T]) List() *List[T] {
 	return e.list
 }
@@ -283,5 +286,40 @@ func (l *List[T]) PushFrontList(other *List[T]) {
 	l.lazyInit()
 	for i, e := other.Len(), other.Back(); i > 0; i, e = i-1, e.Prev() {
 		l.insertValue(e.Value, l.root)
+	}
+}
+
+// All returns an iterator yielding the index and element value from front to back.
+func (l *List[T]) All() iter.Seq2[int, T] {
+	return func(yield func(int, T) bool) {
+		idx := 0
+		for e := l.Front(); e != nil; e = e.Next() {
+			if !yield(idx, e.Value) {
+				return
+			}
+			idx++
+		}
+	}
+}
+
+// Values returns an iterator yielding element values from front to back.
+func (l *List[T]) Values() iter.Seq[T] {
+	return func(yield func(T) bool) {
+		for e := l.Front(); e != nil; e = e.Next() {
+			if !yield(e.Value) {
+				return
+			}
+		}
+	}
+}
+
+// Backward returns an iterator yielding element values from back to front.
+func (l *List[T]) Backward() iter.Seq[T] {
+	return func(yield func(T) bool) {
+		for e := l.Back(); e != nil; e = e.Prev() {
+			if !yield(e.Value) {
+				return
+			}
+		}
 	}
 }

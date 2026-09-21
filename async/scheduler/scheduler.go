@@ -82,6 +82,60 @@ func Throttle(interval time.Duration, fn func()) func() {
 	}
 }
 
+// DebounceFn returns a thread-safe wrapped function that delays invoking fn with parameter arg
+// until interval has elapsed since the most recent call. Each call restarts the timer with the latest argument.
+//
+// Concurrency Guarantees:
+// The returned function is safe for concurrent use across multiple goroutines.
+func DebounceFn[T any](interval time.Duration, fn func(T)) func(T) {
+	var (
+		mu    sync.Mutex
+		timer *time.Timer
+		last  T
+	)
+
+	return func(arg T) {
+		mu.Lock()
+		defer mu.Unlock()
+
+		last = arg
+		if timer != nil {
+			timer.Stop()
+		}
+
+		timer = time.AfterFunc(interval, func() {
+			mu.Lock()
+			val := last
+			mu.Unlock()
+			fn(val)
+		})
+	}
+}
+
+// ThrottleFn returns a thread-safe wrapped function that invokes fn with parameter arg at most once per interval.
+// The first invocation runs asynchronously in a new goroutine, and subsequent calls within the interval window are ignored.
+//
+// Concurrency Guarantees:
+// The returned function is safe for concurrent use across multiple goroutines.
+func ThrottleFn[T any](interval time.Duration, fn func(T)) func(T) {
+	var (
+		mu      sync.Mutex
+		lastRun time.Time
+	)
+
+	return func(arg T) {
+		mu.Lock()
+		defer mu.Unlock()
+
+		now := time.Now()
+		if now.Sub(lastRun) >= interval {
+			lastRun = now
+			val := arg
+			go fn(val)
+		}
+	}
+}
+
 // Scheduler coordinates prioritized, time-exact task execution.
 //
 // Create new instances of Scheduler using the [New] constructor function.

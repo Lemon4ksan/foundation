@@ -22,3 +22,19 @@ func FuzzPathMatch(f *testing.F) {
 		_ = cookie.PathMatch(reqPath, cookiePath)
 	})
 }
+
+func FuzzParseSetCookieHeader(f *testing.F) {
+	f.Add(
+		"session_id=xyz123; Domain=example.com; Path=/api; Secure; HttpOnly; SameSite=Lax; Max-Age=3600",
+		"example.com",
+		"/",
+	)
+	f.Add("name=value", "domain.com", "/")
+	f.Add("", "", "")
+	f.Add("__Secure-ID=123; Secure; SameSite=None", "sub.example.com", "/auth")
+
+	f.Fuzz(func(t *testing.T, headerVal, defaultDomain, defaultPath string) {
+		c := cookie.ParseSetCookieHeader(headerVal, defaultDomain, defaultPath)
+		_ = cookie.ValidatePrefix(c)
+	})
+}

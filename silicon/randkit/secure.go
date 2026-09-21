@@ -68,7 +68,14 @@ func ConstantTimeCompare(a, b []byte) bool {
 }
 
 // ConstantTimeEqual returns true if strings a and b have equal length and contents,
-// executed in constant time to mitigate timing attacks.
+// executed in constant time to mitigate timing attacks with zero heap allocations.
 func ConstantTimeEqual(a, b string) bool {
-	return subtle.ConstantTimeCompare([]byte(a), []byte(b)) == 1
+	if len(a) != len(b) {
+		return false
+	}
+	var v byte
+	for i := 0; i < len(a); i++ {
+		v |= a[i] ^ b[i]
+	}
+	return subtle.ConstantTimeByteEq(v, 0) == 1
 }

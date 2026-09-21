@@ -2,10 +2,12 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// Package vectored provides zero-copy buffer queues for scatter-gather network and disk I/O.
 package vectored
 
 import (
 	"io"
+	"iter"
 	"net"
 	"sync"
 )
@@ -95,6 +97,28 @@ func (q *BufferQueue) WriteTo(w io.Writer) (int64, error) {
 func (q *BufferQueue) Reset() {
 	q.bufs = q.bufs[:0]
 	q.totalBytes = 0
+}
+
+// Buffers yields all queued byte slices in FIFO order without mutating the queue.
+func (q *BufferQueue) Buffers() iter.Seq[[]byte] {
+	return func(yield func([]byte) bool) {
+		for _, b := range q.bufs {
+			if !yield(b) {
+				return
+			}
+		}
+	}
+}
+
+// All yields the index and byte slice for each queued buffer without mutating the queue.
+func (q *BufferQueue) All() iter.Seq2[int, []byte] {
+	return func(yield func(int, []byte) bool) {
+		for i, b := range q.bufs {
+			if !yield(i, b) {
+				return
+			}
+		}
+	}
 }
 
 var queuePool = sync.Pool{

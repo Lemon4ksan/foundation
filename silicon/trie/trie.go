@@ -7,6 +7,7 @@
 package trie
 
 import (
+	"iter"
 	"math/bits"
 	"slices"
 	"strings"
@@ -299,6 +300,16 @@ func walkNode[V any](accum string, n *node[V], fn func(key string, val V) bool) 
 	}
 
 	return true
+}
+
+// All returns an iterator over all key-value pairs stored in the tree in prefix order.
+func (t *RadixTree[V]) All() iter.Seq2[string, V] {
+	return func(yield func(string, V) bool) {
+		t.mu.RLock()
+		defer t.mu.RUnlock()
+
+		walkNode("", t.root, yield)
+	}
 }
 
 // Delete removes key from the tree. Returns the removed value and true if key was present.

@@ -5,7 +5,8 @@
 package vfs
 
 import (
-	"sort"
+	"iter"
+	"slices"
 	"strings"
 )
 
@@ -76,12 +77,66 @@ func RenderTree(root *TreeNode) string {
 	return sb.String()
 }
 
+// Walk returns an iterator performing depth-first traversal of the TreeNode hierarchy,
+// yielding the relative path and each visited TreeNode.
+// Traversal ceases immediately when yield returns false.
+func (t *TreeNode) Walk() iter.Seq2[string, *TreeNode] {
+	return func(yield func(string, *TreeNode) bool) {
+		if t == nil {
+			return
+		}
+		var walkHelper func(curr *TreeNode, currentPath string) bool
+		walkHelper = func(curr *TreeNode, currentPath string) bool {
+			if !yield(currentPath, curr) {
+				return false
+			}
+			n := len(curr.Children)
+			if n == 0 {
+				return true
+			}
+			var stackKeys [16]string
+			var keys []string
+			if n <= len(stackKeys) {
+				keys = stackKeys[:0]
+			} else {
+				keys = make([]string, 0, n)
+			}
+			for k := range curr.Children {
+				keys = append(keys, k)
+			}
+			slices.Sort(keys)
+			for _, k := range keys {
+				childPath := k
+				if currentPath != "" && currentPath != "." {
+					childPath = currentPath + "/" + k
+				}
+				if !walkHelper(curr.Children[k], childPath) {
+					return false
+				}
+			}
+			return true
+		}
+		walkHelper(t, t.Name)
+	}
+}
+
 func renderNode(node *TreeNode, prefix string, sb *strings.Builder) {
-	keys := make([]string, 0, len(node.Children))
+	n := len(node.Children)
+	if n == 0 {
+		return
+	}
+
+	var stackKeys [16]string
+	var keys []string
+	if n <= len(stackKeys) {
+		keys = stackKeys[:0]
+	} else {
+		keys = make([]string, 0, n)
+	}
 	for k := range node.Children {
 		keys = append(keys, k)
 	}
-	sort.Strings(keys)
+	slices.Sort(keys)
 
 	for i, name := range keys {
 		child := node.Children[name]

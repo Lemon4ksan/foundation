@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package js provides a lightweight, fluent Abstract Syntax Tree (AST)
-// and code generator for JavaScript/TypeScript.
 package js
 
 // Node represents any JavaScript AST node.

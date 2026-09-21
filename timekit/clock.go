@@ -5,6 +5,7 @@
 package timekit
 
 import (
+	"iter"
 	"sync/atomic"
 	"time"
 )
@@ -43,4 +44,22 @@ func CoarseUnixMilli() int64 {
 // CoarseUnixNano returns the approximate Unix timestamp in nanoseconds.
 func CoarseUnixNano() int64 {
 	return cachedUnixNano.Load()
+}
+
+// RangeSeq returns an iterator yielding timestamps from start up to end (inclusive if exact match),
+// advancing by step on each iteration. Iteration ceases immediately if step <= 0 or if yield returns false.
+//
+// Concurrency & Zero-Allocation Semantics:
+// RangeSeq is stateless and strictly zero-allocation. It is safe for concurrent use.
+func RangeSeq(start, end time.Time, step time.Duration) iter.Seq[time.Time] {
+	return func(yield func(time.Time) bool) {
+		if step <= 0 {
+			return
+		}
+		for curr := start; !curr.After(end); curr = curr.Add(step) {
+			if !yield(curr) {
+				return
+			}
+		}
+	}
 }

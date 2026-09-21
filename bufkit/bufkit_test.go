@@ -90,6 +90,18 @@ func TestChain_AllMethods(t *testing.T) {
 	assert.Equal(t, 1, len(chunks))
 	assert.Equal(t, "hello world", string(chunks[0]))
 
+	var seqChunks [][]byte
+	for chunk := range c.ChunksSeq() {
+		seqChunks = append(seqChunks, chunk)
+	}
+	assert.Equal(t, 1, len(seqChunks))
+	assert.Equal(t, "hello world", string(seqChunks[0]))
+
+	dstChunks := make([][]byte, 0, 4)
+	dstChunks = c.AppendChunks(dstChunks)
+	assert.Equal(t, 1, len(dstChunks))
+	assert.Equal(t, "hello world", string(dstChunks[0]))
+
 	// 3. Multi-chunk Write and Read across 4KB boundaries
 	largePayload := make([]byte, 10000)
 	for i := range largePayload {

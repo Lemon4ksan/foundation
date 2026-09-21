@@ -361,3 +361,35 @@ func benchmarkAppendWithLen(b *testing.B, inputs []benchmarkValue) {
 		}
 	}
 }
+
+func TestDecodeSeq(t *testing.T) {
+	var buf []byte
+	expected := []uint64{25, 15293, 494878333, 151288809941952652}
+	for _, v := range expected {
+		buf = Append(buf, v)
+	}
+
+	var got []uint64
+	for val, n := range DecodeSeq(buf) {
+		require.Greater(t, n, 0)
+		got = append(got, val)
+	}
+	require.Equal(t, expected, got)
+}
+
+func BenchmarkDecodeSeq(b *testing.B) {
+	var buf []byte
+	for _, v := range []uint64{25, 15293, 494878333} {
+		buf = Append(buf, v)
+	}
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		count := 0
+		for range DecodeSeq(buf) {
+			count++
+		}
+		_ = count
+	}
+}

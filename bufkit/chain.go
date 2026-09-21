@@ -7,6 +7,7 @@ package bufkit
 import (
 	"errors"
 	"io"
+	"iter"
 	"sync"
 	"unsafe"
 )
@@ -239,7 +240,16 @@ func (c *Chain) Chunks() [][]byte {
 		return nil
 	}
 
-	res := make([][]byte, 0, len(c.chunks))
+	return c.AppendChunks(make([][]byte, 0, len(c.chunks)))
+}
+
+// AppendChunks appends slices of all active chunks to dst and returns the resulting slice,
+// avoiding allocations if dst has sufficient capacity.
+func (c *Chain) AppendChunks(dst [][]byte) [][]byte {
+	if c.length == 0 {
+		return dst
+	}
+
 	for i, chunk := range c.chunks {
 		var start, end int
 		if i == 0 {
@@ -255,10 +265,40 @@ func (c *Chain) Chunks() [][]byte {
 		}
 
 		if end > start {
-			res = append(res, chunk[start:end])
+			dst = append(dst, chunk[start:end])
 		}
 	}
-	return res
+	return dst
+}
+
+// ChunksSeq returns an iterator yielding slices of all active chunks without allocating an intermediary slice.
+func (c *Chain) ChunksSeq() iter.Seq[[]byte] {
+	return func(yield func([]byte) bool) {
+		if c.length == 0 {
+			return
+		}
+
+		for i, chunk := range c.chunks {
+			var start, end int
+			if i == 0 {
+				start = c.headIdx
+			} else {
+				start = 0
+			}
+
+			if i == len(c.chunks)-1 {
+				end = c.tailIdx
+			} else {
+				end = DefaultChunkSize
+			}
+
+			if end > start {
+				if !yield(chunk[start:end]) {
+					return
+				}
+			}
+		}
+	}
 }
 
 // Reset clears all data in the chain and recycles allocated chunks back to the pool.

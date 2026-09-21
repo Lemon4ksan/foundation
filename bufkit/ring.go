@@ -5,6 +5,7 @@
 package bufkit
 
 import (
+	"iter"
 	"sync/atomic"
 )
 
@@ -94,4 +95,37 @@ func (r *Ring[T]) Reset() {
 	}
 	r.head.Store(0)
 	r.tail.Store(0)
+}
+
+// All returns an iterator over elements currently in the ring buffer in FIFO order without popping them.
+func (r *Ring[T]) All() iter.Seq[T] {
+	return func(yield func(T) bool) {
+		head := r.head.Load()
+		tail := r.tail.Load()
+		for i := head; i < tail; i++ {
+			if !yield(r.slots[i&r.mask]) {
+				return
+			}
+		}
+	}
+}
+
+// Values returns an iterator over elements currently in the ring buffer in FIFO order without popping them.
+func (r *Ring[T]) Values() iter.Seq[T] {
+	return r.All()
+}
+
+// Drain pops and yields all items from the ring buffer in FIFO order until empty or early termination.
+func (r *Ring[T]) Drain() iter.Seq[T] {
+	return func(yield func(T) bool) {
+		for {
+			val, ok := r.Pop()
+			if !ok {
+				return
+			}
+			if !yield(val) {
+				return
+			}
+		}
+	}
 }

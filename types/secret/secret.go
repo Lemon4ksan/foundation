@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package secret provides protected in-memory containers for sensitive authentication material,
-// preventing accidental leakage in log outputs, stack traces, JSON serialization, and debug dumps.
 package secret
 
 import (

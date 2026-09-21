@@ -7,6 +7,7 @@
 package ringbuf
 
 import (
+	"iter"
 	"sync/atomic"
 
 	"golang.org/x/sys/cpu"
@@ -117,4 +118,19 @@ func (r *RingBuffer[T]) Len() int {
 	}
 
 	return int(head - tail)
+}
+
+// Drain pops and yields all buffered items in FIFO order until the buffer is empty.
+func (r *RingBuffer[T]) Drain() iter.Seq[*T] {
+	return func(yield func(*T) bool) {
+		for {
+			item := r.Pop()
+			if item == nil {
+				return
+			}
+			if !yield(item) {
+				return
+			}
+		}
+	}
 }

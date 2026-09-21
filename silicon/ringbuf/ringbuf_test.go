@@ -26,6 +26,37 @@ func TestRingBufferPushPop(t *testing.T) {
 	assert.Nil(t, rb.Pop())
 }
 
+func TestRingBuffer_Drain(t *testing.T) {
+	rb := ringbuf.NewRingBuffer[int](16)
+
+	// Empty drain
+	for range rb.Drain() {
+		t.Fatal("expected empty drain")
+	}
+
+	for i := 1; i <= 5; i++ {
+		val := i
+		assert.True(t, rb.Push(&val))
+	}
+
+	var drained []int
+	for ptr := range rb.Drain() {
+		drained = append(drained, *ptr)
+		if len(drained) == 2 {
+			break // test early exit
+		}
+	}
+	assert.Equal(t, []int{1, 2}, drained)
+
+	// Drain remaining
+	drained = nil
+	for ptr := range rb.Drain() {
+		drained = append(drained, *ptr)
+	}
+	assert.Equal(t, []int{3, 4, 5}, drained)
+	assert.Equal(t, 0, rb.Len())
+}
+
 func TestRingBufferConcurrent(t *testing.T) {
 	rb := ringbuf.NewRingBuffer[int](2048)
 
