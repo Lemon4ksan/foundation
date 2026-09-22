@@ -129,12 +129,12 @@ func TestUnknownStatusCodes(t *testing.T) {
 
 func TestPredicates(t *testing.T) {
 	tests := []struct {
-		code           int
-		isInfo         bool
-		isSuccess      bool
-		isRedirect     bool
-		isClientError  bool
-		isServerError  bool
+		code          int
+		isInfo        bool
+		isSuccess     bool
+		isRedirect    bool
+		isClientError bool
+		isServerError bool
 	}{
 		{-1, false, false, false, false, false},
 		{0, false, false, false, false, false},

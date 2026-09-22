@@ -107,7 +107,13 @@ func TestBuildPacketTooBig4(t *testing.T) {
 	}
 
 	// Error paths: non-IPv4 header
-	if _, err := icmp.BuildPacketTooBig4([]byte{0x60, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 1400); !errors.Is(err, icmp.ErrInvalidIPHeader) {
+	if _, err := icmp.BuildPacketTooBig4(
+		[]byte{0x60, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+		1400,
+	); !errors.Is(
+		err,
+		icmp.ErrInvalidIPHeader,
+	) {
 		t.Fatalf("non-IPv4 packet err = %v, want ErrInvalidIPHeader", err)
 	}
 

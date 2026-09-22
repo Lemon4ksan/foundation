@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// Package tcp provides TCP header manipulation and MSS clamping utilities (RFC 9293, RFC 879).
 package tcp
 
 import (
@@ -41,7 +42,7 @@ func ClampMSSInPlace(packet []byte, maxMTU int) {
 func calculateMaxMSS(packet []byte, version byte, maxMTU int) (uint16, int, bool) {
 	if version == 4 {
 		ipHdrLen := int(packet[0]&0x0f) * 4
-		if len(packet) < ipHdrLen+20 || packet[9] != 6 {
+		if ipHdrLen < 20 || len(packet) < ipHdrLen+20 || packet[9] != 6 {
 			return 0, 0, false
 		}
 

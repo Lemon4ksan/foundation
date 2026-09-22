@@ -50,7 +50,8 @@ func TestArgsQueryParsing(t *testing.T) {
 	if len(multi) != 3 {
 		t.Fatalf("expected 3 values for foo, got %d", len(multi))
 	}
-	if !bytes.Equal(multi[0], []byte("bar")) || !bytes.Equal(multi[1], []byte("baz")) || !bytes.Equal(multi[2], []byte("qux")) {
+	if !bytes.Equal(multi[0], []byte("bar")) || !bytes.Equal(multi[1], []byte("baz")) ||
+		!bytes.Equal(multi[2], []byte("qux")) {
 		t.Fatalf("unexpected multi values: %v", multi)
 	}
 
