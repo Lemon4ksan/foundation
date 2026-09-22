@@ -46,6 +46,8 @@ func FuzzHPACKEncodeDecodeRoundtrip(f *testing.F) {
 		defer hpack.ReleaseHeaderField(hf)
 
 		hf.Set(key, val)
+		wantKey := hf.Key()
+		wantVal := hf.Value()
 		encoded := hpEnc.AppendHeader(nil, hf, true)
 
 		hpDec := hpack.AcquireHPACK()
@@ -65,8 +67,8 @@ func FuzzHPACKEncodeDecodeRoundtrip(f *testing.F) {
 		if len(fields) != 1 {
 			t.Fatalf("expected 1 decoded header field, got %d", len(fields))
 		}
-		if fields[0].Key() != key || fields[0].Value() != val {
-			t.Fatalf("roundtrip mismatch: got %q: %q, want %q: %q", fields[0].Key(), fields[0].Value(), key, val)
+		if fields[0].Key() != wantKey || fields[0].Value() != wantVal {
+			t.Fatalf("roundtrip mismatch: got %q: %q, want %q: %q", fields[0].Key(), fields[0].Value(), wantKey, wantVal)
 		}
 	})
 }

@@ -167,13 +167,13 @@ func (f *FSM[State, Event]) Transition(ctx context.Context, event Event) error {
 	events, ok := f.rules[from]
 	if !ok {
 		f.mu.RUnlock()
-		return fmt.Errorf("kata: no transitions defined from state %v", from)
+		return fmt.Errorf("fsm: no transitions defined from state %v", from)
 	}
 
 	to, exists := events[event]
 	if !exists {
 		f.mu.RUnlock()
-		return fmt.Errorf("kata: invalid transition from state %v on event %v", from, event)
+		return fmt.Errorf("fsm: invalid transition from state %v on event %v", from, event)
 	}
 
 	// Copy the hooks under the read-lock to safely execute them outside
@@ -192,7 +192,7 @@ func (f *FSM[State, Event]) Transition(ctx context.Context, event Event) error {
 	for _, hook := range beforeHooks {
 		if hook != nil {
 			if err := hook(ctx, from, event, to); err != nil {
-				return fmt.Errorf("kata: before hook aborted transition %v -> %v: %w", from, to, err)
+				return fmt.Errorf("fsm: before hook aborted transition %v -> %v: %w", from, to, err)
 			}
 		}
 	}
