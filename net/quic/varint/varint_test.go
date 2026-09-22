@@ -17,13 +17,13 @@ func TestBoundaryTransitions(t *testing.T) {
 		expectedLen int
 	}{
 		{0, 1},
-		{varint.Max1Byte, 1},       // 63
-		{varint.Max1Byte + 1, 2},   // 64
-		{varint.Max2Byte, 2},       // 16383
-		{varint.Max2Byte + 1, 4},   // 16384
-		{varint.Max4Byte, 4},       // 1073741823
-		{varint.Max4Byte + 1, 8},   // 1073741824
-		{varint.Max, 8},             // 4611686018427387903
+		{varint.Max1Byte, 1},     // 63
+		{varint.Max1Byte + 1, 2}, // 64
+		{varint.Max2Byte, 2},     // 16383
+		{varint.Max2Byte + 1, 4}, // 16384
+		{varint.Max4Byte, 4},     // 1073741823
+		{varint.Max4Byte + 1, 8}, // 1073741824
+		{varint.Max, 8},          // 4611686018427387903
 	}
 
 	for _, tc := range testCases {
@@ -203,7 +203,7 @@ func TestIterators(t *testing.T) {
 
 	// Test DecodeSeq early break
 	count := 0
-	for _, _ = range varint.DecodeSeq(stream) {
+	for range varint.DecodeSeq(stream) {
 		count++
 		if count == 3 {
 			break
@@ -217,7 +217,7 @@ func TestIterators(t *testing.T) {
 	truncatedStream := append([]byte(nil), stream...)
 	truncatedStream = append(truncatedStream, 0x80, 0x01) // 4-byte varint with only 2 bytes
 	countTrunc := 0
-	for _, _ = range varint.DecodeSeq(truncatedStream) {
+	for range varint.DecodeSeq(truncatedStream) {
 		countTrunc++
 	}
 	if countTrunc != len(values) {
@@ -240,7 +240,7 @@ func TestIterators(t *testing.T) {
 
 	// Test Values early break
 	countVal := 0
-	for _ = range varint.Values(stream) {
+	for range varint.Values(stream) {
 		countVal++
 		if countVal == 4 {
 			break
@@ -252,7 +252,7 @@ func TestIterators(t *testing.T) {
 
 	// Test Values with truncated tail
 	countValTrunc := 0
-	for _ = range varint.Values(truncatedStream) {
+	for range varint.Values(truncatedStream) {
 		countValTrunc++
 	}
 	if countValTrunc != len(values) {
