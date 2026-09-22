@@ -8,6 +8,21 @@ package varint
 import (
 	"encoding/binary"
 	"errors"
+	"iter"
+)
+
+const (
+	// Max is the maximum representable QUIC variable-length integer (2^62 - 1).
+	Max = 4611686018427387903
+
+	// Max1Byte is the maximum value encodable in 1 byte (63).
+	Max1Byte = 63
+	// Max2Byte is the maximum value encodable in 2 bytes (16383).
+	Max2Byte = 16383
+	// Max4Byte is the maximum value encodable in 4 bytes (1073741823).
+	Max4Byte = 1073741823
+	// Max8Byte is the maximum value encodable in 8 bytes (4611686018427387903).
+	Max8Byte = 4611686018427387903
 )
 
 var (
@@ -97,4 +112,38 @@ func DecodeVarint(payload []byte) (val uint64, readLen int, err error) {
 	}
 
 	return 0, 0, ErrInvalidTag
+}
+
+// DecodeSeq returns a push iterator yielding successive decoded varint values and their byte lengths from payload.
+// Iteration stops when payload is exhausted, a truncated or malformed varint is encountered, or yield returns false.
+func DecodeSeq(payload []byte) iter.Seq2[uint64, int] {
+	return func(yield func(uint64, int) bool) {
+		for len(payload) > 0 {
+			val, n, err := DecodeVarint(payload)
+			if err != nil {
+				return
+			}
+			if !yield(val, n) {
+				return
+			}
+			payload = payload[n:]
+		}
+	}
+}
+
+// Values returns a push iterator yielding successive decoded varint values from payload.
+// Iteration stops when payload is exhausted, a truncated or malformed varint is encountered, or yield returns false.
+func Values(payload []byte) iter.Seq[uint64] {
+	return func(yield func(uint64) bool) {
+		for len(payload) > 0 {
+			val, n, err := DecodeVarint(payload)
+			if err != nil {
+				return
+			}
+			if !yield(val) {
+				return
+			}
+			payload = payload[n:]
+		}
+	}
 }

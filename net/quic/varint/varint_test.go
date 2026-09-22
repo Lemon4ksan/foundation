@@ -11,87 +11,350 @@ import (
 	"github.com/lemon4ksan/foundation/net/quic/varint"
 )
 
-func TestEncodeDecodeVarint(t *testing.T) {
-	testCases := []uint64{
-		0,
-		1,
-		37,
-		63, // 1 byte max
-		64, // 2 bytes min
-		15293,
-		16383, // 2 bytes max
-		16384, // 4 bytes min
-		494878333,
-		1073741823, // 4 bytes max
-		1073741824, // 8 bytes min
-		15128880994,
-		(1 << 62) - 1, // 8 bytes max
+func TestBoundaryTransitions(t *testing.T) {
+	testCases := []struct {
+		val         uint64
+		expectedLen int
+	}{
+		{0, 1},
+		{varint.Max1Byte, 1},       // 63
+		{varint.Max1Byte + 1, 2},   // 64
+		{varint.Max2Byte, 2},       // 16383
+		{varint.Max2Byte + 1, 4},   // 16384
+		{varint.Max4Byte, 4},       // 1073741823
+		{varint.Max4Byte + 1, 8},   // 1073741824
+		{varint.Max, 8},             // 4611686018427387903
 	}
 
 	for _, tc := range testCases {
-		enc := varint.EncodeVarint(tc)
-		var buf [8]byte
-		n := varint.EncodeVarintSlice(tc, buf[:])
+		enc := varint.EncodeVarint(tc.val)
+		if len(enc) != tc.expectedLen {
+			t.Fatalf("EncodeVarint(%d) len = %d, want %d", tc.val, len(enc), tc.expectedLen)
+		}
 
+		var buf [8]byte
+		n := varint.EncodeVarintSlice(tc.val, buf[:])
+		if n != tc.expectedLen {
+			t.Fatalf("EncodeVarintSlice(%d) len = %d, want %d", tc.val, n, tc.expectedLen)
+		}
 		if !bytes.Equal(enc, buf[:n]) {
-			t.Fatalf("EncodeVarint vs EncodeVarintSlice mismatch for %d: %x vs %x", tc, enc, buf[:n])
+			t.Fatalf("mismatch between EncodeVarint and EncodeVarintSlice for %d", tc.val)
 		}
 
 		dec, readLen, err := varint.DecodeVarint(enc)
 		if err != nil {
-			t.Fatalf("DecodeVarint(%d) failed: %v", tc, err)
+			t.Fatalf("DecodeVarint(%d) failed: %v", tc.val, err)
 		}
-		if dec != tc {
-			t.Fatalf("DecodeVarint(%d) = %d", tc, dec)
+		if dec != tc.val {
+			t.Fatalf("DecodeVarint(%d) = %d", tc.val, dec)
 		}
-		if readLen != len(enc) {
-			t.Fatalf("DecodeVarint(%d) readLen = %d, want %d", tc, readLen, len(enc))
+		if readLen != tc.expectedLen {
+			t.Fatalf("DecodeVarint(%d) readLen = %d, want %d", tc.val, readLen, tc.expectedLen)
 		}
 	}
+}
+
+func TestOverflowPanics(t *testing.T) {
+	overflowValues := []uint64{
+		1 << 62,
+		(1 << 62) + 1,
+		^uint64(0),
+	}
+
+	for _, v := range overflowValues {
+		assertPanic(t, "EncodeVarint", func() {
+			_ = varint.EncodeVarint(v)
+		})
+
+		var buf [8]byte
+		assertPanic(t, "EncodeVarintSlice", func() {
+			_ = varint.EncodeVarintSlice(v, buf[:])
+		})
+	}
+}
+
+func TestBufferBoundsPanics(t *testing.T) {
+	// 1-byte value into 0-byte slice
+	assertPanic(t, "1B into 0B", func() {
+		var buf [0]byte
+		_ = varint.EncodeVarintSlice(10, buf[:])
+	})
+
+	// 2-byte value into 1-byte slice
+	assertPanic(t, "2B into 1B", func() {
+		var buf [1]byte
+		_ = varint.EncodeVarintSlice(100, buf[:])
+	})
+
+	// 4-byte value into 3-byte slice
+	assertPanic(t, "4B into 3B", func() {
+		var buf [3]byte
+		_ = varint.EncodeVarintSlice(100000, buf[:])
+	})
+
+	// 8-byte value into 7-byte slice
+	assertPanic(t, "8B into 7B", func() {
+		var buf [7]byte
+		_ = varint.EncodeVarintSlice(2000000000, buf[:])
+	})
 }
 
 func TestDecodeVarintTruncated(t *testing.T) {
-	// 2-byte tag with 1 byte input
-	_, _, err := varint.DecodeVarint([]byte{0x40})
-	if err != varint.ErrTruncated {
-		t.Fatalf("expected ErrTruncated, got %v", err)
-	}
-
-	// 4-byte tag with 2 bytes input
-	_, _, err = varint.DecodeVarint([]byte{0x80, 0x01})
-	if err != varint.ErrTruncated {
-		t.Fatalf("expected ErrTruncated, got %v", err)
-	}
-
-	// 8-byte tag with 4 bytes input
-	_, _, err = varint.DecodeVarint([]byte{0xc0, 0x00, 0x00, 0x01})
-	if err != varint.ErrTruncated {
-		t.Fatalf("expected ErrTruncated, got %v", err)
-	}
-
 	// Empty payload
-	_, _, err = varint.DecodeVarint(nil)
-	if err != varint.ErrTruncated {
-		t.Fatalf("expected ErrTruncated, got %v", err)
+	if _, _, err := varint.DecodeVarint(nil); err != varint.ErrTruncated {
+		t.Fatalf("DecodeVarint(nil) = %v, want ErrTruncated", err)
+	}
+	if _, _, err := varint.DecodeVarint([]byte{}); err != varint.ErrTruncated {
+		t.Fatalf("DecodeVarint([]byte{}) = %v, want ErrTruncated", err)
+	}
+
+	// 2-byte tag (0b01) with 1 byte input
+	if _, _, err := varint.DecodeVarint([]byte{0x40}); err != varint.ErrTruncated {
+		t.Fatalf("2-byte tag with 1 byte = %v, want ErrTruncated", err)
+	}
+
+	// 4-byte tag (0b10) with 1, 2, 3 bytes input
+	for l := 1; l <= 3; l++ {
+		payload := make([]byte, l)
+		payload[0] = 0x80
+		if _, _, err := varint.DecodeVarint(payload); err != varint.ErrTruncated {
+			t.Fatalf("4-byte tag with %d bytes = %v, want ErrTruncated", l, err)
+		}
+	}
+
+	// 8-byte tag (0b11) with 1..7 bytes input
+	for l := 1; l <= 7; l++ {
+		payload := make([]byte, l)
+		payload[0] = 0xc0
+		if _, _, err := varint.DecodeVarint(payload); err != varint.ErrTruncated {
+			t.Fatalf("8-byte tag with %d bytes = %v, want ErrTruncated", l, err)
+		}
 	}
 }
 
-func BenchmarkEncodeVarintSlice(b *testing.B) {
+func TestNonMinimalEncodings(t *testing.T) {
+	// RFC 9000 Section 16: decoders MUST accept all valid encodings, even if non-minimal.
+	tests := []struct {
+		name     string
+		encoded  []byte
+		expected uint64
+		readLen  int
+	}{
+		// 0 encoded in 2, 4, 8 bytes
+		{"0_in_2B", []byte{0x40, 0x00}, 0, 2},
+		{"0_in_4B", []byte{0x80, 0x00, 0x00, 0x00}, 0, 4},
+		{"0_in_8B", []byte{0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, 0, 8},
+
+		// 25 encoded in 2, 4, 8 bytes
+		{"25_in_2B", []byte{0x40, 0x19}, 25, 2},
+		{"25_in_4B", []byte{0x80, 0x00, 0x00, 0x19}, 25, 4},
+		{"25_in_8B", []byte{0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x19}, 25, 8},
+
+		// 16383 encoded in 4, 8 bytes
+		{"16383_in_4B", []byte{0x80, 0x00, 0x3f, 0xff}, 16383, 4},
+		{"16383_in_8B", []byte{0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3f, 0xff}, 16383, 8},
+
+		// 1073741823 encoded in 8 bytes
+		{"1073741823_in_8B", []byte{0xc0, 0x00, 0x00, 0x00, 0x3f, 0xff, 0xff, 0xff}, 1073741823, 8},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			val, n, err := varint.DecodeVarint(tc.encoded)
+			if err != nil {
+				t.Fatalf("DecodeVarint(%s) failed: %v", tc.name, err)
+			}
+			if val != tc.expected {
+				t.Fatalf("DecodeVarint(%s) = %d, want %d", tc.name, val, tc.expected)
+			}
+			if n != tc.readLen {
+				t.Fatalf("DecodeVarint(%s) n = %d, want %d", tc.name, n, tc.readLen)
+			}
+		})
+	}
+}
+
+func TestIterators(t *testing.T) {
+	values := []uint64{0, 25, 63, 64, 15293, 16383, 16384, 494878333, 1073741823, 1073741824, varint.Max}
+
+	var stream []byte
+	for _, v := range values {
+		stream = append(stream, varint.EncodeVarint(v)...)
+	}
+
+	// Test DecodeSeq full stream
+	var decodedVals []uint64
+	var totalRead int
+	for v, n := range varint.DecodeSeq(stream) {
+		decodedVals = append(decodedVals, v)
+		totalRead += n
+	}
+	if len(decodedVals) != len(values) {
+		t.Fatalf("DecodeSeq yielded %d elements, want %d", len(decodedVals), len(values))
+	}
+	for i := range values {
+		if decodedVals[i] != values[i] {
+			t.Fatalf("DecodeSeq[%d] = %d, want %d", i, decodedVals[i], values[i])
+		}
+	}
+	if totalRead != len(stream) {
+		t.Fatalf("totalRead = %d, want %d", totalRead, len(stream))
+	}
+
+	// Test DecodeSeq early break
+	count := 0
+	for _, _ = range varint.DecodeSeq(stream) {
+		count++
+		if count == 3 {
+			break
+		}
+	}
+	if count != 3 {
+		t.Fatalf("DecodeSeq early break count = %d, want 3", count)
+	}
+
+	// Test DecodeSeq with truncated tail
+	truncatedStream := append([]byte(nil), stream...)
+	truncatedStream = append(truncatedStream, 0x80, 0x01) // 4-byte varint with only 2 bytes
+	countTrunc := 0
+	for _, _ = range varint.DecodeSeq(truncatedStream) {
+		countTrunc++
+	}
+	if countTrunc != len(values) {
+		t.Fatalf("DecodeSeq with truncated tail yielded %d, want %d", countTrunc, len(values))
+	}
+
+	// Test Values full stream
+	var valuesSeq []uint64
+	for v := range varint.Values(stream) {
+		valuesSeq = append(valuesSeq, v)
+	}
+	if len(valuesSeq) != len(values) {
+		t.Fatalf("Values yielded %d elements, want %d", len(valuesSeq), len(values))
+	}
+	for i := range values {
+		if valuesSeq[i] != values[i] {
+			t.Fatalf("Values[%d] = %d, want %d", i, valuesSeq[i], values[i])
+		}
+	}
+
+	// Test Values early break
+	countVal := 0
+	for _ = range varint.Values(stream) {
+		countVal++
+		if countVal == 4 {
+			break
+		}
+	}
+	if countVal != 4 {
+		t.Fatalf("Values early break count = %d, want 4", countVal)
+	}
+
+	// Test Values with truncated tail
+	countValTrunc := 0
+	for _ = range varint.Values(truncatedStream) {
+		countValTrunc++
+	}
+	if countValTrunc != len(values) {
+		t.Fatalf("Values with truncated tail yielded %d, want %d", countValTrunc, len(values))
+	}
+}
+
+func BenchmarkEncodeVarintSlice_1B(b *testing.B) {
 	var buf [8]byte
 	b.ResetTimer()
 	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = varint.EncodeVarintSlice(37, buf[:])
+	}
+}
 
+func BenchmarkEncodeVarintSlice_2B(b *testing.B) {
+	var buf [8]byte
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = varint.EncodeVarintSlice(15293, buf[:])
+	}
+}
+
+func BenchmarkEncodeVarintSlice_4B(b *testing.B) {
+	var buf [8]byte
+	b.ResetTimer()
+	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		_ = varint.EncodeVarintSlice(494878333, buf[:])
 	}
 }
 
-func BenchmarkDecodeVarint(b *testing.B) {
-	encoded := varint.EncodeVarint(494878333)
+func BenchmarkEncodeVarintSlice_8B(b *testing.B) {
+	var buf [8]byte
 	b.ResetTimer()
 	b.ReportAllocs()
-
 	for i := 0; i < b.N; i++ {
-		_, _, _ = varint.DecodeVarint(encoded)
+		_ = varint.EncodeVarintSlice(varint.Max, buf[:])
 	}
+}
+
+func BenchmarkDecodeVarint_1B(b *testing.B) {
+	payload := varint.EncodeVarint(37)
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_, _, _ = varint.DecodeVarint(payload)
+	}
+}
+
+func BenchmarkDecodeVarint_2B(b *testing.B) {
+	payload := varint.EncodeVarint(15293)
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_, _, _ = varint.DecodeVarint(payload)
+	}
+}
+
+func BenchmarkDecodeVarint_4B(b *testing.B) {
+	payload := varint.EncodeVarint(494878333)
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_, _, _ = varint.DecodeVarint(payload)
+	}
+}
+
+func BenchmarkDecodeVarint_8B(b *testing.B) {
+	payload := varint.EncodeVarint(varint.Max)
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_, _, _ = varint.DecodeVarint(payload)
+	}
+}
+
+func BenchmarkDecodeSeq(b *testing.B) {
+	values := []uint64{37, 15293, 494878333, varint.Max}
+	var stream []byte
+	for _, v := range values {
+		stream = append(stream, varint.EncodeVarint(v)...)
+	}
+
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		for v, n := range varint.DecodeSeq(stream) {
+			_ = v
+			_ = n
+		}
+	}
+}
+
+func assertPanic(t *testing.T, name string, fn func()) {
+	t.Helper()
+	defer func() {
+		if r := recover(); r == nil {
+			t.Fatalf("%s did not panic", name)
+		}
+	}()
+	fn()
 }
