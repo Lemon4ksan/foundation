@@ -17,7 +17,7 @@ type M0 struct {
 	MaxLength   int
 }
 
-func (M0) Reset() {}
+func (M0) Reset() { return }
 
 const (
 	m0HashLen = 5

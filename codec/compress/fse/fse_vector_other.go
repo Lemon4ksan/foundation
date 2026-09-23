@@ -6,7 +6,7 @@
 
 package fse
 
-const hasVectorFSE = false
+var hasVectorFSE = false
 
 func vectorDecodeQuad(s1, s2 *decoder, dt []decSymbol, tmp []byte, off uint8) uint8 {
 	return off

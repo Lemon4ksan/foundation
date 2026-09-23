@@ -7,6 +7,7 @@ package bin
 import (
 	"encoding/binary"
 	"fmt"
+	"iter"
 	"reflect"
 	"sync"
 	"unsafe"
@@ -299,4 +300,66 @@ func MarshalBE(src any, buf []byte) ([]byte, error) {
 	}
 
 	return buf, nil
+}
+
+// UnmarshalSeqBE returns a push iterator decoding consecutive big-endian struct records of type T from data.
+// Iteration stops when data is exhausted, when remaining bytes are insufficient, or when yield returns false.
+func UnmarshalSeqBE[T any](data []byte) iter.Seq2[T, error] {
+	return func(yield func(T, error) bool) {
+		var zero T
+		t := reflect.TypeOf(&zero)
+		layout, err := getLayout(t)
+		if err != nil {
+			yield(zero, err)
+			return
+		}
+
+		wireSize := layout.wireTotal
+		if wireSize <= 0 {
+			return
+		}
+
+		for len(data) >= wireSize {
+			var val T
+			if err := UnmarshalBE(data[:wireSize], &val); err != nil {
+				yield(val, err)
+				return
+			}
+			data = data[wireSize:]
+			if !yield(val, nil) {
+				return
+			}
+		}
+	}
+}
+
+// UnmarshalSeqLE returns a push iterator decoding consecutive little-endian struct records of type T from data.
+// Iteration stops when data is exhausted, when remaining bytes are insufficient, or when yield returns false.
+func UnmarshalSeqLE[T any](data []byte) iter.Seq2[T, error] {
+	return func(yield func(T, error) bool) {
+		var zero T
+		t := reflect.TypeOf(&zero)
+		layout, err := getLayout(t)
+		if err != nil {
+			yield(zero, err)
+			return
+		}
+
+		wireSize := layout.wireTotal
+		if wireSize <= 0 {
+			return
+		}
+
+		for len(data) >= wireSize {
+			var val T
+			if err := UnmarshalLE(data[:wireSize], &val); err != nil {
+				yield(val, err)
+				return
+			}
+			data = data[wireSize:]
+			if !yield(val, nil) {
+				return
+			}
+		}
+	}
 }

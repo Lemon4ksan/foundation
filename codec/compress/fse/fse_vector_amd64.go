@@ -11,7 +11,7 @@ import (
 	"unsafe"
 )
 
-const hasVectorFSE = true
+var hasVectorFSE = true
 
 func vectorDecodeQuad(s1, s2 *decoder, dt []decSymbol, tmp []byte, off uint8) uint8 {
 	res := fse_decode_quad(

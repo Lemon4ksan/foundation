@@ -29,7 +29,7 @@ const (
 )
 
 func ExampleNewFSM() {
-	machine := fsm.NewFSM[State, Event](StateIdle)
+	machine := fsm.New[State, Event](StateIdle)
 
 	machine.AddRules(
 		fsm.TransitionRule[State, Event]{From: StateIdle, Event: EventStart, To: StateProcessing},
@@ -58,7 +58,7 @@ func ExampleNewFSM() {
 }
 
 func ExampleFSM_OnBefore() {
-	machine := fsm.NewFSM[State, Event](StateIdle)
+	machine := fsm.New[State, Event](StateIdle)
 
 	machine.AddRules(
 		fsm.TransitionRule[State, Event]{From: StateIdle, Event: EventStart, To: StateProcessing},

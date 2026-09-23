@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"iter"
 	"net"
 	"reflect"
 	"slices"
@@ -227,7 +228,10 @@ type Conn struct {
 	logger utils.Logger
 }
 
-var _ streamSender = &Conn{}
+var (
+	_ io.Closer    = &Conn{}
+	_ streamSender = &Conn{}
+)
 
 type connTestHooks struct {
 	run                     func() error
@@ -704,6 +708,19 @@ func (c *Conn) earlyConnReady() <-chan struct{} {
 // The cancellation cause is set to the error that caused the connection to close.
 func (c *Conn) Context() context.Context {
 	return c.ctx
+}
+
+// Handshake blocks until the QUIC handshake completes, the context is canceled,
+// or the connection is terminated.
+func (c *Conn) Handshake(ctx context.Context) error {
+	select {
+	case <-ctx.Done():
+		return context.Cause(ctx)
+	case <-c.Context().Done():
+		return context.Cause(c.Context())
+	case <-c.handshakeCompleteChan:
+		return nil
+	}
 }
 
 func (c *Conn) supportsDatagrams() bool {
@@ -1835,6 +1852,12 @@ func (c *Conn) CloseWithError(code ApplicationErrorCode, desc string) error {
 	return nil
 }
 
+// Close closes the connection cleanly with application error code 0 and an empty description.
+// It implements [io.Closer].
+func (c *Conn) Close() error {
+	return c.CloseWithError(0, "")
+}
+
 func (c *Conn) closeWithTransportError(code TransportErrorCode) {
 	c.closeLocal(&qerr.TransportError{ErrorCode: code})
 	<-c.ctx.Done()
@@ -2613,6 +2636,112 @@ func (c *Conn) OpenUniStream() (*SendStream, error) {
 // or the stream has been reset or closed.
 func (c *Conn) OpenUniStreamSync(ctx context.Context) (*SendStream, error) {
 	return c.streamsMap.OpenUniStreamSync(ctx)
+}
+
+// OpenStreamContext opens a bidirectional stream, blocking until one can be opened or ctx is canceled.
+// It is an idiomatic alias for [Conn.OpenStreamSync].
+func (c *Conn) OpenStreamContext(ctx context.Context) (*Stream, error) {
+	return c.OpenStreamSync(ctx)
+}
+
+// OpenUniStreamContext opens an outgoing unidirectional stream, blocking until one can be opened or ctx is canceled.
+// It is an idiomatic alias for [Conn.OpenUniStreamSync].
+func (c *Conn) OpenUniStreamContext(ctx context.Context) (*SendStream, error) {
+	return c.OpenUniStreamSync(ctx)
+}
+
+// Streams returns an iterator over all currently open bidirectional streams.
+func (c *Conn) Streams() iter.Seq[*Stream] {
+	return c.streamsMap.Streams()
+}
+
+// SendStreams returns an iterator over all currently open outgoing unidirectional streams.
+func (c *Conn) SendStreams() iter.Seq[*SendStream] {
+	return c.streamsMap.SendStreams()
+}
+
+// ReceiveStreams returns an iterator over all currently open incoming unidirectional streams.
+func (c *Conn) ReceiveStreams() iter.Seq[*ReceiveStream] {
+	return c.streamsMap.ReceiveStreams()
+}
+
+// IncomingStreams returns an iterator yielding newly accepted bidirectional streams
+// until ctx is canceled or the connection is closed.
+func (c *Conn) IncomingStreams(ctx context.Context) iter.Seq2[*Stream, error] {
+	return func(yield func(*Stream, error) bool) {
+		for {
+			str, err := c.AcceptStream(ctx)
+			if !yield(str, err) || err != nil {
+				return
+			}
+		}
+	}
+}
+
+// IncomingUniStreams returns an iterator yielding newly accepted unidirectional streams
+// until ctx is canceled or the connection is closed.
+func (c *Conn) IncomingUniStreams(ctx context.Context) iter.Seq2[*ReceiveStream, error] {
+	return func(yield func(*ReceiveStream, error) bool) {
+		for {
+			str, err := c.AcceptUniStream(ctx)
+			if !yield(str, err) || err != nil {
+				return
+			}
+		}
+	}
+}
+
+// Datagrams returns an iterator yielding received DATAGRAM payloads
+// until ctx is canceled or the connection is closed.
+func (c *Conn) Datagrams(ctx context.Context) iter.Seq2[[]byte, error] {
+	return func(yield func([]byte, error) bool) {
+		for {
+			b, err := c.ReceiveDatagram(ctx)
+			if !yield(b, err) || err != nil {
+				return
+			}
+		}
+	}
+}
+
+// StreamListener returns a net.Listener where Accept yields incoming bidirectional streams.
+// Calls to Close cancel the listener without closing the underlying connection.
+func (c *Conn) StreamListener(ctx context.Context) net.Listener {
+	return newStreamListener(c, ctx)
+}
+
+type streamListener struct {
+	conn   *Conn
+	ctx    context.Context
+	cancel context.CancelFunc
+}
+
+var _ net.Listener = &streamListener{}
+
+func newStreamListener(conn *Conn, ctx context.Context) *streamListener {
+	ctx, cancel := context.WithCancel(ctx)
+	return &streamListener{
+		conn:   conn,
+		ctx:    ctx,
+		cancel: cancel,
+	}
+}
+
+func (l *streamListener) Accept() (net.Conn, error) {
+	str, err := l.conn.AcceptStream(l.ctx)
+	if err != nil {
+		return nil, err
+	}
+	return str, nil
+}
+
+func (l *streamListener) Close() error {
+	l.cancel()
+	return nil
+}
+
+func (l *streamListener) Addr() net.Addr {
+	return l.conn.LocalAddr()
 }
 
 func (c *Conn) newFlowController(id protocol.StreamID) *streamFlowController {

@@ -72,4 +72,5 @@ func (r RepertoireError) Error() string {
 // Replacement returns the replacement string associated with this error.
 func (r RepertoireError) Replacement() byte { return byte(r) }
 
+// ErrASCIIReplacement indicates that an unmappable rune was replaced with the ASCII substitute character.
 var ErrASCIIReplacement = RepertoireError(encoding.ASCIISub)

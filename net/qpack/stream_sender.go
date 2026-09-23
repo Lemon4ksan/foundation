@@ -4,10 +4,11 @@
 
 package qpack
 
+import "io"
+
 const maxBytesBufferedByStream uint64 = 64 * 1024
 
-// EncoderStreamSender serializes instructions for the encoder stream.
-// Direct 1:1 structural translation of Chromium's quiche::EncoderStreamSender.
+// EncoderStreamSender serializes instructions for the encoder stream (RFC 9204 §4.3).
 type EncoderStreamSender struct {
 	delegate           StreamSenderDelegate
 	instructionEncoder *InstructionEncoder
@@ -91,12 +92,23 @@ func (s *EncoderStreamSender) Flush() {
 	}
 }
 
+// FlushTo writes buffered instructions to w and clears the internal buffer.
+// If the buffer is empty, it returns nil without writing.
+func (s *EncoderStreamSender) FlushTo(w io.Writer) error {
+	if len(s.buffer) == 0 {
+		return nil
+	}
+	data := s.buffer
+	s.buffer = nil
+	_, err := w.Write(data)
+	return err
+}
+
 // -----------------------------------------------------------------------------
 // DecoderStreamSender
 // -----------------------------------------------------------------------------
 
-// DecoderStreamSender serializes instructions for the decoder stream.
-// Direct 1:1 structural translation of Chromium's quiche::DecoderStreamSender.
+// DecoderStreamSender serializes instructions for the decoder stream (RFC 9204 §4.4).
 type DecoderStreamSender struct {
 	delegate           StreamSenderDelegate
 	instructionEncoder *InstructionEncoder
@@ -160,4 +172,16 @@ func (s *DecoderStreamSender) Flush() {
 	if s.delegate != nil {
 		s.delegate.WriteStreamData(data)
 	}
+}
+
+// FlushTo writes buffered instructions to w and clears the internal buffer.
+// If the buffer is empty, it returns nil without writing.
+func (s *DecoderStreamSender) FlushTo(w io.Writer) error {
+	if len(s.buffer) == 0 {
+		return nil
+	}
+	data := s.buffer
+	s.buffer = nil
+	_, err := w.Write(data)
+	return err
 }

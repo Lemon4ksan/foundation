@@ -9,7 +9,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"iter"
 	"regexp"
+	"strings"
 
 	"github.com/lemon4ksan/foundation/generic"
 	"github.com/lemon4ksan/foundation/silicon/bytesconv"
@@ -217,4 +219,151 @@ func RegexOptional(src []byte, pattern string) generic.Optional[string] {
 	}
 
 	return generic.Some(bytesconv.B2S(b))
+}
+
+// BetweenAll returns a push iterator yielding non-overlapping byte slices between prefix and suffix in src.
+// Slices are zero-allocation subviews of src.
+func BetweenAll(src []byte, prefix, suffix string) iter.Seq[[]byte] {
+	return func(yield func([]byte) bool) {
+		if prefix == "" && suffix == "" {
+			return
+		}
+		pBytes := bytesconv.S2B(prefix)
+		sBytes := bytesconv.S2B(suffix)
+		cursor := 0
+
+		for cursor < len(src) {
+			idx := bytes.Index(src[cursor:], pBytes)
+			if idx == -1 {
+				return
+			}
+			start := cursor + idx + len(pBytes)
+			if len(sBytes) == 0 {
+				_ = yield(src[start:])
+				return
+			}
+			end := bytes.Index(src[start:], sBytes)
+			if end == -1 {
+				return
+			}
+			matched := src[start : start+end]
+			cursor = start + end + len(sBytes)
+
+			if !yield(matched) {
+				return
+			}
+		}
+	}
+}
+
+// BetweenAllString returns a push iterator yielding non-overlapping substrings between prefix and suffix in src.
+func BetweenAllString(src, prefix, suffix string) iter.Seq[string] {
+	return func(yield func(string) bool) {
+		if prefix == "" && suffix == "" {
+			return
+		}
+		cursor := 0
+		for cursor < len(src) {
+			idx := strings.Index(src[cursor:], prefix)
+			if idx == -1 {
+				return
+			}
+			start := cursor + idx + len(prefix)
+			if len(suffix) == 0 {
+				_ = yield(src[start:])
+				return
+			}
+			end := strings.Index(src[start:], suffix)
+			if end == -1 {
+				return
+			}
+			matched := src[start : start+end]
+			cursor = start + end + len(suffix)
+
+			if !yield(matched) {
+				return
+			}
+		}
+	}
+}
+
+// RegexAll returns a push iterator yielding matches of rx in src.
+// If the pattern defines capture group 1, group 1 is yielded; otherwise group 0 (full match) is yielded.
+func RegexAll(src []byte, rx *regexp.Regexp) iter.Seq[[]byte] {
+	return func(yield func([]byte) bool) {
+		if rx == nil {
+			return
+		}
+		matches := rx.FindAllSubmatch(src, -1)
+		for _, m := range matches {
+			if len(m) >= 2 {
+				if !yield(m[1]) {
+					return
+				}
+			} else if len(m) == 1 {
+				if !yield(m[0]) {
+					return
+				}
+			}
+		}
+	}
+}
+
+// RegexAllSubmatch returns a push iterator yielding each slice of submatches found in src.
+func RegexAllSubmatch(src []byte, rx *regexp.Regexp) iter.Seq[[][]byte] {
+	return func(yield func([][]byte) bool) {
+		if rx == nil {
+			return
+		}
+		matches := rx.FindAllSubmatch(src, -1)
+		for _, m := range matches {
+			if !yield(m) {
+				return
+			}
+		}
+	}
+}
+
+// AttrsAll returns a push iterator yielding all values of the specified HTML attribute name in src.
+func AttrsAll(src []byte, attrName string) iter.Seq[[]byte] {
+	return func(yield func([]byte) bool) {
+		if len(attrName) == 0 {
+			return
+		}
+		attrKey1 := []byte(attrName + "=\"")
+		attrKey2 := []byte(attrName + "='")
+		cursor := 0
+
+		for cursor < len(src) {
+			idx1 := bytes.Index(src[cursor:], attrKey1)
+			idx2 := bytes.Index(src[cursor:], attrKey2)
+
+			var quote byte
+			var startOffset int
+
+			switch {
+			case idx1 != -1 && (idx2 == -1 || idx1 < idx2):
+				quote = '"'
+				startOffset = idx1 + len(attrKey1)
+			case idx2 != -1:
+				quote = '\''
+				startOffset = idx2 + len(attrKey2)
+			default:
+				return
+			}
+
+			valStart := cursor + startOffset
+			valEnd := bytes.IndexByte(src[valStart:], quote)
+			if valEnd == -1 {
+				return
+			}
+
+			val := src[valStart : valStart+valEnd]
+			cursor = valStart + valEnd + 1
+
+			if !yield(val) {
+				return
+			}
+		}
+	}
 }

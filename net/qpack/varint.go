@@ -5,13 +5,12 @@
 package qpack
 
 import (
-	"errors"
 	"io"
 )
 
 var (
-	errIntegerOverflow = errors.New("qpack: integer overflow")
-	errInvalidInteger  = errors.New("qpack: invalid prefix integer")
+	errIntegerOverflow = ErrIntegerOverflow
+	errInvalidInteger  = ErrInvalidInteger
 )
 
 func appendInt(dst []byte, prefixLen uint8, val uint64) []byte {
@@ -56,11 +55,7 @@ func readInt(prefixLen uint8, data []byte) (uint64, int, error) {
 	shift := 0
 	idx := 1
 
-	for {
-		if idx >= len(data) {
-			return 0, 0, io.ErrUnexpectedEOF
-		}
-
+	for idx < len(data) {
 		b := data[idx]
 		idx++
 
@@ -72,9 +67,9 @@ func readInt(prefixLen uint8, data []byte) (uint64, int, error) {
 		shift += 7
 
 		if b&0x80 == 0 {
-			break
+			return val, idx, nil
 		}
 	}
 
-	return val, idx, nil
+	return 0, 0, io.ErrUnexpectedEOF
 }

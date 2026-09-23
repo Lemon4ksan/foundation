@@ -16,6 +16,8 @@ func Base64URLEncodedLen(n int) int {
 
 // Base64EncodeURL writes the unpadded URL-safe Base64 representation of src into dst.
 // Returns the number of bytes written to dst.
+//
+// It panics if len(dst) < Base64URLEncodedLen(len(src)) with "base64: dst buffer too small for Base64EncodeURL".
 func Base64EncodeURL(src, dst []byte) int {
 	reqLen := Base64URLEncodedLen(len(src))
 	if len(dst) < reqLen {

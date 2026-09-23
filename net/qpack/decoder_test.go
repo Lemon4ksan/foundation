@@ -13,9 +13,13 @@ import (
 )
 
 const (
-	kHeaderAcknowledgement          = "\x81"
-	kDefaultMaxDynamicTableCapacity = 1024
-	kDefaultMaxBlockedStreams       = 1
+	headerAcknowledgement          = "\x81"
+	defaultMaxDynamicTableCapacity = 1024
+	defaultMaxBlockedStreams       = 1
+
+	kHeaderAcknowledgement          = headerAcknowledgement
+	kDefaultMaxDynamicTableCapacity = defaultMaxDynamicTableCapacity
+	kDefaultMaxBlockedStreams       = defaultMaxBlockedStreams
 )
 
 type encoderStreamErrorCall struct {

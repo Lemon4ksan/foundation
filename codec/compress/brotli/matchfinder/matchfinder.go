@@ -1,4 +1,4 @@
-// The matchfinder package defines reusable components for data compression.
+// Package matchfinder defines reusable components and interfaces for data compression match-finding.
 //
 // Many compression libraries have two main parts:
 //   - Something that looks for repeated sequences of bytes

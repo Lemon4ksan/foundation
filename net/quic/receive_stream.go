@@ -6,6 +6,7 @@
 package quic
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"sync"
@@ -21,6 +22,9 @@ import (
 // A ReceiveStream is a unidirectional Receive Stream.
 type ReceiveStream struct {
 	mutex sync.Mutex
+
+	ctx       context.Context
+	ctxCancel context.CancelCauseFunc
 
 	streamID protocol.StreamID
 
@@ -58,6 +62,7 @@ type ReceiveStream struct {
 }
 
 var (
+	_ io.ReadCloser             = &ReceiveStream{}
 	_ streamControlFrameGetter  = &ReceiveStream{}
 	_ receiveStreamFrameHandler = &ReceiveStream{}
 )
@@ -67,7 +72,7 @@ func newReceiveStream(
 	sender streamSender,
 	flowController *streamFlowController,
 ) *ReceiveStream {
-	return &ReceiveStream{
+	s := &ReceiveStream{
 		streamID:       streamID,
 		sender:         sender,
 		flowController: flowController,
@@ -76,11 +81,40 @@ func newReceiveStream(
 		readOnce:       make(chan struct{}, 1),
 		finalOffset:    protocol.MaxByteCount,
 	}
+	s.ctx, s.ctxCancel = context.WithCancelCause(context.Background())
+	return s
 }
 
 // StreamID returns the stream ID.
 func (s *ReceiveStream) StreamID() StreamID {
 	return s.streamID
+}
+
+// Context returns a context that is canceled when the stream is completed or canceled.
+// The cancellation cause is set to the error that caused the stream to
+// close, or [context.Canceled] in case the stream is closed without error.
+func (s *ReceiveStream) Context() context.Context {
+	if s.ctx == nil {
+		return context.Background()
+	}
+	return s.ctx
+}
+
+// Close closes the receive stream by canceling further reads with code 0.
+// It implements [io.Closer].
+func (s *ReceiveStream) Close() error {
+	s.CancelRead(0)
+	return nil
+}
+
+// FinalSize returns the final size of the stream in bytes, and true if known.
+func (s *ReceiveStream) FinalSize() (int64, bool) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	if s.finalOffset != protocol.MaxByteCount {
+		return int64(s.finalOffset), true
+	}
+	return 0, false
 }
 
 // SetReceiveFinalSizeCallback sets a callback that is called when the receive stream's final size is known.
@@ -132,6 +166,13 @@ func (s *ReceiveStream) Read(p []byte) (int, error) {
 
 	if completed {
 		s.sender.onStreamCompleted(s.streamID)
+		if s.ctxCancel != nil {
+			if s.cancelErr != nil {
+				s.ctxCancel(s.cancelErr)
+			} else {
+				s.ctxCancel(nil)
+			}
+		}
 	}
 
 	if queuedStreamWindowUpdate {
@@ -457,6 +498,10 @@ func (s *ReceiveStream) CancelRead(errorCode StreamErrorCode) {
 		s.flowController.Abandon()
 		s.sender.onStreamCompleted(s.streamID)
 	}
+
+	if s.ctxCancel != nil {
+		s.ctxCancel(s.cancelErr)
+	}
 }
 
 func (s *ReceiveStream) cancelReadImpl(errorCode qerr.StreamErrorCode) (queuedNewControlFrame bool) {
@@ -536,6 +581,10 @@ func (s *ReceiveStream) handleResetStreamFrame(frame *wire.ResetStreamFrame, now
 
 	if completed {
 		s.sender.onStreamCompleted(s.streamID)
+	}
+
+	if s.ctxCancel != nil && s.cancelErr != nil {
+		s.ctxCancel(s.cancelErr)
 	}
 
 	if callback != nil {
@@ -642,6 +691,9 @@ func (s *ReceiveStream) closeForShutdown(err error) {
 	s.receiveFinalSizeCallback = nil
 	s.mutex.Unlock()
 	s.signalRead()
+	if s.ctxCancel != nil {
+		s.ctxCancel(err)
+	}
 }
 
 // signalRead performs a non-blocking send on the readChan

@@ -4,10 +4,12 @@
 
 package qpack
 
-import "math"
+import (
+	"iter"
+	"math"
+)
 
-// IndexSet tracks the minimum and maximum dynamic table indices referenced in a header block.
-// Direct 1:1 structural translation of Chromium's quiche::IndexSet / BlockingManager::IndexSet.
+// IndexSet tracks the minimum and maximum dynamic table indices referenced in a header block (RFC 9204).
 type IndexSet struct {
 	indices  []uint64
 	minIndex uint64
@@ -76,8 +78,20 @@ func (s *IndexSet) Indices() []uint64 {
 	return s.indices
 }
 
-// HeaderData represents unacknowledged dynamic table references for a single header block.
-// Direct 1:1 structural translation of Chromium's quiche::BlockingManager::HeaderData.
+// All returns a push iterator over all dynamic indices in the set in insertion order.
+// Supports early termination when yield returns false.
+// Executes with zero heap allocations.
+func (s *IndexSet) All() iter.Seq[uint64] {
+	return func(yield func(uint64) bool) {
+		for _, idx := range s.indices {
+			if !yield(idx) {
+				return
+			}
+		}
+	}
+}
+
+// HeaderData represents unacknowledged dynamic table references for a single header block (RFC 9204).
 type HeaderData struct {
 	indices             []uint64
 	requiredInsertCount uint64
@@ -139,8 +153,7 @@ func (h HeaderData) MinIndex() (uint64, bool) {
 }
 
 // BlockingManager manages blocked streams, in-flight header block dependencies,
-// dynamic table eviction barriers, and known received counts per RFC 9204 and Chromium QUICHE.
-// Direct 1:1 structural translation of Chromium's quiche::BlockingManager.
+// dynamic table eviction barriers, and known received counts per RFC 9204.
 type BlockingManager struct {
 	// streamMap maps stream ID -> FIFO queue of unacknowledged HeaderData
 	streamMap map[uint64][]HeaderData
@@ -231,7 +244,7 @@ func (m *BlockingManager) OnSectionAck(streamId uint64) bool {
 	return m.OnHeaderAcknowledgement(streamId)
 }
 
-// OnHeaderAcknowledgement is the Chromium-named equivalent of OnSectionAck.
+// OnHeaderAcknowledgement is an alias for OnSectionAck (RFC 9204 §4.4.1).
 func (m *BlockingManager) OnHeaderAcknowledgement(streamId uint64) bool {
 	blocks, ok := m.streamMap[streamId]
 	if !ok || len(blocks) == 0 {
@@ -281,6 +294,8 @@ func (m *BlockingManager) SmallestBlockingIndex() uint64 {
 }
 
 // smallest_blocking_index provides exact C++ Chromium method naming.
+//
+// Deprecated: use SmallestBlockingIndex.
 func (m *BlockingManager) smallest_blocking_index() uint64 {
 	return m.SmallestBlockingIndex()
 }
@@ -291,6 +306,8 @@ func (m *BlockingManager) KnownReceivedCount() uint64 {
 }
 
 // known_received_count provides exact C++ Chromium method naming.
+//
+// Deprecated: use KnownReceivedCount.
 func (m *BlockingManager) known_received_count() uint64 {
 	return m.KnownReceivedCount()
 }
@@ -302,6 +319,8 @@ func (m *BlockingManager) IsBlocked(streamId uint64) bool {
 }
 
 // is_blocked provides exact C++ Chromium method naming.
+//
+// Deprecated: use IsBlocked.
 func (m *BlockingManager) is_blocked(streamId uint64) bool {
 	return m.IsBlocked(streamId)
 }
@@ -312,8 +331,23 @@ func (m *BlockingManager) NumBlockedStreams() uint64 {
 }
 
 // num_blocked_streams provides exact C++ Chromium method naming.
+//
+// Deprecated: use NumBlockedStreams.
 func (m *BlockingManager) num_blocked_streams() uint64 {
 	return m.NumBlockedStreams()
+}
+
+// BlockedStreams returns a push iterator over all currently blocked stream IDs.
+// Supports early termination when yield returns false.
+// Executes with zero heap allocations.
+func (m *BlockingManager) BlockedStreams() iter.Seq[uint64] {
+	return func(yield func(uint64) bool) {
+		for streamID := range m.blockedStreams {
+			if !yield(streamID) {
+				return
+			}
+		}
+	}
 }
 
 // MaxBlockedStreams returns the maximum allowed concurrent blocked streams limit.
@@ -341,6 +375,8 @@ func (m *BlockingManager) BlockingAllowedOnStream(streamId uint64, maxBlockedStr
 }
 
 // blocking_allowed_on_stream provides exact C++ Chromium method naming.
+//
+// Deprecated: use BlockingAllowedOnStream.
 func (m *BlockingManager) blocking_allowed_on_stream(streamId uint64, maxBlockedStreams ...uint64) bool {
 	return m.BlockingAllowedOnStream(streamId, maxBlockedStreams...)
 }

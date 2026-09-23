@@ -32,7 +32,7 @@ const (
 // TestFSM_BasicTransition verifies the fundamental state transition flow,
 // ensuring that valid transition rules update the state machine correctly.
 func TestFSM_BasicTransition(t *testing.T) {
-	fsm := NewFSM[testState, testEvent](stateA)
+	fsm := New[testState, testEvent](stateA)
 
 	fsm.AddRules(
 		TransitionRule[testState, testEvent]{From: stateA, Event: eventGo, To: stateB},
@@ -73,7 +73,7 @@ func TestFSM_BasicTransition(t *testing.T) {
 // TestFSM_InvalidTransition verifies that attempting to execute an undefined
 // transition from the current state returns an error and leaves the state unchanged.
 func TestFSM_InvalidTransition(t *testing.T) {
-	fsm := NewFSM[testState, testEvent](stateA)
+	fsm := New[testState, testEvent](stateA)
 
 	fsm.AddRules(
 		TransitionRule[testState, testEvent]{From: stateA, Event: eventGo, To: stateB},
@@ -93,7 +93,7 @@ func TestFSM_InvalidTransition(t *testing.T) {
 // an error, the transition is aborted, and the state machine safely rolls back
 // to its original state.
 func TestFSM_BeforeHookRollback(t *testing.T) {
-	fsm := NewFSM[testState, testEvent](stateA)
+	fsm := New[testState, testEvent](stateA)
 
 	fsm.AddRules(
 		TransitionRule[testState, testEvent]{From: stateA, Event: eventGo, To: stateB},
@@ -122,7 +122,7 @@ func TestFSM_BeforeHookRollback(t *testing.T) {
 // TestFSM_BeforeAndAfterHooks verifies that both before-hooks and after-hooks
 // are triggered with the correct state parameters during a successful transition.
 func TestFSM_BeforeAndAfterHooks(t *testing.T) {
-	fsm := NewFSM[testState, testEvent](stateA)
+	fsm := New[testState, testEvent](stateA)
 
 	fsm.AddRules(
 		TransitionRule[testState, testEvent]{From: stateA, Event: eventGo, To: stateB},
@@ -171,7 +171,7 @@ func TestFSM_BeforeAndAfterHooks(t *testing.T) {
 // do not block or roll back the transition, as the state change has already
 // been committed.
 func TestFSM_AfterHookErrorIgnored(t *testing.T) {
-	fsm := NewFSM[testState, testEvent](stateA)
+	fsm := New[testState, testEvent](stateA)
 
 	fsm.AddRules(
 		TransitionRule[testState, testEvent]{From: stateA, Event: eventGo, To: stateB},
@@ -194,7 +194,7 @@ func TestFSM_AfterHookErrorIgnored(t *testing.T) {
 // TestFSM_MultipleBeforeHooksOrder verifies that multiple registered before-hooks
 // for the same event are executed sequentially in their exact registration order.
 func TestFSM_MultipleBeforeHooksOrder(t *testing.T) {
-	fsm := NewFSM[testState, testEvent](stateA)
+	fsm := New[testState, testEvent](stateA)
 
 	fsm.AddRules(
 		TransitionRule[testState, testEvent]{From: stateA, Event: eventGo, To: stateB},
@@ -225,7 +225,7 @@ func TestFSM_MultipleBeforeHooksOrder(t *testing.T) {
 // under high concurrent load, ensuring that only a single transition can succeed
 // from a given state, while all others are rejected.
 func TestFSM_ConcurrentTransitions(t *testing.T) {
-	fsm := NewFSM[testState, testEvent](stateA)
+	fsm := New[testState, testEvent](stateA)
 
 	fsm.AddRules(
 		TransitionRule[testState, testEvent]{From: stateA, Event: eventGo, To: stateB},
@@ -271,7 +271,7 @@ func TestFSM_ConcurrentTransitions(t *testing.T) {
 // concurrently to ensure there are no data races or invalid states during
 // high-contention read/write races.
 func TestFSM_ConcurrentTransitionsRace(t *testing.T) {
-	fsm := NewFSM[testState, testEvent](stateA)
+	fsm := New[testState, testEvent](stateA)
 
 	fsm.AddRules(
 		TransitionRule[testState, testEvent]{From: stateA, Event: eventGo, To: stateB},
@@ -303,7 +303,7 @@ func TestFSM_ConcurrentTransitionsRace(t *testing.T) {
 // TestFSM_VerifyStateAfterAlternatingTransitions verifies that sequential,
 // alternating transitions execute cleanly without state corruption.
 func TestFSM_VerifyStateAfterAlternatingTransitions(t *testing.T) {
-	fsm := NewFSM[testState, testEvent](stateA)
+	fsm := New[testState, testEvent](stateA)
 
 	fsm.AddRules(
 		TransitionRule[testState, testEvent]{From: stateA, Event: eventGo, To: stateB},
@@ -332,7 +332,7 @@ func TestFSM_VerifyStateAfterAlternatingTransitions(t *testing.T) {
 // TestFSM_Validate verifies the dry-run validation API, ensuring it accurately
 // reports transition destinations without mutating the state.
 func TestFSM_Validate(t *testing.T) {
-	fsm := NewFSM[testState, testEvent](stateA)
+	fsm := New[testState, testEvent](stateA)
 
 	fsm.AddRules(
 		TransitionRule[testState, testEvent]{From: stateA, Event: eventGo, To: stateB},
@@ -352,7 +352,7 @@ func TestFSM_Validate(t *testing.T) {
 // TestFSM_Validate_NoRulesForState verifies that Validate returns false if
 // no transition rules have been registered for the current state.
 func TestFSM_Validate_NoRulesForState(t *testing.T) {
-	fsm := NewFSM[testState, testEvent](stateC)
+	fsm := New[testState, testEvent](stateC)
 
 	fsm.AddRules(
 		TransitionRule[testState, testEvent]{From: stateA, Event: eventGo, To: stateB},
@@ -367,7 +367,7 @@ func TestFSM_Validate_NoRulesForState(t *testing.T) {
 // TestFSM_ToDOT verifies that the DOT-graph generator produces a valid Graphviz
 // representation containing all states, transitions, and labels.
 func TestFSM_ToDOT(t *testing.T) {
-	fsm := NewFSM[testState, testEvent](stateA)
+	fsm := New[testState, testEvent](stateA)
 
 	fsm.AddRules(
 		TransitionRule[testState, testEvent]{From: stateA, Event: eventGo, To: stateB},
@@ -400,7 +400,7 @@ func TestFSM_ToDOT(t *testing.T) {
 // TestFSM_CurrentState_Concurrent verifies that reading the current state
 // is safe for concurrent execution by multiple goroutines.
 func TestFSM_CurrentState_Concurrent(t *testing.T) {
-	fsm := NewFSM[testState, testEvent](stateA)
+	fsm := New[testState, testEvent](stateA)
 
 	fsm.AddRules(
 		TransitionRule[testState, testEvent]{From: stateA, Event: eventGo, To: stateB},
@@ -420,7 +420,7 @@ func TestFSM_CurrentState_Concurrent(t *testing.T) {
 // TestFSM_String verifies that the Stringer interface implementation
 // produces a clear, informative debugging representation.
 func TestFSM_String(t *testing.T) {
-	fsm := NewFSM[testState, testEvent](stateA)
+	fsm := New[testState, testEvent](stateA)
 
 	fsm.AddRules(
 		TransitionRule[testState, testEvent]{From: stateA, Event: eventGo, To: stateB},
@@ -435,7 +435,7 @@ func TestFSM_String(t *testing.T) {
 // TestFSM_ContextCancellation verifies that before-hooks respect context cancellation,
 // immediately aborting the transition if the context is cancelled.
 func TestFSM_ContextCancellation(t *testing.T) {
-	fsm := NewFSM[testState, testEvent](stateA)
+	fsm := New[testState, testEvent](stateA)
 
 	fsm.AddRules(
 		TransitionRule[testState, testEvent]{From: stateA, Event: eventGo, To: stateB},
@@ -461,7 +461,7 @@ func TestFSM_ContextCancellation(t *testing.T) {
 // TestFSM_NoTransitionsDefined verifies that attempting a transition on an FSM
 // with no rules configured returns a descriptive error.
 func TestFSM_NoTransitionsDefined(t *testing.T) {
-	fsm := NewFSM[testState, testEvent](stateA)
+	fsm := New[testState, testEvent](stateA)
 
 	err := fsm.Transition(context.Background(), eventGo)
 	if err == nil {
@@ -476,7 +476,7 @@ func TestFSM_NoTransitionsDefined(t *testing.T) {
 // TestFSM_ForceSet verifies that the ForceSet debug method correctly bypasses all rules
 // to place the FSM in a specific target state.
 func TestFSM_ForceSet(t *testing.T) {
-	fsm := NewFSM[testState, testEvent](stateA)
+	fsm := New[testState, testEvent](stateA)
 
 	fsm.AddRules(
 		TransitionRule[testState, testEvent]{From: stateA, Event: eventGo, To: stateB},

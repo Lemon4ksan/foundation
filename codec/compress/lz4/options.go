@@ -25,18 +25,24 @@ func (o Option) String() string {
 	return o(nil).Error()
 }
 
-// Default options.
 var (
+	// DefaultBlockSizeOption sets the default block size (4 MiB).
 	DefaultBlockSizeOption = BlockSizeOption(Block4Mb)
-	DefaultChecksumOption  = ChecksumOption(true)
-	DefaultConcurrency     = ConcurrencyOption(1)
-	defaultOnBlockDone     = OnBlockDoneOption(nil)
+	// DefaultChecksumOption sets the default block checksumming (enabled).
+	DefaultChecksumOption = ChecksumOption(true)
+	// DefaultConcurrency sets the default concurrency level (1).
+	DefaultConcurrency = ConcurrencyOption(1)
+	defaultOnBlockDone = OnBlockDoneOption(nil)
 )
 
 const (
+	// Block64Kb specifies a 64 KiB maximum block size.
 	Block64Kb BlockSize = 1 << (16 + iota*2)
+	// Block256Kb specifies a 256 KiB maximum block size.
 	Block256Kb
+	// Block1Mb specifies a 1 MiB maximum block size.
 	Block1Mb
+	// Block4Mb specifies a 4 MiB maximum block size.
 	Block4Mb
 )
 
@@ -135,15 +141,25 @@ func ConcurrencyOption(n int) Option {
 type CompressionLevel uint32
 
 const (
-	Fast   CompressionLevel = 0
+	// Fast enables the fastest compression mode.
+	Fast CompressionLevel = 0
+	// Level1 specifies HC compression level 1.
 	Level1 CompressionLevel = 1 << (8 + iota)
+	// Level2 specifies HC compression level 2.
 	Level2
+	// Level3 specifies HC compression level 3.
 	Level3
+	// Level4 specifies HC compression level 4.
 	Level4
+	// Level5 specifies HC compression level 5.
 	Level5
+	// Level6 specifies HC compression level 6.
 	Level6
+	// Level7 specifies HC compression level 7.
 	Level7
+	// Level8 specifies HC compression level 8.
 	Level8
+	// Level9 specifies maximum HC compression level 9.
 	Level9
 )
 

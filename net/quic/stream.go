@@ -7,6 +7,7 @@ package quic
 
 import (
 	"context"
+	"io"
 	"net"
 	"os"
 	"sync"
@@ -67,6 +68,8 @@ type Stream struct {
 }
 
 var (
+	_ net.Conn                  = &Stream{}
+	_ io.ReadWriteCloser        = &Stream{}
 	_ outgoingStream            = &Stream{}
 	_ sendStreamFrameHandler    = &Stream{}
 	_ receiveStreamFrameHandler = &Stream{}
@@ -86,8 +89,8 @@ func newStream(
 		onStreamCompletedImpl: func() {
 			s.completedMutex.Lock()
 			s.sendStreamCompleted = true
-			s.checkIfCompleted()
 			s.completedMutex.Unlock()
+			s.checkIfCompleted()
 		},
 		onHasStreamControlFrameImpl: func(id protocol.StreamID, str streamControlFrameGetter) {
 			sender.onHasStreamControlFrame(streamID, s)
@@ -99,8 +102,8 @@ func newStream(
 		onStreamCompletedImpl: func() {
 			s.completedMutex.Lock()
 			s.receiveStreamCompleted = true
-			s.checkIfCompleted()
 			s.completedMutex.Unlock()
+			s.checkIfCompleted()
 		},
 		onHasStreamControlFrameImpl: func(id protocol.StreamID, str streamControlFrameGetter) {
 			sender.onHasStreamControlFrame(streamID, s)
@@ -115,6 +118,24 @@ func newStream(
 func (s *Stream) StreamID() StreamID {
 	// the result is same for receiveStream and sendStream
 	return s.sendStr.StreamID()
+}
+
+// LocalAddr returns the local network address of the underlying QUIC connection.
+// It returns nil if the address is unavailable.
+func (s *Stream) LocalAddr() net.Addr {
+	if a, ok := s.sender.(interface{ LocalAddr() net.Addr }); ok {
+		return a.LocalAddr()
+	}
+	return nil
+}
+
+// RemoteAddr returns the remote network address of the underlying QUIC connection.
+// It returns nil if the address is unavailable.
+func (s *Stream) RemoteAddr() net.Addr {
+	if a, ok := s.sender.(interface{ RemoteAddr() net.Addr }); ok {
+		return a.RemoteAddr()
+	}
+	return nil
 }
 
 // SetPriority sets the scheduling priority for data sent on the stream.
@@ -192,10 +213,28 @@ func (s *Stream) Context() context.Context {
 	return s.sendStr.Context()
 }
 
+// FinalSize returns the receive side's final size in bytes, and true if known.
+func (s *Stream) FinalSize() (int64, bool) {
+	return s.receiveStr.FinalSize()
+}
+
 // Close closes the send-direction of the stream.
 // It does not close the receive-direction of the stream.
 func (s *Stream) Close() error {
 	return s.sendStr.Close()
+}
+
+// CloseWrite closes the send direction of the stream by sending a FIN.
+// It is an alias for [Stream.Close] matching [net.TCPConn.CloseWrite].
+func (s *Stream) CloseWrite() error {
+	return s.sendStr.Close()
+}
+
+// CloseRead closes the receive direction of the stream by canceling reading with code 0.
+// It matches [net.TCPConn.CloseRead].
+func (s *Stream) CloseRead() error {
+	s.receiveStr.CancelRead(0)
+	return nil
 }
 
 func (s *Stream) handleResetStreamFrame(frame *wire.ResetStreamFrame, rcvTime monotime.Time) error {
@@ -262,10 +301,14 @@ func (s *Stream) closeForShutdown(err error) {
 	s.receiveStr.closeForShutdown(err)
 }
 
-// checkIfCompleted is called from the uniStreamSender, when one of the stream halves is completed.
-// It makes sure that the onStreamCompleted callback is only called if both receive and send side have completed.
+// checkIfCompleted is called when one of the stream halves is completed.
+// It makes sure that the onStreamCompleted callback is only called if both receive and send side have completed,
+// and releases completedMutex before invoking the external callback to prevent lock nesting.
 func (s *Stream) checkIfCompleted() {
-	if s.sendStreamCompleted && s.receiveStreamCompleted {
+	s.completedMutex.Lock()
+	completed := s.sendStreamCompleted && s.receiveStreamCompleted
+	s.completedMutex.Unlock()
+	if completed {
 		s.sender.onStreamCompleted(s.StreamID())
 	}
 }

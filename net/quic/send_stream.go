@@ -8,6 +8,7 @@ package quic
 import (
 	"context"
 	"fmt"
+	"io"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -88,6 +89,7 @@ type SendStream struct {
 }
 
 var (
+	_ io.WriteCloser           = &SendStream{}
 	_ streamControlFrameGetter = &SendStream{}
 	_ outgoingStream           = &SendStream{}
 	_ sendStreamFrameHandler   = &SendStream{}
@@ -696,6 +698,12 @@ func (s *SendStream) Close() error {
 	s.ctxCancel(nil)
 
 	return nil
+}
+
+// CloseWrite closes the write-direction of the stream by sending a FIN.
+// It is an alias for [SendStream.Close] matching [net.TCPConn.CloseWrite].
+func (s *SendStream) CloseWrite() error {
+	return s.Close()
 }
 
 // SetReliableBoundary marks the data written to this stream so far as reliable.

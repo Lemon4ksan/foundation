@@ -5,11 +5,11 @@
 package qpack
 
 import (
+	"io"
 	"math"
 )
 
 // HeadersHandlerInterface receives decoded header block fields from the progressive decoder.
-// Direct 1:1 structural translation of Chromium's quiche::ProgressiveDecoder::HeadersHandlerInterface.
 type HeadersHandlerInterface interface {
 	// OnHeaderDecoded is called when a new header name-value pair is decoded.
 	// Multiple values for a given name will be emitted as multiple calls to OnHeaderDecoded.
@@ -25,7 +25,6 @@ type HeadersHandlerInterface interface {
 }
 
 // BlockedStreamLimitEnforcer keeps track of blocked streams for enforcing QPACK_BLOCKED_STREAMS.
-// Direct 1:1 structural translation of Chromium's quiche::ProgressiveDecoder::BlockedStreamLimitEnforcer.
 type BlockedStreamLimitEnforcer interface {
 	// OnStreamBlocked is called when the stream becomes blocked.
 	// Returns true if allowed, or false if the limit is violated.
@@ -36,14 +35,12 @@ type BlockedStreamLimitEnforcer interface {
 }
 
 // DecodingCompletedVisitor is notified when decoding of a header block is completed.
-// Direct 1:1 structural translation of Chromium's quiche::ProgressiveDecoder::DecodingCompletedVisitor.
 type DecodingCompletedVisitor interface {
 	// OnDecodingCompleted is called when decoding is completed with the block's Required Insert Count.
 	OnDecodingCompleted(streamID, requiredInsertCount uint64)
 }
 
-// ProgressiveDecoder decodes a single header block progressively.
-// Direct 1:1 structural translation of Chromium's quiche::ProgressiveDecoder.
+// ProgressiveDecoder decodes a single header block progressively (RFC 9204 §4.5).
 type ProgressiveDecoder struct {
 	streamID        uint64
 	maxBufferedData uint64
@@ -66,6 +63,7 @@ type ProgressiveDecoder struct {
 	decoding      bool
 	errorDetected bool
 	cancelled     bool
+	lastErr       error
 }
 
 // NewProgressiveDecoder creates a new progressive decoder for streamID.
@@ -123,6 +121,25 @@ func (d *ProgressiveDecoder) Decode(data []byte) {
 	} else {
 		d.instructionDecoder.Decode(data)
 	}
+}
+
+// Write implements io.Writer, feeding data into the progressive decoder.
+// Returns the number of bytes written, or (0, error) if decoding previously failed or fails during processing.
+func (d *ProgressiveDecoder) Write(p []byte) (n int, err error) {
+	if d.errorDetected {
+		if d.lastErr != nil {
+			return 0, d.lastErr
+		}
+		return 0, ErrDecompressionFailed
+	}
+	d.Decode(p)
+	if d.errorDetected {
+		if d.lastErr != nil {
+			return 0, d.lastErr
+		}
+		return 0, ErrDecompressionFailed
+	}
+	return len(p), nil
 }
 
 // EndHeaderBlock signals that the entire header block has been delivered.
@@ -197,8 +214,13 @@ func (d *ProgressiveDecoder) Cancel() {
 	d.cancelled = true
 }
 
-// Close unregisters observer if blocked, defensively cleaning up resources.
-func (d *ProgressiveDecoder) Close() {
+// Close implements io.Closer. If decoding is still active and the stream has not been cancelled,
+// it signals EndHeaderBlock(). If blocked, it unregisters table observers and unblocks stream tracking.
+// Returns an error if decompression failed.
+func (d *ProgressiveDecoder) Close() error {
+	if d.decoding && !d.cancelled && !d.blocked {
+		d.EndHeaderBlock()
+	}
 	if d.blocked {
 		if d.enforcer != nil {
 			d.enforcer.OnStreamUnblocked(d.streamID)
@@ -209,6 +231,18 @@ func (d *ProgressiveDecoder) Close() {
 		d.blocked = false
 		d.buffer = nil
 	}
+	if d.errorDetected {
+		if d.lastErr != nil {
+			return d.lastErr
+		}
+		return ErrDecompressionFailed
+	}
+	return nil
+}
+
+// Err returns the first error detected during decoding, or nil if no error occurred.
+func (d *ProgressiveDecoder) Err() error {
+	return d.lastErr
 }
 
 func (d *ProgressiveDecoder) doPrefixInstruction() bool {
@@ -416,6 +450,7 @@ func (d *ProgressiveDecoder) onError(errorCode uint64, errorMessage string) {
 		return
 	}
 	d.errorDetected = true
+	d.lastErr = NewError(ErrorCode(errorCode), errorMessage)
 	// Might destroy d synchronously in handler.
 	d.handler.OnDecodingErrorDetected(errorCode, errorMessage)
 }
@@ -438,4 +473,6 @@ func (d *ProgressiveDecoder) deltaBaseToBase(sign bool, deltaBase uint64) (uint6
 var (
 	_ InstructionDecoderDelegate = (*ProgressiveDecoder)(nil)
 	_ DecoderHeaderTableObserver = (*ProgressiveDecoder)(nil)
+	_ io.Writer                  = (*ProgressiveDecoder)(nil)
+	_ io.Closer                  = (*ProgressiveDecoder)(nil)
 )

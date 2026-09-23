@@ -12,15 +12,20 @@ import (
 )
 
 const (
-	NoCompression      = 0
-	BestSpeed          = 1
-	BestCompression    = 9
+	// NoCompression specifies that no compression should be applied, storing raw blocks.
+	NoCompression = 0
+	// BestSpeed compresses at the fastest speed (level 1).
+	BestSpeed = 1
+	// BestCompression compresses for maximum compression ratio (level 9).
+	BestCompression = 9
+	// DefaultCompression uses the standard balanced compression level (level -1).
 	DefaultCompression = -1
 
 	// HuffmanOnly disables Lempel-Ziv match searching and only performs Huffman
 	// entropy encoding for already compressed streams.
-	HuffmanOnly         = -2
-	ConstantCompression = HuffmanOnly // compatibility alias.
+	HuffmanOnly = -2
+	// ConstantCompression is a compatibility alias for HuffmanOnly.
+	ConstantCompression = HuffmanOnly
 
 	maxStoreBlockSize = 65535
 	debugDeflate      = false

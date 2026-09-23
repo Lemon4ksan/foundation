@@ -6,40 +6,40 @@ package qpack
 
 import "sync"
 
-// RFC 9204 and QUIC error codes associated with QPACK instructions.
+// Backward-compatible aliases for RFC 9204 and QUIC error codes.
 const (
-	QPACK_DECOMPRESSION_FAILED uint64 = 0x0200
-	QPACK_ENCODER_STREAM_ERROR uint64 = 0x0201
-	QPACK_DECODER_STREAM_ERROR uint64 = 0x0202
+	QPACK_DECOMPRESSION_FAILED = uint64(ErrCodeDecompressionFailed)
+	QPACK_ENCODER_STREAM_ERROR = uint64(ErrCodeEncoderStreamError)
+	QPACK_DECODER_STREAM_ERROR = uint64(ErrCodeDecoderStreamError)
 
-	QUIC_NO_ERROR       uint64 = 0
-	QUIC_INTERNAL_ERROR uint64 = 1
+	QUIC_NO_ERROR       = uint64(ErrCodeNoError)
+	QUIC_INTERNAL_ERROR = uint64(ErrCodeInternalError)
 
-	QUIC_QPACK_DECOMPRESSION_FAILED uint64 = 0x0200
+	QUIC_QPACK_DECOMPRESSION_FAILED = uint64(ErrCodeDecompressionFailed)
 
-	QUIC_QPACK_ENCODER_STREAM_INTEGER_TOO_LARGE                 uint64 = 174
-	QUIC_QPACK_ENCODER_STREAM_STRING_LITERAL_TOO_LONG           uint64 = 175
-	QUIC_QPACK_ENCODER_STREAM_HUFFMAN_ENCODING_ERROR            uint64 = 176
-	QUIC_QPACK_ENCODER_STREAM_INVALID_STATIC_ENTRY              uint64 = 177
-	QUIC_QPACK_ENCODER_STREAM_ERROR_INSERTING_STATIC            uint64 = 178
-	QUIC_QPACK_ENCODER_STREAM_INSERTION_INVALID_RELATIVE_INDEX  uint64 = 179
-	QUIC_QPACK_ENCODER_STREAM_INSERTION_DYNAMIC_ENTRY_NOT_FOUND uint64 = 180
-	QUIC_QPACK_ENCODER_STREAM_ERROR_INSERTING_DYNAMIC           uint64 = 181
-	QUIC_QPACK_ENCODER_STREAM_ERROR_INSERTING_LITERAL           uint64 = 182
-	QUIC_QPACK_ENCODER_STREAM_DUPLICATE_INVALID_RELATIVE_INDEX  uint64 = 183
-	QUIC_QPACK_ENCODER_STREAM_DUPLICATE_DYNAMIC_ENTRY_NOT_FOUND uint64 = 184
-	QUIC_QPACK_ENCODER_STREAM_SET_DYNAMIC_TABLE_CAPACITY        uint64 = 185
-	QUIC_QPACK_DECODER_STREAM_INTEGER_TOO_LARGE                 uint64 = 186
-	QUIC_QPACK_DECODER_STREAM_INVALID_ZERO_INCREMENT            uint64 = 187
-	QUIC_QPACK_DECODER_STREAM_INCREMENT_OVERFLOW                uint64 = 188
-	QUIC_QPACK_DECODER_STREAM_IMPOSSIBLE_INSERT_COUNT           uint64 = 189
-	QUIC_QPACK_DECODER_STREAM_INCORRECT_ACKNOWLEDGEMENT         uint64 = 190
+	QUIC_QPACK_ENCODER_STREAM_INTEGER_TOO_LARGE                 = uint64(ErrCodeEncoderIntegerTooLarge)
+	QUIC_QPACK_ENCODER_STREAM_STRING_LITERAL_TOO_LONG           = uint64(ErrCodeEncoderStringLiteralTooLong)
+	QUIC_QPACK_ENCODER_STREAM_HUFFMAN_ENCODING_ERROR            = uint64(ErrCodeEncoderHuffmanEncodingError)
+	QUIC_QPACK_ENCODER_STREAM_INVALID_STATIC_ENTRY              = uint64(ErrCodeEncoderInvalidStaticEntry)
+	QUIC_QPACK_ENCODER_STREAM_ERROR_INSERTING_STATIC            = uint64(ErrCodeEncoderErrorInsertingStatic)
+	QUIC_QPACK_ENCODER_STREAM_INSERTION_INVALID_RELATIVE_INDEX  = uint64(ErrCodeEncoderInsertionInvalidRelativeIndex)
+	QUIC_QPACK_ENCODER_STREAM_INSERTION_DYNAMIC_ENTRY_NOT_FOUND = uint64(ErrCodeEncoderInsertionDynamicEntryNotFound)
+	QUIC_QPACK_ENCODER_STREAM_ERROR_INSERTING_DYNAMIC           = uint64(ErrCodeEncoderErrorInsertingDynamic)
+	QUIC_QPACK_ENCODER_STREAM_ERROR_INSERTING_LITERAL           = uint64(ErrCodeEncoderErrorInsertingLiteral)
+	QUIC_QPACK_ENCODER_STREAM_DUPLICATE_INVALID_RELATIVE_INDEX  = uint64(ErrCodeEncoderDuplicateInvalidRelativeIndex)
+	QUIC_QPACK_ENCODER_STREAM_DUPLICATE_DYNAMIC_ENTRY_NOT_FOUND = uint64(ErrCodeEncoderDuplicateDynamicEntryNotFound)
+	QUIC_QPACK_ENCODER_STREAM_SET_DYNAMIC_TABLE_CAPACITY        = uint64(ErrCodeEncoderSetDynamicTableCapacity)
+	QUIC_QPACK_DECODER_STREAM_INTEGER_TOO_LARGE                 = uint64(ErrCodeDecoderIntegerTooLarge)
+	QUIC_QPACK_DECODER_STREAM_INVALID_ZERO_INCREMENT            = uint64(ErrCodeDecoderInvalidZeroIncrement)
+	QUIC_QPACK_DECODER_STREAM_INCREMENT_OVERFLOW                = uint64(ErrCodeDecoderIncrementOverflow)
+	QUIC_QPACK_DECODER_STREAM_IMPOSSIBLE_INSERT_COUNT           = uint64(ErrCodeDecoderImpossibleInsertCount)
+	QUIC_QPACK_DECODER_STREAM_INCORRECT_ACKNOWLEDGEMENT         = uint64(ErrCodeDecoderIncorrectAcknowledgement)
 )
 
 // InstructionOpcode represents the bitmask and value identifying an instruction in the first byte.
 // |Mask| determines which bits are part of the opcode.
 // |Value| is the expected value of those bits (all other bits must be zero).
-// Direct 1:1 structural translation of Chromium's quiche::InstructionOpcode.
+// Follows RFC 9204 instruction wire format definitions.
 type InstructionOpcode struct {
 	Value byte
 	Mask  byte
@@ -50,7 +50,7 @@ func (o InstructionOpcode) Equal(other InstructionOpcode) bool {
 }
 
 // InstructionFieldType identifies the type of an instruction field.
-// Direct 1:1 translation of Chromium's quiche::InstructionFieldType.
+// Follows RFC 9204 stream instruction field definitions.
 type InstructionFieldType int
 
 const (
@@ -71,14 +71,13 @@ const (
 // For kVarint / kVarint2: param is prefix length in bits (1..8).
 // For kName / kValue: param is prefix length of string length varint.
 // The bit immediately preceding the prefix is interpreted as the Huffman flag.
-// Direct 1:1 translation of Chromium's quiche::InstructionField.
 type InstructionField struct {
 	Type  InstructionFieldType
 	Param uint8
 }
 
 // Instruction consists of an opcode followed by an ordered list of fields.
-// Direct 1:1 translation of Chromium's quiche::Instruction.
+// Follows RFC 9204 wire format specification.
 type Instruction struct {
 	Opcode InstructionOpcode
 	Fields []InstructionField
@@ -86,7 +85,6 @@ type Instruction struct {
 
 // Language represents a complete stream grammar.
 // In a valid language, every byte from 0 to 255 matches exactly one instruction opcode.
-// Direct 1:1 translation of Chromium's quiche::Language.
 type Language []*Instruction
 
 // Instructions returns the underlying slice of instructions.
@@ -98,7 +96,7 @@ func (l *Language) Instructions() []*Instruction {
 }
 
 // -----------------------------------------------------------------------------
-// Singleton Instructions (13 Total per RFC 9204 / Chromium)
+// Singleton Instructions (13 Total per RFC 9204)
 // -----------------------------------------------------------------------------
 
 var (
@@ -370,7 +368,7 @@ func RequestStreamLanguage() *Language {
 // -----------------------------------------------------------------------------
 
 // InstructionWithValues holds an instruction grammar reference and bound field values.
-// Direct 1:1 translation of Chromium's quiche::InstructionWithValues.
+// Follows RFC 9204 instruction definitions.
 type InstructionWithValues struct {
 	instruction *Instruction
 	sBit        bool

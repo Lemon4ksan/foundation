@@ -6,7 +6,9 @@
 package quic
 
 import (
+	"errors"
 	"fmt"
+	"net"
 
 	"github.com/lemon4ksan/foundation/net/quic/internal/qerr"
 )
@@ -76,6 +78,23 @@ const (
 	NoViablePathError = qerr.NoViablePathError
 )
 
+var (
+	// ErrConnectionClosed is returned when an operation is attempted on a closed connection.
+	ErrConnectionClosed = qerr.ErrConnectionClosed
+
+	// ErrStreamReset is returned when a stream was canceled or reset by the peer or locally.
+	ErrStreamReset = errors.New("quic: stream reset")
+
+	// ErrTimeout indicates a connection or handshake idle timeout.
+	ErrTimeout = qerr.ErrTimeout
+
+	// ErrStreamLimitReached is returned when no more streams can be opened due to peer limit.
+	ErrStreamLimitReached = &StreamLimitReachedError{}
+
+	// ErrDeadline is returned when a stream read or write deadline is exceeded.
+	ErrDeadline = errDeadline
+)
+
 // A StreamError is used to signal stream cancellations.
 // It can be returned by stream methods such as [ReceiveStream.Read], [SendStream.Write],
 // [Stream.Read], and [Stream.Write].
@@ -85,9 +104,21 @@ type StreamError struct {
 	Remote    bool
 }
 
+func (e *StreamError) Unwrap() []error {
+	return []error{ErrStreamReset, net.ErrClosed}
+}
+
 func (e *StreamError) Is(target error) bool {
-	t, ok := target.(*StreamError)
-	return ok && e.StreamID == t.StreamID && e.ErrorCode == t.ErrorCode && e.Remote == t.Remote
+	if target == ErrStreamReset || target == net.ErrClosed {
+		return true
+	}
+	if t, ok := target.(*StreamError); ok {
+		if t.StreamID == 0 && t.ErrorCode == 0 && !t.Remote {
+			return true
+		}
+		return e.StreamID == t.StreamID && e.ErrorCode == t.ErrorCode && e.Remote == t.Remote
+	}
+	return false
 }
 
 func (e *StreamError) Error() string {

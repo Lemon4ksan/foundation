@@ -12,10 +12,12 @@ package shuffle
 
 import "errors"
 
-// Standard element widths in bytes.
 const (
+	// WidthFP16 represents a 2-byte (16-bit half-precision floating point / BF16) element width.
 	WidthFP16 = 2
+	// WidthFP32 represents a 4-byte (32-bit single-precision floating point) element width.
 	WidthFP32 = 4
+	// WidthFP64 represents an 8-byte (64-bit double-precision floating point) element width.
 	WidthFP64 = 8
 )
 

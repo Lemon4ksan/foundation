@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"iter"
 )
 
 // Reader implements both the io.ByteReader and io.Reader interfaces.
@@ -109,4 +110,25 @@ func NewWriter(w io.Writer) Writer {
 func (w *byteWriter) WriteByte(c byte) error {
 	_, err := w.Write([]byte{c})
 	return err
+}
+
+// ReadSeq returns a push iterator reading successive QUIC varints from r.
+// It yields (value, nil) until r reaches io.EOF (which cleanly terminates iteration).
+// If a non-EOF error occurs, it yields (0, err) and terminates.
+func ReadSeq(r io.ByteReader) iter.Seq2[uint64, error] {
+	return func(yield func(uint64, error) bool) {
+		for {
+			val, err := Read(r)
+			if err != nil {
+				if errors.Is(err, io.EOF) {
+					return
+				}
+				yield(0, err)
+				return
+			}
+			if !yield(val, nil) {
+				return
+			}
+		}
+	}
 }

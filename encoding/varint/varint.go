@@ -6,6 +6,7 @@
 package varint
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"iter"
@@ -52,6 +53,9 @@ func Read(r io.ByteReader) (uint64, error) {
 
 	b2, err := r.ReadByte()
 	if err != nil {
+		if errors.Is(err, io.EOF) {
+			return 0, io.ErrUnexpectedEOF
+		}
 		return 0, err
 	}
 
@@ -61,11 +65,17 @@ func Read(r io.ByteReader) (uint64, error) {
 
 	b3, err := r.ReadByte()
 	if err != nil {
+		if errors.Is(err, io.EOF) {
+			return 0, io.ErrUnexpectedEOF
+		}
 		return 0, err
 	}
 
 	b4, err := r.ReadByte()
 	if err != nil {
+		if errors.Is(err, io.EOF) {
+			return 0, io.ErrUnexpectedEOF
+		}
 		return 0, err
 	}
 
@@ -75,21 +85,33 @@ func Read(r io.ByteReader) (uint64, error) {
 
 	b5, err := r.ReadByte()
 	if err != nil {
+		if errors.Is(err, io.EOF) {
+			return 0, io.ErrUnexpectedEOF
+		}
 		return 0, err
 	}
 
 	b6, err := r.ReadByte()
 	if err != nil {
+		if errors.Is(err, io.EOF) {
+			return 0, io.ErrUnexpectedEOF
+		}
 		return 0, err
 	}
 
 	b7, err := r.ReadByte()
 	if err != nil {
+		if errors.Is(err, io.EOF) {
+			return 0, io.ErrUnexpectedEOF
+		}
 		return 0, err
 	}
 
 	b8, err := r.ReadByte()
 	if err != nil {
+		if errors.Is(err, io.EOF) {
+			return 0, io.ErrUnexpectedEOF
+		}
 		return 0, err
 	}
 
@@ -242,6 +264,23 @@ func DecodeSeq(b []byte) iter.Seq2[uint64, int] {
 				return
 			}
 			if !yield(val, readLen) {
+				return
+			}
+			b = b[readLen:]
+		}
+	}
+}
+
+// Values returns a push iterator yielding successive decoded varint values from b without length metadata.
+// Iteration stops upon reaching the end of the slice or upon encountering an error.
+func Values(b []byte) iter.Seq[uint64] {
+	return func(yield func(uint64) bool) {
+		for len(b) > 0 {
+			val, readLen, err := Parse(b)
+			if err != nil {
+				return
+			}
+			if !yield(val) {
 				return
 			}
 			b = b[readLen:]

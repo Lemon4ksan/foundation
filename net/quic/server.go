@@ -10,6 +10,7 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"errors"
+	"iter"
 	"net"
 	"sync/atomic"
 
@@ -42,7 +43,9 @@ var _ packetHandler = &Listener{}
 func ListenAddr(addr string, tlsConf *tls.Config, opts ...Option) (*Listener, error) {
 	conf := &Config{}
 	for _, opt := range opts {
-		opt(conf)
+		if opt != nil {
+			opt(conf)
+		}
 	}
 
 	udpAddr, err := net.ResolveUDPAddr("udp", addr)
@@ -137,6 +140,97 @@ func (l *Listener) Accept(ctx context.Context) (*Conn, error) {
 	case conn := <-l.connChan:
 		return conn, nil
 	}
+}
+
+// Incoming returns an iterator yielding newly accepted QUIC connections
+// until ctx is canceled or the listener is closed.
+func (l *Listener) Incoming(ctx context.Context) iter.Seq2[*Conn, error] {
+	return func(yield func(*Conn, error) bool) {
+		for {
+			conn, err := l.Accept(ctx)
+			if !yield(conn, err) || err != nil {
+				return
+			}
+		}
+	}
+}
+
+// NetListener returns a net.Listener where Accept yields incoming bidirectional streams
+// accepted from incoming QUIC connections.
+func (l *Listener) NetListener(ctx context.Context) net.Listener {
+	return newQUICNetListener(l, ctx)
+}
+
+type quicNetListener struct {
+	listener   *Listener
+	ctx        context.Context
+	cancel     context.CancelFunc
+	streamChan chan net.Conn
+	errChan    chan error
+}
+
+var _ net.Listener = &quicNetListener{}
+
+func newQUICNetListener(ln *Listener, ctx context.Context) *quicNetListener {
+	ctx, cancel := context.WithCancel(ctx)
+	nl := &quicNetListener{
+		listener:   ln,
+		ctx:        ctx,
+		cancel:     cancel,
+		streamChan: make(chan net.Conn, 32),
+		errChan:    make(chan error, 1),
+	}
+
+	go nl.run()
+
+	return nl
+}
+
+func (nl *quicNetListener) run() {
+	for {
+		conn, err := nl.listener.Accept(nl.ctx)
+		if err != nil {
+			select {
+			case nl.errChan <- err:
+			default:
+			}
+			return
+		}
+
+		go func(c *Conn) {
+			for {
+				str, err := c.AcceptStream(nl.ctx)
+				if err != nil {
+					return
+				}
+				select {
+				case nl.streamChan <- str:
+				case <-nl.ctx.Done():
+					return
+				}
+			}
+		}(conn)
+	}
+}
+
+func (nl *quicNetListener) Accept() (net.Conn, error) {
+	select {
+	case <-nl.ctx.Done():
+		return nil, nl.ctx.Err()
+	case str := <-nl.streamChan:
+		return str, nil
+	case err := <-nl.errChan:
+		return nil, err
+	}
+}
+
+func (nl *quicNetListener) Close() error {
+	nl.cancel()
+	return nil
+}
+
+func (nl *quicNetListener) Addr() net.Addr {
+	return nl.listener.Addr()
 }
 
 // Addr returns the listener's network address.

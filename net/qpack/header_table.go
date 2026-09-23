@@ -18,7 +18,15 @@ func (rb *qpackRingBuffer) size() int {
 	return rb.count
 }
 
+func (rb *qpackRingBuffer) Len() int {
+	return rb.count
+}
+
 func (rb *qpackRingBuffer) empty() bool {
+	return rb.count == 0
+}
+
+func (rb *qpackRingBuffer) IsEmpty() bool {
 	return rb.count == 0
 }
 
@@ -29,12 +37,20 @@ func (rb *qpackRingBuffer) front() *Entry {
 	return rb.entries[rb.head]
 }
 
+func (rb *qpackRingBuffer) Front() *Entry {
+	return rb.front()
+}
+
 func (rb *qpackRingBuffer) at(offset int) *Entry {
 	if offset < 0 || offset >= rb.count {
 		return nil
 	}
 	idx := (rb.head + offset) % len(rb.entries)
 	return rb.entries[idx]
+}
+
+func (rb *qpackRingBuffer) At(offset int) *Entry {
+	return rb.at(offset)
 }
 
 func (rb *qpackRingBuffer) pushBack(entry *Entry) {
@@ -56,6 +72,10 @@ func (rb *qpackRingBuffer) pushBack(entry *Entry) {
 	rb.count++
 }
 
+func (rb *qpackRingBuffer) PushBack(entry *Entry) {
+	rb.pushBack(entry)
+}
+
 func (rb *qpackRingBuffer) popFront() *Entry {
 	if rb.count == 0 {
 		return nil
@@ -65,6 +85,10 @@ func (rb *qpackRingBuffer) popFront() *Entry {
 	rb.head = (rb.head + 1) % len(rb.entries)
 	rb.count--
 	return entry
+}
+
+func (rb *qpackRingBuffer) PopFront() *Entry {
+	return rb.popFront()
 }
 
 // HeaderTableBase is the base struct for encoder and decoder dynamic header tables.
@@ -217,9 +241,13 @@ const (
 	MatchNoMatch      = MatchTypeNoMatch
 	MatchName         = MatchTypeName
 	MatchNameAndValue = MatchTypeNameAndValue
-	KNoMatch          = MatchTypeNoMatch
-	KName             = MatchTypeName
-	KNameAndValue     = MatchTypeNameAndValue
+
+	// Deprecated: use MatchTypeNoMatch.
+	KNoMatch = MatchTypeNoMatch
+	// Deprecated: use MatchTypeName.
+	KName = MatchTypeName
+	// Deprecated: use MatchTypeNameAndValue.
+	KNameAndValue = MatchTypeNameAndValue
 )
 
 // MatchResult describes the result of a header lookup.
@@ -388,6 +416,22 @@ func (t *EncoderHeaderTable) DrainingIndex(drainingFraction float64) uint64 {
 	return t.InsertedEntryCount()
 }
 
+// Entries returns an iterator over dynamic table entries with their absolute index.
+// Yields (absoluteIndex, *Entry) for each active dynamic entry in ascending order.
+// Supports early termination when yield returns false.
+// Executes with zero heap allocations.
+func (t *EncoderHeaderTable) Entries() iter.Seq2[uint64, *Entry] {
+	return func(yield func(uint64, *Entry) bool) {
+		idx := t.droppedEntryCount
+		for entry := range t.dynamicEntries.Entries() {
+			if !yield(idx, entry) {
+				return
+			}
+			idx++
+		}
+	}
+}
+
 // DecoderHeaderTableObserver is notified when the dynamic table insert count
 // reaches a specified threshold, or when the table is cancelled/destroyed.
 type DecoderHeaderTableObserver interface {
@@ -495,6 +539,22 @@ func (t *DecoderHeaderTable) LookupEntry(isStatic bool, index uint64) *Entry {
 	}
 
 	return t.dynamicEntries.at(int(offset))
+}
+
+// Entries returns an iterator over dynamic table entries with their absolute index.
+// Yields (absoluteIndex, *Entry) for each active dynamic entry in ascending order.
+// Supports early termination when yield returns false.
+// Executes with zero heap allocations.
+func (t *DecoderHeaderTable) Entries() iter.Seq2[uint64, *Entry] {
+	return func(yield func(uint64, *Entry) bool) {
+		idx := t.droppedEntryCount
+		for entry := range t.dynamicEntries.Entries() {
+			if !yield(idx, entry) {
+				return
+			}
+			idx++
+		}
+	}
 }
 
 var staticEntries [99]Entry

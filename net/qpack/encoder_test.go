@@ -16,7 +16,10 @@ import (
 // A number larger than maxBytesBufferedByStream (64KB).
 // Returning this value from NumBytesBuffered() will instruct Encoder
 // not to generate any instructions for the encoder stream.
-const kTooManyBytesBuffered uint64 = 1024 * 1024
+const (
+	tooManyBytesBuffered  uint64 = 1024 * 1024
+	kTooManyBytesBuffered        = tooManyBytesBuffered
+)
 
 // mockDecoderStreamErrorDelegate records invocations of OnDecoderStreamError.
 type decoderStreamErrorCall struct {

@@ -18,12 +18,18 @@ import (
 // These constants are copied from the flate package, so that code that imports
 // "compress/gzip" does not also have to import "compress/flate".
 const (
-	NoCompression       = flate.NoCompression
-	BestSpeed           = flate.BestSpeed
-	BestCompression     = flate.BestCompression
-	DefaultCompression  = flate.DefaultCompression
+	// NoCompression specifies that no compression should be applied, storing raw blocks.
+	NoCompression = flate.NoCompression
+	// BestSpeed compresses at the fastest speed (level 1).
+	BestSpeed = flate.BestSpeed
+	// BestCompression compresses for maximum compression ratio (level 9).
+	BestCompression = flate.BestCompression
+	// DefaultCompression uses the standard balanced compression level (level -1).
+	DefaultCompression = flate.DefaultCompression
+	// ConstantCompression is a compatibility alias for HuffmanOnly.
 	ConstantCompression = flate.ConstantCompression
-	HuffmanOnly         = flate.HuffmanOnly
+	// HuffmanOnly disables Lempel-Ziv match searching and only performs Huffman entropy encoding.
+	HuffmanOnly = flate.HuffmanOnly
 
 	// StatelessCompression will do compression but without maintaining any state
 	// between Write calls.

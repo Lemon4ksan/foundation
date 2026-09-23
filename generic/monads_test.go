@@ -6,6 +6,7 @@ package generic
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"testing"
@@ -391,4 +392,172 @@ func TestEither(t *testing.T) {
 
 	valRight := FoldMap(r, func(s string) int { return len(s) }, func(i int) int { return i * 2 })
 	assert.Equal(t, 200, valRight)
+}
+
+func TestOptional_JSON_Marshal(t *testing.T) {
+	// Some primitive values
+	sSome := Some("hello")
+	b, err := json.Marshal(sSome)
+	assert.Nil(t, err)
+	assert.Equal(t, `"hello"`, string(b))
+
+	iSome := Some(42)
+	b, err = json.Marshal(iSome)
+	assert.Nil(t, err)
+	assert.Equal(t, `42`, string(b))
+
+	bSome := Some(false)
+	b, err = json.Marshal(bSome)
+	assert.Nil(t, err)
+	assert.Equal(t, `false`, string(b))
+
+	emptyStrSome := Some("")
+	b, err = json.Marshal(emptyStrSome)
+	assert.Nil(t, err)
+	assert.Equal(t, `""`, string(b))
+
+	zeroIntSome := Some(0)
+	b, err = json.Marshal(zeroIntSome)
+	assert.Nil(t, err)
+	assert.Equal(t, `0`, string(b))
+
+	// None values
+	sNone := None[string]()
+	b, err = json.Marshal(sNone)
+	assert.Nil(t, err)
+	assert.Equal(t, `null`, string(b))
+
+	iNone := None[int]()
+	b, err = json.Marshal(iNone)
+	assert.Nil(t, err)
+	assert.Equal(t, `null`, string(b))
+
+	// Zero allocations check for None MarshalJSON
+	allocs := testing.AllocsPerRun(1000, func() {
+		b, _ = sNone.MarshalJSON()
+	})
+	assert.Equal(t, float64(0), allocs)
+}
+
+func TestOptional_JSON_Unmarshal(t *testing.T) {
+	// Unmarshal explicit values
+	var sOpt Optional[string]
+	err := json.Unmarshal([]byte(`"hello"`), &sOpt)
+	assert.Nil(t, err)
+	assert.True(t, sOpt.IsPresent())
+	assert.Equal(t, "hello", sOpt.MustValue())
+
+	// Unmarshal explicit empty string
+	err = json.Unmarshal([]byte(`""`), &sOpt)
+	assert.Nil(t, err)
+	assert.True(t, sOpt.IsPresent())
+	assert.Equal(t, "", sOpt.MustValue())
+
+	// Unmarshal explicit 0
+	var iOpt Optional[int]
+	err = json.Unmarshal([]byte(`0`), &iOpt)
+	assert.Nil(t, err)
+	assert.True(t, iOpt.IsPresent())
+	assert.Equal(t, 0, iOpt.MustValue())
+
+	// Unmarshal explicit false
+	var bOpt Optional[bool]
+	err = json.Unmarshal([]byte(`false`), &bOpt)
+	assert.Nil(t, err)
+	assert.True(t, bOpt.IsPresent())
+	assert.Equal(t, false, bOpt.MustValue())
+
+	// Unmarshal null resetting existing value
+	sOpt = Some("previous")
+	err = json.Unmarshal([]byte(`null`), &sOpt)
+	assert.Nil(t, err)
+	assert.False(t, sOpt.IsPresent())
+	v, ok := sOpt.Value()
+	assert.False(t, ok)
+	assert.Equal(t, "", v)
+
+	// Unmarshal whitespace padded null
+	sOpt = Some("previous")
+	err = json.Unmarshal([]byte("  null \n\t"), &sOpt)
+	assert.Nil(t, err)
+	assert.False(t, sOpt.IsPresent())
+
+	// Unmarshal empty byte slice
+	sOpt = Some("previous")
+	err = sOpt.UnmarshalJSON([]byte(""))
+	assert.Nil(t, err)
+	assert.False(t, sOpt.IsPresent())
+
+	// Zero allocations check for null UnmarshalJSON
+	nullData := []byte("null")
+	allocs := testing.AllocsPerRun(1000, func() {
+		_ = sOpt.UnmarshalJSON(nullData)
+	})
+	assert.Equal(t, float64(0), allocs)
+
+	// Error on nil pointer receiver
+	var nilOpt *Optional[string]
+	err = nilOpt.UnmarshalJSON([]byte(`"hello"`))
+	assert.NotNil(t, err)
+	assert.True(t, errors.Is(err, ErrNilOptional))
+
+	// Error preservation: invalid JSON should not corrupt existing value
+	sOpt = Some("preserve_me")
+	err = json.Unmarshal([]byte(`{"invalid`), &sOpt)
+	assert.NotNil(t, err)
+	assert.True(t, sOpt.IsPresent())
+	assert.Equal(t, "preserve_me", sOpt.MustValue())
+
+	// Type mismatch error
+	err = json.Unmarshal([]byte(`"not-an-int"`), &iOpt)
+	assert.NotNil(t, err)
+}
+
+func TestOptional_IsZero_And_OmitZero(t *testing.T) {
+	// Direct IsZero checks
+	assert.True(t, None[string]().IsZero())
+	assert.True(t, None[int]().IsZero())
+	assert.False(t, Some("").IsZero())
+	assert.False(t, Some(0).IsZero())
+	assert.False(t, Some(false).IsZero())
+	assert.False(t, Some("text").IsZero())
+
+	// Allocation check for IsZero
+	allocs := testing.AllocsPerRun(1000, func() {
+		_ = None[string]().IsZero()
+	})
+	assert.Equal(t, float64(0), allocs)
+
+	// Struct integration with omitzero tag
+	type TestDTO struct {
+		Name   Optional[string] `json:"name,omitzero"`
+		Count  Optional[int]    `json:"count,omitzero"`
+		Active Optional[bool]   `json:"active,omitzero"`
+	}
+
+	// 1. All unset -> completely omitted
+	dtoEmpty := TestDTO{}
+	b, err := json.Marshal(dtoEmpty)
+	assert.Nil(t, err)
+	assert.Equal(t, "{}", string(b))
+
+	// 2. Explicit zero values -> retained in JSON
+	dtoZeros := TestDTO{
+		Name:   Some(""),
+		Count:  Some(0),
+		Active: Some(false),
+	}
+	b, err = json.Marshal(dtoZeros)
+	assert.Nil(t, err)
+	assert.Equal(t, `{"name":"","count":0,"active":false}`, string(b))
+
+	// 3. Normal values -> serialized cleanly
+	dtoValues := TestDTO{
+		Name:   Some("alice"),
+		Count:  Some(10),
+		Active: Some(true),
+	}
+	b, err = json.Marshal(dtoValues)
+	assert.Nil(t, err)
+	assert.Equal(t, `{"name":"alice","count":10,"active":true}`, string(b))
 }

@@ -5,6 +5,7 @@
 package qerr
 
 import (
+	"errors"
 	"fmt"
 	"net"
 
@@ -12,6 +13,8 @@ import (
 )
 
 var (
+	ErrConnectionClosed = errors.New("quic: connection closed")
+	ErrTimeout          = errors.New("quic: timeout")
 	ErrHandshakeTimeout = &HandshakeTimeoutError{}
 	ErrIdleTimeout      = &IdleTimeoutError{}
 )
@@ -56,9 +59,14 @@ func (e *TransportError) Error() string {
 	return str + ": " + msg
 }
 
-func (e *TransportError) Unwrap() []error { return []error{net.ErrClosed, e.error} }
+func (e *TransportError) Unwrap() []error {
+	return []error{ErrConnectionClosed, net.ErrClosed, e.error}
+}
 
 func (e *TransportError) Is(target error) bool {
+	if target == ErrConnectionClosed || target == net.ErrClosed {
+		return true
+	}
 	t, ok := target.(*TransportError)
 	return ok && e.ErrorCode == t.ErrorCode && e.FrameType == t.FrameType && e.Remote == t.Remote
 }
@@ -85,9 +93,12 @@ func (e *ApplicationError) Error() string {
 	return fmt.Sprintf("Application error %#x (%s): %s", e.ErrorCode, getRole(e.Remote), e.ErrorMessage)
 }
 
-func (e *ApplicationError) Unwrap() error { return net.ErrClosed }
+func (e *ApplicationError) Unwrap() []error { return []error{ErrConnectionClosed, net.ErrClosed} }
 
 func (e *ApplicationError) Is(target error) bool {
+	if target == ErrConnectionClosed || target == net.ErrClosed {
+		return true
+	}
 	t, ok := target.(*ApplicationError)
 	return ok && e.ErrorCode == t.ErrorCode && e.Remote == t.Remote
 }
@@ -99,7 +110,15 @@ var _ error = &IdleTimeoutError{}
 func (e *IdleTimeoutError) Timeout() bool   { return true }
 func (e *IdleTimeoutError) Temporary() bool { return false }
 func (e *IdleTimeoutError) Error() string   { return "timeout: no recent network activity" }
-func (e *IdleTimeoutError) Unwrap() error   { return net.ErrClosed }
+func (e *IdleTimeoutError) Unwrap() []error { return []error{ErrTimeout, net.ErrClosed} }
+
+func (e *IdleTimeoutError) Is(target error) bool {
+	if target == ErrTimeout || target == ErrIdleTimeout || target == net.ErrClosed {
+		return true
+	}
+	_, ok := target.(*IdleTimeoutError)
+	return ok
+}
 
 type HandshakeTimeoutError struct{}
 
@@ -108,7 +127,15 @@ var _ error = &HandshakeTimeoutError{}
 func (e *HandshakeTimeoutError) Timeout() bool   { return true }
 func (e *HandshakeTimeoutError) Temporary() bool { return false }
 func (e *HandshakeTimeoutError) Error() string   { return "timeout: handshake did not complete in time" }
-func (e *HandshakeTimeoutError) Unwrap() error   { return net.ErrClosed }
+func (e *HandshakeTimeoutError) Unwrap() []error { return []error{ErrTimeout, net.ErrClosed} }
+
+func (e *HandshakeTimeoutError) Is(target error) bool {
+	if target == ErrTimeout || target == ErrHandshakeTimeout || target == net.ErrClosed {
+		return true
+	}
+	_, ok := target.(*HandshakeTimeoutError)
+	return ok
+}
 
 // A VersionNegotiationError occurs when the client and the server can't agree on a QUIC version.
 type VersionNegotiationError struct {
@@ -120,7 +147,17 @@ func (e *VersionNegotiationError) Error() string {
 	return fmt.Sprintf("no compatible QUIC version found (we support %s, server offered %s)", e.Ours, e.Theirs)
 }
 
-func (e *VersionNegotiationError) Unwrap() error { return net.ErrClosed }
+func (e *VersionNegotiationError) Unwrap() []error {
+	return []error{ErrConnectionClosed, net.ErrClosed}
+}
+
+func (e *VersionNegotiationError) Is(target error) bool {
+	if target == ErrConnectionClosed || target == net.ErrClosed {
+		return true
+	}
+	_, ok := target.(*VersionNegotiationError)
+	return ok
+}
 
 // A StatelessResetError occurs when we receive a stateless reset.
 type StatelessResetError struct{}
@@ -131,7 +168,15 @@ func (e *StatelessResetError) Error() string {
 	return "received a stateless reset"
 }
 
-func (e *StatelessResetError) Unwrap() error   { return net.ErrClosed }
+func (e *StatelessResetError) Unwrap() []error { return []error{ErrConnectionClosed, net.ErrClosed} }
+
+func (e *StatelessResetError) Is(target error) bool {
+	if target == ErrConnectionClosed || target == net.ErrClosed {
+		return true
+	}
+	_, ok := target.(*StatelessResetError)
+	return ok
+}
 func (e *StatelessResetError) Timeout() bool   { return false }
 func (e *StatelessResetError) Temporary() bool { return true }
 

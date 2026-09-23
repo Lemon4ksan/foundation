@@ -6,7 +6,7 @@ import "fmt"
 // the LZ77 compression. Matches are replaced with <Length,Distance> symbols.
 type TextEncoder struct{}
 
-func (t TextEncoder) Reset() {}
+func (t TextEncoder) Reset() { return }
 
 func (t TextEncoder) Encode(dst, src []byte, matches []Match, lastBlock bool) []byte {
 	pos := 0
@@ -31,7 +31,7 @@ func (t TextEncoder) Encode(dst, src []byte, matches []Match, lastBlock bool) []
 // HuffmanOnly setting.
 type NoMatchFinder struct{}
 
-func (n NoMatchFinder) Reset() {}
+func (n NoMatchFinder) Reset() { return }
 
 func (n NoMatchFinder) FindMatches(dst []Match, src []byte) []Match {
 	return append(dst, Match{

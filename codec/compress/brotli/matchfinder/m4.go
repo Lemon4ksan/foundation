@@ -287,6 +287,8 @@ func (q *M4) FindMatches(dst []Match, src []byte) []Match {
 
 const hashMul64 = 0x1E35A7BD1E35A7BD
 
+var matchFinderArch = runtime.GOARCH
+
 // extendMatch returns the largest k such that k <= len(src) and that
 // src[i:i+k-j] and src[j:k] have the same contents.
 //
@@ -294,7 +296,7 @@ const hashMul64 = 0x1E35A7BD1E35A7BD
 //
 //	0 <= i && i < j && j <= len(src)
 func extendMatch(src []byte, i, j int) int {
-	switch runtime.GOARCH {
+	switch matchFinderArch {
 	case "amd64", "arm64":
 		// As long as we are 8 or more bytes before the end of src, we can load and
 		// compare 8 bytes at a time. If those 8 bytes are equal, repeat.

@@ -4,12 +4,13 @@
 
 package qpack
 
+import "iter"
+
 // EncoderStreamErrorHandler receives notifications of fatal errors on the encoder stream.
 type EncoderStreamErrorHandler func(errorCode uint64, errorMessage string)
 
-// Decoder decodes QPACK header blocks and manages dynamic table state.
+// Decoder decodes QPACK header blocks and manages dynamic table state (RFC 9204).
 // Exactly one instance should exist per QUIC connection.
-// Direct 1:1 structural translation of Chromium's quiche::Decoder.
 type Decoder struct {
 	encoderStreamErrorHandler EncoderStreamErrorHandler
 	encoderStreamReceiver     *EncoderStreamReceiver
@@ -18,6 +19,7 @@ type Decoder struct {
 	blockedStreams            map[uint64]struct{}
 	maximumBlockedStreams     uint64
 	knownReceivedCount        uint64
+	lastErr                   error
 }
 
 // NewDecoder creates a new Decoder.
@@ -69,7 +71,6 @@ func (d *Decoder) OnStreamUnblocked(streamID uint64) {
 }
 
 // OnDecodingCompleted implements DecodingCompletedVisitor.
-// Direct 1:1 structural translation of Chromium's quiche::Decoder::OnDecodingCompleted.
 func (d *Decoder) OnDecodingCompleted(streamID, requiredInsertCount uint64) {
 	if requiredInsertCount > 0 {
 		d.decoderStreamSender.SendHeaderAcknowledgement(streamID)
@@ -110,6 +111,46 @@ func (d *Decoder) CreateProgressiveDecoderWithMaxBufferedData(
 		d.headerTable,
 		handler,
 	)
+}
+
+type collectedHeadersHandler struct {
+	headers []HeaderField
+	err     error
+}
+
+func (h *collectedHeadersHandler) OnHeaderDecoded(name, value string) {
+	h.headers = append(h.headers, HeaderField{Name: name, Value: value})
+}
+
+func (h *collectedHeadersHandler) OnDecodingCompleted() {
+	_ = h
+}
+
+func (h *collectedHeadersHandler) OnDecodingErrorDetected(errorCode uint64, errorMessage string) {
+	h.err = NewError(ErrorCode(errorCode), errorMessage)
+}
+
+// DecodeHeaderBlock decodes a complete header block and returns the decoded header fields.
+// If decoding fails, it returns an error unwrappable via errors.Is.
+func (d *Decoder) DecodeHeaderBlock(streamID uint64, block []byte) ([]HeaderField, error) {
+	handler := &collectedHeadersHandler{headers: make([]HeaderField, 0, 16)}
+	progDec := d.CreateProgressiveDecoder(streamID, handler)
+	progDec.Decode(block)
+	progDec.EndHeaderBlock()
+	if handler.err != nil {
+		return nil, handler.err
+	}
+	return handler.headers, nil
+}
+
+// DecodeHeaderBlockSeq decodes a complete header block and returns an iterator over (name, value) pairs.
+// If decoding fails, it returns an error.
+func (d *Decoder) DecodeHeaderBlockSeq(streamID uint64, block []byte) (iter.Seq2[string, string], error) {
+	fields, err := d.DecodeHeaderBlock(streamID, block)
+	if err != nil {
+		return nil, err
+	}
+	return HeaderFields(fields).All(), nil
 }
 
 // InsertWithNameReference handles RFC 9204 §4.3.1 on encoder stream.
@@ -220,7 +261,13 @@ func (d *Decoder) Error(qpackError uint64, errorMessage string) {
 
 // OnErrorDetected notifies the encoder stream error delegate.
 func (d *Decoder) OnErrorDetected(errorCode uint64, errorMessage string) {
+	d.lastErr = NewError(ErrorCode(errorCode), errorMessage)
 	d.encoderStreamErrorHandler(errorCode, errorMessage)
+}
+
+// LastError returns the most recent error detected on the decoder or encoder stream, if any.
+func (d *Decoder) LastError() error {
+	return d.lastErr
 }
 
 // SetStreamSenderDelegate sets the stream sender delegate for transmitting feedback to peer.

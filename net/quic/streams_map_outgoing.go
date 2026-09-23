@@ -8,6 +8,7 @@ package quic
 import (
 	"context"
 	"fmt"
+	"iter"
 	"slices"
 	"sync"
 
@@ -284,4 +285,18 @@ func (m *outgoingStreamsMap[T]) CloseWithError(err error) {
 	}
 
 	m.openQueue = nil
+}
+
+// Streams returns an iterator over active streams in the map.
+func (m *outgoingStreamsMap[T]) Streams() iter.Seq[T] {
+	return func(yield func(T) bool) {
+		m.mutex.RLock()
+		defer m.mutex.RUnlock()
+
+		for _, str := range m.streams {
+			if !yield(str) {
+				return
+			}
+		}
+	}
 }

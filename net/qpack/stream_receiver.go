@@ -4,15 +4,18 @@
 
 package qpack
 
+import (
+	"errors"
+	"io"
+)
+
 // StreamReceiver decodes QPACK data received on a unidirectional control stream.
-// Direct 1:1 structural translation of Chromium's quiche::StreamReceiver.
 type StreamReceiver interface {
 	// Decode decodes data received on the control stream.
 	Decode(data []byte)
 }
 
 // EncoderStreamReceiverDelegate handles instructions decoded from the encoder stream (RFC 9204 §4.3).
-// Direct 1:1 structural translation of Chromium's quiche::EncoderStreamReceiver::Delegate.
 type EncoderStreamReceiverDelegate interface {
 	// InsertWithNameReference is called when an Insert With Name Reference instruction is decoded (RFC 9204 §4.3.1).
 	InsertWithNameReference(isStatic bool, nameIndex uint64, value string)
@@ -31,27 +34,21 @@ type EncoderStreamReceiverDelegate interface {
 }
 
 // DecoderStreamReceiverDelegate handles instructions decoded from the decoder stream (RFC 9204 §4.4).
-// Direct 1:1 structural translation of Chromium's quiche::DecoderStreamReceiver::Delegate.
 type DecoderStreamReceiverDelegate interface {
 	// SectionAck is called when a Section Acknowledgment instruction is decoded (RFC 9204 §4.4.1).
-	// Corresponds to Chromium's OnHeaderAcknowledgement.
 	SectionAck(streamID uint64)
 
 	// StreamCancellation is called when a Stream Cancellation instruction is decoded (RFC 9204 §4.4.2).
-	// Corresponds to Chromium's OnStreamCancellation.
 	StreamCancellation(streamID uint64)
 
 	// InsertCountIncrement is called when an Insert Count Increment instruction is decoded (RFC 9204 §4.4.3).
-	// Corresponds to Chromium's OnInsertCountIncrement.
 	InsertCountIncrement(increment uint64)
 
 	// Error is called when an instruction decoding error or stream error is detected.
-	// Corresponds to Chromium's OnErrorDetected.
 	Error(qpackError uint64, errorMessage string)
 }
 
-// EncoderStreamReceiver decodes data received on the encoder stream.
-// Direct 1:1 structural translation of Chromium's quiche::EncoderStreamReceiver.
+// EncoderStreamReceiver decodes data received on the encoder stream (RFC 9204 §4.3).
 type EncoderStreamReceiver struct {
 	instructionDecoder *InstructionDecoder
 	delegate           EncoderStreamReceiverDelegate
@@ -85,6 +82,34 @@ func (r *EncoderStreamReceiver) EndDecoding() {
 		return
 	}
 	r.instructionDecoder.EndDecoding()
+}
+
+// ReadFrom reads from reader until EOF and decodes instructions into the receiver.
+// It returns the total bytes read and any encountered error.
+// If an instruction decoding error occurs, ErrEncoderStream is returned.
+func (r *EncoderStreamReceiver) ReadFrom(reader io.Reader) (int64, error) {
+	buf := make([]byte, 4096)
+	var total int64
+	for {
+		n, err := reader.Read(buf)
+		if n > 0 {
+			r.Decode(buf[:n])
+			total += int64(n)
+			if r.errorDetected {
+				return total, ErrEncoderStream
+			}
+		}
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				r.EndDecoding()
+				if r.errorDetected {
+					return total, ErrEncoderStream
+				}
+				return total, nil
+			}
+			return total, err
+		}
+	}
 }
 
 // OnInstructionDecoded implements InstructionDecoderDelegate.
@@ -131,8 +156,7 @@ func (r *EncoderStreamReceiver) OnInstructionDecodingError(
 	r.delegate.Error(QPACK_ENCODER_STREAM_ERROR, errorMessage)
 }
 
-// DecoderStreamReceiver decodes data received on the decoder stream.
-// Direct 1:1 structural translation of Chromium's quiche::DecoderStreamReceiver.
+// DecoderStreamReceiver decodes data received on the decoder stream (RFC 9204 §4.4).
 type DecoderStreamReceiver struct {
 	instructionDecoder *InstructionDecoder
 	delegate           DecoderStreamReceiverDelegate
@@ -166,6 +190,34 @@ func (r *DecoderStreamReceiver) EndDecoding() {
 		return
 	}
 	r.instructionDecoder.EndDecoding()
+}
+
+// ReadFrom reads from reader until EOF and decodes instructions into the receiver.
+// It returns the total bytes read and any encountered error.
+// If an instruction decoding error occurs, ErrDecoderStream is returned.
+func (r *DecoderStreamReceiver) ReadFrom(reader io.Reader) (int64, error) {
+	buf := make([]byte, 4096)
+	var total int64
+	for {
+		n, err := reader.Read(buf)
+		if n > 0 {
+			r.Decode(buf[:n])
+			total += int64(n)
+			if r.errorDetected {
+				return total, ErrDecoderStream
+			}
+		}
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				r.EndDecoding()
+				if r.errorDetected {
+					return total, ErrDecoderStream
+				}
+				return total, nil
+			}
+			return total, err
+		}
+	}
 }
 
 // OnInstructionDecoded implements InstructionDecoderDelegate.

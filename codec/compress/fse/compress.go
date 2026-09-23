@@ -62,11 +62,9 @@ func Compress(in []byte, s *Scratch) ([]byte, error) {
 		return nil, err
 	}
 
-	if false {
-		err = s.validateNorm()
-		if err != nil {
-			return nil, err
-		}
+	err = s.validateNorm()
+	if err != nil {
+		return nil, err
 	}
 
 	err = s.buildCTable()

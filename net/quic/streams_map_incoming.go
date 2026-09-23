@@ -8,6 +8,7 @@ package quic
 import (
 	"context"
 	"fmt"
+	"iter"
 	"sync"
 
 	"github.com/lemon4ksan/foundation/net/quic/internal/protocol"
@@ -262,4 +263,9 @@ func (m *incomingStreamsMap[T]) CloseWithError(err error) {
 	})
 
 	close(m.newStreamChan)
+}
+
+// Streams returns an iterator over active streams in the map.
+func (m *incomingStreamsMap[T]) Streams() iter.Seq[T] {
+	return m.streams.Streams()
 }

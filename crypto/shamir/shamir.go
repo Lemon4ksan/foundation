@@ -17,14 +17,22 @@ import (
 )
 
 var (
-	ErrInvalidSecret    = errors.New("shamir: secret cannot be empty")
+	// ErrInvalidSecret indicates that an empty secret was supplied.
+	ErrInvalidSecret = errors.New("shamir: secret cannot be empty")
+	// ErrInvalidThreshold indicates that the threshold is less than 2 or exceeds total shares.
 	ErrInvalidThreshold = errors.New("shamir: threshold must be >= 2 and <= total")
-	ErrInvalidTotal     = errors.New("shamir: total shares must be <= 255")
-	ErrInsufficient     = errors.New("shamir: at least 2 shares required to reconstruct")
-	ErrLengthMismatch   = errors.New("shamir: all shares must have equal length")
-	ErrDuplicateShare   = errors.New("shamir: duplicate share index detected")
-	ErrInvalidShareStr  = errors.New("shamir: invalid share string format")
-	ErrChecksumFailed   = errors.New("shamir: share checksum verification failed")
+	// ErrInvalidTotal indicates that total shares exceed 255.
+	ErrInvalidTotal = errors.New("shamir: total shares must be <= 255")
+	// ErrInsufficient indicates that fewer than 2 shares were supplied to Combine.
+	ErrInsufficient = errors.New("shamir: at least 2 shares required to reconstruct")
+	// ErrLengthMismatch indicates that supplied shares have differing byte lengths.
+	ErrLengthMismatch = errors.New("shamir: all shares must have equal length")
+	// ErrDuplicateShare indicates duplicate share indices were provided.
+	ErrDuplicateShare = errors.New("shamir: duplicate share index detected")
+	// ErrInvalidShareStr indicates an unparseable serialized share string.
+	ErrInvalidShareStr = errors.New("shamir: invalid share string format")
+	// ErrChecksumFailed indicates that share CRC32 checksum verification failed.
+	ErrChecksumFailed = errors.New("shamir: share checksum verification failed")
 )
 
 // Share represents a single Shamir polynomial share.

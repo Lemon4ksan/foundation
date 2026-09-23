@@ -6,23 +6,27 @@ package qpack
 
 import (
 	"fmt"
+	"io"
+	"iter"
 	"strings"
 
 	"github.com/lemon4ksan/foundation/generic"
 )
 
-// Draining fraction constant from Chromium quiche::Encoder.
-// The oldest drainingFraction entries will not be referenced in header blocks.
+// DrainingFraction defines the fraction of dynamic table entries reserved for draining (RFC 9204).
+// The oldest entries will not be referenced in header blocks.
 // A new entry (duplicate or literal with name reference) will be added to the
 // dynamic table instead to allow draining entries to be evicted faster.
-const kDrainingFraction float64 = 0.25
+const DrainingFraction float64 = 0.25
+
+// Deprecated: use DrainingFraction.
+const kDrainingFraction = DrainingFraction
 
 // DecoderStreamErrorHandler receives notifications of errors on the decoder stream.
 // This MUST be treated as a connection error of type HTTP_QPACK_DECODER_STREAM_ERROR.
 type DecoderStreamErrorHandler func(errorCode uint64, errorMessage string)
 
 // CookieCrumbling specifies whether cookie crumbling should be used when sending QPACK headers.
-// Direct 1:1 structural translation of Chromium's quiche::CookieCrumbling.
 type CookieCrumbling int
 
 const (
@@ -31,14 +35,15 @@ const (
 )
 
 const (
-	KCookieCrumblingEnabled  = CookieCrumblingEnabled
+	// Deprecated: use CookieCrumblingEnabled.
+	KCookieCrumblingEnabled = CookieCrumblingEnabled
+	// Deprecated: use CookieCrumblingDisabled.
 	KCookieCrumblingDisabled = CookieCrumblingDisabled
 )
 
 // Encoder manages dynamic table state, generates encoder stream instructions,
-// processes decoder stream feedback, and serializes HTTP/3 header blocks using two-pass encoding.
+// processes decoder stream feedback, and serializes HTTP/3 header blocks using two-pass encoding (RFC 9204).
 // Exactly one instance should exist per QUIC connection.
-// Direct 1:1 structural translation of Chromium's quiche::Encoder.
 type Encoder struct {
 	huffmanEncoding           HuffmanEncoding
 	cookieCrumbling           CookieCrumbling
@@ -49,6 +54,7 @@ type Encoder struct {
 	maximumBlockedStreams     uint64
 	blockingManager           *BlockingManager
 	headerListCount           int
+	lastErr                   error
 }
 
 // NewEncoder constructs a new Encoder.
@@ -81,7 +87,7 @@ func NewEncoderWithDefaults(decoderStreamErrorHandler DecoderStreamErrorHandler)
 }
 
 // -----------------------------------------------------------------------------
-// Public Chromium API
+// Header Encoding
 // -----------------------------------------------------------------------------
 
 // EncodeHeaderList encodes a header list for streamID.
@@ -102,6 +108,44 @@ func (e *Encoder) EncodeHeaderList(
 	}
 
 	return e.secondPassEncode(representations, requiredInsertCount)
+}
+
+// EncodeHeaderSeq encodes headers supplied as an iter.Seq[HeaderField].
+func (e *Encoder) EncodeHeaderSeq(
+	streamID uint64,
+	headers iter.Seq[HeaderField],
+	encoderStreamSentByteCount *uint64,
+) []byte {
+	var list []HeaderField
+	for hf := range headers {
+		list = append(list, hf)
+	}
+	return e.EncodeHeaderList(streamID, list, encoderStreamSentByteCount)
+}
+
+// EncodeHeaderSeq2 encodes headers supplied as an iter.Seq2[string, string].
+func (e *Encoder) EncodeHeaderSeq2(
+	streamID uint64,
+	headers iter.Seq2[string, string],
+	encoderStreamSentByteCount *uint64,
+) []byte {
+	var list []HeaderField
+	for name, value := range headers {
+		list = append(list, HeaderField{Name: name, Value: value})
+	}
+	return e.EncodeHeaderList(streamID, list, encoderStreamSentByteCount)
+}
+
+// EncodeHeaderListTo encodes headerList directly into an io.Writer.
+// Returns the number of bytes written and any write error.
+func (e *Encoder) EncodeHeaderListTo(
+	w io.Writer,
+	streamID uint64,
+	headerList []HeaderField,
+	encoderStreamSentByteCount *uint64,
+) (int, error) {
+	data := e.EncodeHeaderList(streamID, headerList, encoderStreamSentByteCount)
+	return w.Write(data)
 }
 
 // SetMaximumDynamicTableCapacity sets the maximum dynamic table capacity in bytes.
@@ -245,9 +289,16 @@ func (e *Encoder) OnErrorDetected(errorCode uint64, errorMessage string) {
 		errorCode = QUIC_QPACK_DECODER_STREAM_INTEGER_TOO_LARGE
 	}
 
+	e.lastErr = NewError(ErrorCode(errorCode), errorMessage)
+
 	if e.decoderStreamErrorHandler != nil {
 		e.decoderStreamErrorHandler(errorCode, errorMessage)
 	}
+}
+
+// LastError returns the most recent error detected on the decoder stream, if any.
+func (e *Encoder) LastError() error {
+	return e.lastErr
 }
 
 // -----------------------------------------------------------------------------
@@ -554,18 +605,27 @@ func EncodeLiteralHeaderField(name, value string) *InstructionWithValues {
 // -----------------------------------------------------------------------------
 
 // EncoderPeer provides access to internal encoder state for unit tests.
-// Direct 1:1 structural translation of Chromium's quiche::test::EncoderPeer.
+//
+// Deprecated: use Encoder.HeaderTable(), Encoder.MaximumBlockedStreams(), or Encoder.BlockingManager().
 type EncoderPeer struct{}
 
-// Static function helpers for EncoderPeer
+// EncoderPeerHeaderTable returns encoder's header table.
+//
+// Deprecated: use encoder.HeaderTable().
 func EncoderPeerHeaderTable(encoder *Encoder) *EncoderHeaderTable {
 	return encoder.headerTable
 }
 
+// EncoderPeerMaximumBlockedStreams returns encoder's maximum blocked streams limit.
+//
+// Deprecated: use encoder.MaximumBlockedStreams().
 func EncoderPeerMaximumBlockedStreams(encoder *Encoder) uint64 {
 	return encoder.maximumBlockedStreams
 }
 
+// EncoderPeerSmallestBlockingIndex returns encoder's smallest blocking index.
+//
+// Deprecated: use encoder.BlockingManager().SmallestBlockingIndex().
 func EncoderPeerSmallestBlockingIndex(encoder *Encoder) uint64 {
 	return encoder.blockingManager.SmallestBlockingIndex()
 }

@@ -8,8 +8,11 @@ import (
 )
 
 const (
-	BestSpeed          = 0
-	BestCompression    = 11
+	// BestSpeed compresses at the fastest speed (quality 0).
+	BestSpeed = 0
+	// BestCompression compresses for maximum compression ratio (quality 11).
+	BestCompression = 11
+	// DefaultCompression uses the standard balanced compression level (quality 6).
 	DefaultCompression = 6
 )
 

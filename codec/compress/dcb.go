@@ -15,10 +15,11 @@ import (
 	"github.com/lemon4ksan/foundation/borrow"
 )
 
-// Magic header constants for Dictionary-Compressed HTTP streams (RFC 9842).
 var (
-	MagicDCB = [4]byte{0xff, 0x44, 0x43, 0x42}                         // RFC 9842 §4
-	MagicDCZ = [8]byte{0x5e, 0x2a, 0x4d, 0x18, 0x20, 0x00, 0x00, 0x00} // RFC 9842 §5
+	// MagicDCB is the 4-byte magic header identifier for Dictionary-Compressed Brotli (dcb) streams (RFC 9842 §4).
+	MagicDCB = [4]byte{0xff, 0x44, 0x43, 0x42}
+	// MagicDCZ is the 8-byte magic header identifier for Dictionary-Compressed Zstandard (dcz) streams (RFC 9842 §5).
+	MagicDCZ = [8]byte{0x5e, 0x2a, 0x4d, 0x18, 0x20, 0x00, 0x00, 0x00}
 )
 
 var (

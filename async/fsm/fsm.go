@@ -38,7 +38,7 @@ type TransitionRule[State comparable, Event comparable] struct {
 //
 // It enforces transactional transition safety using a dual-mutex coordination model,
 // separating transition serialization from fast, concurrent state reads.
-// New instances of FSM must be created using the [NewFSM] constructor function.
+// New instances of FSM must be created using the [New] constructor function.
 type FSM[State, Event comparable] struct {
 	transMu     sync.Mutex
 	mu          sync.RWMutex
@@ -48,8 +48,8 @@ type FSM[State, Event comparable] struct {
 	afterHooks  map[Event][]TransitionCallback[State, Event]
 }
 
-// NewFSM instantiates and returns a new finite state machine with the given initial state.
-func NewFSM[State, Event comparable](initial State) *FSM[State, Event] {
+// New instantiates and returns a new finite state machine with the given initial state.
+func New[State, Event comparable](initial State) *FSM[State, Event] {
 	return &FSM[State, Event]{
 		current:     initial,
 		rules:       make(map[State]map[Event]State),

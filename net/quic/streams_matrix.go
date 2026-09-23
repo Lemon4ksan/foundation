@@ -5,6 +5,7 @@
 package quic
 
 import (
+	"iter"
 	"sync/atomic"
 
 	"github.com/lemon4ksan/foundation/net/quic/internal/protocol"
@@ -115,23 +116,47 @@ func (m *streamsMatrix[T]) len() int {
 	return m.count
 }
 
-// iterate is used during shutdown
-func (m *streamsMatrix[T]) iterate(f func(incomingStreamEntry[T])) {
-	chunksPtr := m.chunks.Load()
-	if chunksPtr == nil {
-		return
-	}
-
-	for _, chunk := range *chunksPtr {
-		if chunk == nil {
-			continue
+// All returns an iterator over all valid stream entries in the matrix.
+func (m *streamsMatrix[T]) All() iter.Seq[incomingStreamEntry[T]] {
+	return func(yield func(incomingStreamEntry[T]) bool) {
+		chunksPtr := m.chunks.Load()
+		if chunksPtr == nil {
+			return
 		}
 
-		for i := range streamChunkSize {
-			entry := chunk.entries[i].Load()
-			if entry != nil {
-				f(*entry)
+		for _, chunk := range *chunksPtr {
+			if chunk == nil {
+				continue
+			}
+
+			for i := range streamChunkSize {
+				entry := chunk.entries[i].Load()
+				if entry != nil {
+					if !yield(*entry) {
+						return
+					}
+				}
 			}
 		}
+	}
+}
+
+// Streams returns an iterator over active streams in the matrix.
+func (m *streamsMatrix[T]) Streams() iter.Seq[T] {
+	return func(yield func(T) bool) {
+		for entry := range m.All() {
+			if !entry.shouldDelete {
+				if !yield(entry.stream) {
+					return
+				}
+			}
+		}
+	}
+}
+
+// iterate is used during shutdown
+func (m *streamsMatrix[T]) iterate(f func(incomingStreamEntry[T])) {
+	for entry := range m.All() {
+		f(entry)
 	}
 }

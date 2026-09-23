@@ -57,6 +57,7 @@ func (dec *Decoder) Decode(v any) error {
 		dec.cursor = 0
 	}
 
+	dec.cursor = skipWhitespace(dec.buf, dec.cursor)
 	if dec.cursor >= len(dec.buf) {
 		return io.EOF
 	}

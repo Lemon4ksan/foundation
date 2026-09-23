@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// Package envelope implements cryptographic envelope encryption with multi-slot key wrapping,
+// KMS integration, and zero-allocation binary framing.
 package envelope
 
 import (
@@ -20,7 +22,7 @@ import (
 	"github.com/lemon4ksan/foundation/silicon/randkit"
 )
 
-// Magic header for binary envelope serialization: 'FENV'
+// MagicEnvelope is the 4-byte magic identifier ('FENV') prefixed to binary envelope headers.
 var MagicEnvelope = [4]byte{'F', 'E', 'N', 'V'}
 
 var (

@@ -8,6 +8,7 @@ package quic
 import (
 	"context"
 	"fmt"
+	"iter"
 	"sync"
 
 	"github.com/lemon4ksan/foundation/net/quic/internal/monotime"
@@ -22,6 +23,16 @@ import (
 type StreamLimitReachedError struct{}
 
 func (e StreamLimitReachedError) Error() string { return "too many open streams" }
+
+func (e StreamLimitReachedError) Is(target error) bool {
+	if _, ok := target.(StreamLimitReachedError); ok {
+		return true
+	}
+	if _, ok := target.(*StreamLimitReachedError); ok {
+		return true
+	}
+	return false
+}
 
 type streamsMap struct {
 	ctx         context.Context // not used for cancellations, but carries the values associated with the connection
@@ -404,4 +415,30 @@ func (m *streamsMap) UseResetMaps() {
 	m.mutex.Lock()
 	m.reset = false
 	m.mutex.Unlock()
+}
+
+// Streams returns an iterator over all active bidirectional streams.
+func (m *streamsMap) Streams() iter.Seq[*Stream] {
+	return func(yield func(*Stream) bool) {
+		for str := range m.outgoingBidiStreams.Streams() {
+			if !yield(str) {
+				return
+			}
+		}
+		for str := range m.incomingBidiStreams.Streams() {
+			if !yield(str) {
+				return
+			}
+		}
+	}
+}
+
+// SendStreams returns an iterator over all active outgoing unidirectional streams.
+func (m *streamsMap) SendStreams() iter.Seq[*SendStream] {
+	return m.outgoingUniStreams.Streams()
+}
+
+// ReceiveStreams returns an iterator over all active incoming unidirectional streams.
+func (m *streamsMap) ReceiveStreams() iter.Seq[*ReceiveStream] {
+	return m.incomingUniStreams.Streams()
 }

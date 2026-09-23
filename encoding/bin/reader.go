@@ -7,6 +7,7 @@ package bin
 import (
 	"encoding/binary"
 	"errors"
+	"iter"
 )
 
 // ErrBufferTooShort is returned when attempting to read beyond available buffer length.
@@ -201,4 +202,105 @@ func (r *Reader) Skip(n int) {
 		return
 	}
 	r.pos += n
+}
+
+// Chunks returns a push iterator yielding consecutive fixed-size byte slices of chunkSize from the unread buffer.
+// Iteration stops when remaining unread bytes are fewer than chunkSize or when yield returns false.
+// Zero heap allocations.
+func (r *Reader) Chunks(chunkSize int) iter.Seq[[]byte] {
+	return func(yield func([]byte) bool) {
+		if chunkSize <= 0 {
+			return
+		}
+		for r.Remaining() >= chunkSize && r.err == nil {
+			chunk := r.Bytes(chunkSize)
+			if !yield(chunk) {
+				return
+			}
+		}
+	}
+}
+
+// U8Seq returns a push iterator yielding all remaining bytes sequentially.
+func (r *Reader) U8Seq() iter.Seq[uint8] {
+	return func(yield func(uint8) bool) {
+		for r.Remaining() > 0 && r.err == nil {
+			v := r.U8()
+			if !yield(v) {
+				return
+			}
+		}
+	}
+}
+
+// U16LESeq returns a push iterator yielding remaining little-endian uint16 values.
+func (r *Reader) U16LESeq() iter.Seq[uint16] {
+	return func(yield func(uint16) bool) {
+		for r.Remaining() >= 2 && r.err == nil {
+			v := r.U16LE()
+			if !yield(v) {
+				return
+			}
+		}
+	}
+}
+
+// U32LESeq returns a push iterator yielding remaining little-endian uint32 values.
+func (r *Reader) U32LESeq() iter.Seq[uint32] {
+	return func(yield func(uint32) bool) {
+		for r.Remaining() >= 4 && r.err == nil {
+			v := r.U32LE()
+			if !yield(v) {
+				return
+			}
+		}
+	}
+}
+
+// U64LESeq returns a push iterator yielding remaining little-endian uint64 values.
+func (r *Reader) U64LESeq() iter.Seq[uint64] {
+	return func(yield func(uint64) bool) {
+		for r.Remaining() >= 8 && r.err == nil {
+			v := r.U64LE()
+			if !yield(v) {
+				return
+			}
+		}
+	}
+}
+
+// U16BESeq returns a push iterator yielding remaining big-endian uint16 values.
+func (r *Reader) U16BESeq() iter.Seq[uint16] {
+	return func(yield func(uint16) bool) {
+		for r.Remaining() >= 2 && r.err == nil {
+			v := r.U16BE()
+			if !yield(v) {
+				return
+			}
+		}
+	}
+}
+
+// U32BESeq returns a push iterator yielding remaining big-endian uint32 values.
+func (r *Reader) U32BESeq() iter.Seq[uint32] {
+	return func(yield func(uint32) bool) {
+		for r.Remaining() >= 4 && r.err == nil {
+			v := r.U32BE()
+			if !yield(v) {
+				return
+			}
+		}
+	}
+}
+
+// U64BESeq returns a push iterator yielding remaining big-endian uint64 values.
+func (r *Reader) U64BESeq() iter.Seq[uint64] {
+	return func(yield func(uint64) bool) {
+		for r.Remaining() >= 8 && r.err == nil {
+			v := r.U64BE()
+			if !yield(v) {
+				return
+			}
+		}
+	}
 }

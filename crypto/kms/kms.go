@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// Package kms provides key management service provider abstractions, client registration,
+// and URI-based key resolution.
 package kms
 
 import (

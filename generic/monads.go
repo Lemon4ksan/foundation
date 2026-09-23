@@ -5,9 +5,19 @@
 package generic
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
+)
+
+var (
+	// nullJSON represents the JSON literal "null" as a static byte slice.
+	nullJSON = []byte("null")
+
+	// ErrNilOptional is returned when attempting to unmarshal JSON into a nil *Optional pointer.
+	ErrNilOptional = errors.New("generic: UnmarshalJSON on nil Optional pointer")
 )
 
 // Optional represents a type-safe container that may or may not contain a valid
@@ -95,6 +105,49 @@ func (o Optional[T]) Filter(predicate func(T) bool) Optional[T] {
 	}
 
 	return o
+}
+
+// IsZero reports whether the [Optional] represents an empty or absent value.
+//
+// This enables native interoperability with Go 1.24+ struct tag `json:",omitzero"`,
+// allowing omitted serialization when the optional is unset ([None]) while preserving
+// explicit zero-values (such as [Some]("") or [Some](0)) in JSON output.
+func (o Optional[T]) IsZero() bool {
+	return !o.valid
+}
+
+// MarshalJSON returns the JSON encoding of the wrapped value if present,
+// or literal "null" if the [Optional] is empty ([None]).
+func (o Optional[T]) MarshalJSON() ([]byte, error) {
+	if !o.valid {
+		return nullJSON, nil
+	}
+
+	return json.Marshal(o.val)
+}
+
+// UnmarshalJSON unmarshals the JSON data into the [Optional].
+//
+// If data is empty or equals JSON "null", the optional is set to [None].
+// Otherwise, the data is unmarshaled into type T and the optional is set to [Some](v).
+func (o *Optional[T]) UnmarshalJSON(data []byte) error {
+	if o == nil {
+		return ErrNilOptional
+	}
+
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) == 0 || bytes.Equal(trimmed, nullJSON) {
+		*o = None[T]()
+		return nil
+	}
+
+	var v T
+	if err := json.Unmarshal(trimmed, &v); err != nil {
+		return err
+	}
+
+	*o = Some(v)
+	return nil
 }
 
 // MapOptional transforms the value inside o using f if it is present, returning

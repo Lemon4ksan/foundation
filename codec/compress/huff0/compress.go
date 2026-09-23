@@ -351,7 +351,8 @@ func (s *Scratch) compress4Xp(src []byte) ([]byte, error) {
 	}
 
 	// Add placeholder for output length
-	s.Out = s.Out[:6]
+	offsetIdx := len(s.Out)
+	s.Out = append(s.Out, sixZeros[:]...)
 
 	segmentSize := (len(src) + 3) / 4
 
@@ -386,8 +387,8 @@ func (s *Scratch) compress4Xp(src []byte) ([]byte, error) {
 		// Write compressed length as little endian before block.
 		if i < 3 {
 			// Last length is not written.
-			s.Out[i*2] = byte(len(o))
-			s.Out[i*2+1] = byte(len(o) >> 8)
+			s.Out[i*2+offsetIdx] = byte(len(o))
+			s.Out[i*2+offsetIdx+1] = byte(len(o) >> 8)
 		}
 
 		// Write output.

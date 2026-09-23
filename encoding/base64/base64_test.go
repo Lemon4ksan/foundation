@@ -36,6 +36,20 @@ func TestBase64EncodeURL(t *testing.T) {
 	}
 }
 
+func TestBase64EncodeURL_DstTooSmall(t *testing.T) {
+	t.Parallel()
+
+	defer func() {
+		r := recover()
+		assert.NotNil(t, r, "expected panic for small dst buffer")
+		assert.Equal(t, "base64: dst buffer too small for Base64EncodeURL", r)
+	}()
+
+	src := []byte("hello world")
+	dst := make([]byte, 2) // too small
+	_ = base64.Base64EncodeURL(src, dst)
+}
+
 func BenchmarkBase64EncodeURL_SHA256(b *testing.B) {
 	sum := sha256.Sum256([]byte("dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"))
 	dst := make([]byte, 64)

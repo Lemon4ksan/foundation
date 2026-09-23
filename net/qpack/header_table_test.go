@@ -12,9 +12,13 @@ import (
 )
 
 const (
-	kMaximumDynamicTableCapacityForTesting uint64 = 1024 * 1024
-	kStaticEntry                           bool   = true
-	kDynamicEntry                          bool   = false
+	maximumDynamicTableCapacityForTesting uint64 = 1024 * 1024
+	staticEntry                           bool   = true
+	dynamicEntry                          bool   = false
+
+	kMaximumDynamicTableCapacityForTesting = maximumDynamicTableCapacityForTesting
+	kStaticEntry                           = staticEntry
+	kDynamicEntry                          = dynamicEntry
 )
 
 type qpackHeaderTable interface {

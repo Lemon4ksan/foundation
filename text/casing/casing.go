@@ -17,10 +17,15 @@ import (
 type Kind string
 
 const (
-	Snake          Kind = "snake_case"
-	Camel          Kind = "camelCase"
-	Pascal         Kind = "PascalCase"
-	Kebab          Kind = "kebab-case"
+	// Snake represents lowercase underscore-separated casing (e.g. "snake_case").
+	Snake Kind = "snake_case"
+	// Camel represents lowerCamelCase casing (e.g. "camelCase").
+	Camel Kind = "camelCase"
+	// Pascal represents UpperCamelCase casing (e.g. "PascalCase").
+	Pascal Kind = "PascalCase"
+	// Kebab represents lowercase hyphen-separated casing (e.g. "kebab-case").
+	Kebab Kind = "kebab-case"
+	// ScreamingSnake represents uppercase underscore-separated casing (e.g. "SCREAMING_SNAKE_CASE").
 	ScreamingSnake Kind = "SCREAMING_SNAKE_CASE"
 )
 

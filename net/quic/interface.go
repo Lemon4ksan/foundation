@@ -8,6 +8,7 @@ package quic
 import (
 	"crypto/tls"
 	"errors"
+	"iter"
 	"net"
 	"slices"
 	"time"
@@ -15,6 +16,19 @@ import (
 	"github.com/lemon4ksan/foundation/net/quic/internal/handshake"
 	"github.com/lemon4ksan/foundation/net/quic/internal/protocol"
 )
+
+// Connection is an alias for Conn.
+type Connection = Conn
+
+// Session is a legacy alias for Conn.
+//
+// Deprecated: Use Conn instead.
+type Session = Conn
+
+// EarlyConnection is a legacy alias for Conn.
+//
+// Deprecated: Use Conn instead.
+type EarlyConnection = Conn
 
 // The StreamID is the ID of a QUIC stream.
 type StreamID = protocol.StreamID
@@ -33,6 +47,18 @@ const (
 func SupportedVersions() []Version {
 	// clone the slice to prevent the caller from modifying the slice
 	return slices.Clone(protocol.SupportedVersions)
+}
+
+// SupportedVersionsSeq returns an iterator over supported QUIC versions
+// in descending order of preference with 0 heap allocations.
+func SupportedVersionsSeq() iter.Seq[Version] {
+	return func(yield func(Version) bool) {
+		for _, v := range protocol.SupportedVersions {
+			if !yield(v) {
+				return
+			}
+		}
+	}
 }
 
 // A ClientToken is a token received by the client.
