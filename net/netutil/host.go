@@ -9,7 +9,7 @@ import (
 	"net"
 	"strings"
 
-	"github.com/lemon4ksan/foundation/net/idna"
+	"github.com/lemon4ksan/aoni/idna"
 )
 
 // CleanHost normalizes a host string for network resolution, HTTP headers, and TLS SNI.

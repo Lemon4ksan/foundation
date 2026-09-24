@@ -12,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lemon4ksan/foundation/net/quic/internal/mocks"
 	"github.com/lemon4ksan/foundation/net/quic/internal/monotime"
 	"github.com/lemon4ksan/foundation/net/quic/internal/protocol"
 	"github.com/lemon4ksan/foundation/net/quic/internal/qerr"
@@ -1187,7 +1186,7 @@ func TestSentPacketHandler0RTT(t *testing.T) {
 
 func TestSentPacketHandlerCongestion(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
-	cong := mocks.NewMockSendAlgorithmWithDebugInfos(mockCtrl)
+	cong := NewMockSendAlgorithmWithDebugInfos(mockCtrl)
 	rttStats := utils.NewRTTStats()
 	sph := NewSentPacketHandler(
 		0,
@@ -1454,7 +1453,7 @@ func TestSentPacketHandlerRetryAfterPTO(t *testing.T) {
 
 func TestSentPacketHandlerECN(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
-	cong := mocks.NewMockSendAlgorithmWithDebugInfos(mockCtrl)
+	cong := NewMockSendAlgorithmWithDebugInfos(mockCtrl)
 	cong.EXPECT().OnPacketSent(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 	cong.EXPECT().OnPacketAcked(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 	cong.EXPECT().MaybeExitSlowStart().AnyTimes()

@@ -34,7 +34,6 @@ func TestTuneSocketConn_And_Flags(t *testing.T) {
 			sysnet.TuneSocketConnWithFlags(conn, 1)
 			if tcpConn, ok := conn.(*net.TCPConn); ok {
 				if raw, errRaw := tcpConn.SyscallConn(); errRaw == nil {
-					sysnet.ApplyP0fSignature(raw, 64, 65535, true, true)
 					_ = raw.Control(func(fd uintptr) {
 						sysnet.SetTCPMaxSeg(fd, 1400)
 					})

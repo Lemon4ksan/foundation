@@ -21,8 +21,6 @@ import (
 
 	"github.com/lemon4ksan/foundation/net/quic/internal/ackhandler"
 	"github.com/lemon4ksan/foundation/net/quic/internal/handshake"
-	"github.com/lemon4ksan/foundation/net/quic/internal/mocks"
-	mockackhandler "github.com/lemon4ksan/foundation/net/quic/internal/mocks/ackhandler"
 	"github.com/lemon4ksan/foundation/net/quic/internal/monotime"
 	"github.com/lemon4ksan/foundation/net/quic/internal/protocol"
 	"github.com/lemon4ksan/foundation/net/quic/internal/qerr"
@@ -35,7 +33,7 @@ import (
 
 type testConnectionOpt func(*Conn)
 
-func connectionOptCryptoSetup(cs *mocks.MockCryptoSetup) testConnectionOpt {
+func connectionOptCryptoSetup(cs *MockCryptoSetup) testConnectionOpt {
 	return func(conn *Conn) { conn.cryptoStreamHandler = cs }
 }
 
@@ -133,7 +131,7 @@ func newTestConnectionWithGSO(
 	)
 	conn := wc.Conn
 	conn.packer = packer
-	cryptoSetup := mocks.NewMockCryptoSetup(mockCtrl)
+	cryptoSetup := NewMockCryptoSetup(mockCtrl)
 	cryptoSetup.EXPECT().StartHandshake(gomock.Any()).Return(nil).AnyTimes()
 	cryptoSetup.EXPECT().NextEvent().Return(handshake.Event{Kind: handshake.EventNoEvent}).AnyTimes()
 	cryptoSetup.EXPECT().Get1RTTOpener().Return(nil, nil).AnyTimes()
@@ -900,7 +898,7 @@ func TestConnectionHandleMaxStreamsFrame(t *testing.T) {
 //nolint:unused
 func testConnectionHandshakeClient(t *testing.T, usePreferredAddress bool) {
 	mockCtrl := gomock.NewController(t)
-	cs := mocks.NewMockCryptoSetup(mockCtrl)
+	cs := NewMockCryptoSetup(mockCtrl)
 	unpacker := NewMockUnpacker(mockCtrl)
 	tc := newClientTestConnection(
 		t,
@@ -1058,7 +1056,7 @@ func testConnectionHandshakeClient(t *testing.T, usePreferredAddress bool) {
 
 func TestConnection0RTTTransportParameters(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
-	cs := mocks.NewMockCryptoSetup(mockCtrl)
+	cs := NewMockCryptoSetup(mockCtrl)
 	unpacker := NewMockUnpacker(mockCtrl)
 	tc := newClientTestConnection(
 		t,
@@ -1266,7 +1264,7 @@ func testConnectionReceivePrioritization(t *testing.T, handshakeComplete bool, n
 func TestConnectionIdleTimeout(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		sph := mockackhandler.NewMockSentPacketHandler(mockCtrl)
+		sph := NewMockSentPacketHandler(mockCtrl)
 		sph.EXPECT().AmplificationAllowance().Return(protocol.MaxByteCount).AnyTimes()
 		tc := newServerTestConnection(t,
 			mockCtrl,
@@ -1327,7 +1325,7 @@ func TestConnectionIdleTimeout(t *testing.T) {
 func TestConnectionGSOBatch(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		sph := mockackhandler.NewMockSentPacketHandler(mockCtrl)
+		sph := NewMockSentPacketHandler(mockCtrl)
 		sph.EXPECT().AmplificationAllowance().Return(protocol.MaxByteCount).AnyTimes()
 		tc := newServerTestConnection(t,
 			mockCtrl,
@@ -1403,7 +1401,7 @@ func TestConnectionGSOBatch(t *testing.T) {
 func TestConnectionGSOBatchPacketSize(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		sph := mockackhandler.NewMockSentPacketHandler(mockCtrl)
+		sph := NewMockSentPacketHandler(mockCtrl)
 		sph.EXPECT().AmplificationAllowance().Return(protocol.MaxByteCount).AnyTimes()
 		tc := newServerTestConnection(t,
 			mockCtrl,
@@ -1511,7 +1509,7 @@ func TestConnectionGSOBatchPacketSize(t *testing.T) {
 func TestConnectionGSOBatchECN(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		sph := mockackhandler.NewMockSentPacketHandler(mockCtrl)
+		sph := NewMockSentPacketHandler(mockCtrl)
 		sph.EXPECT().AmplificationAllowance().Return(protocol.MaxByteCount).AnyTimes()
 		tc := newServerTestConnection(t,
 			mockCtrl,
@@ -1631,7 +1629,7 @@ func TestConnectionPTOProbePackets(t *testing.T) {
 func testConnectionPTOProbePackets(t *testing.T, encLevel protocol.EncryptionLevel) {
 	synctest.Test(t, func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		sph := mockackhandler.NewMockSentPacketHandler(mockCtrl)
+		sph := NewMockSentPacketHandler(mockCtrl)
 		sph.EXPECT().AmplificationAllowance().Return(protocol.MaxByteCount).AnyTimes()
 		tc := newServerTestConnection(t,
 			mockCtrl,
@@ -1705,7 +1703,7 @@ func testConnectionPTOProbePackets(t *testing.T, encLevel protocol.EncryptionLev
 func testConnectionSendQueue(t *testing.T, enableGSO bool) {
 	synctest.Test(t, func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		sph := mockackhandler.NewMockSentPacketHandler(mockCtrl)
+		sph := NewMockSentPacketHandler(mockCtrl)
 		sph.EXPECT().AmplificationAllowance().Return(protocol.MaxByteCount).AnyTimes()
 		sender := NewMockSender(mockCtrl)
 		tc := newServerTestConnection(t,
@@ -2035,7 +2033,7 @@ func TestConnectionEarlyClose(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
-		cryptoSetup := mocks.NewMockCryptoSetup(mockCtrl)
+		cryptoSetup := NewMockCryptoSetup(mockCtrl)
 		tc := newClientTestConnection(t,
 			mockCtrl,
 			nil,

@@ -14,8 +14,6 @@ import (
 
 	"github.com/lemon4ksan/foundation/net/quic/internal/ackhandler"
 	"github.com/lemon4ksan/foundation/net/quic/internal/handshake"
-	"github.com/lemon4ksan/foundation/net/quic/internal/mocks"
-	mockackhandler "github.com/lemon4ksan/foundation/net/quic/internal/mocks/ackhandler"
 	"github.com/lemon4ksan/foundation/net/quic/internal/monotime"
 	"github.com/lemon4ksan/foundation/net/quic/internal/protocol"
 	"github.com/lemon4ksan/foundation/net/quic/internal/qerr"
@@ -32,7 +30,7 @@ type testPacketPacker struct {
 	initialStream       *initialCryptoStream
 	handshakeStream     *cryptoStream
 	datagramQueue       *datagramQueue
-	pnManager           *mockackhandler.MockSentPacketHandler
+	pnManager           *MockSentPacketHandler
 	sealingManager      *MockSealingManager
 	framer              *MockFrameSource
 	ackFramer           *MockAckFrameSource
@@ -45,7 +43,7 @@ func newTestPacketPacker(t *testing.T, mockCtrl *gomock.Controller, pers protoco
 
 	initialStream := newInitialCryptoStream(pers == protocol.PerspectiveClient)
 	handshakeStream := newCryptoStream()
-	pnManager := mockackhandler.NewMockSentPacketHandler(mockCtrl)
+	pnManager := NewMockSentPacketHandler(mockCtrl)
 	framer := NewMockFrameSource(mockCtrl)
 	ackFramer := NewMockAckFrameSource(mockCtrl)
 	sealingManager := NewMockSealingManager(mockCtrl)
@@ -78,8 +76,8 @@ func newTestPacketPacker(t *testing.T, mockCtrl *gomock.Controller, pers protoco
 }
 
 // newMockShortHeaderSealer returns a mock short header sealer that seals a short header packet
-func newMockShortHeaderSealer(mockCtrl *gomock.Controller) *mocks.MockShortHeaderSealer {
-	sealer := mocks.NewMockShortHeaderSealer(mockCtrl)
+func newMockShortHeaderSealer(mockCtrl *gomock.Controller) *MockShortHeaderSealer {
+	sealer := NewMockShortHeaderSealer(mockCtrl)
 	sealer.EXPECT().KeyPhase().Return(protocol.KeyPhaseOne).AnyTimes()
 	sealer.EXPECT().Overhead().Return(7).AnyTimes()
 	sealer.EXPECT().EncryptHeader(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()

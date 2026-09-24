@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/lemon4ksan/foundation/net/quic/internal/handshake"
-	"github.com/lemon4ksan/foundation/net/quic/internal/mocks"
 	"github.com/lemon4ksan/foundation/net/quic/internal/monotime"
 	"github.com/lemon4ksan/foundation/net/quic/internal/protocol"
 	"github.com/lemon4ksan/foundation/net/quic/internal/qerr"
@@ -98,7 +97,7 @@ func testUnpackLongHeaderPacket(t *testing.T,
 	expectedErr error,
 ) {
 	mockCtrl := gomock.NewController(t)
-	cs := mocks.NewMockCryptoSetup(mockCtrl)
+	cs := NewMockCryptoSetup(mockCtrl)
 	unpacker := newPacketUnpacker(cs, 4)
 
 	var packetType protocol.PacketType
@@ -133,7 +132,7 @@ func testUnpackLongHeaderPacket(t *testing.T,
 	hdr, _, _, err := wire.ParsePacket(data)
 	require.NoError(t, err)
 
-	opener := mocks.NewMockLongHeaderOpener(mockCtrl)
+	opener := NewMockLongHeaderOpener(mockCtrl)
 
 	var calls []any
 	switch encLevel {
@@ -208,7 +207,7 @@ func testUnpackShortHeaderPacket(
 ) {
 	mockCtrl := gomock.NewController(t)
 	connID := protocol.ParseConnectionID([]byte{1, 2, 3, 4, 5})
-	cs := mocks.NewMockCryptoSetup(mockCtrl)
+	cs := NewMockCryptoSetup(mockCtrl)
 	unpacker := newPacketUnpacker(cs, connID.Len())
 	payload := []byte("Lorem ipsum dolor sit amet")
 
@@ -225,7 +224,7 @@ func testUnpackShortHeaderPacket(
 		hdrRaw[0] |= 0x18
 	}
 
-	opener := mocks.NewMockShortHeaderOpener(mockCtrl)
+	opener := NewMockShortHeaderOpener(mockCtrl)
 	opener.EXPECT().DecryptHeader(gomock.Any(), gomock.Any(), gomock.Any())
 	cs.EXPECT().Get1RTTOpener().Return(opener, nil)
 	opener.EXPECT().DecodePacketNumber(gomock.Any(), gomock.Any()).Return(protocol.PacketNumber(1234))
@@ -248,7 +247,7 @@ func testUnpackShortHeaderPacket(
 
 func TestUnpackHeaderSampleLongHeader(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
-	cs := mocks.NewMockCryptoSetup(mockCtrl)
+	cs := NewMockCryptoSetup(mockCtrl)
 	unpacker := newPacketUnpacker(cs, 4)
 
 	extHdr := &wire.ExtendedHeader{
@@ -268,7 +267,7 @@ func TestUnpackHeaderSampleLongHeader(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("too short", func(t *testing.T) {
-		cs.EXPECT().GetHandshakeOpener().Return(mocks.NewMockLongHeaderOpener(mockCtrl), nil)
+		cs.EXPECT().GetHandshakeOpener().Return(NewMockLongHeaderOpener(mockCtrl), nil)
 
 		_, err = unpacker.UnpackLongHeader(hdr, data[:len(data)-1])
 		require.IsType(t, &headerParseError{}, err)
@@ -276,7 +275,7 @@ func TestUnpackHeaderSampleLongHeader(t *testing.T) {
 	})
 
 	t.Run("minimal size", func(t *testing.T) {
-		opener := mocks.NewMockLongHeaderOpener(mockCtrl)
+		opener := NewMockLongHeaderOpener(mockCtrl)
 		cs.EXPECT().GetHandshakeOpener().Return(opener, nil)
 		opener.EXPECT().DecryptHeader(b[len(b)-16:], gomock.Any(), gomock.Any())
 		opener.EXPECT().DecodePacketNumber(gomock.Any(), gomock.Any()).Return(protocol.PacketNumber(1337))
@@ -289,7 +288,7 @@ func TestUnpackHeaderSampleLongHeader(t *testing.T) {
 
 func TestUnpackHeaderSampleShortHeader(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
-	cs := mocks.NewMockCryptoSetup(mockCtrl)
+	cs := NewMockCryptoSetup(mockCtrl)
 	unpacker := newPacketUnpacker(cs, 4)
 
 	data, err := wire.AppendShortHeader(
@@ -306,7 +305,7 @@ func TestUnpackHeaderSampleShortHeader(t *testing.T) {
 	data = append(data, b...)
 
 	t.Run("too short", func(t *testing.T) {
-		cs.EXPECT().Get1RTTOpener().Return(mocks.NewMockShortHeaderOpener(mockCtrl), nil)
+		cs.EXPECT().Get1RTTOpener().Return(NewMockShortHeaderOpener(mockCtrl), nil)
 
 		_, _, _, _, err = unpacker.UnpackShortHeader(monotime.Now(), data[:len(data)-1])
 		require.IsType(t, &headerParseError{}, err)
@@ -314,7 +313,7 @@ func TestUnpackHeaderSampleShortHeader(t *testing.T) {
 	})
 
 	t.Run("minimal size", func(t *testing.T) {
-		opener := mocks.NewMockShortHeaderOpener(mockCtrl)
+		opener := NewMockShortHeaderOpener(mockCtrl)
 		cs.EXPECT().Get1RTTOpener().Return(opener, nil)
 		opener.EXPECT().DecryptHeader(data[len(data)-16:], gomock.Any(), gomock.Any())
 		opener.EXPECT().DecodePacketNumber(gomock.Any(), gomock.Any()).Return(protocol.PacketNumber(1337))
@@ -329,7 +328,7 @@ func TestUnpackHeaderSampleShortHeader(t *testing.T) {
 
 func TestUnpackErrors(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
-	cs := mocks.NewMockCryptoSetup(mockCtrl)
+	cs := NewMockCryptoSetup(mockCtrl)
 	unpacker := newPacketUnpacker(cs, 4)
 
 	// opener not available
@@ -339,7 +338,7 @@ func TestUnpackErrors(t *testing.T) {
 	require.ErrorIs(t, err, handshake.ErrKeysNotYetAvailable)
 
 	// opener returns error
-	opener := mocks.NewMockLongHeaderOpener(mockCtrl)
+	opener := NewMockLongHeaderOpener(mockCtrl)
 	cs.EXPECT().GetHandshakeOpener().Return(opener, nil)
 	opener.EXPECT().DecryptHeader(gomock.Any(), gomock.Any(), gomock.Any())
 	opener.EXPECT().DecodePacketNumber(gomock.Any(), gomock.Any()).Return(protocol.PacketNumber(1234))
@@ -353,7 +352,7 @@ func TestUnpackErrors(t *testing.T) {
 
 func TestUnpackHeaderDecryption(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
-	cs := mocks.NewMockCryptoSetup(mockCtrl)
+	cs := NewMockCryptoSetup(mockCtrl)
 	unpacker := newPacketUnpacker(cs, 4)
 	connID := protocol.ParseConnectionID([]byte{0xde, 0xad, 0xbe, 0xef})
 
@@ -377,7 +376,7 @@ func TestUnpackHeaderDecryption(t *testing.T) {
 	hdrRaw[len(hdrRaw)-1] ^= 0xff // invert the packet number
 	require.NotEqual(t, hdrRaw[0], firstHdrByte)
 
-	opener := mocks.NewMockLongHeaderOpener(mockCtrl)
+	opener := NewMockLongHeaderOpener(mockCtrl)
 	cs.EXPECT().GetHandshakeOpener().Return(opener, nil)
 	gomock.InOrder(
 		// we're using a 2 byte packet number, so the sample starts at the 3rd payload byte

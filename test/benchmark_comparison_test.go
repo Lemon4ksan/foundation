@@ -10,9 +10,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lemon4ksan/aoni/idna"
+	"github.com/lemon4ksan/aoni/psl"
+
 	"github.com/lemon4ksan/foundation/async/rate"
-	"github.com/lemon4ksan/foundation/net/idna"
-	"github.com/lemon4ksan/foundation/net/psl"
 	"github.com/lemon4ksan/foundation/net/urlkit"
 	"github.com/lemon4ksan/foundation/silicon/clock"
 	"github.com/lemon4ksan/foundation/text/encoding/charmap"
