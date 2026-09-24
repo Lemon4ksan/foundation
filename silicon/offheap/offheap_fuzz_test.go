@@ -6,6 +6,8 @@ package offheap_test
 
 import (
 	"bytes"
+	"errors"
+	"io"
 	"testing"
 	"unsafe"
 
@@ -136,6 +138,115 @@ func FuzzSlabPoolAlloc(f *testing.F) {
 
 		for _, ptr := range allocated {
 			_ = slab.Free(ptr)
+		}
+	})
+}
+
+// FuzzOffHeapBuffer tests direct OS kernel-backed OffHeapBuffer creation,
+// writing, reading, seeking, reslicing, string parsing, and boundary safety.
+func FuzzOffHeapBuffer(f *testing.F) {
+	f.Add(4096, []byte("foundation offheap payload"), "string chunk")
+	f.Add(0, []byte(""), "")
+	f.Add(65536, bytes.Repeat([]byte{0x42}, 1024), "secondary text")
+	f.Add(128, []byte("\x00\x01\x02\x03\xff"), "unicode: 🚀 世界")
+
+	f.Fuzz(func(t *testing.T, capSize int, chunk []byte, strChunk string) {
+		// Test capacity clamping/validation
+		if capSize > 4*1024*1024 {
+			return
+		}
+		if len(chunk) > 1024*1024 || len(strChunk) > 1024*1024 {
+			return
+		}
+
+		buf, err := offheap.NewBuffer(capSize)
+		if err != nil {
+			return
+		}
+		defer buf.Release()
+
+		// Initial capacity should be >= requested (or default 64KB if capSize <= 0)
+		if buf.Cap() <= 0 {
+			t.Fatalf("expected positive capacity, got %d", buf.Cap())
+		}
+		if buf.Len() != 0 {
+			t.Fatalf("expected 0 initial length, got %d", buf.Len())
+		}
+
+		// Write bytes
+		nWritten, writeErr := buf.Write(chunk)
+		if writeErr != nil {
+			if !errors.Is(writeErr, offheap.ErrBufferFull) {
+				t.Fatalf("unexpected write error: %v", writeErr)
+			}
+		} else if nWritten != len(chunk) {
+			t.Fatalf("short write without error: wrote %d, want %d", nWritten, len(chunk))
+		}
+
+		// Write string
+		nStrWritten, strErr := buf.WriteString(strChunk)
+		if strErr != nil {
+			if !errors.Is(strErr, offheap.ErrBufferFull) {
+				t.Fatalf("unexpected write string error: %v", strErr)
+			}
+		} else if nStrWritten != len(strChunk) {
+			t.Fatalf("short write string without error: wrote %d, want %d", nStrWritten, len(strChunk))
+		}
+
+		// Validate Bytes() view
+		activeBytes := buf.Bytes()
+		if len(activeBytes) != buf.Len() {
+			t.Fatalf("Bytes() length mismatch: got %d, want %d", len(activeBytes), buf.Len())
+		}
+
+		// Read back via Read (io.Reader)
+		if buf.Len() > 0 {
+			readBuf := make([]byte, buf.Len())
+			nRead, readErr := buf.Read(readBuf)
+			if readErr != nil && !errors.Is(readErr, io.EOF) {
+				t.Fatalf("read failed: %v", readErr)
+			}
+			if !bytes.Equal(readBuf[:nRead], activeBytes[:nRead]) {
+				t.Fatalf("read content mismatch")
+			}
+
+			// Subsequent read should return EOF
+			dummy := make([]byte, 1)
+			_, eofErr := buf.Read(dummy)
+			if !errors.Is(eofErr, io.EOF) {
+				t.Fatalf("expected io.EOF on fully read buffer, got %v", eofErr)
+			}
+
+			// RewindRead and verify we can read again
+			buf.RewindRead()
+			nRewound, _ := buf.Read(readBuf)
+			if nRewound != nRead {
+				t.Fatalf("rewound read length mismatch: got %d, want %d", nRewound, nRead)
+			}
+		}
+
+		// Test RawBytes
+		_ = buf.RawBytes(buf.Cap() / 2)
+		_ = buf.RawBytes(buf.Cap() + 1) // should return nil
+
+		// Test Reset
+		buf.Reset()
+		if buf.Len() != 0 {
+			t.Fatalf("expected 0 length after Reset, got %d", buf.Len())
+		}
+
+		// Test operations after Release
+		buf.Release()
+		_, postReleaseWrite := buf.Write([]byte("test"))
+		if !errors.Is(postReleaseWrite, offheap.ErrBufferClosed) {
+			t.Fatalf("expected ErrBufferClosed after release, got %v", postReleaseWrite)
+		}
+		_, postReleaseRead := buf.Read(make([]byte, 10))
+		if !errors.Is(postReleaseRead, offheap.ErrBufferClosed) {
+			t.Fatalf("expected ErrBufferClosed after release, got %v", postReleaseRead)
+		}
+		if buf.Bytes() != nil {
+			t.Fatalf("expected nil Bytes() after release")
 		}
 	})
 }

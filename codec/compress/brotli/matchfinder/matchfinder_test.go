@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"errors"
 	"math"
+	"math/rand"
 	"testing"
 )
 
@@ -738,30 +739,25 @@ func TestTextEncoderTrailing(t *testing.T) {
 func TestOffset2MatchDirect(t *testing.T) {
 	tokenA := []byte("ABCDEFGH12345678")
 	tokenB := []byte("IJKLMNOP87654321")
-	pad16 := []byte("!@#$%^&*()_+~`<>")
-	pad52 := append(bytes.Repeat([]byte("0123456789"), 5), []byte("xy")...)
-	pad84 := append(bytes.Repeat([]byte("abcdefghij"), 8), []byte("1234")...)
-	pad30 := bytes.Repeat([]byte("END_OF_TEST_"), 3)
+	tokenC := []byte("ZXCVBNMQWERTYUIO")
 
-	var buf bytes.Buffer
-	buf.Write(tokenA) // 0..16
-	buf.Write(pad16)  // 16..32
-	buf.Write(tokenA) // 32..48
-	buf.Write(pad52)  // 48..100
-	buf.Write(tokenB) // 100..116
-	buf.Write(pad84)  // 116..200
-	buf.Write(tokenA) // 200..216 -> matches pos 0 (offset1 = 200)
-	buf.Write(tokenB) // 216..232 -> matches pos 100 (offset2 = 200, offset1 = 116)
-	buf.Write(tokenA) // 232..248 -> o2 = 232 - 200 = 32 (matches pos 32 via offset2!)
-	buf.Write(pad30)
+	prng := rand.New(rand.NewSource(42))
+	buf := make([]byte, 350)
+	_, _ = prng.Read(buf)
 
-	data := buf.Bytes()
+	copy(buf[0:], tokenA)
+	copy(buf[32:], tokenC)
+	copy(buf[48:], tokenB)
+	copy(buf[172:], tokenA)
+	copy(buf[188:], tokenB)
+	copy(buf[204:], tokenC)
+
 	for _, mf := range []MatchFinder{
 		&ZFast{MaxDistance: 4096},
 		&ZDFast{MaxDistance: 4096},
 	} {
-		m := mf.FindMatches(nil, data)
-		verifyMatches(t, data, m, "offset2 test")
+		m := mf.FindMatches(nil, buf)
+		verifyMatches(t, buf, m, "offset2 test")
 	}
 }
 

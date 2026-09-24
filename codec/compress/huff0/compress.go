@@ -9,7 +9,6 @@ package huff0
 import (
 	"fmt"
 	"math"
-	"runtime"
 	"sync"
 )
 
@@ -35,16 +34,6 @@ func Compress4X(in []byte, s *Scratch) (out []byte, reUsed bool, err error) {
 	s, err = s.prepare(in)
 	if err != nil {
 		return nil, false, err
-	}
-
-	if false {
-		// TODO: compress4Xp only slightly faster.
-		const parallelThreshold = 8 << 10
-		if len(in) < parallelThreshold || runtime.GOMAXPROCS(0) == 1 {
-			return compress(in, s, s.compress4X)
-		}
-
-		return compress(in, s, s.compress4Xp)
 	}
 
 	return compress(in, s, s.compress4X)
@@ -127,9 +116,6 @@ func compress(in []byte, s *Scratch, compressor func(src []byte) ([]byte, error)
 		return nil, false, err
 	}
 
-	if false && !s.canUseTable(s.cTable) {
-		panic("invalid table generated")
-	}
 
 	if s.Reuse == ReusePolicyAllow && canReuse {
 		hSize := len(s.Out)
@@ -243,9 +229,6 @@ func EstimateSizes(in []byte, s *Scratch) (tableSz, dataSz, reuseSz int, err err
 		return 0, 0, 0, err
 	}
 
-	if false && !s.canUseTable(s.cTable) {
-		panic("invalid table generated")
-	}
 
 	tableSz, err = s.cTable.estTableSize(s)
 	if err != nil {

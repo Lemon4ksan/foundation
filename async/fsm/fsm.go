@@ -58,6 +58,13 @@ func New[State, Event comparable](initial State) *FSM[State, Event] {
 	}
 }
 
+// NewFSM instantiates and returns a new finite state machine with the given initial state.
+//
+// It is an alias for [New] provided for backwards compatibility with earlier documentation and APIs.
+func NewFSM[State, Event comparable](initial State) *FSM[State, Event] {
+	return New[State, Event](initial)
+}
+
 // AddRules registers one or more valid transition rules in the state machine.
 //
 // If a duplicate rule for the same (From, Event) pair is registered, it is

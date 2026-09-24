@@ -28,7 +28,7 @@ const (
 	EventRetry Event = "retry"
 )
 
-func ExampleNewFSM() {
+func ExampleNew() {
 	machine := fsm.New[State, Event](StateIdle)
 
 	machine.AddRules(

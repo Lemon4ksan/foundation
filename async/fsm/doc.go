@@ -75,7 +75,7 @@
 //	}
 //
 //	func main() {
-//		fsm := fsm.NewFSM[State, Event](Idle)
+//		fsm := fsm.New[State, Event](Idle)
 //
 //		fsm.AddRules(
 //			fsm.TransitionRule[State, Event]{From: Idle, Event: Start, To: Running},

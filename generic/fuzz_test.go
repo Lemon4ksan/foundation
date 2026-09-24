@@ -5,6 +5,7 @@
 package generic_test
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -165,5 +166,108 @@ func FuzzLazyStreams(f *testing.F) {
 		dropped := generic.Drop(seq, n)
 		_ = generic.ToSlice(dropped)
 		_ = generic.Drop[int](nil, n)
+	})
+}
+
+// FuzzResult stress-tests monadic Result and TypedResult pipelines with arbitrary string payloads,
+// error paths, mapping, recovering, and unwrapping.
+func FuzzResult(f *testing.F) {
+	f.Add("hello", "error occurred", true)
+	f.Add("", "", false)
+	f.Add("payload with special chars: \x00\xff\n\t", "failure message", true)
+	f.Add("42", "not an int", false)
+
+	f.Fuzz(func(t *testing.T, val, errMsg string, isSuccess bool) {
+		var res generic.Result[string]
+		if isSuccess {
+			res = generic.Success(val)
+			if !res.IsSuccess() {
+				t.Fatalf("expected success for val %q", val)
+			}
+			if got := res.MustValue(); got != val {
+				t.Fatalf("MustValue mismatch: got %q, want %q", got, val)
+			}
+			v, err := res.Unwrap()
+			if err != nil || v != val {
+				t.Fatalf("Unwrap mismatch: got (%q, %v), want (%q, nil)", v, err, val)
+			}
+		} else {
+			res = generic.Failure[string](errors.New(errMsg))
+			if res.IsSuccess() {
+				t.Fatalf("expected failure for errMsg %q", errMsg)
+			}
+			_, err := res.Unwrap()
+			if err == nil || err.Error() != errMsg {
+				t.Fatalf("Unwrap error mismatch: got %v, want %q", err, errMsg)
+			}
+		}
+
+		// Test Recover & RecoverWith
+		recovered := res.Recover(func(err error) string {
+			return "fallback"
+		})
+		if isSuccess && recovered != val {
+			t.Fatalf("Recover on success altered value: got %q, want %q", recovered, val)
+		}
+		if !isSuccess && recovered != "fallback" {
+			t.Fatalf("Recover on failure did not use fallback: got %q", recovered)
+		}
+
+		// Nil recover safety
+		_ = res.Recover(nil)
+		_ = res.RecoverWith(nil)
+
+		// Test MapResult and FlatMapResult
+		mapped := generic.MapResult(res, func(s string) int {
+			return len(s)
+		})
+		if isSuccess {
+			if !mapped.IsSuccess() {
+				t.Fatalf("MapResult failed on success input")
+			}
+			if mapped.MustValue() != len(val) {
+				t.Fatalf("MapResult value mismatch: got %d, want %d", mapped.MustValue(), len(val))
+			}
+		} else {
+			if mapped.IsSuccess() {
+				t.Fatalf("MapResult succeeded on failure input")
+			}
+		}
+		_ = generic.MapResult[string, string](res, nil)
+		_ = generic.FlatMapResult[string, string](res, nil)
+
+		// Test TypedResult
+		var tr generic.TypedResult[string, error]
+		if isSuccess {
+			tr = generic.SuccessTyped[string, error](val)
+			if !tr.IsSuccess() {
+				t.Fatalf("TypedResult expected success")
+			}
+			if tr.MustValue() != val {
+				t.Fatalf("TypedResult MustValue mismatch")
+			}
+		} else {
+			tr = generic.FailureTyped[string, error](errors.New(errMsg))
+			if tr.IsSuccess() {
+				t.Fatalf("TypedResult expected failure")
+			}
+		}
+		_ = tr.Recover(nil)
+		_ = tr.RecoverWith(nil)
+		_ = generic.MapTypedResult[string, string, error](tr, nil)
+		_ = generic.FlatMapTypedResult[string, string, error](tr, nil)
+
+		// Test ToResult
+		if isSuccess {
+			toRes := generic.ToResult(val, nil)
+			if !toRes.IsSuccess() {
+				t.Fatalf("ToResult with nil error should be success")
+			}
+		} else {
+			toRes := generic.ToResult(val, errors.New(errMsg))
+			if toRes.IsSuccess() {
+				t.Fatalf("ToResult with error should be failure")
+			}
+		}
 	})
 }
