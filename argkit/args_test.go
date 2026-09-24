@@ -6,6 +6,7 @@ package argkit_test
 
 import (
 	"flag"
+	"io"
 	"strings"
 	"testing"
 
@@ -113,6 +114,7 @@ func TestArgKit_ClumpWithAttachedValue(t *testing.T) {
 
 func TestArgKit_TypoSuggestion(t *testing.T) {
 	fs := flag.NewFlagSet("test", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
 
 	var where string
 	argkit.StringVar(fs, &where, "where", "w", "", "where expression")

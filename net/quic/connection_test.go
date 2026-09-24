@@ -322,6 +322,14 @@ func testConnectionClose(t *testing.T, useApplicationClose bool, expectedErr err
 
 		tc.sendConn.EXPECT().Write([]byte("connection close"), gomock.Any(), gomock.Any())
 		tc.connRunner.EXPECT().ReplaceWithClosed(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+		tc.packer.EXPECT().
+			AppendPacket(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(shortHeaderPacket{}, errNothingToPack).
+			AnyTimes()
+		tc.packer.EXPECT().
+			PackAckOnlyPacket(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(shortHeaderPacket{}, nil, nil).
+			AnyTimes()
 
 		go func() { errChan <- func() error { _ = tc.conn.Start(); return tc.wrappedConn.run() }() }()
 
@@ -355,6 +363,14 @@ func TestConnectionStatelessReset(t *testing.T) {
 		errChan := make(chan error, 1)
 
 		tc.connRunner.EXPECT().Remove(gomock.Any()).AnyTimes()
+		tc.packer.EXPECT().
+			AppendPacket(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(shortHeaderPacket{}, errNothingToPack).
+			AnyTimes()
+		tc.packer.EXPECT().
+			PackAckOnlyPacket(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(shortHeaderPacket{}, nil, nil).
+			AnyTimes()
 
 		go func() { errChan <- func() error { _ = tc.conn.Start(); return tc.wrappedConn.run() }() }()
 
