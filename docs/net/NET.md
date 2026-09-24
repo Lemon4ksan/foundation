@@ -2,74 +2,68 @@
 
 [![Go Reference](https://img.shields.io/badge/go-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/lemon4ksan/foundation/net)
 
-`net/` provides high-performance, RFC-compliant protocol encoders, low-level network framing primitives, proxy connectors, and DNS resolvers optimized for zero memory allocations.
+`net/` provides high-performance, RFC-compliant protocol encoders, low-level network framing primitives, proxy connectors, and the QUIC transport engine optimized for zero memory allocations.
 
 ## 1. Package Structure
 
 ```text
 foundation/net/
-├── cachestatus/  // RFC 9211 HTTP Cache-Status header parser
-├── cookie/       // RFC 6265 cookie engine, path sorting, and proxy isolation
-├── dns/          // DoH, DoQ, and DoT secure DNS resolvers
-├── grpcweb/      // 5-byte framed gRPC-Web payload stream decoder & trailer validator
-├── headkit/      // High-speed header canonicalization & case-preserving maps
-├── hpack/        // RFC 7541 HTTP/2 HPACK table encoder & decoder
-├── ip/           // Subnet calculators, CIDR matchers, and IPv6 address pool rotators
-├── pkce/         // RFC 7636 OAuth2 Proof Key for Code Exchange generators
-├── proxy/        // SOCKS4, SOCKS5, HTTP CONNECT, and PROXY protocol v1/v2 parsers
-├── psl/          // Compiled Public Suffix List domain boundary resolver
-├── sse/          // Real-time Server-Sent Events frame scanner
-├── tls/          // SPKI public key hash pinning and TLS certificate verifiers
-├── url/          // Fast zero-copy URL parser and parameter encoder
-└── weblink/      // RFC 8288 Web Link relation parser (pagination, canonical)
+├── ip/       // Subnet calculators, CIDR matchers, and IPv6 address pool rotators
+├── ipc/      // Inter-Process Communication (Unix domain sockets, Windows named pipes)
+├── netutil/  // Host sanitization and address normalization (CleanHost, CleanHostPort)
+├── proxy/    // SOCKS4, SOCKS5, HTTP CONNECT, and PROXY protocol v1/v2 parsers
+├── quic/     // RFC 9000 pure-Go zero-allocation QUIC protocol engine
+├── tls/      // SPKI public key hash pinning and TLS certificate verifiers
+└── urlkit/   // Fast zero-copy URL parser and parameter encoder (CRC32 sharded cache)
 ```
 
 ## 2. Core Protocol Engines
 
-### A. HPACK Header Compression (`net/hpack`)
-RFC 7541 compliant HTTP/2 header table encoder and decoder optimized with SIMD Huffman decoding.
+### A. QUIC Transport Engine (`net/quic`)
+RFC 9000 compliant pure-Go QUIC protocol implementation optimized for extreme line-rate performance with zero heap allocations on the packet processing path.
 
 ```go
-decoder := hpack.NewDecoder(4096, func(f hpack.HeaderField) {
-    fmt.Printf("Header: %s: %s (sensitive=%v)\n", f.Name, f.Value, f.Sensitive)
-})
-_, err := decoder.Write(hpackBlock)
-```
-
-### B. gRPC-Web 5-Byte Stream Framing (`net/grpcweb`)
-Parses gRPC-Web binary streams, extracting payloads and validating trailers (`grpc-status`, `grpc-message`).
-
-```go
-parser := grpcweb.NewStreamParser(rawReader)
-frame, err := parser.NextFrame()
-if frame.IsTrailer {
-    status := grpcweb.ParseTrailerStatus(frame.Payload)
+// Push-iterator based Varint decoding directly from byte slices
+for val := range varint.DecodeSeq(packetPayload) {
+    processFrame(val)
 }
 ```
 
-### C. RFC 9211 Cache-Status Header Parser (`net/cachestatus`)
-Decodes standardized `Cache-Status` headers emitted by modern CDNs (Cloudflare, Fastly, Akamai):
+### B. High-Speed URL Engine (`net/urlkit`)
+Zero-allocation URL parsing, query string serialization, and path variable expansion backed by a CRC32 sharded cache.
 
 ```go
-status, err := cachestatus.Parse(`"origin-cache"; hit; ttl=3600; key="xyz"`)
-if status.Hit {
-    fmt.Println("Cache hit from:", status.TargetURI)
+u, err := urlkit.Parse("https://api.internal/v1/users?id=123")
+if err == nil {
+    fmt.Println("Host:", u.Host, "Path:", u.Path)
 }
 ```
 
-### D. Secure DNS Resolvers (`net/dns`)
-Ultra-low-latency DNS-over-HTTPS (DoH), DNS-over-QUIC (DoQ), and DNS-over-TLS (DoT) client engines.
+### C. Proxy Protocols (`net/proxy`)
+Comprehensive support for SOCKS4, SOCKS5 (with auth), HTTP `CONNECT` tunneling, and PROXY protocol v1/v2:
 
 ```go
-resolver := dns.NewDoHResolver("https://1.1.1.1/dns-query")
-ips, err := resolver.LookupIP(ctx, "api.example.com")
+dialer, err := proxy.FromURL("socks5://user:pass@127.0.0.1:1080")
+conn, err := dialer.DialContext(ctx, "tcp", "api.example.com:443")
+```
+
+### D. IP Subnets & CIDR (`net/ip`)
+Zero-allocation IP range parsing, subnet membership testing, and CIDR prefix tree matching:
+
+```go
+set := ip.NewCIDRSet()
+set.AddCIDR("10.0.0.0/8")
+if set.Contains(net.ParseIP("10.1.2.3")) {
+    fmt.Println("Internal IP")
+}
 ```
 
 ## 3. Performance & Standards Compliance
 
 | Protocol / Component | Relevant Standard | Zero-Alloc Optimization |
 | :--- | :--- | :---: |
-| **HPACK Framing** | RFC 7541 | Static table zero-allocation lookup |
-| **Cache-Status** | RFC 9211 | Direct byte tokenizer without regex |
-| **Public Suffix List** | W3C / Mozilla PSL | Compressed perfect hash table lookup |
-| **Web Link Relations** | RFC 8288 | In-place delimiter scan |
+| **QUIC Transport** | RFC 9000 | In-place packet decryption & push iterators |
+| **URL Engine (`urlkit`)** | RFC 3986 | CRC32 sharded cache and zero-alloc string views |
+| **SOCKS5 / HTTP Proxy** | RFC 1928 / RFC 7231 | State machine without buffer reallocation |
+| **IP Routing & CIDR** | RFC 4632 / RFC 4291 | Fast bitwise masking & integer range comparison |
+| **Host Normalization** | RFC 3492 / RFC 5891 | In-place bracket and zone stripping |

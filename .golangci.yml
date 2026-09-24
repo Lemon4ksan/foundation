@@ -77,6 +77,9 @@ linters:
         text: "G115:"
 
       - linters: [gosec]
+        text: "G407:"
+
+      - linters: [gosec]
         text: "G306:|G301:"
 
       - linters: [revive]

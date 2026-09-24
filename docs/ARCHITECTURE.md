@@ -9,7 +9,7 @@ The repository is organized into five layered subsystems:
 +-------------------------------------------------------------------------+
 | Layer 5: Tooling & Utilities (scripts, cmd/c2plan9, types, timekit)     |
 +-------------------------------------------------------------------------+
-| Layer 4: Wire Protocols & Networking (net/*, http/zerocopy, quic, hpack)|
+| Layer 4: Wire Protocols & Networking (net/*, quic, proxy, ip, urlkit)   |
 +-------------------------------------------------------------------------+
 | Layer 3: Codecs & Cryptography (codec/*, crypto/*, encoding/*, text/*)  |
 +-------------------------------------------------------------------------+
@@ -63,6 +63,6 @@ Transitions in stateful systems separate serialization from state querying:
 | `async/fsm` | Generic, thread-safe finite state machine | `FSM[State, Event]`, `Transition` |
 | `async/pipeline` | Stream processing pipelines | `Pipeline[In, Out]`, `ProcessSeq` |
 | `net/quic/varint` | RFC 9000 variable-length integers | `EncodeVarintSlice`, `DecodeSeq` |
-| `net/http/zerocopy` | High-throughput HTTP wire parsing | `Request`, `Response`, `Args`, `URI` |
-| `net/hpack` | RFC 7541 HTTP/2 header compression | `HeaderField`, `Encoder`, `Decoder` |
+| `net/urlkit` | High-speed zero-alloc URL engine | `Parse`, `Query`, `ResolveReference` |
+| `net/proxy` | SOCKS4/5 & HTTP proxy routing | `FromURL`, `Dialer`, `Auth` |
 | `borrow` | Linear ownership and lifetime verification | `Box[T]`, `Ref[T]`, `Mut[T]`, `Scoped` |

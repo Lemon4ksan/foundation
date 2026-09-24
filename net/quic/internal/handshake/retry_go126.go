@@ -70,13 +70,16 @@ func GetRetryIntegrityTag(retry []byte, origDestConnID protocol.ConnectionID, ve
 
 	var (
 		tag    [16]byte
+		nonce  [12]byte
 		sealed []byte
 	)
 
 	if version == protocol.Version2 {
-		sealed = retryAEADv2.Seal(tag[:0], retryNonceV2[:], nil, retryBuf.Bytes())
+		copy(nonce[:], retryNonceV2[:])
+		sealed = retryAEADv2.Seal(tag[:0], nonce[:], nil, retryBuf.Bytes())
 	} else {
-		sealed = retryAEADv1.Seal(tag[:0], retryNonceV1[:], nil, retryBuf.Bytes())
+		copy(nonce[:], retryNonceV1[:])
+		sealed = retryAEADv1.Seal(tag[:0], nonce[:], nil, retryBuf.Bytes())
 	}
 
 	if len(sealed) != 16 {

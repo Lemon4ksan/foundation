@@ -2,7 +2,7 @@
 
 [![Go Reference](https://img.shields.io/badge/go-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/lemon4ksan/foundation/silicon/ringbuf)
 
-`silicon/ringbuf` provides ultra-low latency lock-free Single-Producer Single-Consumer (SPSC) and Multi-Producer Multi-Consumer (MPMC) ring buffers and Structure-of-Arrays (SoA) layouts for maximum CPU cache locality.
+`silicon/ringbuf` provides ultra-low latency lock-free Single-Producer Single-Consumer (SPSC) and Multi-Producer Multi-Consumer (MPMC) ring buffers designed for maximum CPU cache locality.
 
 ## Motivation & Problem Context
 

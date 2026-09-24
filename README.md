@@ -80,7 +80,7 @@ go generate ./...
 * **`bytesconv`**: Vector casing, Base64 codecs, zero-copy converters, tokenizers (31.8 GB/s).
 * **`offheap`**: Unmanaged direct memory slabs bypassing Go GC.
 * **`pool`**: Multi-tiered memory arenas, perpetual byte storage, lock-free object pools.
-* **`ringbuf`**: Lock-free SPSC / MPMC ring buffers, Structure-of-Arrays (SoA) layout.
+* **`ringbuf`**: Lock-free SPSC / MPMC ring buffers.
 * **`clock` & `randkit`**: Syscall-free monotonic clock, lock-free PRNG, UUIDv7.
 * **`trie`**: Compressed radix search trees.
 * **`bufkit`**: Cacheline-aligned (64B) buffers, scatter-gather `BufferChain`, SPSC `RingBuffer`.
@@ -88,17 +88,16 @@ go generate ./...
 * **`encoding/varint`**: QUIC Varint encoding using SIMD intrinsics.
 * **`borrow`**: Generational borrow checker and memory arenas avoiding UAF.
 
-### 2. Codecs & Filesystem (`codec/`, `fskit/`, `pathkit/`, `vfs/`, `iokit/`)
+### 2. Codecs & Filesystem (`codec/`, `fskit/`, `pathkit/`, `iokit/`)
 * **`codec`**: Multi-algorithm compression (`brotli`, `zstd`, `gzip`, `flate`, `lz4`, `lzma`, `fse`, `huff0`), filters (`bcj`, `delta`, `shuffle`), SIMD JSON.
 * **`fskit`**: Multi-threaded directory walking (`FastWalk`), cross-platform memory-mapped I/O (`Mmap`).
 * **`pathkit`**: Immutable Path type, RFC 8089 `file://` URIs, path normalization.
-* **`vfs`**: `io/fs.FS` integration with Zip Slip / Tar Slip defenses and resource limits.
 * **`iokit`**: Replayable body buffers, zero-alloc `BytesReader`, pooled stream copies.
 
-### 3. CLI & AST Tooling (`argkit/`, `ast/golang/`, `tuikit/`, `testing/`)
+### 3. CLI, Reflection & Testing (`argkit/`, `tuikit/`, `refkit/`, `testing/`)
 * **`argkit`**: POSIX flag parsing, short flag stacking (`-la`), attached values, Levenshtein suggestions.
-* **`ast/golang`**: Zero-dependency Go AST inspection, struct field/tag extraction, method discovery.
 * **`tuikit`**: Terminal UI framework, subcommand routing, auto-aligned tables, ANSI TrueColor.
+* **`refkit`**: High-speed struct tag parsing with cache and panic-safe zero-alloc reflection checks.
 * **`testing`**: Zero-dependency assertion (`assert`), termination (`require`), and method expectation (`mock`).
 
 ### 4. Concurrency Orchestration (`async/`)
@@ -119,15 +118,17 @@ go generate ./...
 * **`structures`**: Zero-allocation typed data structures (`minheap`, `ringbuffer`, `linkedlist`).
 
 ### 6. Network Primitives (`net/`)
-* **`net/http/header`**: Canonical HTTP constants, pseudo-headers, zero-allocation header map parser.
+* **`net/quic`**: RFC 9000 QUIC transport protocol engine with connection migration and multi-stream multiplexing.
 * **`net/urlkit`**: CRC32 sharded URL cache, path variable expansion, query param appending.
-* **`net`**: HPACK compression, gRPC-Web framing, RFC 9211 Cache-Status, DoH/DoQ/DoT DNS, Proxy connectors.
+* **`net/proxy`**: SOCKS4, SOCKS5, and HTTP CONNECT proxy dialers with TLS tunneling.
+* **`net/ip` & `net/ipc`**: Zero-allocation IP manipulation, CIDR subnet matching, and cross-platform IPC socket primitives.
+* **`net/netutil`**: Host normalization, port parsing, and low-level connection utilities.
 
-### 7. Types & Text (`text/`, `types/`)
-* **`text/htmlkit`**: Zero-allocation HTML entity unescaping.
+### 7. Types, Time & Text (`types/`, `timekit/`, `text/`)
+* **`timekit`**: Zero-allocation HTTP-date and ISO 8601 formatting, coarse atomic clock, stopwatch.
 * **`text`**: Casing converters, differentials, charset decoders, stream transformers.
 * **`types/uuid`**: RFC 9562 UUIDv4/v7 generators, SIMD formatting and parsing.
 * **`types/values`**: Type conversions and structured extraction.
 
 ### 8. Cryptography (`crypto/`)
-* **`crypto`**: AEAD wrappers, envelope encryption, KDFs, KMS handling, Shamir secret sharing, fast signatures.
+* **`crypto`**: Hardware-accelerated AEAD ciphers (AES-GCM, ChaCha20-Poly1305), KDFs (HKDF, Argon2, PBKDF2), and fast digital signatures.

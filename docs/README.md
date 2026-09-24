@@ -11,15 +11,12 @@ foundation/
 │   ├── BYTESCONV.md          // Zero-copy scanning, slicing, and unsafe conversions
 │   ├── OFFHEAP.md            // Direct memory slabs bypassing Go GC
 │   ├── POOL.md               // Multi-tier memory arenas and perpetual byte storage
-│   ├── RINGBUF.md            // Lock-free SPSC / MPMC ring buffers and SoA
+│   ├── RINGBUF.md            // Lock-free SPSC / MPMC ring buffers
 │   ├── CLOCK_AND_RAND.md     // Monotonic fast-clock, lock-free fastrand, UUID v7
 │   └── TRIE.md               // Compressed radix search trees
 │
 ├── argkit/                   // Command-Line Argument & Flag Parsing
 │   └── ARGKIT.md             // POSIX flag interspersing, short flag stacking, typo suggestions
-│
-├── ast/golang/                   // Go AST Code Inspection & Script Parsing
-│   └── GOLANG.md             // AST traversal, struct/method introspection, expression parsing
 │
 ├── borrow/                   // Generational Borrow Checker & Arenas
 │   └── BORROW.md             // Scope arenas, Safe References (Ref/Mut), Zero UAF
@@ -35,7 +32,7 @@ foundation/
 │   └── CODEC.md              // Brotli, Zstd, Gzip, Deflate, LZ4, LZMA, Filters (BCJ/Delta/Shuffle), JSON
 │
 ├── crypto/                   // High-Performance Cryptography
-│   └── CRYPTO.md             // AEAD, Envelope, KDF, KMS, Shamir, Signatures
+│   └── CRYPTO.md             // AEAD, KDF, Signatures
 │
 ├── fskit/                    // High-Throughput Filesystem Primitives
 │   └── FSKIT.md              // FastWalk directory traversal, cross-platform mmap
@@ -54,9 +51,6 @@ foundation/
 │
 ├── types/                    // Core Types & Identifiers
 │   └── TYPES.md              // RFC 9562 UUIDv4/v7 with SIMD parsing, dynamic values
-│
-├── vfs/                      // Virtual Filesystem & Security Defenses
-│   └── VFS.md                // io/fs.FS implementation, Zip Slip defense, extraction limits
 │
 ├── refkit/                   // Struct & Type Reflection Helpers
 │   └── REFKIT.md             // Tag parsing with cache, panic-safe reflection checks
@@ -83,13 +77,13 @@ foundation/
 │   └── GENERIC.md            // Safe[T], Cache[K,V], LRU, Pool, Optional/Result, Slices, Maps, Stream
 │
 ├── text/                     // Text Processing
-│   └── TEXT.md               // Casing, Diff, Encoding, HTMLKit
+│   └── TEXT.md               // Casing, Diff, Encoding
 │
 ├── iokit/                    // Streaming I/O & Replayable Buffers
 │   └── IOKIT.md              // ReplayableBody, BytesReader, Stream Limits, Copy Pools
 │
 └── net/                      // Low-Level Network Protocol Primitives
-    └── NET.md                // Header, HPACK, gRPC-Web, Cache-Status, DoH/DoQ, Proxy, Cookie, PSL
+    └── NET.md                // QUIC, URL Engine (urlkit), Proxy, IP, IPC, Host Normalization
 ```
 
 ## Module Index
@@ -112,12 +106,6 @@ foundation/
 | Module | Documentation | Focus Area |
 | :--- | :--- | :--- |
 | `argkit` | [`docs/argkit/ARGKIT.md`](argkit/ARGKIT.md) | POSIX flag interspersing, short flag stacking (`-la`), attached values, typo suggestions. |
-
-### AST Inspection & Code Analysis (`ast/golang/`)
-
-| Module | Documentation | Focus Area |
-| :--- | :--- | :--- |
-| `ast/golang` | [`docs/ast/golang/GOLANG.md`](ast/golang/GOLANG.md) | Go AST traversal, struct tag extraction, method inspection, statement parsing. |
 
 ### Binary Encoding & Layout Serialization (`encoding/`, `borrow/`)
 
@@ -143,7 +131,7 @@ foundation/
 
 | Module | Documentation | Focus Area |
 | :--- | :--- | :--- |
-| `crypto` | [`docs/crypto/CRYPTO.md`](crypto/CRYPTO.md) | AEAD, Envelope Encryption, KDFs, KMS interfaces, Shamir's Secret Sharing, and High-throughput Signatures. |
+| `crypto` | [`docs/crypto/CRYPTO.md`](crypto/CRYPTO.md) | AEAD wrappers, KDFs (HKDF, Argon2, PBKDF2), and high-throughput digital signatures. |
 
 ### Filesystem Primitives (`fskit/`)
 
@@ -180,13 +168,7 @@ foundation/
 | Module | Documentation | Focus Area |
 | :--- | :--- | :--- |
 | `types` | [`docs/types/TYPES.md`](types/TYPES.md) | RFC 9562 UUIDv4/v7 with SIMD parsers, zero-allocation dynamic value extraction. |
-| `text` | [`docs/text/TEXT.md`](text/TEXT.md) | Text processing: casing, diffs, charset encodings, and HTML entity sanitization. |
-
-### Virtual Filesystem & Path Security (`vfs/`)
-
-| Module | Documentation | Focus Area |
-| :--- | :--- | :--- |
-| `vfs` | [`docs/vfs/VFS.md`](vfs/VFS.md) | Standard io/fs.FS integration, Zip Slip / Tar Slip traversal defenses, extraction limits. |
+| `text` | [`docs/text/TEXT.md`](text/TEXT.md) | Text processing: casing, diffs, charset encodings, and stream transformers. |
 
 ### Struct & Type Reflection Helpers (`refkit/`)
 
@@ -232,4 +214,4 @@ foundation/
 
 | Module | Documentation | Focus Area |
 | :--- | :--- | :--- |
-| `net` | [`docs/net/NET.md`](net/NET.md) | Canonical HTTP headers, URL parsing (`urlkit`), HPACK compression, gRPC-Web framing, RFC 9211 Cache-Status, DoH/DoQ/DoT DNS, and Proxy engines. |
+| `net` | [`docs/net/NET.md`](net/NET.md) | QUIC transport (RFC 9000), URL engine (`urlkit`), SOCKS4/5 & HTTP proxies, IP routing, IPC, and Host sanitization. |

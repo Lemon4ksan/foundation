@@ -40,7 +40,13 @@ func (s *tokenProtector) NewToken(data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	return append(salt[:], aead.Seal(nil, nil, data, nil)...), nil
+	nonce := make([]byte, aead.NonceSize())
+	if _, err := rand.Read(nonce); err != nil {
+		return nil, err
+	}
+
+	sealed := aead.Seal(nonce, nonce, data, nil)
+	return append(salt[:], sealed...), nil
 }
 
 // DecodeToken decodes a token.
@@ -50,17 +56,21 @@ func (s *tokenProtector) DecodeToken(p []byte) ([]byte, error) {
 	}
 
 	salt := p[:tokenSaltSize]
+	body := p[tokenSaltSize:]
 
 	aead, err := s.createAEAD(salt)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(p[tokenSaltSize:]) < aead.Overhead() {
+	if len(body) < aead.NonceSize()+aead.Overhead() {
 		return nil, fmt.Errorf("token too short: %d", len(p))
 	}
 
-	return aead.Open(nil, nil, p[tokenSaltSize:], nil)
+	nonce := body[:aead.NonceSize()]
+	ciphertext := body[aead.NonceSize():]
+
+	return aead.Open(nil, nonce, ciphertext, nil)
 }
 
 //nolint:gosec // G101: HKDF domain separation context string, not hardcoded credentials.
@@ -82,10 +92,5 @@ func (s *tokenProtector) createAEAD(salt []byte) (cipher.AEAD, error) {
 		return nil, err
 	}
 
-	aead, err := cipher.NewGCMWithRandomNonce(c)
-	if err != nil {
-		return nil, err
-	}
-
-	return aead, nil
+	return cipher.NewGCM(c)
 }
