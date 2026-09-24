@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lemon4ksan/aoni/idna"
-	"github.com/lemon4ksan/aoni/psl"
+	"golang.org/x/net/idna"
 
 	"github.com/lemon4ksan/foundation/async/rate"
+	"github.com/lemon4ksan/foundation/net/netutil"
 	"github.com/lemon4ksan/foundation/net/urlkit"
 	"github.com/lemon4ksan/foundation/silicon/clock"
 	"github.com/lemon4ksan/foundation/text/encoding/charmap"
@@ -49,37 +49,7 @@ func BenchmarkCompare_URL_Parse_Foundation(b *testing.B) {
 }
 
 // -----------------------------------------------------------------------------
-// 2. Public Suffix List / eTLD+1: Standard String Scan vs Foundation Zero-Alloc Bytes
-// -----------------------------------------------------------------------------
-
-const testDomain = "subdomain.deep.service.co.uk"
-
-var testDomainBytes = []byte(testDomain)
-
-func BenchmarkCompare_PSL_eTLD_String_Std(b *testing.B) {
-	b.ReportAllocs()
-
-	for b.Loop() {
-		res, err := psl.EffectiveTLDPlusOne(testDomain)
-		if err != nil || res == "" {
-			b.Fatal(err)
-		}
-	}
-}
-
-func BenchmarkCompare_PSL_eTLD_Bytes_Foundation(b *testing.B) {
-	b.ReportAllocs()
-
-	for b.Loop() {
-		res, err := psl.EffectiveTLDPlusOneBytes(testDomainBytes)
-		if err != nil || len(res) == 0 {
-			b.Fatal(err)
-		}
-	}
-}
-
-// -----------------------------------------------------------------------------
-// 3. Clock & Timestamping: Standard time.Now() vs Foundation CoarseClock
+// 2. Clock & Timestamping: Standard time.Now() vs Foundation CoarseClock
 // -----------------------------------------------------------------------------
 
 func BenchmarkCompare_Clock_Std_TimeNow(b *testing.B) {
@@ -105,7 +75,7 @@ func BenchmarkCompare_Clock_Foundation_CoarseClock(b *testing.B) {
 }
 
 // -----------------------------------------------------------------------------
-// 4. Rate Limiting: Foundation Rate Limiter (Token Bucket Allow vs Sometimes)
+// 3. Rate Limiting: Foundation Rate Limiter (Token Bucket Allow vs Sometimes)
 // -----------------------------------------------------------------------------
 
 func BenchmarkCompare_Rate_TokenBucket_Allow(b *testing.B) {
@@ -129,7 +99,7 @@ func BenchmarkCompare_Rate_Sometimes_FastPath(b *testing.B) {
 }
 
 // -----------------------------------------------------------------------------
-// 5. Web Encodings: WhatWG Charset Resolver & Windows-1251 Transcoding
+// 4. Web Encodings: WhatWG Charset Resolver & Windows-1251 Transcoding
 // -----------------------------------------------------------------------------
 
 func BenchmarkCompare_Encoding_WhatWG_Lookup(b *testing.B) {
@@ -176,7 +146,7 @@ func BenchmarkCompare_Encoding_Windows1251_Transform_ZeroAlloc(b *testing.B) {
 }
 
 // -----------------------------------------------------------------------------
-// 6. IDNA & Punycode (RFC 3492 / 5891)
+// 5. Host Sanitization & CleanHost (RFC 3492 / 5891)
 // -----------------------------------------------------------------------------
 
 const (
@@ -184,23 +154,34 @@ const (
 	asciiDomain         = "api.gateway.internal"
 )
 
-func BenchmarkCompare_IDNA_ToASCII_Unicode_Foundation(b *testing.B) {
+func BenchmarkCompare_CleanHost_Unicode(b *testing.B) {
+	b.ReportAllocs()
+
+	for b.Loop() {
+		res := netutil.CleanHost(internationalDomain)
+		if !strings.HasPrefix(res, "xn--") {
+			b.Fatal("unexpected result")
+		}
+	}
+}
+
+func BenchmarkCompare_CleanHost_ASCII_FastPath(b *testing.B) {
+	b.ReportAllocs()
+
+	for b.Loop() {
+		res := netutil.CleanHost(asciiDomain)
+		if res != asciiDomain {
+			b.Fatal("unexpected result")
+		}
+	}
+}
+
+func BenchmarkCompare_IDNA_ToASCII(b *testing.B) {
 	b.ReportAllocs()
 
 	for b.Loop() {
 		res, err := idna.ToASCII(internationalDomain)
 		if err != nil || !strings.HasPrefix(res, "xn--") {
-			b.Fatal(err)
-		}
-	}
-}
-
-func BenchmarkCompare_IDNA_ToASCII_ASCII_FastPath(b *testing.B) {
-	b.ReportAllocs()
-
-	for b.Loop() {
-		res, err := idna.ToASCII(asciiDomain)
-		if err != nil || res != asciiDomain {
 			b.Fatal(err)
 		}
 	}

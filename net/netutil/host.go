@@ -9,7 +9,7 @@ import (
 	"net"
 	"strings"
 
-	"github.com/lemon4ksan/aoni/idna"
+	"golang.org/x/net/idna"
 )
 
 // CleanHost normalizes a host string for network resolution, HTTP headers, and TLS SNI.
