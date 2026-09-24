@@ -162,16 +162,13 @@ func (s *ReceiveStream) Read(p []byte) (int, error) {
 	s.mutex.Lock()
 	queuedStreamWindowUpdate, queuedConnWindowUpdate, n, err := s.readImpl(p)
 	completed := s.isNewlyCompleted()
+	cancelErr := s.cancelErr
 	s.mutex.Unlock()
 
 	if completed {
 		s.sender.onStreamCompleted(s.streamID)
 		if s.ctxCancel != nil {
-			if s.cancelErr != nil {
-				s.ctxCancel(s.cancelErr)
-			} else {
-				s.ctxCancel(nil)
-			}
+			s.ctxCancel(cancelErr)
 		}
 	}
 
@@ -488,6 +485,7 @@ func (s *ReceiveStream) CancelRead(errorCode StreamErrorCode) {
 	s.mutex.Lock()
 	queuedNewControlFrame := s.cancelReadImpl(errorCode)
 	completed := s.isNewlyCompleted()
+	cancelErr := s.cancelErr
 	s.mutex.Unlock()
 
 	if queuedNewControlFrame {
@@ -500,7 +498,7 @@ func (s *ReceiveStream) CancelRead(errorCode StreamErrorCode) {
 	}
 
 	if s.ctxCancel != nil {
-		s.ctxCancel(s.cancelErr)
+		s.ctxCancel(cancelErr)
 	}
 }
 
@@ -577,14 +575,15 @@ func (s *ReceiveStream) handleResetStreamFrame(frame *wire.ResetStreamFrame, now
 	err := s.handleResetStreamFrameImpl(frame, now)
 	completed := s.isNewlyCompleted()
 	size, callback := s.takeReceiveFinalSizeCallback()
+	cancelErr := s.cancelErr
 	s.mutex.Unlock()
 
 	if completed {
 		s.sender.onStreamCompleted(s.streamID)
 	}
 
-	if s.ctxCancel != nil && s.cancelErr != nil {
-		s.ctxCancel(s.cancelErr)
+	if s.ctxCancel != nil && cancelErr != nil {
+		s.ctxCancel(cancelErr)
 	}
 
 	if callback != nil {
