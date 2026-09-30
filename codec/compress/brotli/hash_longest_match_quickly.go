@@ -62,7 +62,7 @@ func (h *hashLongestMatchQuickly) Prepare(one_shot bool, input_size uint, data [
 	/* Partial preparation is 100 times slower (per socket). */
 	if one_shot && input_size <= partial_prepare_threshold {
 		var i uint
-		for i = 0; i < input_size; i++ {
+		for i = range input_size {
 			key := h.HashBytes(data[i:])
 			for j := 0; j < h.bucketSweep; j++ {
 				h.buckets[key+uint32(j)] = 0

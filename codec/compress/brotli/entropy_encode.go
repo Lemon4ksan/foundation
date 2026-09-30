@@ -597,7 +597,7 @@ func convertBitDepthsToSymbols(depth []byte, len uint, bits []uint16) {
 		next_code[i] = uint16(code)
 	}
 
-	for i = 0; i < len; i++ {
+	for i = range len {
 		if depth[i] != 0 {
 			bits[i] = reverseBits(uint(depth[i]), next_code[depth[i]])
 			next_code[depth[i]]++

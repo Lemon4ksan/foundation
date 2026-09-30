@@ -178,12 +178,12 @@ func TestBuffer_Adversarial_SynchronizedConcurrentWrites(t *testing.T) {
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 
-	for w := 0; w < totalWriters; w++ {
+	for w := range totalWriters {
 		wg.Add(1)
 		go func(workerID int) {
 			defer wg.Done()
 			payload := bytes.Repeat([]byte{byte(workerID)}, chunkSize)
-			for i := 0; i < writesPerWorker; i++ {
+			for range writesPerWorker {
 				mu.Lock()
 				n, wErr := buf.Write(payload)
 				mu.Unlock()

@@ -5,7 +5,6 @@
 package event_test
 
 import (
-	"context"
 	"runtime"
 	"sync"
 	"testing"
@@ -70,8 +69,7 @@ func TestEmpirical_Event_EventsSeq_EarlyTerminationAndNoLeak(t *testing.T) {
 	b := event.New()
 	defer b.Close()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	beforeG := runtime.NumGoroutine()
 
@@ -152,9 +150,7 @@ func TestEmpirical_Event_SubscribeTyped_ConcurrentPublishAndUnsubscribe(t *testi
 
 	// 1 consumer goroutine
 	consumed := 0
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for range sub.C() {
 			consumed++
 			if consumed >= 50 {
@@ -162,7 +158,7 @@ func TestEmpirical_Event_SubscribeTyped_ConcurrentPublishAndUnsubscribe(t *testi
 				return
 			}
 		}
-	}()
+	})
 
 	wg.Wait()
 }

@@ -36,7 +36,7 @@ func TestCache_AdversarialConcurrentStress(t *testing.T) {
 	const numKeys = 200
 
 	// 20 Readers
-	for r := 0; r < 20; r++ {
+	for r := range 20 {
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()
@@ -55,7 +55,7 @@ func TestCache_AdversarialConcurrentStress(t *testing.T) {
 	}
 
 	// 20 Writers with mixed TTLs
-	for w := 0; w < 20; w++ {
+	for w := range 20 {
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()
@@ -88,7 +88,7 @@ func TestCache_AdversarialConcurrentStress(t *testing.T) {
 	}
 
 	// 10 Deleters
-	for d := 0; d < 10; d++ {
+	for d := range 10 {
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()
@@ -107,10 +107,8 @@ func TestCache_AdversarialConcurrentStress(t *testing.T) {
 	}
 
 	// 5 Purgers
-	for p := 0; p < 5; p++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range 5 {
+		wg.Go(func() {
 			for {
 				select {
 				case <-stopCh:
@@ -121,14 +119,12 @@ func TestCache_AdversarialConcurrentStress(t *testing.T) {
 					time.Sleep(10 * time.Millisecond)
 				}
 			}
-		}()
+		})
 	}
 
 	// 5 Len checkers
-	for l := 0; l < 5; l++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range 5 {
+		wg.Go(func() {
 			for {
 				select {
 				case <-stopCh:
@@ -139,14 +135,12 @@ func TestCache_AdversarialConcurrentStress(t *testing.T) {
 					time.Sleep(10 * time.Millisecond)
 				}
 			}
-		}()
+		})
 	}
 
 	// 2 Clearers
-	for cl := 0; cl < 2; cl++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range 2 {
+		wg.Go(func() {
 			for {
 				select {
 				case <-stopCh:
@@ -157,7 +151,7 @@ func TestCache_AdversarialConcurrentStress(t *testing.T) {
 					opsClear.Add(1)
 				}
 			}
-		}()
+		})
 	}
 
 	wg.Wait()
@@ -179,7 +173,7 @@ func TestCache_JanitorGoroutineLeak(t *testing.T) {
 
 	const count = 100
 	caches := make([]*Cache[int, int], count)
-	for i := 0; i < count; i++ {
+	for i := range count {
 		caches[i] = NewCacheWithJanitor[int, int](10 * time.Millisecond)
 	}
 
@@ -190,7 +184,7 @@ func TestCache_JanitorGoroutineLeak(t *testing.T) {
 	}
 
 	// Explicitly close all
-	for i := 0; i < count; i++ {
+	for i := range count {
 		caches[i].Close()
 	}
 
@@ -209,7 +203,7 @@ func TestCache_JanitorGoroutineLeak(t *testing.T) {
 
 	func() {
 		localCaches := make([]*Cache[int, int], count)
-		for i := 0; i < count; i++ {
+		for i := range count {
 			localCaches[i] = NewCacheWithJanitor[int, int](10 * time.Millisecond)
 			localCaches[i].Set(i, i, time.Hour)
 		}
@@ -218,7 +212,7 @@ func TestCache_JanitorGoroutineLeak(t *testing.T) {
 	}()
 
 	// Force GC and wait for finalizers
-	for retry := 0; retry < 5; retry++ {
+	for range 5 {
 		runtime.GC()
 		time.Sleep(50 * time.Millisecond)
 		if runtime.NumGoroutine() <= baseGoroutines+5 {
@@ -235,12 +229,10 @@ func TestCache_JanitorGoroutineLeak(t *testing.T) {
 	// Step C: Concurrent Close() calls must not panic
 	c := NewCacheWithJanitor[string, string](10 * time.Millisecond)
 	var closeWg sync.WaitGroup
-	for i := 0; i < 50; i++ {
-		closeWg.Add(1)
-		go func() {
-			defer closeWg.Done()
+	for range 50 {
+		closeWg.Go(func() {
 			c.Close()
-		}()
+		})
 	}
 	closeWg.Wait()
 }
@@ -251,7 +243,7 @@ func TestCache_KeyChurnMemoryReclamation(t *testing.T) {
 	defer c.Close()
 
 	// 100 persistent items
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		c.Set(fmt.Sprintf("perm_%d", i), make([]byte, 1024), 1*time.Hour)
 	}
 
@@ -264,7 +256,7 @@ func TestCache_KeyChurnMemoryReclamation(t *testing.T) {
 	const churnTotal = 100000
 	payload := make([]byte, 256)
 
-	for i := 0; i < churnTotal; i++ {
+	for i := range churnTotal {
 		key := fmt.Sprintf("churn_%d", i)
 		c.Set(key, payload, 5*time.Millisecond)
 		if i%10000 == 0 {
@@ -402,7 +394,7 @@ func BenchmarkCache_Concurrent90Read10Write(b *testing.B) {
 	c := NewCacheWithJanitor[int, int](50 * time.Millisecond)
 	defer c.Close()
 
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		c.Set(i, i, 5*time.Second)
 	}
 

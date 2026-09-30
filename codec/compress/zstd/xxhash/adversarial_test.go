@@ -69,10 +69,7 @@ func TestAdversarialXXHashStreamingChunkSizes(t *testing.T) {
 	for chunkSize := 1; chunkSize <= 64; chunkSize++ {
 		d := New()
 		for pos := 0; pos < len(data); pos += chunkSize {
-			end := pos + chunkSize
-			if end > len(data) {
-				end = len(data)
-			}
+			end := min(pos+chunkSize, len(data))
 			n, err := d.Write(data[pos:end])
 			if err != nil || n != (end-pos) {
 				t.Fatalf("chunkSize %d at pos %d: Write failed: %v", chunkSize, pos, err)

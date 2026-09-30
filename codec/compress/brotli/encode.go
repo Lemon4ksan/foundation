@@ -255,7 +255,7 @@ func chooseContextMap(quality int, bigram_histo []uint32, num_literal_contexts *
 	entropy[1] = shannonEntropy(monogram_histo[:], 3, &dummy)
 	entropy[2] = (shannonEntropy(two_prefix_histo[:], 3, &dummy) + shannonEntropy(two_prefix_histo[3:], 3, &dummy))
 	entropy[3] = 0
-	for i = 0; i < 3; i++ {
+	for i = range 3 {
 		entropy[3] += shannonEntropy(bigram_histo[3*i:], 3, &dummy)
 	}
 
@@ -351,7 +351,7 @@ func shouldUseComplexStaticContextMap(
 
 		entropy[1] = shannonEntropy(combined_histo[:], 32, &dummy)
 		entropy[2] = 0
-		for i = 0; i < 13; i++ {
+		for i = range 13 {
 			entropy[2] += shannonEntropy(context_histo[i][0:], 32, &dummy)
 		}
 
@@ -424,8 +424,7 @@ func shouldCompress_encode(data []byte, mask uint, last_flush_pos uint64, bytes,
 			bit_cost_threshold := float64(bytes) * kMinEntropy / float64(kSampleRate)
 			t := uint((uint32(bytes) + kSampleRate - 1) / kSampleRate)
 			pos := uint32(last_flush_pos)
-			var i uint
-			for i = 0; i < t; i++ {
+			for range t {
 				literal_histo[data[pos&uint32(mask)]]++
 				pos += kSampleRate
 			}
@@ -563,10 +562,7 @@ func writeMetaBlockInternal(
 			/* The number of distance symbols effectively used for distance
 			   histograms. It might be less than distance alphabet size
 			   for "Large Window Brotli" (32-bit). */
-			num_effective_dist_codes := block_params.dist.alphabet_size
-			if num_effective_dist_codes > numHistogramDistanceSymbols {
-				num_effective_dist_codes = numHistogramDistanceSymbols
-			}
+			num_effective_dist_codes := min(block_params.dist.alphabet_size, numHistogramDistanceSymbols)
 
 			optimizeHistograms(num_effective_dist_codes, mb)
 		}
@@ -790,7 +786,7 @@ func copyInputToRingBuffer(s *Writer, input_size uint, input_buffer []byte) {
 		   memory. Due to performance reasons, hashing reads data using a
 		   LOAD64, which can go 7 bytes beyond the bytes written in the
 		   ring-buffer. */
-		for i := 0; i < int(7); i++ {
+		for i := range int(7) {
 			ringbuffer_.buffer_[ringbuffer_.pos_:][i] = 0
 		}
 	}
@@ -816,11 +812,7 @@ func extendLastCommand(s *Writer, bytes, wrapped_last_processed_pos *uint32) {
 	last_copy_len := uint64(last_command.copy_len_) & 0x1FFFFFF
 	last_processed_pos := s.last_processed_pos_ - last_copy_len
 	var max_distance uint64
-	if last_processed_pos < max_backward_distance {
-		max_distance = last_processed_pos
-	} else {
-		max_distance = max_backward_distance
-	}
+	max_distance = min(last_processed_pos, max_backward_distance)
 	cmd_dist := uint64(s.dist_cache_[0])
 	distance_code := commandRestoreDistanceCode(last_command, &s.params.dist)
 	if distance_code < numDistanceShortCodes || uint64(distance_code-(numDistanceShortCodes-1)) == cmd_dist {

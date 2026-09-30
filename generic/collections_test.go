@@ -53,7 +53,7 @@ func TestCache_PassiveEvictionOnLen(t *testing.T) {
 	c := NewCacheWithJanitor[string, int](0) // disable janitor
 	defer c.Close()
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		c.Set(fmt.Sprintf("key_%d", i), i, 15*time.Millisecond)
 	}
 	c.Set("permanent", 999, 1*time.Hour)
@@ -77,7 +77,7 @@ func TestCache_PurgeExpired(t *testing.T) {
 	defer c.Close()
 
 	// Add 5 short-lived items, 5 long-lived items
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		c.Set(i, i, 10*time.Millisecond)
 	}
 	for i := 5; i < 10; i++ {
@@ -111,7 +111,7 @@ func TestCache_BackgroundJanitor(t *testing.T) {
 	defer c.Close()
 
 	// Set items with 15ms TTL
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		c.Set(fmt.Sprintf("auto_%d", i), i, 15*time.Millisecond)
 	}
 
@@ -161,7 +161,7 @@ func TestCache_Clear(t *testing.T) {
 	c := NewCache[int, int]()
 	defer c.Close()
 
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		c.Set(i, i, 1*time.Hour)
 	}
 
@@ -207,10 +207,10 @@ func TestCache_ConcurrentStressRace(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(workers)
 
-	for w := 0; w < workers; w++ {
+	for w := range workers {
 		go func(workerID int) {
 			defer wg.Done()
-			for i := 0; i < iterations; i++ {
+			for i := range iterations {
 				key := (workerID*iterations + i) % 50
 				ttl := time.Duration((i%10)+1) * time.Millisecond
 
@@ -278,7 +278,7 @@ func TestCache_DoubleCheckedLockingRace(t *testing.T) {
 
 // 11. Finalizer and Goroutine Cleanup Verification
 func TestCache_FinalizerCleanup(t *testing.T) {
-	for i := 0; i < 50; i++ {
+	for range 50 {
 		func() {
 			c := NewCacheWithJanitor[int, int](10 * time.Millisecond)
 			c.Set(1, 1, 10*time.Millisecond)

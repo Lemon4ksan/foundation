@@ -28,7 +28,7 @@ func initZopfliNodes(array []zopfliNode, length uint) {
 	stub.distance = 0
 	stub.dcode_insert_length = 0
 	stub.u.cost = kInfinity
-	for i = 0; i < length; i++ {
+	for i = range length {
 		array[i] = stub
 	}
 }
@@ -70,10 +70,7 @@ type zopfliCostModel struct {
 }
 
 func initZopfliCostModel(self *zopfliCostModel, dist *distanceParams, num_bytes uint) {
-	distance_histogram_size := dist.alphabet_size
-	if distance_histogram_size > maxEffectiveDistanceAlphabetSize {
-		distance_histogram_size = maxEffectiveDistanceAlphabetSize
-	}
+	distance_histogram_size := min(dist.alphabet_size, maxEffectiveDistanceAlphabetSize)
 
 	self.num_bytes_ = num_bytes
 	self.literal_costs_ = make([]float32, (num_bytes + 2))
@@ -99,7 +96,7 @@ func setCost(histogram []uint32, histogram_size uint, literal_histogram bool, co
 	log2sum = float32(fastLog2(sum))
 	missing_symbol_sum = sum
 	if !literal_histogram {
-		for i = 0; i < histogram_size; i++ {
+		for i = range histogram_size {
 			if histogram[i] == 0 {
 				missing_symbol_sum++
 			}
@@ -107,7 +104,7 @@ func setCost(histogram []uint32, histogram_size uint, literal_histogram bool, co
 	}
 
 	missing_symbol_cost = float32(fastLog2(missing_symbol_sum)) + 2
-	for i = 0; i < histogram_size; i++ {
+	for i = range histogram_size {
 		if histogram[i] == 0 {
 			cost[i] = missing_symbol_cost
 			continue
@@ -156,7 +153,7 @@ func zopfliCostModelSetFromCommands(
 			histogram_dist[distcode]++
 		}
 
-		for j = 0; j < inslength; j++ {
+		for j = range inslength {
 			histogram_literal[ringbuffer[(pos+j)&ringbuffer_mask]]++
 		}
 
@@ -167,7 +164,7 @@ func zopfliCostModelSetFromCommands(
 	setCost(histogram_cmd[:], numCommandSymbols, false, cost_cmd)
 	setCost(histogram_dist[:], uint(self.distance_histogram_size), false, self.cost_dist_)
 
-	for i := 0; i < numCommandSymbols; i++ {
+	for i := range numCommandSymbols {
 		min_cost_cmd = brotli_min_float(min_cost_cmd, cost_cmd[i])
 	}
 
@@ -177,7 +174,7 @@ func zopfliCostModelSetFromCommands(
 		var literal_carry float32 = 0.0
 		num_bytes := int(self.num_bytes_)
 		literal_costs[0] = 0.0
-		for i := 0; i < num_bytes; i++ {
+		for i := range num_bytes {
 			literal_carry += cost_literal[ringbuffer[(position+uint(i))&ringbuffer_mask]]
 			literal_costs[i+1] = literal_costs[i] + literal_carry
 			literal_carry -= literal_costs[i+1] - literal_costs[i]
@@ -497,7 +494,7 @@ func updateNodes(
 		{
 			/* Loop through all possible copy lengths at this position. */
 			len := min_len
-			for j = 0; j < num_matches; j++ {
+			for j = range num_matches {
 				match := matches[j]
 				dist := uint(match.distance)
 				is_dictionary_match := (dist > max_distance+gap)
@@ -921,7 +918,7 @@ func createHqZopfliBackwardReferences(
 	orig_num_commands = len(*commands)
 	nodes = make([]zopfliNode, (num_bytes + 1))
 	initZopfliCostModel(&model, &params.dist, num_bytes)
-	for i = 0; i < 2; i++ {
+	for i = range 2 {
 		initZopfliNodes(nodes, num_bytes+1)
 		if i == 0 {
 			zopfliCostModelSetFromLiteralCosts(&model, position, ringbuffer, ringbuffer_mask)

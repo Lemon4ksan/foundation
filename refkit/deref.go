@@ -34,8 +34,10 @@ func DerefOr[T any](ptr *T, fallback T) T {
 }
 
 // Ptr allocates and returns a pointer containing val.
+//
+//go:fix inline
 func Ptr[T any](val T) *T {
-	return &val
+	return new(val)
 }
 
 // DerefType resolves the underlying non-pointer type, unwrapping all consecutive pointer layers (e.g. ***T -> T).

@@ -76,7 +76,7 @@ func buildAndStoreCommandPrefixCode(histogram []uint32, depth []byte, bits []uin
 	{
 		/* Create the bit length array for the full command alphabet. */
 		var i uint
-		for i := 0; i < int(64); i++ {
+		for i := range int(64) {
 			cmd_depth[i] = 0
 		} /* only 64 first values were used */
 		copy(cmd_depth[:], depth[24:][:8])
@@ -84,7 +84,7 @@ func buildAndStoreCommandPrefixCode(histogram []uint32, depth []byte, bits []uin
 		copy(cmd_depth[128:], depth[40:][:8])
 		copy(cmd_depth[192:], depth[48:][:8])
 		copy(cmd_depth[384:], depth[56:][:8])
-		for i = 0; i < 8; i++ {
+		for i = range 8 {
 			cmd_depth[128+8*i] = depth[i]
 			cmd_depth[256+8*i] = depth[8+i]
 			cmd_depth[448+8*i] = depth[16+i]
@@ -671,7 +671,7 @@ func storeCommands(
 	cmd_histo[84] += 1
 	buildAndStoreCommandPrefixCode(cmd_histo[:], cmd_depths[:], cmd_bits[:], storage_ix, storage)
 
-	for i = 0; i < num_commands; i++ {
+	for i = range num_commands {
 		cmd := commands[i]
 		code := cmd & 0xFF
 		extra := cmd >> 8
@@ -680,8 +680,7 @@ func storeCommands(
 		writeBits(uint(storeCommands_kNumExtraBits[code]), uint64(extra), storage_ix, storage)
 		if code < 24 {
 			insert := storeCommands_kInsertOffset[code] + extra
-			var j uint32
-			for j = 0; j < insert; j++ {
+			for range insert {
 				lit := literals[0]
 				writeBits(uint(lit_depths[lit]), uint64(lit_bits[lit]), storage_ix, storage)
 				literals = literals[1:]

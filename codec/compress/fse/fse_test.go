@@ -385,7 +385,7 @@ func TestNormalizeCount2EdgeCases(t *testing.T) {
 // TestFSECompressionModulo tests input lengths congruent to 0, 1, 2, 3 mod 4.
 func TestFSECompressionModulo(t *testing.T) {
 	base := []byte("Compression modulo test pattern for FSE!")
-	for rem := 0; rem < 4; rem++ {
+	for rem := range 4 {
 		data := bytes.Repeat(base, 10)[:len(base)*10-rem]
 		var s Scratch
 		compressed, err := Compress(data, &s)
@@ -464,7 +464,7 @@ func TestNormalizeCount2RiskRounding(t *testing.T) {
 	var s Scratch
 	s.actualTableLog = 6 // 64
 	s.symbolLen = 52
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		s.count[i] = 12
 	}
 	s.count[50] = 60
@@ -521,7 +521,7 @@ func TestNormalizeCount2TotalZero(t *testing.T) {
 	var s Scratch
 	s.actualTableLog = 5 // 32
 	s.symbolLen = 30
-	for i := 0; i < 30; i++ {
+	for i := range 30 {
 		s.count[i] = 2
 	}
 	s.br.init(make([]byte, 60))

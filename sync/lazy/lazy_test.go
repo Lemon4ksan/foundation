@@ -127,9 +127,7 @@ func TestLazy_ConcurrentWithReset(t *testing.T) {
 
 	// Readers
 	for range 16 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for {
 				select {
 				case <-stop:
@@ -141,14 +139,12 @@ func TestLazy_ConcurrentWithReset(t *testing.T) {
 					}
 				}
 			}
-		}()
+		})
 	}
 
 	// Resetters
 	for range 2 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for {
 				select {
 				case <-stop:
@@ -157,7 +153,7 @@ func TestLazy_ConcurrentWithReset(t *testing.T) {
 					l.Reset()
 				}
 			}
-		}()
+		})
 	}
 
 	// Run for a short burst

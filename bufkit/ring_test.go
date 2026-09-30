@@ -149,14 +149,12 @@ func BenchmarkRing_SPSC_Pipeline(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for i := 0; i < b.N; i++ {
 			for !ring.Push(i) {
 			}
 		}
-	}()
+	})
 
 	for i := 0; i < b.N; i++ {
 		for {
@@ -175,13 +173,11 @@ func BenchmarkRing_SPSC_Push_Parallel(b *testing.B) {
 	active.Store(true)
 
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for active.Load() {
 			ring.Pop()
 		}
-	}()
+	})
 
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -202,13 +198,11 @@ func BenchmarkRing_SPSC_Pop_Parallel(b *testing.B) {
 	active.Store(true)
 
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for active.Load() {
 			ring.Push(1)
 		}
-	}()
+	})
 
 	b.ReportAllocs()
 	b.ResetTimer()

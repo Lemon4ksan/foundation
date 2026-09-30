@@ -61,7 +61,7 @@ func (h *h6) Prepare(one_shot bool, input_size uint, data []byte) {
 	/* Partial preparation is 100 times slower (per socket). */
 	if one_shot && input_size <= partial_prepare_threshold {
 		var i uint
-		for i = 0; i < input_size; i++ {
+		for i = range input_size {
 			key := hashBytesH6(data[i:], h.hash_mask_, h.hash_shift_)
 			num[key] = 0
 		}

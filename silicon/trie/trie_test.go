@@ -6,6 +6,7 @@ package trie_test
 
 import (
 	"fmt"
+	"maps"
 	"testing"
 
 	"github.com/lemon4ksan/foundation/silicon/trie"
@@ -218,10 +219,7 @@ func TestRadixTree_All(t *testing.T) {
 		tree.Insert(k, v)
 	}
 
-	collected := make(map[string]int)
-	for k, v := range tree.All() {
-		collected[k] = v
-	}
+	collected := maps.Collect(tree.All())
 	assert.Equal(t, len(data), len(collected))
 	for k, v := range data {
 		assert.Equal(t, v, collected[k])

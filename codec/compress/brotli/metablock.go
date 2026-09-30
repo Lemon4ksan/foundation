@@ -415,7 +415,7 @@ func contextBlockSplitterFinishBlock(self *contextBlockSplitter, is_final bool) 
 
 		split.types[0] = 0
 
-		for i = 0; i < num_contexts; i++ {
+		for i = range num_contexts {
 			last_entropy[i] = bitsEntropy(histograms[i].data_[:], self.alphabet_size_)
 			last_entropy[num_contexts+i] = last_entropy[i]
 		}
@@ -443,7 +443,7 @@ func contextBlockSplitterFinishBlock(self *contextBlockSplitter, is_final bool) 
 			curr_histo_ix := self.curr_histogram_ix_ + i
 			var j uint
 			entropy[i] = bitsEntropy(histograms[curr_histo_ix].data_[:], self.alphabet_size_)
-			for j = 0; j < 2; j++ {
+			for j = range 2 {
 				jx := j*num_contexts + i
 				last_histogram_ix := self.last_histogram_ix_[j] + i
 				combined_histo[jx] = histograms[curr_histo_ix]
@@ -461,7 +461,7 @@ func contextBlockSplitterFinishBlock(self *contextBlockSplitter, is_final bool) 
 			split.types[self.num_blocks_] = byte(split.num_types)
 			self.last_histogram_ix_[1] = self.last_histogram_ix_[0]
 			self.last_histogram_ix_[0] = split.num_types * num_contexts
-			for i = 0; i < num_contexts; i++ {
+			for i = range num_contexts {
 				last_entropy[num_contexts+i] = last_entropy[i]
 				last_entropy[i] = entropy[i]
 			}
@@ -484,7 +484,7 @@ func contextBlockSplitterFinishBlock(self *contextBlockSplitter, is_final bool) 
 			tmp := self.last_histogram_ix_[0]
 			self.last_histogram_ix_[0] = self.last_histogram_ix_[1]
 			self.last_histogram_ix_[1] = tmp
-			for i = 0; i < num_contexts; i++ {
+			for i = range num_contexts {
 				histograms[self.last_histogram_ix_[0]+i] = combined_histo[num_contexts+i]
 				last_entropy[num_contexts+i] = last_entropy[i]
 				last_entropy[i] = combined_entropy[num_contexts+i]
@@ -499,7 +499,7 @@ func contextBlockSplitterFinishBlock(self *contextBlockSplitter, is_final bool) 
 			/* Combine this block with last block. */
 			split.lengths[self.num_blocks_-1] += uint32(self.block_size_)
 
-			for i = 0; i < num_contexts; i++ {
+			for i = range num_contexts {
 				histograms[self.last_histogram_ix_[0]+i] = combined_histo[i]
 				last_entropy[i] = combined_entropy[i]
 				if split.num_types == 1 {
@@ -550,7 +550,7 @@ func mapStaticContexts(num_contexts uint, static_context_map []uint32, mb *metaB
 	for i = 0; i < mb.literal_split.num_types; i++ {
 		offset := uint32(i * num_contexts)
 		var j uint
-		for j = 0; j < 1<<literalContextBits; j++ {
+		for j = range 1 << literalContextBits {
 			mb.literal_context_map[(i<<literalContextBits)+j] = offset + static_context_map[j]
 		}
 	}

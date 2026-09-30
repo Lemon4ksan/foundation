@@ -210,9 +210,9 @@ func TestAdversarialRapidHistoryResets(t *testing.T) {
 	for fname, newFinder := range finders {
 		t.Run(fname, func(t *testing.T) {
 			mf := newFinder()
-			for iter := 0; iter < 50; iter++ {
+			for iter := range 50 {
 				mf.Reset()
-				sz := 10 + (iter * 17) % 5000
+				sz := 10 + (iter*17)%5000
 				data := make([]byte, sz)
 				for i := range data {
 					data[i] = byte(i + iter)
@@ -472,7 +472,7 @@ func TestAdversarialZFastZDFastLookaheadCollisions(t *testing.T) {
 			for prefixZeros := 0; prefixZeros <= 8; prefixZeros++ {
 				data := make([]byte, prefixZeros)
 				token := []byte("LOOKAHEAD_COLLISION_PATTERN_12345678")
-				for k := 0; k < 20; k++ {
+				for range 20 {
 					data = append(data, token...)
 				}
 
@@ -542,6 +542,3 @@ func TestAdversarialAllFindersPrePopulatedDst(t *testing.T) {
 		})
 	}
 }
-
-
-

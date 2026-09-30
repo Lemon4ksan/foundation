@@ -19,7 +19,7 @@ func histogramClearLiteral(self *histogramLiteral) {
 
 func clearHistogramsLiteral(array []histogramLiteral, length uint) {
 	var i uint
-	for i = 0; i < length; i++ {
+	for i = range length {
 		histogramClearLiteral(&array[i:][0])
 	}
 }
@@ -45,7 +45,7 @@ func histogramAddVectorLiteral(self *histogramLiteral, p []byte, n uint) {
 func histogramAddHistogramLiteral(self, v *histogramLiteral) {
 	var i uint
 	self.total_count_ += v.total_count_
-	for i = 0; i < numLiteralSymbols; i++ {
+	for i = range numLiteralSymbols {
 		self.data_[i] += v.data_[i]
 	}
 }
@@ -68,7 +68,7 @@ func histogramClearCommand(self *histogramCommand) {
 
 func clearHistogramsCommand(array []histogramCommand, length uint) {
 	var i uint
-	for i = 0; i < length; i++ {
+	for i = range length {
 		histogramClearCommand(&array[i:][0])
 	}
 }
@@ -94,7 +94,7 @@ func histogramAddVectorCommand(self *histogramCommand, p []uint16, n uint) {
 func histogramAddHistogramCommand(self, v *histogramCommand) {
 	var i uint
 	self.total_count_ += v.total_count_
-	for i = 0; i < numCommandSymbols; i++ {
+	for i = range numCommandSymbols {
 		self.data_[i] += v.data_[i]
 	}
 }
@@ -117,7 +117,7 @@ func histogramClearDistance(self *histogramDistance) {
 
 func clearHistogramsDistance(array []histogramDistance, length uint) {
 	var i uint
-	for i = 0; i < length; i++ {
+	for i = range length {
 		histogramClearDistance(&array[i:][0])
 	}
 }
@@ -143,7 +143,7 @@ func histogramAddVectorDistance(self *histogramDistance, p []uint16, n uint) {
 func histogramAddHistogramDistance(self, v *histogramDistance) {
 	var i uint
 	self.total_count_ += v.total_count_
-	for i = 0; i < numDistanceSymbols; i++ {
+	for i = range numDistanceSymbols {
 		self.data_[i] += v.data_[i]
 	}
 }

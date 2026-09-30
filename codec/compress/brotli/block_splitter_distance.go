@@ -13,7 +13,7 @@ func initialEntropyCodesDistance(data []uint16, length, stride, num_histograms u
 	block_length := length / num_histograms
 	var i uint
 	clearHistogramsDistance(histograms, num_histograms)
-	for i = 0; i < num_histograms; i++ {
+	for i = range num_histograms {
 		pos := length * i / num_histograms
 		if i != 0 {
 			pos += uint(myRand(&seed) % uint32(block_length))
@@ -73,7 +73,7 @@ func findBlocksDistance(
 	var j uint
 	assert(num_histograms <= 256)
 	if num_histograms <= 1 {
-		for i = 0; i < length; i++ {
+		for i = range length {
 			block_id[i] = 0
 		}
 
@@ -89,7 +89,7 @@ func findBlocksDistance(
 
 	for i = data_size; i != 0; {
 		i--
-		for j = 0; j < num_histograms; j++ {
+		for j = range num_histograms {
 			insert_cost[i*num_histograms+j] = insert_cost[j] - bitCost(uint(histograms[j].data_[i]))
 		}
 	}
@@ -107,7 +107,7 @@ func findBlocksDistance(
 	   position. This difference is capped at the block switch cost, and if it
 	   reaches block switch cost, it means that when we trace back from the last
 	   position, we need to switch here. */
-	for i = 0; i < length; i++ {
+	for i = range length {
 		byte_ix := i
 		ix := byte_ix * bitmaplen
 		insert_cost_ix := uint(data[byte_ix]) * num_histograms
@@ -129,7 +129,7 @@ func findBlocksDistance(
 			block_switch_cost *= 0.77 + 0.07*float64(byte_ix)/2000
 		}
 
-		for k = 0; k < num_histograms; k++ {
+		for k = range num_histograms {
 			cost[k] -= min_cost
 			if cost[k] >= block_switch_cost {
 				mask := byte(1 << (k & 7))
@@ -180,7 +180,7 @@ func remapBlockIdsDistance(block_ids []byte, length uint, new_id []uint16, num_h
 		}
 	}
 
-	for i = 0; i < length; i++ {
+	for i = range length {
 		block_ids[i] = byte(new_id[block_ids[i]])
 		assert(uint(block_ids[i]) < num_histograms)
 	}
@@ -198,7 +198,7 @@ func buildBlockHistogramsDistance(
 ) {
 	var i uint
 	clearHistogramsDistance(histograms, num_histograms)
-	for i = 0; i < length; i++ {
+	for i = range length {
 		histogramAddDistance(&histograms[block_ids[i]], uint(data[i]))
 	}
 }
@@ -235,7 +235,7 @@ func clusterBlocksDistance(data []uint16, length, num_blocks uint, block_ids []b
 	}
 	{
 		var block_idx uint = 0
-		for i = 0; i < length; i++ {
+		for i = range length {
 			assert(block_idx < num_blocks)
 			block_lengths[block_idx]++
 			if i+1 == length || block_ids[i] != block_ids[i+1] {
@@ -304,7 +304,7 @@ func clusterBlocksDistance(data []uint16, length, num_blocks uint, block_ids []b
 			remap[new_clusters[j]] = uint32(j)
 		}
 
-		for j = 0; j < num_to_combine; j++ {
+		for j = range num_to_combine {
 			histogram_symbols[i+j] = uint32(num_clusters) + remap[symbols[j]]
 		}
 
@@ -347,7 +347,7 @@ func clusterBlocksDistance(data []uint16, length, num_blocks uint, block_ids []b
 	pos = 0
 	{
 		var next_index uint32 = 0
-		for i = 0; i < num_blocks; i++ {
+		for i = range num_blocks {
 			var histo histogramDistance
 			var j uint
 			var best_out uint32
@@ -388,7 +388,7 @@ func clusterBlocksDistance(data []uint16, length, num_blocks uint, block_ids []b
 		var cur_length uint32 = 0
 		var block_idx uint = 0
 		var max_type byte = 0
-		for i = 0; i < num_blocks; i++ {
+		for i = range num_blocks {
 			cur_length += block_lengths[i]
 			if i+1 == num_blocks || histogram_symbols[i] != histogram_symbols[i+1] {
 				id := byte(new_index[histogram_symbols[i]])

@@ -97,10 +97,7 @@ func TestChunkingInvariance(t *testing.T) {
 		t.Run(fmt.Sprintf("chunk_%d", chunkSize), func(t *testing.T) {
 			d := xxhash.New()
 			for i := 0; i < len(data); i += chunkSize {
-				end := i + chunkSize
-				if end > len(data) {
-					end = len(data)
-				}
+				end := min(i+chunkSize, len(data))
 				d.Write(data[i:end])
 			}
 			if d.Sum64() != want {

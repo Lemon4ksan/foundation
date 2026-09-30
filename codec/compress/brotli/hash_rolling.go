@@ -76,7 +76,7 @@ func (h *hashRolling) Initialize(params *encoderParams) {
 	}
 
 	h.table = make([]uint32, 16777216)
-	for i := 0; i < 16777216; i++ {
+	for i := range 16777216 {
 		h.table[i] = kInvalidPosHashRolling
 	}
 }

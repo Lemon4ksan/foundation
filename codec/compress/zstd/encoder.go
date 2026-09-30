@@ -63,10 +63,7 @@ func (w *Writer) writeHeader() error {
 
 	// Window Descriptor: for 4MB: (22-10)<<3 = 0x60
 	winSize := max(w.opts.windowSize, 1<<10)
-	winLog := max(bits.Len64(winSize-1), 10)
-	if winLog > 31 {
-		winLog = 31
-	}
+	winLog := min(max(bits.Len64(winSize-1), 10), 31)
 	hdr[5] = byte((winLog - 10) << 3)
 
 	if _, err := w.w.Write(hdr[:]); err != nil {

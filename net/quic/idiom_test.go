@@ -182,8 +182,7 @@ func TestConn_StreamListener(t *testing.T) {
 	tc := newClientTestConnection(t, nil, nil, false)
 	conn := tc.conn
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	ln := conn.StreamListener(ctx)
 	require.NotNil(t, ln)

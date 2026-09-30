@@ -492,10 +492,7 @@ func (d *Decompressor2) DecompressStream(r io.Reader) ([]byte, int, error) {
 			}
 		}
 
-		numWorkers := min(runtime.GOMAXPROCS(0), len(tasks))
-		if numWorkers < 1 {
-			numWorkers = 1
-		}
+		numWorkers := max(min(runtime.GOMAXPROCS(0), len(tasks)), 1)
 
 		var wg sync.WaitGroup
 		var taskCounter atomic.Int64

@@ -95,9 +95,7 @@ func TestLazy_HighContentionRace(t *testing.T) {
 
 	// Resetters
 	for range numResetters {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for {
 				select {
 				case <-stop:
@@ -106,7 +104,7 @@ func TestLazy_HighContentionRace(t *testing.T) {
 					l.Reset()
 				}
 			}
-		}()
+		})
 	}
 
 	// Main controller drives progress
@@ -142,9 +140,7 @@ func TestLazy_ErrorCachingAndReset(t *testing.T) {
 	// Concurrent reads while failing
 	var wg sync.WaitGroup
 	for range 20 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			val, err := l.Get()
 			if !errors.Is(err, expectedErr) {
 				t.Errorf("expected %v, got %v", expectedErr, err)
@@ -152,7 +148,7 @@ func TestLazy_ErrorCachingAndReset(t *testing.T) {
 			if val != "" {
 				t.Errorf("expected empty string, got %q", val)
 			}
-		}()
+		})
 	}
 	wg.Wait()
 
@@ -165,9 +161,7 @@ func TestLazy_ErrorCachingAndReset(t *testing.T) {
 	l.Reset()
 
 	for range 20 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			val, err := l.Get()
 			if err != nil {
 				t.Errorf("unexpected error: %v", err)
@@ -175,7 +169,7 @@ func TestLazy_ErrorCachingAndReset(t *testing.T) {
 			if val != "success" {
 				t.Errorf("expected 'success', got %q", val)
 			}
-		}()
+		})
 	}
 	wg.Wait()
 

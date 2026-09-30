@@ -16,7 +16,7 @@ func TestAdversarialHuff0RandomBitstreams(t *testing.T) {
 	s := &Scratch{MaxSymbolValue: 255}
 
 	for _, sz := range lengths {
-		for iter := 0; iter < 10; iter++ {
+		for range 10 {
 			b := make([]byte, sz)
 			_, _ = rand.Read(b)
 
@@ -93,7 +93,7 @@ func TestAdversarialHuff0StreamTruncation(t *testing.T) {
 		t.Fatalf("Compress1X failed: %v", err)
 	}
 
-	for i := 0; i < len(c1); i++ {
+	for i := range c1 {
 		truncated := c1[:i]
 		func() {
 			defer func() {
@@ -113,7 +113,7 @@ func TestAdversarialHuff0StreamTruncation(t *testing.T) {
 		t.Fatalf("Compress4X failed: %v", err)
 	}
 
-	for i := 0; i < len(c4); i++ {
+	for i := range c4 {
 		truncated := c4[:i]
 		func() {
 			defer func() {

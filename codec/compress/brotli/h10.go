@@ -51,7 +51,7 @@ func (h *h10) Initialize(params *encoderParams) {
 func (h *h10) Prepare(one_shot bool, input_size uint, data []byte) {
 	invalid_pos := h.invalid_pos_
 	var i uint32
-	for i = 0; i < 1<<17; i++ {
+	for i = range 1 << 17 {
 		h.buckets_[i] = invalid_pos
 	}
 }

@@ -89,7 +89,7 @@ func Walk(targetRoot string, outChan chan<- Entry) {
 	q.push(cleanRoot)
 
 	var wg sync.WaitGroup
-	for i := 0; i < numWorkers; i++ {
+	for range numWorkers {
 		wg.Go(func() {
 			for {
 				dir, ok := q.pop()

@@ -22,7 +22,7 @@ func TestSingleflight_Generic_NormalExecution(t *testing.T) {
 	results := make([]string, numWaiters)
 	errs := make([]error, numWaiters)
 
-	for i := 0; i < numWaiters; i++ {
+	for i := range numWaiters {
 		go func(idx int) {
 			defer wg.Done()
 			results[idx], errs[idx] = sf.Do(100, func() (string, error) {
@@ -34,7 +34,7 @@ func TestSingleflight_Generic_NormalExecution(t *testing.T) {
 
 	wg.Wait()
 
-	for i := 0; i < numWaiters; i++ {
+	for i := range numWaiters {
 		if errs[i] != nil {
 			t.Fatalf("waiter %d received unexpected error: %v", i, errs[i])
 		}
@@ -103,8 +103,7 @@ func TestSingleflight_Generic_Panic_UnblocksWaiters(t *testing.T) {
 		if err == nil {
 			t.Errorf("waiter %d: expected non-nil error on initiator panic", i)
 		}
-		var pe *PanicError
-		if !errors.As(err, &pe) {
+		if _, ok := errors.AsType[*PanicError](err); !ok {
 			t.Errorf("waiter %d: expected error to wrap *PanicError, got: %v", i, err)
 		}
 	}

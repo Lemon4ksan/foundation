@@ -488,7 +488,7 @@ func readSimpleHuffmanSymbols(alphabet_size, max_symbol uint32, s *Reader) int {
 		i++
 	}
 
-	for i = 0; i < num_symbols; i++ {
+	for i = range num_symbols {
 		k := i + 1
 		for ; k <= num_symbols; k++ {
 			if s.symbols_lists_array[i] == s.symbols_lists_array[k] {
@@ -822,7 +822,7 @@ func readHuffmanCode(alphabet_size, max_symbol uint32, table []huffmanCode, opt_
 					s.code_length_histo[i] = 0
 				}
 
-				for i = 0; i < codeLengthCodes; i++ {
+				for i = range codeLengthCodes {
 					s.code_length_code_lengths[i] = 0
 				}
 
@@ -1240,10 +1240,8 @@ func detectTrivialLiteralBlockTypes(s *Reader) {
 		offset := i << literalContextBits
 		var error uint = 0
 		sample := uint(s.context_map[offset])
-		var j uint
-		for j = 0; j < 1<<literalContextBits; {
-			var k int
-			for k = 0; k < 4; k++ {
+		for j := uint(0); j < 1<<literalContextBits; {
+			for range 4 {
 				error |= uint(s.context_map[offset+j]) ^ sample
 				j++
 			}
@@ -1355,10 +1353,7 @@ Dumps output.
 func writeRingBuffer(s *Reader, available_out *uint, next_out *[]byte, total_out *uint, force bool) int {
 	start := s.ringbuffer[s.partial_pos_out&uint(s.ringbuffer_mask):]
 	to_write := unwrittenBytes(s, true)
-	num_written := *available_out
-	if num_written > to_write {
-		num_written = to_write
-	}
+	num_written := min(*available_out, to_write)
 
 	if s.meta_block_remaining_len < 0 {
 		return decoderErrorFormatBlockLength1
@@ -1453,10 +1448,7 @@ func copyUncompressedBlockToOutput(available_out *uint, next_out *[]byte, total_
 		switch s.substate_uncompressed {
 		case stateUncompressedNone:
 			{
-				nbytes := int(getRemainingBytes(&s.br))
-				if nbytes > s.meta_block_remaining_len {
-					nbytes = s.meta_block_remaining_len
-				}
+				nbytes := min(int(getRemainingBytes(&s.br)), s.meta_block_remaining_len)
 
 				if s.pos+nbytes > s.ringbuffer_size {
 					nbytes = s.ringbuffer_size - s.pos
@@ -1967,11 +1959,7 @@ CommandPostDecodeLiterals:
 	}
 
 	if s.max_distance != s.max_backward_distance {
-		if pos < s.max_backward_distance {
-			s.max_distance = pos
-		} else {
-			s.max_distance = s.max_backward_distance
-		}
+		s.max_distance = min(pos, s.max_backward_distance)
 	}
 
 	i = s.copy_length

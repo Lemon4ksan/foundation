@@ -269,11 +269,9 @@ func TestOptional_Adversarial_ConcurrencyStress(t *testing.T) {
 	var wg sync.WaitGroup
 
 	// 1. Concurrent readers of the same Optional instance
-	for g := 0; g < goroutines; g++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for i := 0; i < iterations; i++ {
+	for range goroutines {
+		wg.Go(func() {
+			for range iterations {
 				assert.True(t, sharedValue.IsPresent())
 				assert.Equal(t, "thread_safe_shared_payload", sharedValue.MustValue())
 				assert.False(t, sharedValue.IsZero())
@@ -282,15 +280,15 @@ func TestOptional_Adversarial_ConcurrencyStress(t *testing.T) {
 				assert.Nil(t, err)
 				assert.True(t, bytes.Equal(b, []byte(`"thread_safe_shared_payload"`)))
 			}
-		}()
+		})
 	}
 
 	// 2. Concurrent workers unmarshaling into independent Optional instances
-	for g := 0; g < goroutines; g++ {
+	for g := range goroutines {
 		wg.Add(1)
 		go func(gid int) {
 			defer wg.Done()
-			for i := 0; i < iterations; i++ {
+			for i := range iterations {
 				var opt Optional[int]
 				payload := fmt.Sprintf("%d", gid*1000+i)
 				err := json.Unmarshal([]byte(payload), &opt)

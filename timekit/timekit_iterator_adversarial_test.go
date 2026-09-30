@@ -102,9 +102,7 @@ func TestEmpirical_Timekit_RangeSeq_Concurrent(t *testing.T) {
 
 	var wg sync.WaitGroup
 	for range 20 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			c := 0
 			for range timekit.RangeSeq(start, end, step) {
 				c++
@@ -112,7 +110,7 @@ func TestEmpirical_Timekit_RangeSeq_Concurrent(t *testing.T) {
 			if c != 101 {
 				t.Errorf("expected 101 iterations, got %d", c)
 			}
-		}()
+		})
 	}
 	wg.Wait()
 }

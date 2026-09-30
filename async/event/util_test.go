@@ -11,10 +11,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lemon4ksan/foundation/async/event"
 	"github.com/lemon4ksan/foundation/testing/assert"
 	"github.com/lemon4ksan/foundation/testing/require"
-
-	"github.com/lemon4ksan/foundation/async/event"
 )
 
 type testEvent struct {
@@ -166,7 +165,6 @@ func TestSubscribeTo_IdempotentCancel(t *testing.T) {
 	var wg sync.WaitGroup
 	for range 20 {
 		wg.Go(func() {
-
 			cancel()
 		})
 	}

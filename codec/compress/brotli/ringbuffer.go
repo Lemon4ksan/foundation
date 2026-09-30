@@ -67,7 +67,7 @@ func ringBufferInitBuffer(buflen uint32, rb *ringBuffer) {
 	rb.buffer_ = rb.data_[2:]
 	rb.data_[1] = 0
 	rb.data_[0] = rb.data_[1]
-	for i = 0; i < kSlackForEightByteHashingEverywhere; i++ {
+	for i = range kSlackForEightByteHashingEverywhere {
 		rb.buffer_[rb.cur_size_+uint32(i)] = 0
 	}
 }

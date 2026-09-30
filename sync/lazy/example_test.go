@@ -22,14 +22,12 @@ func ExampleLazy() {
 	var wg sync.WaitGroup
 	// 5 concurrent readers
 	for range 5 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			val, err := l.Get()
 			if err != nil || val != "expensive-resource" {
 				panic("unexpected result")
 			}
-		}()
+		})
 	}
 	wg.Wait()
 

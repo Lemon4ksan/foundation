@@ -426,8 +426,7 @@ func buildCodeLengthsHuffmanTable(table []huffmanCode, code_lengths []byte, coun
 	symbol = -1
 
 	bits = 1
-	var i int
-	for i = 0; i < huffmanMaxCodeLengthCodeLength; i++ {
+	for range huffmanMaxCodeLengthCodeLength {
 		symbol += int(count[bits])
 		offset[bits] = symbol
 		bits++
@@ -440,8 +439,7 @@ func buildCodeLengthsHuffmanTable(table []huffmanCode, code_lengths []byte, coun
 	symbol = codeLengthCodes
 
 	for {
-		var i int
-		for i = 0; i < 6; i++ {
+		for range 6 {
 			symbol--
 			sorted[offset[code_lengths[symbol]]] = symbol
 			offset[code_lengths[symbol]]--
@@ -622,7 +620,7 @@ func buildSimpleHuffmanTable(table []huffmanCode, root_bits int, val []uint16, n
 	case 3:
 		var i int
 		var k int
-		for i = 0; i < 3; i++ {
+		for i = range 3 {
 			for k = i + 1; k < 4; k++ {
 				if val[k] < val[i] {
 					t := val[k]

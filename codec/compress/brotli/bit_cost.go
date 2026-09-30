@@ -89,7 +89,7 @@ func populationCostLiteral(histogram *histogramLiteral) float64 {
 		}
 
 		/* Sort */
-		for i = 0; i < 4; i++ {
+		for i = range 4 {
 			var j uint
 			for j = i + 1; j < 4; j++ {
 				if histo[j] > histo[i] {
@@ -220,7 +220,7 @@ func populationCostCommand(histogram *histogramCommand) float64 {
 		}
 
 		/* Sort */
-		for i = 0; i < 4; i++ {
+		for i = range 4 {
 			var j uint
 			for j = i + 1; j < 4; j++ {
 				if histo[j] > histo[i] {
@@ -351,7 +351,7 @@ func populationCostDistance(histogram *histogramDistance) float64 {
 		}
 
 		/* Sort */
-		for i = 0; i < 4; i++ {
+		for i = range 4 {
 			var j uint
 			for j = i + 1; j < 4; j++ {
 				if histo[j] > histo[i] {

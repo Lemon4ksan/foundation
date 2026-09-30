@@ -65,7 +65,7 @@ func buildAndStoreLiteralPrefixCode(
 		}
 
 		histogram_total = input_size
-		for i = 0; i < 256; i++ {
+		for i = range 256 {
 			/* We weigh the first 11 samples with weight 3 to account for the
 			   balancing effect of the LZ77 phase on the histogram. */
 			adjust := 2 * brotli_min_uint32_t(histogram[i], 11)
@@ -79,7 +79,7 @@ func buildAndStoreLiteralPrefixCode(
 		}
 
 		histogram_total = (input_size + kSampleRate - 1) / kSampleRate
-		for i = 0; i < 256; i++ {
+		for i = range 256 {
 			/* We add 1 to each population count to avoid 0 bit depths (since this is
 			   only a sample and we don't know if the symbol appears or not), and we
 			   weigh the first 11 samples with weight 3 to account for the balancing
@@ -95,7 +95,7 @@ func buildAndStoreLiteralPrefixCode(
 		8, depths, bits, storage_ix, storage)
 	{
 		var literal_ratio uint = 0
-		for i = 0; i < 256; i++ {
+		for i = range 256 {
 			if histogram[i] != 0 {
 				literal_ratio += uint(histogram[i] * uint32(depths[i]))
 			}
@@ -150,7 +150,7 @@ func buildAndStoreCommandPrefixCode1(
 	{
 		/* Create the bit length array for the full command alphabet. */
 		var i uint
-		for i := 0; i < int(64); i++ {
+		for i := range int(64) {
 			cmd_depth[i] = 0
 		} /* only 64 first values were used */
 		copy(cmd_depth[:], depth[:8])
@@ -158,7 +158,7 @@ func buildAndStoreCommandPrefixCode1(
 		copy(cmd_depth[128:], depth[16:][:8])
 		copy(cmd_depth[192:], depth[24:][:8])
 		copy(cmd_depth[384:], depth[32:][:8])
-		for i = 0; i < 8; i++ {
+		for i = range 8 {
 			cmd_depth[128+8*i] = depth[40+i]
 			cmd_depth[256+8*i] = depth[48+i]
 			cmd_depth[448+8*i] = depth[56+i]
@@ -294,7 +294,7 @@ func emitDistance1(distance uint, depth []byte, bits []uint16, histo []uint32, s
 
 func emitLiterals(input []byte, len uint, depth []byte, bits []uint16, storage_ix *uint, storage []byte) {
 	var j uint
-	for j = 0; j < len; j++ {
+	for j = range len {
 		lit := input[j]
 		writeBits(uint(depth[lit]), uint64(bits[lit]), storage_ix, storage)
 	}
@@ -354,7 +354,7 @@ func shouldMergeBlock(data []byte, len uint, depths []byte) bool {
 	{
 		total := (len + shouldMergeBlock_kSampleRate - 1) / shouldMergeBlock_kSampleRate
 		r := (fastLog2(total)+0.5)*float64(total) + 200
-		for i = 0; i < 256; i++ {
+		for i = range 256 {
 			r -= float64(histo[i]) * (float64(depths[i]) + fastLog2(histo[i]))
 		}
 

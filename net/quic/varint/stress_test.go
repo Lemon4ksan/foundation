@@ -129,11 +129,11 @@ func TestStressVarint_Parallel(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(goroutines)
 
-	for g := 0; g < goroutines; g++ {
+	for g := range goroutines {
 		go func(id int) {
 			defer wg.Done()
 			var buf [8]byte
-			for i := 0; i < iters; i++ {
+			for i := range iters {
 				val := uint64((id*1000 + i) % 100000)
 				n := varint.EncodeVarintSlice(val, buf[:])
 				dec, rLen, err := varint.DecodeVarint(buf[:n])

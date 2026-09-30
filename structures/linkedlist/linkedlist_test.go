@@ -198,7 +198,7 @@ func TestListCapacityExhaustionAndRecycling(t *testing.T) {
 func TestListDefaultCapacityExhaustion(t *testing.T) {
 	// Default constructor creates cap=16 (1 sentinel + 15 user elements)
 	l := list.New[int]()
-	for i := 0; i < 15; i++ {
+	for i := range 15 {
 		l.PushBack(i)
 	}
 	if l.Len() != 15 {
@@ -591,7 +591,7 @@ func TestListPropertyBasedRandomOps(t *testing.T) {
 
 	rng := rand.New(rand.NewSource(42))
 
-	for step := 0; step < 600; step++ {
+	for step := range 600 {
 		op := rng.Intn(9)
 		switch op {
 		case 0: // PushFront
@@ -611,7 +611,7 @@ func TestListPropertyBasedRandomOps(t *testing.T) {
 				targetIdx := rng.Intn(len(model))
 				val := rng.Intn(1000)
 				curr := l.Front()
-				for i := 0; i < targetIdx; i++ {
+				for range targetIdx {
 					curr = curr.Next()
 				}
 				l.InsertBefore(val, curr)
@@ -622,7 +622,7 @@ func TestListPropertyBasedRandomOps(t *testing.T) {
 				targetIdx := rng.Intn(len(model))
 				val := rng.Intn(1000)
 				curr := l.Front()
-				for i := 0; i < targetIdx; i++ {
+				for range targetIdx {
 					curr = curr.Next()
 				}
 				l.InsertAfter(val, curr)
@@ -632,7 +632,7 @@ func TestListPropertyBasedRandomOps(t *testing.T) {
 			if len(model) > 1 {
 				targetIdx := rng.Intn(len(model))
 				curr := l.Front()
-				for i := 0; i < targetIdx; i++ {
+				for range targetIdx {
 					curr = curr.Next()
 				}
 				l.MoveToFront(curr)
@@ -644,7 +644,7 @@ func TestListPropertyBasedRandomOps(t *testing.T) {
 			if len(model) > 1 {
 				targetIdx := rng.Intn(len(model))
 				curr := l.Front()
-				for i := 0; i < targetIdx; i++ {
+				for range targetIdx {
 					curr = curr.Next()
 				}
 				l.MoveToBack(curr)
@@ -708,7 +708,7 @@ func TestListPropertyBasedRandomOps(t *testing.T) {
 			if len(model) > 0 {
 				targetIdx := rng.Intn(len(model))
 				curr := l.Front()
-				for i := 0; i < targetIdx; i++ {
+				for range targetIdx {
 					curr = curr.Next()
 				}
 				l.Remove(curr)
@@ -771,7 +771,7 @@ func BenchmarkList_PushFrontRemove(b *testing.B) {
 
 func BenchmarkList_MoveToFrontMoveToBack(b *testing.B) {
 	l := list.NewCapacity[int](1024)
-	for i := 0; i < 1024; i++ {
+	for i := range 1024 {
 		l.PushBack(i)
 	}
 	target := l.Back()
@@ -786,7 +786,7 @@ func BenchmarkList_MoveToFrontMoveToBack(b *testing.B) {
 
 func BenchmarkList_IteratorsValues(b *testing.B) {
 	l := list.NewCapacity[int](1000)
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		l.PushBack(i)
 	}
 	b.ReportAllocs()
@@ -803,7 +803,7 @@ func BenchmarkList_IteratorsValues(b *testing.B) {
 
 func BenchmarkList_IteratorsAll(b *testing.B) {
 	l := list.NewCapacity[int](1000)
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		l.PushBack(i)
 	}
 	b.ReportAllocs()
@@ -820,7 +820,7 @@ func BenchmarkList_IteratorsAll(b *testing.B) {
 
 func BenchmarkList_IteratorsBackward(b *testing.B) {
 	l := list.NewCapacity[int](1000)
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		l.PushBack(i)
 	}
 	b.ReportAllocs()

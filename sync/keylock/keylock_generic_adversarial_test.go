@@ -25,9 +25,7 @@ func TestEmpirical_Keylock_WithLockResult_MutualExclusion(t *testing.T) {
 	var wg sync.WaitGroup
 
 	for range numWorkers {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for range iterations {
 				val, err := keylock.WithLockResult(km, key, func() (int, error) {
 					cur := inCritical.Add(1)
@@ -43,7 +41,7 @@ func TestEmpirical_Keylock_WithLockResult_MutualExclusion(t *testing.T) {
 				}
 				totalExec.Add(1)
 			}
-		}()
+		})
 	}
 
 	wg.Wait()

@@ -115,7 +115,7 @@ func (r *RingBuffer[T]) All() iter.Seq[T] {
 			return
 		}
 		ringCap := r.ring[:c]
-		for i := 0; i < n; i++ {
+		for i := range n {
 			pos := r.headPos + i
 			if pos >= c {
 				pos -= c

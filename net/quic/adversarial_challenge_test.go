@@ -167,10 +167,8 @@ func TestAdversarial_StreamNetConn_ConcurrentReadWrite(t *testing.T) {
 	var wg sync.WaitGroup
 
 	// Writer goroutine
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		for i := 0; i < numOps; i++ {
+	wg.Go(func() {
+		for range numOps {
 			payload := []byte("stress-test-data-payload")
 			_, err := str.Write(payload)
 			if err != nil {
@@ -178,14 +176,12 @@ func TestAdversarial_StreamNetConn_ConcurrentReadWrite(t *testing.T) {
 			}
 		}
 		_ = str.CloseWrite()
-	}()
+	})
 
 	// Feeder goroutine delivering frames to receiveStr
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		var offset protocol.ByteCount
-		for i := 0; i < numOps; i++ {
+		for i := range numOps {
 			chunk := []byte("stream-chunk")
 			_ = str.handleStreamFrame(&wire.StreamFrame{
 				StreamID: 1,
@@ -196,12 +192,10 @@ func TestAdversarial_StreamNetConn_ConcurrentReadWrite(t *testing.T) {
 			offset += protocol.ByteCount(len(chunk))
 			time.Sleep(50 * time.Microsecond)
 		}
-	}()
+	})
 
 	// Reader goroutine
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		buf := make([]byte, 32)
 		for {
 			_, err := str.Read(buf)
@@ -212,7 +206,7 @@ func TestAdversarial_StreamNetConn_ConcurrentReadWrite(t *testing.T) {
 				return
 			}
 		}
-	}()
+	})
 
 	wg.Wait()
 }
@@ -310,8 +304,7 @@ func TestAdversarial_StreamListener_Harness(t *testing.T) {
 	conn := tc.conn
 	tc.connRunner.EXPECT().Remove(gomock.Any()).AnyTimes()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	ln := conn.StreamListener(ctx)
 	require.NotNil(t, ln)
@@ -401,11 +394,9 @@ func TestAdversarial_StreamsIterators_RapidChurn(t *testing.T) {
 	var wg sync.WaitGroup
 
 	// Concurrent stream creators
-	for w := 0; w < numWorkers; w++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for i := 0; i < numOpsPerWorker; i++ {
+	for range numWorkers {
+		wg.Go(func() {
+			for range numOpsPerWorker {
 				str, err := conn.OpenStream()
 				if err == nil && str != nil {
 					_ = str.CloseWrite()
@@ -415,15 +406,13 @@ func TestAdversarial_StreamsIterators_RapidChurn(t *testing.T) {
 					_ = uniStr.CloseWrite()
 				}
 			}
-		}()
+		})
 	}
 
 	// Concurrent stream iterators
 	stopIter := atomic.Bool{}
-	for r := 0; r < 4; r++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range 4 {
+		wg.Go(func() {
 			for !stopIter.Load() {
 				for s := range conn.Streams() {
 					_ = s.StreamID()
@@ -435,7 +424,7 @@ func TestAdversarial_StreamsIterators_RapidChurn(t *testing.T) {
 					_ = s.StreamID()
 				}
 			}
-		}()
+		})
 	}
 
 	// Wait for creators to complete

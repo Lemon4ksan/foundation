@@ -24,7 +24,7 @@ func TestFSM_Adversarial_CyclicHighConcurrency(t *testing.T) {
 	f := fsm.New[int, int](0)
 
 	// Build cyclic rules: 0 -> 1 -> 2 -> 3 -> 4 -> 0
-	for i := 0; i < numStates; i++ {
+	for i := range numStates {
 		next := (i + 1) % numStates
 		f.AddRules(fsm.TransitionRule[int, int]{
 			From:  i,
@@ -46,13 +46,13 @@ func TestFSM_Adversarial_CyclicHighConcurrency(t *testing.T) {
 
 	ctx := context.Background()
 
-	for g := 0; g < numGoroutines; g++ {
+	for g := range numGoroutines {
 		wg.Add(1)
 		go func(seed uint64) {
 			defer wg.Done()
 			rng := rand.New(rand.NewPCG(seed, seed^0x55555555))
 
-			for i := 0; i < iterations; i++ {
+			for range iterations {
 				// Random event from [0, numStates)
 				ev := rng.IntN(numStates)
 				err := f.Transition(ctx, ev)
@@ -227,9 +227,7 @@ func TestFSM_Adversarial_ConcurrentHookRegistrationAndTransitions(t *testing.T) 
 	var wg sync.WaitGroup
 
 	// Goroutine 1: transitions 0 -> 1 -> 0
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for {
 			select {
 			case <-stop:
@@ -239,12 +237,10 @@ func TestFSM_Adversarial_ConcurrentHookRegistrationAndTransitions(t *testing.T) 
 				_ = f.Transition(context.Background(), 2)
 			}
 		}
-	}()
+	})
 
 	// Goroutine 2: dynamic hook registrations
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for {
 			select {
 			case <-stop:
@@ -255,12 +251,10 @@ func TestFSM_Adversarial_ConcurrentHookRegistrationAndTransitions(t *testing.T) 
 				f.OnBefore(2, nil) // test nil hook safety
 			}
 		}
-	}()
+	})
 
 	// Goroutine 3: dynamic rule registrations
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for {
 			select {
 			case <-stop:
@@ -270,12 +264,10 @@ func TestFSM_Adversarial_ConcurrentHookRegistrationAndTransitions(t *testing.T) 
 				f.AddRules(fsm.TransitionRule[int, int]{From: 1, Event: 2, To: 0})
 			}
 		}
-	}()
+	})
 
 	// Goroutine 4: concurrent Validate & CurrentState
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for {
 			select {
 			case <-stop:
@@ -286,7 +278,7 @@ func TestFSM_Adversarial_ConcurrentHookRegistrationAndTransitions(t *testing.T) 
 				_, _ = f.Validate(2)
 			}
 		}
-	}()
+	})
 
 	wg.Wait()
 }
@@ -297,7 +289,7 @@ func TestFSM_Adversarial_LargeScaleGraph(t *testing.T) {
 	f := fsm.NewFSM[int, int](0)
 
 	rules := make([]fsm.TransitionRule[int, int], 0, numStates*2)
-	for i := 0; i < numStates; i++ {
+	for i := range numStates {
 		rules = append(rules,
 			fsm.TransitionRule[int, int]{From: i, Event: 1, To: (i + 1) % numStates},
 			fsm.TransitionRule[int, int]{From: i, Event: 2, To: (i + 2) % numStates},
@@ -307,7 +299,7 @@ func TestFSM_Adversarial_LargeScaleGraph(t *testing.T) {
 	f.AddRules(rules...)
 
 	// Step through entire chain
-	for i := 0; i < numStates; i++ {
+	for i := range numStates {
 		next, ok := f.Validate(1)
 		if !ok || next != (i+1)%numStates {
 			t.Fatalf("expected step to %d, got %d (ok=%v)", (i+1)%numStates, next, ok)

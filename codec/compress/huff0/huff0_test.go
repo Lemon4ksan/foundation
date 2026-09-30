@@ -365,10 +365,7 @@ func TestSetMaxHeightAndTableLimits(t *testing.T) {
 	fib := make([]int, 35)
 	fib[0], fib[1] = 1, 2
 	for i := 2; i < 35; i++ {
-		fib[i] = fib[i-1] + fib[i-2]
-		if fib[i] > 10000 {
-			fib[i] = 10000
-		}
+		fib[i] = min(fib[i-1]+fib[i-2], 10000)
 	}
 	for i, count := range fib {
 		data = append(data, bytes.Repeat([]byte{byte(i + 1)}, count)...)
@@ -395,7 +392,7 @@ func TestSetMaxHeightAndTableLimits(t *testing.T) {
 func TestDecompress8BitDirect(t *testing.T) {
 	// Construct data8 with 90 symbols and skewed counts so Huffman tree depth >= 8 and actualTableLog == 8
 	var data8 []byte
-	for i := 0; i < 90; i++ {
+	for i := range 90 {
 		data8 = append(data8, bytes.Repeat([]byte{byte(i + 1)}, (i+1)*5)...)
 	}
 
@@ -523,7 +520,7 @@ func TestDecompress8BitDirect(t *testing.T) {
 // TestHighTableLogAndAsm exercises TableLog >= 9 and ASM decompression paths.
 func TestHighTableLogAndAsm(t *testing.T) {
 	var data []byte
-	for i := 0; i < 200; i++ {
+	for i := range 200 {
 		repeat := (i % 20) + 1
 		data = append(data, bytes.Repeat([]byte{byte(i)}, repeat*20)...)
 	}
@@ -877,7 +874,7 @@ func TestCompressReusePolicies(t *testing.T) {
 	{
 		var s Scratch
 		spreadData := make([]byte, 512)
-		for i := 0; i < 256; i++ {
+		for i := range 256 {
 			spreadData[i] = byte(i)
 			spreadData[256+i] = byte(i)
 		}
@@ -1333,7 +1330,6 @@ func TestDecompress4X8BitErrors(t *testing.T) {
 	_, _ = dec.decompress4X8bit(tooSmallDst, remain)
 }
 
-
 // TestCleanBitReaderClose exercises the clean close path on bitReaderBytes and bitReaderShifted.
 func TestCleanBitReaderClose(t *testing.T) {
 	var brClean bitReaderBytes
@@ -1450,14 +1446,3 @@ func TestCountSimplePrevTableEdge(t *testing.T) {
 		t.Fatalf("expected reuse=false when symbol >= len(prevTable)")
 	}
 }
-
-
-
-
-
-
-
-
-
-
-

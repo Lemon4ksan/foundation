@@ -221,7 +221,7 @@ func histogramRemapLiteral(
 		}
 		best_bits := histogramBitCostDistanceLiteral(&in[i], &out[best_out])
 		var j uint
-		for j = 0; j < num_clusters; j++ {
+		for j = range num_clusters {
 			cur_bits := histogramBitCostDistanceLiteral(&in[i], &out[clusters[j]])
 			if cur_bits < best_bits {
 				best_bits = cur_bits
@@ -237,7 +237,7 @@ func histogramRemapLiteral(
 		histogramClearLiteral(&out[clusters[i]])
 	}
 
-	for i = 0; i < in_size; i++ {
+	for i = range in_size {
 		histogramAddHistogramLiteral(&out[symbols[i]], &in[i])
 	}
 }
@@ -325,7 +325,7 @@ func clusterHistogramsLiteral(
 		num_to_combine := brotli_min_size_t(in_size-i, max_input_histograms)
 		var num_new_clusters uint
 		var j uint
-		for j = 0; j < num_to_combine; j++ {
+		for j = range num_to_combine {
 			clusters[num_clusters+j] = uint32(i + j)
 		}
 

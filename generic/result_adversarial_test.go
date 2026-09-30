@@ -195,11 +195,11 @@ func TestResult_Adversarial_ConcurrencyStress(t *testing.T) {
 
 	var wg sync.WaitGroup
 
-	for w := 0; w < workers; w++ {
+	for w := range workers {
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()
-			for i := 0; i < iterations; i++ {
+			for range iterations {
 				if id%2 == 0 {
 					assert.True(t, resSuccess.IsSuccess())
 					v, err := resSuccess.Unwrap()

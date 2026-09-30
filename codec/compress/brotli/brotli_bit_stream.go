@@ -309,7 +309,7 @@ func storeHuffmanTreeToBitMask(
 	storage []byte,
 ) {
 	var i uint
-	for i = 0; i < huffman_tree_size; i++ {
+	for i = range huffman_tree_size {
 		ix := uint(huffman_tree[i])
 		writeBits(uint(code_length_bitdepth[ix]), uint64(code_length_bitdepth_symbols[ix]), storage_ix, storage)
 
@@ -338,7 +338,7 @@ func storeSimpleHuffmanTree(
 	{
 		/* Sort */
 		var i uint
-		for i = 0; i < num_symbols; i++ {
+		for i = range num_symbols {
 			var j uint
 			for j = i + 1; j < num_symbols; j++ {
 				if depths[symbols[j]] < depths[symbols[i]] {
@@ -404,7 +404,7 @@ func storeHuffmanTree(depths []byte, num uint, tree []huffmanTree, storage_ix *u
 		huffman_tree_histogram[huffman_tree[i]]++
 	}
 
-	for i = 0; i < codeLengthCodes; i++ {
+	for i = range codeLengthCodes {
 		if huffman_tree_histogram[i] != 0 {
 			if num_codes == 0 {
 				code = i
@@ -459,7 +459,7 @@ func buildAndStoreHuffmanTree(
 	s4 := [4]uint{0}
 	var i uint
 	var max_bits uint = 0
-	for i = 0; i < histogram_length; i++ {
+	for i = range histogram_length {
 		if histogram[i] != 0 {
 			if count < 4 {
 				s4[count] = i
@@ -858,7 +858,7 @@ func moveToFrontTransform(v_in []uint32, v_size uint, v_out []uint32) {
 	}
 	{
 		mtf_size := uint(max_value + 1)
-		for i = 0; i < v_size; i++ {
+		for i = range v_size {
 			index := indexOf(mtf[:], mtf_size, byte(v_in[i]))
 			assert(index < mtf_size)
 			v_out[i] = uint32(index)
@@ -1040,7 +1040,7 @@ func buildAndStoreBlockSplitCode(
 	}
 	length_histo = [numBlockLenSymbols]uint32{}
 	initBlockTypeCodeCalculator(&type_code_calculator)
-	for i = 0; i < num_blocks; i++ {
+	for i = range num_blocks {
 		type_code := nextBlockTypeCode(&type_code_calculator, types[i])
 		if i != 0 {
 			type_histo[type_code]++
@@ -1109,7 +1109,7 @@ func storeTrivialContextMap(num_types, context_bits uint, tree []huffmanTree, st
 			storage_ix,
 			storage,
 		)
-		for i = 0; i < num_types; i++ {
+		for i = range num_types {
 			var tmp uint
 			if i == 0 {
 				tmp = 0
@@ -1274,7 +1274,7 @@ func buildAndStoreEntropyCodesLiteral(
 	}
 	{
 		var i uint
-		for i = 0; i < histograms_size; i++ {
+		for i = range histograms_size {
 			ix := i * self.histogram_length_
 			buildAndStoreHuffmanTree(
 				histograms[i].data_[0:],
@@ -1311,7 +1311,7 @@ func buildAndStoreEntropyCodesCommand(
 	}
 	{
 		var i uint
-		for i = 0; i < histograms_size; i++ {
+		for i = range histograms_size {
 			ix := i * self.histogram_length_
 			buildAndStoreHuffmanTree(
 				histograms[i].data_[0:],
@@ -1348,7 +1348,7 @@ func buildAndStoreEntropyCodesDistance(
 	}
 	{
 		var i uint
-		for i = 0; i < histograms_size; i++ {
+		for i = range histograms_size {
 			ix := i * self.histogram_length_
 			buildAndStoreHuffmanTree(
 				histograms[i].data_[0:],

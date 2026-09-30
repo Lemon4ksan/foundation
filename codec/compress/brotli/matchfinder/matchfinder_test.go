@@ -117,7 +117,7 @@ func TestSlidingWindowHistory(t *testing.T) {
 		t.Run(fname, func(t *testing.T) {
 			mf := newFinder()
 			mf.Reset()
-			for i := 0; i < 5; i++ {
+			for i := range 5 {
 				var matches []Match
 				matches = mf.FindMatches(matches, block)
 				if len(matches) == 0 {
@@ -346,11 +346,11 @@ func TestOverflowAndEdgeBranches(t *testing.T) {
 
 	// History trimming with active chain
 	m4Trim := &M4{MaxDistance: 64, ChainLength: 4}
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		_ = m4Trim.FindMatches(nil, bytes.Repeat([]byte("0123456789"), 15))
 	}
 	pfTrim := &Pathfinder{MaxDistance: 64, ChainLength: 4}
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		_ = pfTrim.FindMatches(nil, bytes.Repeat([]byte("0123456789"), 15))
 	}
 
@@ -412,7 +412,7 @@ func TestMatchFinderTargetedCoverage(t *testing.T) {
 	// ZDFast lookahead: short match at s, long 8-byte match at s+1
 	// Candidate S matches "Q123", candidate L matches "12345678"
 	zdfData := bytes.Repeat([]byte("PREFIX_Q123_MID_12345678_SUFFIX___"), 2)
-	zdfData = append(zdfData, []byte("PADDING_BYTES_TO_SEPARATE_BLOCKS_") ...)
+	zdfData = append(zdfData, []byte("PADDING_BYTES_TO_SEPARATE_BLOCKS_")...)
 	zdfData = append(zdfData, []byte("MID_12345678_Q12345678_END")...)
 	zdf := &ZDFast{MaxDistance: 4096}
 	m := zdf.FindMatches(nil, zdfData)
@@ -474,9 +474,9 @@ func TestMatchFinderTargetedCoverage(t *testing.T) {
 	c1.WriteString("REF:abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789extra_payload_longer_match!")
 	c1.WriteString(string(bytes.Repeat([]byte("_"), 60)))
 	// Substrings to match REF
-	c1.WriteString("abcdefghijklmnop")                                                                                // 16 bytes
-	c1.WriteString("ijklmnopqrstuvwxyz0123456789")                                                                   // overlaps previous
-	c1.WriteString("mnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789extra_payload_longer_match!")        // overlaps both, much longer
+	c1.WriteString("abcdefghijklmnop")                                                                        // 16 bytes
+	c1.WriteString("ijklmnopqrstuvwxyz0123456789")                                                            // overlaps previous
+	c1.WriteString("mnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789extra_payload_longer_match!") // overlaps both, much longer
 	m4c1 := &M4{MinLength: 4, ChainLength: 16, DistanceBitCost: 0, MaxDistance: 4096}
 	matchesC1 := m4c1.FindMatches(nil, c1.Bytes())
 	verifyMatches(t, c1.Bytes(), matchesC1, "m4 case 1")
@@ -485,9 +485,9 @@ func TestMatchFinderTargetedCoverage(t *testing.T) {
 	var c2 bytes.Buffer
 	c2.WriteString("REF:abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789extra_payload_longer_match!")
 	c2.WriteString(string(bytes.Repeat([]byte("_"), 60)))
-	c2.WriteString("abcdefghijklmnop")                                                                                // 16 bytes
-	c2.WriteString("1234")                                                                                            // small gap
-	c2.WriteString("mnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789extra_payload_longer_match!")        // starts at End + 2
+	c2.WriteString("abcdefghijklmnop")                                                                        // 16 bytes
+	c2.WriteString("1234")                                                                                    // small gap
+	c2.WriteString("mnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789extra_payload_longer_match!") // starts at End + 2
 	m4c2 := &M4{MinLength: 4, ChainLength: 16, DistanceBitCost: 0, MaxDistance: 4096}
 	matchesC2 := m4c2.FindMatches(nil, c2.Bytes())
 	verifyMatches(t, c2.Bytes(), matchesC2, "m4 case 2")
@@ -530,8 +530,8 @@ func TestSpecificTriggersAndLazyM0(t *testing.T) {
 
 	// Exact cascade for Case 1 (matches[0].Start < matches[2].End):
 	// refA (20 bytes), refB (40 bytes), refC (70 bytes)
-	refA := "abcdefghijklmnopqrst"                                         // 20 bytes
-	refB := "1234567890123456789012345678901234567890"                         // 40 bytes
+	refA := "abcdefghijklmnopqrst"                                               // 20 bytes
+	refB := "1234567890123456789012345678901234567890"                           // 40 bytes
 	refC := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789____" // 68 bytes
 	var cascade1 bytes.Buffer
 	cascade1.WriteString("HEADER_")
@@ -637,19 +637,19 @@ func TestM4Case1And3Cascade(t *testing.T) {
 	// We build a reference dictionary with distinct 4-byte hashes
 	var ref bytes.Buffer
 	// A at 0..39
-	for i := 0; i < 40; i++ {
+	for i := range 40 {
 		ref.WriteByte(byte('A' + (i % 26)))
 	}
 	// duplicate A at 40..79 for chaining
-	for i := 0; i < 40; i++ {
+	for i := range 40 {
 		ref.WriteByte(byte('A' + (i % 26)))
 	}
 	// B at 80..144 (65 bytes)
-	for i := 0; i < 65; i++ {
+	for i := range 65 {
 		ref.WriteByte(byte('0' + (i % 10)))
 	}
 	// C at 145..249 (105 bytes)
-	for i := 0; i < 105; i++ {
+	for i := range 105 {
 		ref.WriteByte(byte('a' + (i % 26)))
 	}
 	refBytes := ref.Bytes()
@@ -800,11 +800,3 @@ func TestPathfinderEdgeBranches(t *testing.T) {
 	m := pf.FindMatches(nil, b.Bytes())
 	verifyMatches(t, b.Bytes(), m, "pathfinder edge")
 }
-
-
-
-
-
-
-
-

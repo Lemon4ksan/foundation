@@ -16,7 +16,7 @@ func TestAdversarialFSERandomBitstreams(t *testing.T) {
 	scratch := &Scratch{DecompressLimit: 65536}
 
 	for _, sz := range lengths {
-		for iter := 0; iter < 10; iter++ {
+		for range 10 {
 			b := make([]byte, sz)
 			_, _ = rand.Read(b)
 
@@ -73,7 +73,7 @@ func TestAdversarialFSEStreamTruncation(t *testing.T) {
 	}
 
 	scratch := &Scratch{DecompressLimit: len(src) * 2}
-	for i := 0; i < len(compressed); i++ {
+	for i := range compressed {
 		truncated := compressed[:i]
 		func() {
 			defer func() {

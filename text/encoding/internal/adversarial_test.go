@@ -75,7 +75,7 @@ func TestAdversarialBoundaryRunes(t *testing.T) {
 
 // TestAdversarialRepertoireErrorAllBytes exhaustively tests all 256 byte values for RepertoireError.
 func TestAdversarialRepertoireErrorAllBytes(t *testing.T) {
-	for b := 0; b < 256; b++ {
+	for b := range 256 {
 		err := internal.RepertoireError(byte(b))
 		if err.Replacement() != byte(b) {
 			t.Fatalf("byte %d: Replacement() = %d, want %d", b, err.Replacement(), b)

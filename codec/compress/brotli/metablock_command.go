@@ -98,7 +98,7 @@ func blockSplitterFinishBlockCommand(self *blockSplitterCommand, is_final bool) 
 		var combined_entropy [2]float64
 		var diff [2]float64
 		var j uint
-		for j = 0; j < 2; j++ {
+		for j = range 2 {
 			last_histogram_ix := self.last_histogram_ix_[j]
 			combined_histo[j] = histograms[self.curr_histogram_ix_]
 			histogramAddHistogramCommand(&combined_histo[j], &histograms[last_histogram_ix])

@@ -48,7 +48,7 @@ func TestSingleFlight_Panic_UnblocksWaiters(t *testing.T) {
 	errs := make([]error, numWaiters)
 
 	// Secondary waiter goroutines
-	for i := 0; i < numWaiters; i++ {
+	for i := range numWaiters {
 		go func(idx int) {
 			defer wg.Done()
 			<-inFlight // Ensure initiator is already inside Do and running fn
@@ -82,8 +82,7 @@ func TestSingleFlight_Panic_UnblocksWaiters(t *testing.T) {
 		if err == nil {
 			t.Errorf("waiter %d: expected error on initiator panic, got nil", i)
 		}
-		var pe *PanicError
-		if !errors.As(err, &pe) {
+		if _, ok := errors.AsType[*PanicError](err); !ok {
 			t.Errorf("waiter %d: expected *PanicError, got %v", i, err)
 		}
 	}
@@ -148,13 +147,13 @@ func TestSingleFlight_NilGuards(t *testing.T) {
 // 3. Callers receive an error wrapping ErrBatchPanicked.
 // 4. Subsequent batches on the same DataLoader instance continue working normally.
 func TestDataLoader_PanicSafety(t *testing.T) {
-	var callCount int32
+	var callCount atomic.Int32
 	shouldPanic := true
 
 	dl := NewDataLoader[string, int](
 		20*time.Millisecond,
 		func(ctx context.Context, keys []string) (map[string]int, error) {
-			atomic.AddInt32(&callCount, 1)
+			callCount.Add(1)
 			if shouldPanic {
 				panic("database connection collapsed")
 			}
@@ -171,7 +170,7 @@ func TestDataLoader_PanicSafety(t *testing.T) {
 	wg.Add(callers)
 
 	errs := make([]error, callers)
-	for i := 0; i < callers; i++ {
+	for i := range callers {
 		idx := i
 		go func() {
 			defer wg.Done()
@@ -374,7 +373,7 @@ func TestDataLoader_DuplicateKeys(t *testing.T) {
 	results := make([]int, numCallers)
 	errs := make([]error, numCallers)
 
-	for i := 0; i < numCallers; i++ {
+	for i := range numCallers {
 		idx := i
 		go func() {
 			defer wg.Done()
@@ -384,7 +383,7 @@ func TestDataLoader_DuplicateKeys(t *testing.T) {
 
 	wg.Wait()
 
-	for i := 0; i < numCallers; i++ {
+	for i := range numCallers {
 		if errs[i] != nil || results[i] != 999 {
 			t.Errorf("caller %d expected (999, nil), got (%d, %v)", i, results[i], errs[i])
 		}
@@ -442,7 +441,7 @@ func TestDataLoader_HighConcurrencyStress(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(numGoroutines)
 
-	for i := 0; i < numGoroutines; i++ {
+	for i := range numGoroutines {
 		key := i
 		go func() {
 			defer wg.Done()

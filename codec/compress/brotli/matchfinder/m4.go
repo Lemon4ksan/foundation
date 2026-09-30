@@ -91,10 +91,7 @@ func (q *M4) FindMatches(dst []Match, src []byte) []Match {
 		}
 
 		for i, v := range q.table {
-			newV := int(v) - delta
-			if newV < 0 {
-				newV = 0
-			}
+			newV := max(int(v)-delta, 0)
 			q.table[i] = uint32(newV)
 		}
 	}

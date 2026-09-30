@@ -20,7 +20,7 @@ func decideMultiByteStatsLevel(pos, len, mask uint, data []byte) uint {
 	var max_utf8 uint = 1
 	var last_c uint = 0
 	var i uint
-	for i = 0; i < len; i++ {
+	for i = range len {
 		c := uint(data[(pos+i)&mask])
 		counts[utf8Position(last_c, c, 2)]++
 		last_c = c
@@ -51,7 +51,7 @@ func estimateBitCostsForLiteralsUTF8(pos, len, mask uint, data []byte, cost []fl
 	{
 		var last_c uint = 0
 		var utf8_pos uint = 0
-		for i = 0; i < in_window; i++ {
+		for i = range in_window {
 			c := uint(data[(pos+i)&mask])
 			histogram[utf8_pos][c]++
 			in_window_utf8[utf8_pos]++
@@ -61,7 +61,7 @@ func estimateBitCostsForLiteralsUTF8(pos, len, mask uint, data []byte, cost []fl
 	}
 
 	/* Compute bit costs with sliding window. */
-	for i = 0; i < len; i++ {
+	for i = range len {
 		if i >= window_half {
 			var c uint
 			var last_c uint
@@ -147,7 +147,7 @@ func estimateBitCostsForLiterals(pos, len, mask uint, data []byte, cost []float3
 		}
 
 		/* Compute bit costs with sliding window. */
-		for i = 0; i < len; i++ {
+		for i = range len {
 			var histo uint
 			if i >= window_half {
 				/* Remove a byte in the past. */

@@ -117,9 +117,7 @@ func ProcessSeq[In, Out any](
 		outCh := make(chan resItem, cfg.Workers*2)
 
 		var inWg sync.WaitGroup
-		inWg.Add(1)
-		go func() {
-			defer inWg.Done()
+		inWg.Go(func() {
 			defer close(inCh)
 			for item := range in {
 				select {
@@ -128,13 +126,11 @@ func ProcessSeq[In, Out any](
 				case inCh <- item:
 				}
 			}
-		}()
+		})
 
 		var workerWg sync.WaitGroup
 		for range cfg.Workers {
-			workerWg.Add(1)
-			go func() {
-				defer workerWg.Done()
+			workerWg.Go(func() {
 				for item := range inCh {
 					select {
 					case <-runCtx.Done():
@@ -148,7 +144,7 @@ func ProcessSeq[In, Out any](
 					case outCh <- resItem{out: out, err: err}:
 					}
 				}
-			}()
+			})
 		}
 
 		go func() {
