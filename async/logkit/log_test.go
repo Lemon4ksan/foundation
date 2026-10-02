@@ -770,6 +770,28 @@ func TestLogger_Any(t *testing.T) {
 	assert.Equal(t, "lone_key", entry["!BADKEY"])
 }
 
+func TestLogger_MaxStringLenTruncation(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	cfg := DefaultConfig(LevelInfo)
+	cfg.Output = &buf
+	cfg.Colors = false
+	cfg.MaxStringLen = 20
+
+	l := New(cfg)
+	longStr := "this is a very long string that should be truncated"
+	longErr := errors.New("this is a very long error message that should be truncated")
+
+	l.Info("testing truncation", String("body", longStr), Err(longErr))
+	require.NoError(t, l.Close())
+
+	output := buf.String()
+	assert.Contains(t, output, "... [truncated]")
+	assert.NotContains(t, output, longStr)
+}
+
+
 func BenchmarkLogger_Fields(b *testing.B) {
 	cfg := DefaultConfig(LevelInfo)
 	cfg.Output = io.Discard

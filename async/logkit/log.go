@@ -140,6 +140,10 @@ type Config struct {
 
 	// OmitFields defines a list of field keys to exclude from the printed output (e.g., "account", "steam_id").
 	OmitFields []string
+
+	// MaxStringLen, if greater than 0, truncates string and error field representations to this byte limit.
+	// Defaults to 1024 in DefaultConfig. Set to -1 to disable truncation.
+	MaxStringLen int
 }
 
 // DefaultConfig returns a configuration balanced for local development.
@@ -155,8 +159,9 @@ func DefaultConfig(level Level) Config {
 		Colors:     true,
 		FullPath:   false,
 		PathSep:    " › ",
-		AlignWidth: 75,
-		JSON:       false,
+		AlignWidth:   75,
+		JSON:         false,
+		MaxStringLen: 1024,
 	}
 }
 
@@ -419,6 +424,13 @@ func (l *AsyncLogger) formatJSON(b *bytes.Buffer, lvl Level, msg string, callFie
 
 		switch val := f.Value.(type) {
 		case string:
+			if l.cfg.MaxStringLen > 0 && len(val) > l.cfg.MaxStringLen {
+				cut := l.cfg.MaxStringLen
+				for cut > 0 && !utf8.RuneStart(val[cut]) {
+					cut--
+				}
+				val = val[:cut] + "... [truncated]"
+			}
 			b.WriteString(strconv.Quote(val))
 		case int:
 			b.WriteString(strconv.Itoa(val))
@@ -452,7 +464,15 @@ func (l *AsyncLogger) formatJSON(b *bytes.Buffer, lvl Level, msg string, callFie
 			}
 
 		case error:
-			b.WriteString(strconv.Quote(val.Error()))
+			errStr := val.Error()
+			if l.cfg.MaxStringLen > 0 && len(errStr) > l.cfg.MaxStringLen {
+				cut := l.cfg.MaxStringLen
+				for cut > 0 && !utf8.RuneStart(errStr[cut]) {
+					cut--
+				}
+				errStr = errStr[:cut] + "... [truncated]"
+			}
+			b.WriteString(strconv.Quote(errStr))
 		case []byte:
 			b.WriteString(strconv.Quote(formatValue(val)))
 		case time.Duration:
@@ -552,6 +572,13 @@ func (l *AsyncLogger) format(b *bytes.Buffer, lvl Level, msg string, callFields 
 		}
 
 		valStr := formatValue(f.Value)
+		if l.cfg.MaxStringLen > 0 && len(valStr) > l.cfg.MaxStringLen {
+			cut := l.cfg.MaxStringLen
+			for cut > 0 && !utf8.RuneStart(valStr[cut]) {
+				cut--
+			}
+			valStr = valStr[:cut] + "... [truncated]"
+		}
 		if len(valStr) > 40 || strings.Contains(valStr, "\n") {
 			blocks = append(blocks, f)
 			blockStrings = append(blockStrings, valStr)
