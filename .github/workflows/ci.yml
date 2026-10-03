@@ -28,10 +28,11 @@ jobs:
       - name: Download dependencies
         run: go mod download
 
-      - name: Compile and run golangci-lint
-        run: |
-          go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.6
-          $(go env GOPATH)/bin/golangci-lint run --timeout=5m
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v7
+        with:
+          version: latest
+          args: --timeout=5m
 
   test-matrix:
     name: Test (${{ matrix.os }})
