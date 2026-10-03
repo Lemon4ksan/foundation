@@ -791,7 +791,6 @@ func TestLogger_MaxStringLenTruncation(t *testing.T) {
 	assert.NotContains(t, output, longStr)
 }
 
-
 func BenchmarkLogger_Fields(b *testing.B) {
 	cfg := DefaultConfig(LevelInfo)
 	cfg.Output = io.Discard

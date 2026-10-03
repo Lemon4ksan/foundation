@@ -9,8 +9,6 @@ import (
 	"slices"
 	"sync"
 	"time"
-
-	"github.com/lemon4ksan/foundation/generic"
 )
 
 const inlineCapacity = 8
@@ -205,30 +203,38 @@ func WithDeadline(parent context.Context, d time.Time) (*Context, context.Cancel
 	return Wrap(deadlineCtx), cancel
 }
 
-// Get extracts a typed value from ctx wrapped in a [generic.Optional].
+// Value extracts a typed value from ctx using the standard Go comma-ok idiom.
 //
-// If the key is not found or cannot be safely cast to T, it returns a [generic.None].
-func Get[T any](ctx context.Context, key any) generic.Optional[T] {
+// If the key is not found or cannot be safely cast to T, it returns the zero value of T and false.
+func Value[T any](ctx context.Context, key any) (T, bool) {
 	if ctx == nil || key == nil {
-		return generic.None[T]()
+		var zero T
+		return zero, false
 	}
 
 	raw := ctx.Value(key)
 	if raw == nil {
-		return generic.None[T]()
+		var zero T
+		return zero, false
 	}
 
 	typed, ok := raw.(T)
 	if !ok {
-		return generic.None[T]()
+		var zero T
+		return zero, false
 	}
 
-	return generic.Some(typed)
+	return typed, true
 }
 
-// GetOr extracts a typed value from ctx, or returns defaultVal if missing or of mismatching type.
-func GetOr[T any](ctx context.Context, key any, defaultVal T) T {
-	return Get[T](ctx, key).ValueOr(defaultVal)
+// ValueOr extracts a typed value from ctx, or returns defaultVal if missing or of mismatching type.
+func ValueOr[T any](ctx context.Context, key any, defaultVal T) T {
+	val, ok := Value[T](ctx, key)
+	if !ok {
+		return defaultVal
+	}
+
+	return val
 }
 
 // Pool provides object pooling for [Context] instances in extreme high-throughput pipelines.

@@ -5,19 +5,22 @@
 package wire
 
 import (
-	"github.com/lemon4ksan/foundation/generic"
+	"sync"
+
 	"github.com/lemon4ksan/foundation/net/quic/internal/protocol"
 )
 
-var streamFramePool = generic.NewPool(func() *StreamFrame {
-	return &StreamFrame{
-		Data:     make([]byte, 0, protocol.MaxPacketBufferSize),
-		fromPool: true,
-	}
-})
+var streamFramePool = sync.Pool{
+	New: func() any {
+		return &StreamFrame{
+			Data:     make([]byte, 0, protocol.MaxPacketBufferSize),
+			fromPool: true,
+		}
+	},
+}
 
 func GetStreamFrame() *StreamFrame {
-	return streamFramePool.Get()
+	return streamFramePool.Get().(*StreamFrame)
 }
 
 func putStreamFrame(f *StreamFrame) {
@@ -29,5 +32,6 @@ func putStreamFrame(f *StreamFrame) {
 		panic("wire.PutStreamFrame called with packet of wrong size!")
 	}
 
+	f.Data = f.Data[:0]
 	streamFramePool.Put(f)
 }

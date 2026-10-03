@@ -152,13 +152,13 @@ type Config struct {
 // If the level is invalid, it defaults to [LevelInfo].
 func DefaultConfig(level Level) Config {
 	return Config{
-		Level:      level,
-		Output:     os.Stdout,
-		TimeFormat: "15:04:05.000",
-		AsyncSize:  2048,
-		Colors:     true,
-		FullPath:   false,
-		PathSep:    " › ",
+		Level:        level,
+		Output:       os.Stdout,
+		TimeFormat:   "15:04:05.000",
+		AsyncSize:    2048,
+		Colors:       true,
+		FullPath:     false,
+		PathSep:      " › ",
 		AlignWidth:   75,
 		JSON:         false,
 		MaxStringLen: 1024,

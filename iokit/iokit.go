@@ -18,7 +18,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/lemon4ksan/foundation/generic"
 	"github.com/lemon4ksan/foundation/silicon/offheap"
 )
 
@@ -145,7 +144,8 @@ func UnwrapTo[T any](c io.Closer) (T, bool) {
 		curr = u.Unwrap()
 	}
 
-	return generic.Zero[T](), false
+	var zero T
+	return zero, false
 }
 
 // ReadAllString reads stream content into a string and resets the reader position.
@@ -310,16 +310,15 @@ func (d *DecompressReadCloser) Close() error {
 
 func (d *DecompressReadCloser) Unwrap() io.Closer { return d.Closer }
 
-var gzipReaderPool = generic.NewPool(func() *gzip.Reader {
-	return new(gzip.Reader)
-})
+var gzipReaderPool = sync.Pool{
+	New: func() any {
+		return new(gzip.Reader)
+	},
+}
 
-// NewPooledGzipReader retrieves a reset [*gzip.Reader] from [generic.Pool] without heap allocations.
+// NewPooledGzipReader retrieves a reset [*gzip.Reader] from sync.Pool without heap allocations.
 func NewPooledGzipReader(r io.Reader) (io.ReadCloser, error) {
-	gr := gzipReaderPool.Get()
-	if gr == nil {
-		gr = new(gzip.Reader)
-	}
+	gr := gzipReaderPool.Get().(*gzip.Reader)
 
 	if err := gr.Reset(r); err != nil {
 		gzipReaderPool.Put(gr)

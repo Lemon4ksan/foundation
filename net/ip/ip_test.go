@@ -30,18 +30,23 @@ func TestSourceIPRotator_RoundRobin(t *testing.T) {
 	}
 }
 
-func TestSourceIPRotator_NextOptional(t *testing.T) {
+func TestSourceIPRotator_NextOK(t *testing.T) {
 	t.Parallel()
 
 	addrs := []string{"10.0.0.1"}
 	rot, err := ip.NewSourceIPRotator(addrs)
 	require.NoError(t, err)
 
-	opt := rot.NextOptional()
-	assert.True(t, opt.IsPresent())
-	val, ok := opt.Value()
+	val, ok := rot.NextOK()
 	assert.True(t, ok)
+	require.NotNil(t, val)
 	assert.Equal(t, "10.0.0.1", val.String())
+
+	// Empty rotator
+	var emptyRot ip.SourceIPRotator
+	valEmpty, okEmpty := emptyRot.NextOK()
+	assert.False(t, okEmpty)
+	assert.Nil(t, valEmpty)
 }
 
 func TestSourceIPRotator_NextForFamily(t *testing.T) {

@@ -1,0 +1,81 @@
+name: Task / Engineering Objective
+description: Structured task template for autonomous agents and contributors
+title: "[TASK]: "
+labels: ["task"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Every engineering objective in `foundation` must clearly specify boundary scopes, consumer rationale, and memory allocation budgets before implementation begins.
+
+  - type: dropdown
+    id: consumer
+    attributes:
+      label: Primary Consumer
+      description: Which consumer project requested or necessitates this change?
+      options:
+        - aoni (Game Engine Core / Frame Loop)
+        - g-man (Network Gateway / Broker)
+        - sein (Storage / WAL / Streaming)
+        - dawn (Protocols / Wire / Framing)
+        - seal (Security / Crypto Enclave)
+        - platform (Foundation-wide maintenance / tooling)
+    validations:
+      required: true
+
+  - type: input
+    id: target_packages
+    attributes:
+      label: Target Packages
+      description: Exact package import paths to modify or introduce.
+      placeholder: "async/pool, silicon/cpukit"
+    validations:
+      required: true
+
+  - type: input
+    id: protected_packages
+    attributes:
+      label: Out-of-Bounds (Protected Areas)
+      description: Packages and subsystems that MUST NOT be touched during this task.
+      placeholder: "net/quic, codec/*"
+    validations:
+      required: false
+
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objective & Rejected Stdlib Compromise
+      description: What problem does this solve? What standard Go library compromise is being re-evaluated?
+      placeholder: |
+        - Problem:
+        - Solution:
+        - Rejected stdlib compromise:
+    validations:
+      required: true
+
+  - type: dropdown
+    id: alloc_budget
+    attributes:
+      label: Allocation Budget Tier
+      description: What allocation contract is guaranteed for this package?
+      options:
+        - zero (0 B/op, 0 allocs/op on every invocation)
+        - amortized (0 allocs/op in steady state after warmup)
+        - bounded (strictly bounded allocations per operation)
+        - unconstrained (cold execution paths, initialization, tooling)
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance Criteria
+      description: What verifiable criteria determine task completion?
+      value: |
+        - [ ] Unit & table tests pass with test coverage maintained or improved (coverage ratchet)
+        - [ ] Zero data race warnings (`go test -race`)
+        - [ ] Benchmarks verify zero unexpected allocations (`-benchmem`)
+        - [ ] Package `doc.go` includes valid stdlib v2.0 metadata block
+        - [ ] `make check` passes cleanly
+    validations:
+      required: true

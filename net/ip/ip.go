@@ -13,8 +13,6 @@ import (
 	"net/netip"
 	"sync"
 	"sync/atomic"
-
-	"github.com/lemon4ksan/foundation/generic"
 )
 
 var (
@@ -129,14 +127,14 @@ func (r *SourceIPRotator) Next() net.IP {
 	return ips[i%n]
 }
 
-// NextOptional returns the next local IP address wrapped in a type-safe [generic.Optional].
-func (r *SourceIPRotator) NextOptional() generic.Optional[net.IP] {
+// NextOK returns the next local IP address and true, or nil and false if the pool is empty.
+func (r *SourceIPRotator) NextOK() (net.IP, bool) {
 	ip := r.Next()
 	if ip == nil {
-		return generic.None[net.IP]()
+		return nil, false
 	}
 
-	return generic.Some(ip)
+	return ip, true
 }
 
 // NextForFamily selects the next local IP matching the specified address family (IPv4 if isIPv4 is true, IPv6 otherwise).

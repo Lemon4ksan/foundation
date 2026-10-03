@@ -11,8 +11,7 @@ import (
 	"math/bits"
 	randv2 "math/rand/v2"
 	"time"
-
-	"github.com/lemon4ksan/foundation/silicon/bytesconv"
+	"unsafe"
 )
 
 const alphaNumericCharset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -154,7 +153,14 @@ func String(n int, charset string) string {
 		buf[i] = charset[randv2.Uint32N(charsetLen)]
 	}
 
-	return bytesconv.B2S(buf)
+	return b2s(buf)
+}
+
+func b2s(b []byte) string {
+	if len(b) == 0 {
+		return ""
+	}
+	return unsafe.String(unsafe.SliceData(b), len(b))
 }
 
 // AlphaNumeric generates a pseudo-random alphanumeric string of length n with zero heap allocations.

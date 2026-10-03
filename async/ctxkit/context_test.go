@@ -41,27 +41,35 @@ func TestFastContext_BasicValues(t *testing.T) {
 	assert.Equal(t, "admin", ctx3.Value(keyRole))
 	assert.Nil(t, ctx3.Value("missing_key"))
 
-	// Verify typed generic.Get
-	traceOpt := ctxkit.Get[string](ctx3, keyTraceID)
-	assert.True(t, traceOpt.IsPresent())
-	val, ok := traceOpt.Value()
+	// Verify typed Value and Get (comma-ok)
+	val, ok := ctxkit.Value[string](ctx3, keyTraceID)
 	assert.True(t, ok)
 	assert.Equal(t, "trace-123", val)
 
-	userOpt := ctxkit.Get[int](ctx3, keyUserID)
-	assert.True(t, userOpt.IsPresent())
-	assert.Equal(t, 42, ctxkit.GetOr[int](ctx3, keyUserID, 0))
+	valGet, okGet := ctxkit.Value[string](ctx3, keyTraceID)
+	assert.True(t, okGet)
+	assert.Equal(t, "trace-123", valGet)
 
-	// Wrong type returns None
-	wrongTypeOpt := ctxkit.Get[int](ctx3, keyTraceID)
-	assert.False(t, wrongTypeOpt.IsPresent())
+	userVal, userOK := ctxkit.Value[int](ctx3, keyUserID)
+	assert.True(t, userOK)
+	assert.Equal(t, 42, userVal)
+	assert.Equal(t, 42, ctxkit.ValueOr[int](ctx3, keyUserID, 0))
+	assert.Equal(t, 42, ctxkit.ValueOr[int](ctx3, keyUserID, 0))
+
+	// Wrong type returns zero value and false
+	wrongVal, wrongOK := ctxkit.Value[int](ctx3, keyTraceID)
+	assert.False(t, wrongOK)
+	assert.Equal(t, 0, wrongVal)
 
 	// Missing key returns default
-	assert.Equal(t, "guest", ctxkit.GetOr[string](ctx3, "missing", "guest"))
+	assert.Equal(t, "guest", ctxkit.ValueOr[string](ctx3, "missing", "guest"))
+	assert.Equal(t, "guest", ctxkit.ValueOr[string](ctx3, "missing", "guest"))
 
 	// Nil context or nil key
-	assert.False(t, ctxkit.Get[string](nil, "key").IsPresent())
-	assert.False(t, ctxkit.Get[string](ctx3, nil).IsPresent())
+	_, okNilCtx := ctxkit.Value[string](nil, "key")
+	assert.False(t, okNilCtx)
+	_, okNilKey := ctxkit.Value[string](ctx3, nil)
+	assert.False(t, okNilKey)
 }
 
 func TestFastContext_Wrap_And_NilBranches(t *testing.T) {
@@ -88,6 +96,10 @@ func TestFastContext_Wrap_And_NilBranches(t *testing.T) {
 	assert.Nil(t, nilCtx.Err())
 	assert.Nil(t, nilCtx.Value("k"))
 	assert.Nil(t, nilCtx.Set("k", "v"))
+
+	// 5. Value on zero-value Context (nil parent)
+	var zeroCtx ctxkit.Context
+	assert.Nil(t, zeroCtx.Value("k"))
 }
 
 func TestFastContext_Set_InPlace(t *testing.T) {
@@ -129,7 +141,7 @@ func TestFastContext_OverflowCapacity(t *testing.T) {
 	}
 
 	for i := range 12 {
-		assert.Equal(t, i*10, ctxkit.GetOr[int](ctx, i, -1))
+		assert.Equal(t, i*10, ctxkit.ValueOr[int](ctx, i, -1))
 	}
 
 	// WithValue from nil parent

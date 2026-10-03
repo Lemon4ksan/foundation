@@ -5,10 +5,9 @@
 package secret
 
 import (
+	"encoding/json"
 	"fmt"
 	"log/slog"
-
-	"github.com/lemon4ksan/foundation/codec/json"
 )
 
 // Secret wraps sensitive data (passwords, bearer tokens, API keys) to prevent accidental leakage in logs and JSON dumps.

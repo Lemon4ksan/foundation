@@ -8,8 +8,6 @@ import (
 	"encoding/binary"
 	"slices"
 	"time"
-
-	"github.com/lemon4ksan/foundation/silicon/bytesconv"
 )
 
 const hexDigits = "0123456789abcdef"
@@ -93,5 +91,5 @@ func UUIDv7() string {
 
 	res := AppendUUIDv7(buf[:0], time.Now())
 
-	return bytesconv.B2S(res)
+	return b2s(res)
 }
