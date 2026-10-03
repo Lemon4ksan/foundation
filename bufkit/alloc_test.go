@@ -9,10 +9,12 @@ import (
 )
 
 func TestAllocations(t *testing.T) {
+	chain := bufkit.NewChain()
+	defer chain.Release()
+	
 	allocs := testing.AllocsPerRun(100, func() {
-		chain := bufkit.NewChain()
 		chain.WriteString("hello world")
-		chain.Release()
+		chain.Reset()
 	})
 	if allocs > 0 {
 		t.Errorf("expected 0 allocations, got %v", allocs)

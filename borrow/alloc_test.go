@@ -11,9 +11,9 @@ import (
 func TestAllocations(t *testing.T) {
 	allocs := testing.AllocsPerRun(100, func() {
 		borrow.Scoped(func(s *borrow.Scope) (string, error) {
-			box := borrow.Alloc[int](s)
-			mut := box.BorrowMut()
-			mut.Write(42)
+			b := s.AllocBytes(10)
+			slice := b.AsSlice()
+			slice[0] = 'a'
 			return "", nil
 		})
 	})

@@ -610,10 +610,12 @@ func TestGCLeak_Finalizers(t *testing.T) {
 	}
 
 	// Pop all
-	for i := 0; i < count; i++ {
-		_, ok := d.PopFront()
-		require.True(t, ok)
-	}
+	func() {
+		for i := 0; i < count; i++ {
+			_, ok := d.PopFront()
+			require.True(t, ok)
+		}
+	}()
 
 	// Trigger GC repeatedly
 	deadline := time.Now().Add(2 * time.Second)
