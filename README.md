@@ -1,134 +1,70 @@
 # foundation
 
-Silicon substrate and concurrency runtime for Go 1.27+. Consolidates hardware-accelerated memory primitives, native `simd/archsimd` compiler intrinsics, LLVM-compiled SIMD kernels, and zero-allocation concurrency orchestration into a unified architecture.
+[![Go Version](https://img.shields.io/badge/go-1.27%2B-007d9c?logo=go&logoColor=white&style=flat-square)](https://go.dev/)
+[![Go Reference](https://img.shields.io/badge/godoc-reference-007d9c?style=flat-square)](https://pkg.go.dev/github.com/lemon4ksan/foundation)
+[![License](https://img.shields.io/badge/license-BSD--3--Clause-blue?style=flat-square)](LICENSE)
 
-[Documentation](https://pkg.go.dev/github.com/lemon4ksan/foundation) | [License (BSD-3-Clause)](LICENSE)
+`foundation` is a Go standard library replacement for systems where the standard library's defaults are too slow or allocate too much. It reverses the compromises made by Go's `net` and `encoding` packages, exchanging simplicity and stability for SIMD acceleration, explicit memory management, and zero-allocation hot paths.
 
-```bash
-go get github.com/lemon4ksan/foundation
-```
+It is used as the base layer for my other network and storage systems: [`aoni`](https://github.com/lemon4ksan/aoni), [`sein`](https://github.com/lemon4ksan/sein), [`mach`](https://github.com/lemon4ksan/mach), and [`seal`](https://github.com/lemon4ksan/seal).
 
-## Architecture: Native SIMD & c2plan9
+## Design tradeoffs
 
-`foundation` eliminates CGO overhead by combining Go 1.27 `simd/archsimd` inlined compiler intrinsics with a pure C/LLVM to Plan 9 Go Assembler pipeline (`cmd/c2plan9`). Vector instructions run directly on hardware registers with zero memory allocations.
+Read the full reasoning in [docs/VISION.md](docs/VISION.md) and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-Critical C kernels are compiled via Clang/LLVM, and the ELF64 machine code is translated into native Plan 9 Assembler (`.s`) supporting x86-64 (AVX2/BMI2) and ARM64 (NEON):
+| Standard library compromise | What foundation does instead | What you pay |
+| :--- | :--- | :--- |
+| API frozen forever | Breaking changes are documented in the CHANGELOG. | You have to pin versions and upgrade on purpose. |
+| Same code on every CPU | Hardware SIMD (AVX2/NEON), assembly via `c2plan9`. | Primarily targets amd64 and arm64. |
+| One signature fits all | Specialized `Append*` and `dst []byte` variants. | Larger API surface, steeper learning curve. |
+| Allocations are acceptable | Zero-alloc contracts, off-heap memory, `borrow`. | You have to manage buffer lifetimes manually. |
 
-```text
-foundation/
-├── csrc/                           # C/LLVM vector kernels (match.c, hash.c, base64.c, etc.)
-└── cmd/c2plan9/                    # C/LLVM -> Plan 9 Assembler compiler (AMD64 / ARM64)
-```
+## Rules
 
-Compilation directives are defined per package:
+Development in `foundation` follows strict Architecture Decision Records ([ADRs](docs/adr/README.md)):
 
-```go
-package hexkit
+1. **Layering ([ADR-0002](docs/adr/0002-layering-and-isolation.md))**: The codebase is split into strict L0-L5 layers. Imports only point down. The `silicon/` package is isolated from everything else. `generic` is for external consumers only.
+2. **Allocation Budgets ([ADR-0003](docs/adr/0003-allocation-budgets.md))**: Every package documents its allocation tier (`zero`, `amortized`, `bounded`, `unconstrained`), verified by `alloc_test.go`.
+3. **No L7 Protocols ([ADR-0006](docs/adr/0006-l7-boundary-and-mach.md))**: Application protocols like HTTP, HPACK, QPACK, and gRPC do not belong here. They belong in `mach` or the consuming project.
+4. **Documentation ([ADR-0008](docs/adr/0008-doc-go-canonical-truth.md))**: API documentation is in `doc.go` and `example_test.go` only.
 
-//go:generate c2plan9 -c ../../csrc/hex.c -o hex_amd64.s -stub hex_amd64.go -pkg hexkit
-```
+## Layout
 
-To rebuild all kernels:
-```bash
-go generate ./...
-```
+### Layer 0: Hardware Substrate (`silicon/`)
+Autonomous packages with zero internal dependencies.
+* `simd`: AVX2/BMI2 vector processing for frame scanning and match lengths.
+* `hexkit`, `bytesconv`: SIMD codecs (13 GB/s hex, 31 GB/s Base64).
+* `pool`, `ringbuf`: Multi-tiered memory arenas, lock-free object pools.
+* `clock`, `randkit`: Syscall-free monotonic clocks, lock-free PRNG.
 
-## Benchmarks
+### Layer 1: Memory & Base Primitives
+* `sync`: Adaptive Vegas limiters, strip locks, circuit breakers.
+* `bufkit`, `borrow`: Cacheline-aligned (64B) buffers and generational ownership arenas.
 
-*Environment: Intel Core i5-12400F, Go 1.27.*
+### Layer 2: Structures & Formats
+* `structures`: Zero-allocation typed data structures (`minheap`, `deque`, `ringbuffer`).
+* `codec`: Streaming `brotli`, `zstd`, `gzip`, `lz4`, `lzma`, `fse`, `huff0`, and SIMD `json`.
+* `crypto`: Hardware-accelerated AEAD ciphers and KDFs.
 
-### Protocol Scanning & SIMD Primitives (`silicon/simd`)
+### Layer 3: Networking & Concurrency
+* `async`: Zero-alloc `ctxkit`, topologically sorted `lifecycle`, `fsm`, `dedup`, and `logkit`.
+* `net`: Zero-alloc `ip` / `ipc` manipulation, `quic` transport, and proxy dialers.
 
-| Kernel | Description | Execution Time | Memory Throughput | Allocations |
+### Layer 4 & 5: Ecosystem & Userland
+* `generic`: Monadic types (`Optional`), thread-safe `LRU`, lazy `Stream`.
+* `argkit`, `tuikit`: Terminal UI frameworks and POSIX flag parsing.
+* `fskit`, `pathkit`: Multi-threaded walkers and immutable URIs.
+
+## SIMD Kernels (`c2plan9`)
+
+CGO overhead is avoided by compiling C/LLVM kernels directly into Plan 9 Go Assembler via [`c2plan9`](cmd/c2plan9/doc.go).
+
+| Kernel | Description | Latency | Throughput | Allocations |
 | :--- | :--- | :--- | :--- | :--- |
-| `IndexCRLFCRLFVector` | HTTP header boundary scan (`\r\n\r\n`) | 4.82 ns/op | 212.49 GB/s | 0 allocs |
-| `FindMatchLengthVector` | LZ77 long-match scanner (Brotli/Zstd) | 6.14 ns/op | 41.66 GB/s | 0 allocs |
-| `ScanByteVector` | 256-bit unrolled single-byte scanner | 16.33 ns/op | 62.70 GB/s | 0 allocs |
-| `Hash64Vector` | 64-bit AVX2 bulk hashing | 59.69 ns/op | 17.16 GB/s | 0 allocs |
-| `ValidUTF8_SWAR` | 64-bit SWAR UTF-8 validator | 5.78 ns/op | 12.63 GB/s | 0 allocs |
+| `IndexCRLFCRLFVector` | HTTP header boundary scan (`\r\n\r\n`) | `4.82 ns/op` | 212 GB/s | 0 |
+| `ValidUTF8_SWAR` | 64-bit SWAR UTF-8 validator | `5.78 ns/op` | 12.6 GB/s | 0 |
+| `Hex.Encode1KB` | AVX2 Hex Encoding | `78.58 ns/op` | 13.0 GB/s | 0 |
+| `json.UnmarshalNoCopy` | SIMD JSON Decoder | `916.4 ns/op` | - | 12 |
 
-### Hex & Base64 Codecs (vs Standard Library)
-
-| Operation | `foundation` (AVX2) | `encoding/` (Stdlib) | Speedup / Throughput |
-| :--- | :--- | :--- | :--- |
-| `Hex.Encode1KB` | 78.58 ns/op | 408.20 ns/op | 5.2x (13.03 GB/s) |
-| `Hex.Encode16` | 4.86 ns/op | 7.10 ns/op | 1.5x (0 allocs) |
-| `AppendToLower1KB` | 29.93 ns/op | 412.10 ns/op | 13.8x (34.58 GB/s) |
-| `URL.Unescape1KB` | 804.80 ns/op | 3210.00 ns/op | 4.0x (1.27 GB/s) |
-
-### JSON Parsing (`codec/json`)
-
-| Benchmark | `foundation` (SIMD) | `encoding/json` | Allocated Memory | Speedup |
-| :--- | :--- | :--- | :--- | :--- |
-| `UnmarshalNoCopy` | 916.4 ns/op | 2028.0 ns/op | 347 B/op (12 allocs) | 2.21x |
-| `Unmarshal` | 1041.0 ns/op | 2028.0 ns/op | 392 B/op (17 allocs) | 1.95x |
-| `MarshalTo` | 417.7 ns/op | 433.1 ns/op | 192 B/op (2 allocs) | 1.04x |
-
-### UUID Formatting & Parsing (`types/uuid`)
-
-| Operation | Execution Time | Allocations | Details |
-| :--- | :--- | :--- | :--- |
-| `UUID.Format` | 19.48 ns/op | 0 allocs | 36-char hex+dash buffer formatting |
-| `UUID.Append` | 19.81 ns/op | 0 allocs | Direct `[]byte` appending |
-| `uuid.Parse` | 31.96 ns/op | 0 allocs | Vectorized hex validation & decoding |
-
-## Package Index
-
-### 1. Hardware Substrate & Memory (`silicon/`, `bufkit/`, `encoding/bin/`, `borrow/`)
-* **`simd`**: AVX2/BMI2 vector processing for frame scanning and match lengths.
-* **`hexkit`**: SIMD hex encoder/decoder (13.0 GB/s).
-* **`bytesconv`**: Vector casing, Base64 codecs, zero-copy converters, tokenizers (31.8 GB/s).
-* **`offheap`**: Unmanaged direct memory slabs bypassing Go GC.
-* **`pool`**: Multi-tiered memory arenas, perpetual byte storage, lock-free object pools.
-* **`ringbuf`**: Lock-free SPSC / MPMC ring buffers.
-* **`clock` & `randkit`**: Syscall-free monotonic clock, lock-free PRNG, UUIDv7.
-* **`trie`**: Compressed radix search trees.
-* **`bufkit`**: Cacheline-aligned (64B) buffers, scatter-gather `BufferChain`, SPSC `RingBuffer`.
-* **`encoding/bin`**: Sequential zero-alloc binary Reader/Writer, JIT struct codecs.
-* **`encoding/varint`**: QUIC Varint encoding using SIMD intrinsics.
-* **`borrow`**: Generational borrow checker and memory arenas avoiding UAF.
-
-### 2. Codecs & Filesystem (`codec/`, `fskit/`, `pathkit/`, `iokit/`)
-* **`codec`**: Multi-algorithm compression (`brotli`, `zstd`, `gzip`, `flate`, `lz4`, `lzma`, `fse`, `huff0`), filters (`bcj`, `delta`, `shuffle`), SIMD JSON.
-* **`fskit`**: Multi-threaded directory walking (`FastWalk`), cross-platform memory-mapped I/O (`Mmap`).
-* **`pathkit`**: Immutable Path type, RFC 8089 `file://` URIs, path normalization.
-* **`iokit`**: Replayable body buffers, zero-alloc `BytesReader`, pooled stream copies.
-
-### 3. CLI, Reflection & Testing (`argkit/`, `tuikit/`, `refkit/`, `testing/`)
-* **`argkit`**: POSIX flag parsing, short flag stacking (`-la`), attached values, Levenshtein suggestions.
-* **`tuikit`**: Terminal UI framework, subcommand routing, auto-aligned tables, ANSI TrueColor.
-* **`refkit`**: High-speed struct tag parsing with cache and panic-safe zero-alloc reflection checks.
-* **`testing`**: Zero-dependency assertion (`assert`), termination (`require`), and method expectation (`mock`).
-
-### 4. Concurrency Orchestration (`async/`)
-* **`ctxkit`**: Flat-array, L1-cache resident `context.Context` (0 allocs).
-* **`lifecycle`**: Topologically sorted DAG service boot, health monitoring, graceful teardown.
-* **`event`**: Type-safe, non-blocking asynchronous event bus.
-* **`task`**: Asynchronous task manager with correlation IDs, timeouts, futures.
-* **`dedup`**: Single-flight request deduplication with isolated panic boundaries.
-* **`fsm`**: Compile-time type-safe finite state machines with transactional rollback.
-* **`pipeline`**: Concurrent worker pipelines, token-bucket rate limiting, DataLoader batching.
-* **`pool`**: Auto-scaling goroutine worker pools with idle scale-down and panic recovery.
-* **`scheduler`**: Microsecond-precision recurring task schedulers and cron runners.
-* **`logkit`**: Zero-allocation structured logging facade, asynchronous flushing.
-
-### 5. Synchronization & Generics (`sync/`, `generic/`, `structures/`)
-* **`sync`**: Striped key-based locks, Vegas adaptive limiters, circuit breakers, jittered backoff.
-* **`generic`**: Thread-safe `Safe[T]`, `LRU[K, V]` cache, `ResourcePool[T]`, in-memory TTL `Cache[K, V]`, monadic `Optional`/`Result`, lazy `Stream[T]` (`iter.Seq`).
-* **`structures`**: Zero-allocation typed data structures (`minheap`, `ringbuffer`, `linkedlist`).
-
-### 6. Network Primitives (`net/`)
-* **`net/quic`**: RFC 9000 QUIC transport protocol engine with connection migration and multi-stream multiplexing.
-* **`net/urlkit`**: CRC32 sharded URL cache, path variable expansion, query param appending.
-* **`net/proxy`**: SOCKS4, SOCKS5, and HTTP CONNECT proxy dialers with TLS tunneling.
-* **`net/ip` & `net/ipc`**: Zero-allocation IP manipulation, CIDR subnet matching, and cross-platform IPC socket primitives.
-* **`net/netutil`**: Host normalization, port parsing, and low-level connection utilities.
-
-### 7. Types, Time & Text (`types/`, `timekit/`, `text/`)
-* **`timekit`**: Zero-allocation HTTP-date and ISO 8601 formatting, coarse atomic clock, stopwatch.
-* **`text`**: Casing converters, differentials, charset decoders, stream transformers.
-* **`types/uuid`**: RFC 9562 UUIDv4/v7 generators, SIMD formatting and parsing.
-* **`types/values`**: Type conversions and structured extraction.
-
-### 8. Cryptography (`crypto/`)
-* **`crypto`**: Hardware-accelerated AEAD ciphers (AES-GCM, ChaCha20-Poly1305), KDFs (HKDF, Argon2, PBKDF2), and fast digital signatures.
+---
+*For contributing guidelines, see [docs/VISION.md](docs/VISION.md).*
