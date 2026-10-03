@@ -590,11 +590,11 @@ func TestGCLeak_Clear_WeakPointers(t *testing.T) {
 	}
 }
 
-func TestGCLeak_Finalizers(t *testing.T) {
-	type trackedNode struct {
-		id int
-	}
+type trackedNode struct {
+	id int
+}
 
+func TestGCLeak_Finalizers(t *testing.T) {
 	var finalized atomic.Int32
 	d := New[*trackedNode]()
 
@@ -610,12 +610,9 @@ func TestGCLeak_Finalizers(t *testing.T) {
 	}
 
 	// Pop all
-	func() {
-		for i := 0; i < count; i++ {
-			_, ok := d.PopFront()
-			require.True(t, ok)
-		}
-	}()
+	for i := 0; i < count; i++ {
+		popOneDeque(t, d)
+	}
 
 	// Trigger GC repeatedly
 	deadline := time.Now().Add(2 * time.Second)
@@ -925,4 +922,10 @@ func TestChallenge_BoundaryIndexTable(t *testing.T) {
 		require.PanicsWithError(t, "deque: index out of range", func() { d.At(n) })
 		require.PanicsWithError(t, "deque: index out of range", func() { d.Set(n, 0) })
 	}
+}
+
+//go:noinline
+func popOneDeque(t *testing.T, d *Deque[*trackedNode]) {
+	_, ok := d.PopFront()
+	require.True(t, ok)
 }
