@@ -13,17 +13,17 @@ type mockTestService struct {
 
 func (m *mockTestService) DoWork(msg string, count int) (int, error) {
 	ret := m.ctrl.Call(m, "DoWork", msg, count)
-	
+
 	var r0 int
 	if ret[0] != nil {
 		r0 = ret[0].(int)
 	}
-	
+
 	var r1 error
 	if ret[1] != nil {
 		r1 = ret[1].(error)
 	}
-	
+
 	return r0, r1
 }
 
@@ -45,7 +45,7 @@ func Example() {
 	defer ctrl.Finish()
 
 	m := &mockTestService{ctrl: ctrl}
-	
+
 	m.EXPECT().DoWork(mock.Any(), 10).Return(42, nil)
 
 	res, err := m.DoWork("hello", 10)

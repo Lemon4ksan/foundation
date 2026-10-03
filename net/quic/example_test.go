@@ -9,7 +9,7 @@ import (
 func ExampleTransport() {
 	// Example of initializing a Transport (a real application would provide a *net.UDPConn).
 	t := &quic.Transport{}
-	
+
 	// Server and client would be established over this transport.
 	fmt.Printf("Transport ready: %T\n", t)
 

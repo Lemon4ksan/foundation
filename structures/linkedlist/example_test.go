@@ -3,7 +3,7 @@ package list_test
 import (
 	"fmt"
 
-	"github.com/lemon4ksan/foundation/structures/linkedlist"
+	list "github.com/lemon4ksan/foundation/structures/linkedlist"
 )
 
 func ExampleList() {

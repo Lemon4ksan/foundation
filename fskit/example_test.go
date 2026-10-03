@@ -14,7 +14,7 @@ import (
 func ExampleFastWalk() {
 	err := fskit.FastWalk(".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			return nil
+			return err
 		}
 		if !d.IsDir() {
 			// Found file
