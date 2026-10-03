@@ -6,6 +6,7 @@ package pathkit_test
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/lemon4ksan/foundation/pathkit"
 )
@@ -22,12 +23,13 @@ func ExampleNew() {
 }
 
 func ExamplePathToURI() {
-	uri := pathkit.PathToURI("C:\\Projects\\app\\config.json")
+	uri := pathkit.PathToURI("/var/log/config.json")
 	fmt.Println(uri)
 
 	localPath, _ := pathkit.URIToPath(uri)
-	fmt.Println(localPath)
+	// We use ToSlash to make the output deterministic across OS platforms
+	fmt.Println(filepath.ToSlash(localPath))
 	// Output:
-	// file:///C:/Projects/app/config.json
-	// C:\Projects\app\config.json
+	// file:///var/log/config.json
+	// /var/log/config.json
 }
