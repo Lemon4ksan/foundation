@@ -1,31 +1,14 @@
-## Summary & Rationale
+## What and why
 
-<!-- Concisely describe the motivation and context for this change. Reference issue: Closes #... -->
+<!-- What does this change do, and why? Link the issue: Closes #... -->
 
-### Target Packages
-- `...`
+Packages touched:
 
-## Architectural & Quality Verification
+## Checklist
 
-- [ ] **Conventional Commits**: PR title adheres strictly to the conventional format (`feat(...)`, `fix(...)`, `perf(...)`, `refactor(...)`, `docs(...)`).
-- [ ] **Layering & Isolation**:
-  - Layers L0–L5 respected (passes architectural tests in `root_test.go`).
-  - Internal packages DO NOT import `generic`.
-  - `silicon/*` packages are autonomous and do not cross-import each other.
-- [ ] **Allocation Contract**:
-  - Declared allocation tier (`zero` / `amortized` / `bounded` / `unconstrained`) upheld.
-  - Hot paths verified via `testing.AllocsPerRun` or `-benchmem` checks.
-- [ ] **Canonical Documentation (`doc.go`)**:
-  - Metadata block verified or updated:
-    ```go
-    // Stdlib counterpart: ...
-    // Rejected compromise: ...
-    // Accepted cost: ...
-    // Allocations: ...
-    ```
-- [ ] **Quality & Verification**:
-  - `make check` passes cleanly (lint, test, race, arch, coverage-ratchet).
-  - Zero data race warnings (`go test -race`).
-  - Statement test coverage meets or exceeds baseline ratchet.
-- [ ] **Architecture Decision Records**:
-  - If introducing a new package, altering boundaries, or introducing an algorithmic substrate, an ADR is included in `docs/adr/`.
+- [ ] The PR title is a Conventional Commit (`feat(pool): ...`, `fix(urlkit): ...`, `docs: ...`). It becomes the squash commit message.
+- [ ] `make check` passes (lint, race tests, architecture, coverage ratchet).
+- [ ] Layers and import rules still hold. No foundation package imports `generic`.
+- [ ] The package's allocation tier still holds; hot paths are covered by `testing.AllocsPerRun` or a `-benchmem` run.
+- [ ] `doc.go` and examples reflect the change, including the comparison block (`Stdlib counterpart`, `Rejected compromise`, `Accepted cost`, `Allocations`).
+- [ ] New package, new layer edge or new substrate? Then an ADR is in `docs/adr/`.

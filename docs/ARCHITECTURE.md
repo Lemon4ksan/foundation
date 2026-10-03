@@ -1,68 +1,63 @@
-# Foundation Architecture Guide
+# Architecture notes
 
-## 1. Overview & Vision
-`foundation` is a high-performance systems foundation library for Go (targeting Go 1.27+), engineered for low-latency networking, hardware-accelerated processing, zero-allocation streaming, and concurrency safety.
+This file covers the techniques that show up across many packages. Anything about a single package belongs in that package's `doc.go`. The layer stack and import rules are in [ADR-0002](adr/0002-layering-and-isolation.md); the allocation tiers are in [ADR-0003](adr/0003-allocation-budgets.md). They are not repeated here.
 
-The repository is organized into five layered subsystems:
+## Mechanical sympathy
 
+Some of the code is written for the CPU and not for the reader. Three habits recur:
+
+- **Padding against false sharing.** When several cores update neighbouring fields, they fight over one cache line and throughput collapses. Per-core structures such as `silicon/pool.PerPStorage` put a `cpu.CacheLinePad` between shards so each core owns its line.
+- **Masks instead of modulo.** Shard and ring indexes use `i & mask`, which means capacities are powers of two. Integer division is slow, and a mask costs one instruction.
+- **Bounds-check elimination.** Hot loops prove the slice length once before the loop (`_ = dst[n-1]`), so the compiler drops the per-element check. `silicon/simd/gfni.MultiplyGF2P8Vector` is an example.
+
+## Keeping allocations out of the hot path
+
+- **Flat storage instead of pointers.** `structures/linkedlist.List[T]` keeps its elements in one slice and links them by index, with a free list for reused slots. `container/list` allocates a node per element and chases pointers on every step.
+- **Push iterators instead of result slices.** Collections and parsers hand out `iter.Seq` and `iter.Seq2` (`linkedlist.List.Values`, `net/quic/varint.DecodeSeq`). The loop body runs in the caller's frame, `break` stops the producer straight away, and nothing is allocated for the result.
+- **Caller-supplied destinations.** Encoders expose `Append*` or slice-filling forms next to any form that returns a new slice. When you compare secrets, use `silicon/randkit.ConstantTimeEqual(a, b)`, not `subtle.ConstantTimeCompare([]byte(a), []byte(b))`, which allocates twice.
+
+## Ownership and `borrow`
+
+Go cannot check borrows at compile time, so `borrow` does it at run time. `Box[T]` is the single owner of an object. `Ref[T]` and `Mut[T]` enforce "many readers or one writer". Every handle carries a generation number that goes up when the buffer is released or recycled, so a stale handle panics on first use instead of silently reading someone else's data. See [ADR-0005](adr/0005-affine-ownership-borrow.md).
+
+## State machines (`async/fsm`)
+
+A transition has to be atomic with respect to other transitions, yet readers should not wait while a long hook runs. `fsm` uses two locks. `transMu` serialises transitions so that before/after hooks of two transitions never interleave. A separate `sync.RWMutex` protects the maps and current state, so `CurrentState()` and `Validate()` read under a shared lock while user hooks run outside it.
+
+## Which primitive to pick
+
+### Pools: `sync.Pool` or `silicon/pool.PerPStorage`
+
+Use `sync.Pool` for general-purpose reuse. It lets the GC drop idle objects, which is what you want when memory pressure matters more than latency.
+
+Use `PerPStorage` under heavy multi-core load (over roughly 100k operations a second), when CAS contention on a shared head is the problem, or when buffers should survive GC cycles (network buffers, scratch space).
+
+### Lazy values: `sync.Once` or `sync/lazy.Lazy[T]`
+
+`sync.Once` is right for a one-time, permanent, void action. `Lazy[T]` caches a value and an error, can be reset, and gives readers a lock-free fast path after the first call.
+
+### Lists: `container/list` or `structures/linkedlist.List[T]`
+
+`container/list` is fine when you need to interoperate with code that uses it. Reach for `List[T]` when allocation per push or pop and cache locality matter; it also has `Values()` and `All()` iterators.
+
+## Habits that keep code allocation-free
+
+Encode in place (shown with `net/quic/varint`):
+
+```go
+// allocates a []byte
+buf := varint.EncodeVarint(val)
+
+// fills the caller's buffer, no allocation
+n := varint.EncodeVarintSlice(val, scratch[offset:])
 ```
-+-------------------------------------------------------------------------+
-| Layer 5: Tooling & Utilities (scripts, cmd/c2plan9, types, timekit)     |
-+-------------------------------------------------------------------------+
-| Layer 4: Wire Protocols & Networking (net/*, quic, proxy, ip, urlkit)   |
-+-------------------------------------------------------------------------+
-| Layer 3: Codecs & Cryptography (codec/*, crypto/*, encoding/*, text/*)  |
-+-------------------------------------------------------------------------+
-| Layer 2: Concurrency & Synchronization (async/*, sync/*)                |
-+-------------------------------------------------------------------------+
-| Layer 1: Hardware, Silicon & Memory (silicon/*, borrow, structures/*)   |
-+-------------------------------------------------------------------------+
+
+Iterate without building slices:
+
+```go
+for item := range collection.Values() {
+    // ...
+}
 ```
 
----
-
-## 2. Core Architectural Principles
-
-### 2.1. Mechanical Sympathy (Hardware Awareness)
-- **Cache-Line Alignment (`cpu.CacheLinePad`)**:
-  In multi-core workloads, cache-line contention (**false sharing**) can degrade throughput by an order of magnitude. Primitives like `silicon/pool.PerPStorage` use 64-byte padding (`cpu.CacheLinePad`) between CPU core shards to guarantee independent L1/L2 cache ownership.
-- **Power-of-Two Bitmasking**:
-  Index hashing avoids expensive CPU integer division (`id % N`), relying strictly on bitwise masks (`id & mask`), requiring precalculated power-of-two shard capacities.
-- **Bounds Check Elimination (BCE)**:
-  Looping operations across vectors (e.g., `silicon/simd/gfni.MultiplyGF2P8Vector`) establish slice boundary invariants upfront (`_ = dst[n-1]`), allowing the Go compiler to omit bounds check instructions (`runtime.panicIndex`) inside the loop body.
-
-### 2.2. Zero-Allocation Lifetime Contracts
-- **Array-Backed Collections**:
-  Unlike standard library pointer-chasing structures (`container/list`), collections such as `structures/linkedlist.List[T]` are flat array-backed (`[]Element[T]`). Elements are referenced by array indices (`int`), preserving cache locality and recycling slots through an intrusive free list without garbage collection overhead.
-- **Push Iterators (`iter.Seq`, `iter.Seq2`)**:
-  Rather than allocating slices of results, collections and stream parsers (e.g., `net/quic/varint.DecodeSeq`, `structures/linkedlist.Values`) use native push iterators. Iteration executes within the caller's call stack with $O(1)$ stack allocation, immediate early exit on `break`, and zero heap pressure.
-
-### 2.3. Affine Ownership & Borrow Checking (`borrow`)
-Go does not provide compile-time borrow checking like Rust. The `borrow` package introduces runtime affine semantics:
-- **`Box[T]`**: Exclusive single ownership of heap-allocated or pooled objects.
-- **`Ref[T]` / `Mut[T]`**: Enforces *Aliasing XOR Mutability* (multiple concurrent readers or exactly one exclusive writer).
-- **Generational Lifetimes**: Handles carry a generation ID. Releasing or recycling a buffer increments the generational counter; any stale reference attempting access triggers a deterministic panic, preventing silent Use-After-Free (UAF) corruptions.
-
-### 2.4. Dual-Mutex Coordination (`async/fsm`)
-Transitions in stateful systems separate serialization from state querying:
-- `transMu sync.Mutex`: Serializes state transitions, preventing interleaving of before/after hooks.
-- `mu sync.RWMutex`: Protects internal maps and values, enabling lockless or shared-lock reads (`CurrentState()`, `Validate()`) while long-running user hooks execute outside the lock.
-
----
-
-## 3. Subsystem Index
-
-| Package / Layer | Primary Role | Key Primitives |
-|---|---|---|
-| `silicon/pool` | Per-core sharded memory caches | `PerPStorage[T]`, `RequestArena` |
-| `silicon/simd/gfni` | Galois Field $GF(2^8)$ arithmetic | `MultiplyGF2P8`, `MultiplyGF2P8Vector` |
-| `silicon/randkit` | Timing-safe cryptographic entropy | `SecureBytes`, `ConstantTimeEqual` |
-| `structures/linkedlist` | Zero-alloc array-backed list | `List[T]`, `Values()`, `All()` |
-| `structures/ringbuffer` | Lock-free / low-overhead ring | `RingBuffer[T]`, `Values()` |
-| `sync/lazy` | Lockless atomic double-checked lazy init | `Lazy[T]`, `Get()`, `Reset()` |
-| `async/fsm` | Generic, thread-safe finite state machine | `FSM[State, Event]`, `Transition` |
-| `async/pipeline` | Stream processing pipelines | `Pipeline[In, Out]`, `ProcessSeq` |
-| `net/quic/varint` | RFC 9000 variable-length integers | `EncodeVarintSlice`, `DecodeSeq` |
-| `net/urlkit` | High-speed zero-alloc URL engine | `Parse`, `Query`, `ResolveReference` |
-| `net/proxy` | SOCKS4/5 & HTTP proxy routing | `FromURL`, `Dialer`, `Auth` |
-| `borrow` | Linear ownership and lifetime verification | `Box[T]`, `Ref[T]`, `Mut[T]`, `Scoped` |
+Benchmarks for each package are run with `go test -bench . -benchmem ./<package>`; numbers are not kept in the docs because they go stale.
