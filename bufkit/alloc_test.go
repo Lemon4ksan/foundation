@@ -11,7 +11,7 @@ import (
 func TestAllocations(t *testing.T) {
 	chain := bufkit.NewChain()
 	defer chain.Release()
-	
+
 	allocs := testing.AllocsPerRun(100, func() {
 		chain.WriteString("hello world")
 		chain.Reset()
