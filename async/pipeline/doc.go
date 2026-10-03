@@ -2,78 +2,22 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package pipeline provides a generic concurrent pipeline for bulk data processing.
+// Package pipeline provides concurrent parallel mapping, worker fan-out/fan-in,
+// token-bucket rate limiting, strict order preservation, and time-window bulk batching.
 //
-// It parallelizes slice or stream transformations with configurable worker
-// count, rate limiting, input-order preservation, and optional fail-fast
-// behavior. Object pooling via [sync.Pool] minimizes allocation overhead.
+// Processing large slices of data concurrently requires careful concurrency budgeting
+// and rate limiting to avoid overwhelming downstream services. This package simplifies
+// these workflows by providing the [Map] and [ForEach] functions which distribute work
+// across a fixed pool of goroutines, preserving the original order of the input slice
+// without the data races associated with manual wait groups and uncoordinated channels.
 //
-// # Architecture
+// # Compared to the standard library
 //
-// The [Pipeline] distributes input items across a fixed pool of worker
-// goroutines via a buffered channel. Each worker pulls items, applies the
-// mapper function, and sends results to an output channel. Results are
-// reassembled in input order using index tracking. A [sync.Pool] recycles
-// task objects to reduce GC pressure.
+// Stdlib counterpart: sync.WaitGroup and unbuffered channels
 //
-// # Concurrency & Safety Invariants
+// Rejected compromise: sync.WaitGroup and channel fan-out scramble the original slice ordering, necessitating manual index bookkeeping and locking to reconstruct results.
 //
-//  1. Worker Panic Isolation: To prevent a single panicking task from crashing
-//     the application and causing deadlocks in the result collector, both [Pipeline.Process]
-//     and [Pipeline.Stream] implement a deferred recovery wrapper. Upon panic,
-//     the in-flight task is intercept-wrapped with a formatted error and dispatched
-//     to the result collector to ensure clean execution teardowns.
-//  2. Non-blocking Error Dispatch: In streaming mode, sending errors to the reporting
-//     channel is performed non-blockingly. This prevents worker goroutines from leaking
-//     or blocking indefinitely if the upstream consumer stops reading from the error channel.
-//  3. Zero-Heap Recycling: Task object recycling avoids using heap-allocating new(T)
-//     constructs, utilizing stack-allocated zero values instead to completely eliminate
-//     Garbage Collector overhead during bulk processing.
+// Accepted cost: Background worker goroutines are spawned, and slice arrays and channels are allocated per pipeline run.
 //
-// # Error Handling
-//
-// In default mode, all errors are collected and returned via [errors.Join].
-// With [Config.FailFast] enabled, the first error cancels the context
-// for all workers and is returned immediately. Context cancellation propagates
-// to all workers for clean shutdown.
-//
-// # Example - One-liner
-//
-//	package main
-//
-//	import (
-//	    "context"
-//	    "fmt"
-//	    "strings"
-//
-//	    "github.com/lemon4ksan/foundation/async/pipeline"
-//	)
-//
-//	func main() {
-//	    inputs := []string{"hello", "world", "foo", "bar"}
-//
-//	    results, err := pipeline.Map(context.Background(), pipeline.Config{
-//	        Workers: 2,
-//	    }, inputs, func(ctx context.Context, s string) (string, error) {
-//	        return strings.ToUpper(s), nil
-//	    })
-//
-//	    if err != nil {
-//	        panic(err)
-//	    }
-//
-//	    fmt.Println(results) // [HELLO WORLD FOO BAR]
-//	}
-//
-// # Example - Streaming
-//
-//	p := pipeline.New[string, string](pipeline.Config{Workers: 4})
-//
-//	out, errs := p.Stream(ctx, inputChan, func(ctx context.Context, s string) (string, error) {
-//	    return transform(s), nil
-//	})
-//
-//	for v := range out {
-//	    fmt.Println(v)
-//	}
+// Allocations: bounded(26/op)
 package pipeline

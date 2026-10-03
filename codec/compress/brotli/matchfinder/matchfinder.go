@@ -1,13 +1,3 @@
-// Package matchfinder defines reusable components and interfaces for data compression match-finding.
-//
-// Many compression libraries have two main parts:
-//   - Something that looks for repeated sequences of bytes
-//   - An encoder for the compressed data format (often an entropy coder)
-//
-// Although these are logically two separate steps, the implementations are
-// usually closely tied together. You can't use flate's matcher with snappy's
-// encoder, for example. This package defines interfaces and an intermediate
-// representation to allow mixing and matching compression components.
 package matchfinder
 
 import "io"

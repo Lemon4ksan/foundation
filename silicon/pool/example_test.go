@@ -26,3 +26,14 @@ func ExamplePerPStorage() {
 	// Output:
 	// Buffer length: 256, first byte: 42
 }
+
+func ExampleRequestArena() {
+	arena := pool.GetRequestArena()
+	defer pool.ReleaseRequestArena(arena)
+
+	headerBuf := arena.Alloc(128)
+	fmt.Printf("Allocated chunk (%d bytes)\n", len(headerBuf))
+
+	// Output:
+	// Allocated chunk (128 bytes)
+}

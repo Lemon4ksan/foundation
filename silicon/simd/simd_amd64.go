@@ -82,3 +82,27 @@ func ParallelExtract64(val, mask uint64) uint64 {
 func TrailingZeros32(x uint32) int {
 	return bits.TrailingZeros32(x)
 }
+
+//go:noescape
+func indexByteAVX2(b []byte, c byte) int
+
+//go:noescape
+func indexTwoBytesAVX2(b []byte, c1, c2 byte) int
+
+//go:noescape
+func pdep64(val, mask uint64) uint64
+
+//go:noescape
+func prefetchL1(ptr unsafe.Pointer)
+
+//go:noescape
+func streamCopy256(dst, src []byte)
+
+// suppress unused lint
+var (
+	_ = indexByteAVX2
+	_ = indexTwoBytesAVX2
+	_ = pdep64
+	_ = prefetchL1
+	_ = streamCopy256
+)

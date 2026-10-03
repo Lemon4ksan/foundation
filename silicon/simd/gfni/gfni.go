@@ -1,16 +1,6 @@
 // Copyright (c) 2026 Lemon4ksan All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
-
-// Package gfni provides Galois Field GF(2^8) arithmetic and vector multiplication primitives
-// modeled after Intel/AMD GFNI instruction set extensions (specifically VGF2P8MULB).
-//
-// All field operations use the standard AES/Rijndael irreducible polynomial:
-//
-//	m(x) = x^8 + x^4 + x^3 + x + 1 (0x11B)
-//
-// All functions in this package are stateless, pure, concurrency-safe, and execute with
-// strictly zero heap memory allocations.
 package gfni
 
 // MultiplyGF2P8 multiplies two 8-bit field elements a and b in the Galois Field GF(2^8)

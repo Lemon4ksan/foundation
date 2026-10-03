@@ -2,10 +2,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package xxhash implements the 64-bit variant of xxHash (XXH64) as described
-// at http://cyan4973.github.io/xxHash/.
-// THIS IS VENDORED: Go to github.com/cespare/xxhash for original package.
-
 package xxhash
 
 import (

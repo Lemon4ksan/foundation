@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package cert provides TLS certificate utilities including Subject Public Key Info (SPKI)
-// SHA-256 fingerprinting (RFC 7469) and TLS Certificate Compression (RFC 8879).
 package cert
 
 import (

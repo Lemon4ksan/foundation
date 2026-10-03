@@ -2,24 +2,17 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package bufkit provides zero-allocation, cacheline-aligned memory buffer
-// primitives, chunked scatter-gather chains, and lock-free ring buffers designed
-// for high-throughput networking, streaming, and I/O pipelines.
+// Package bufkit provides zero-allocation, cacheline-aligned memory buffer primitives, chunked scatter-gather chains, and lock-free ring buffers.
 //
-// # Architectural Philosophy
+// Traditional memory buffers in Go rely heavily on continuous reallocation when growing dynamic payloads, which triggers memory copies and garbage collector churn. This package eliminates reallocation overhead by introducing scatter-gather chunked buffers that chain fixed-size pooled memory blocks, lock-free circular buffers optimized for high-throughput single-producer single-consumer pipelines, and memory buffers aligned to processor cachelines for vector operations.
 //
-// Traditional memory buffers in Go rely heavily on continuous reallocation when
-// growing dynamic payloads (such as HTTP/2 frames, WebSocket frames, or serialized RPC messages).
-// Continuous resizing triggers memory copies and garbage collector churn.
+// # Compared to the standard library
 //
-// [bufkit] eliminates reallocation overhead by introducing:
-//   - [Chain]: A scatter-gather chunked buffer that chains fixed-size pooled memory blocks.
-//   - [Ring]: A lock-free circular buffer optimized for high-throughput single-producer single-consumer (SPSC) pipelines.
-//   - [AlignedBytes]: Memory buffers aligned to processor cachelines (64 bytes) or pages (4096 bytes) for vector/SIMD operations.
+// Stdlib counterpart: bytes.Buffer
 //
-// # Concurrency & Thread-Safety
+// Rejected compromise: Continuous heap allocations and copying for dynamically sized buffers.
 //
-//   - [Chain] is designed for single-goroutine assembly and multi-chunk streaming reads.
-//   - [Ring] provides lock-free thread-safe enqueue/dequeue between concurrent goroutines.
-//   - Pooled memory structures are recycled via thread-safe synchronization pools.
+// Accepted cost: Manual memory pooling and fragmented chunk management overhead.
+//
+// Allocations: zero
 package bufkit

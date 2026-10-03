@@ -2,65 +2,24 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package keylock provides a generic, thread-safe, striped/key-based locking
-// mechanism (also known as a lock stripe or key-based mutex).
+// Package keylock provides a generic, thread-safe, striped/key-based locking mechanism.
 //
-// It allows separate goroutines to concurrently lock and work with different
-// keys, preventing global application lock bottlenecks. Unlike a simple
-// map[K]*sync.Mutex, keys are automatically cleaned up via reference
-// counting when no goroutines are waiting for or holding them.
-//
-// # Architecture
-//
-// The [KeyMutex] stores per-key lock state in an internal map protected by a global
-// [sync.Mutex]. Each key entry ([refCounter]) tracks a reference count of waiting
-// and holding goroutines. When the reference count drops to zero, the entry is
-// atomically removed from the map, preventing memory leaks in long-running
+// The [KeyMutex] allows separate goroutines to concurrently lock and work with different
+// keys, preventing global application lock bottlenecks. It tracks per-key lock state and
+// reference counts of waiting and holding goroutines. When the reference count drops
+// to zero, the entry is atomically removed, preventing memory leaks in long-running
 // applications with highly dynamic or infinite key sets.
 //
-// To prevent deadlocks, the global map lock is always released before any
-// goroutine blocks on an individual key-level mutex.
+// [KeyMutex.Unlock] panics if the key is not currently locked or does not exist,
+// catching double-unlock and unlock-without-lock bugs at the point of failure.
 //
-// # Error Handling & Safety
+// # Compared to the standard library
 //
-// [KeyMutex.Unlock] panics if the key is not currently locked or does not exist.
-// This catches double-unlock and unlock-without-lock bugs at the point of failure
-// rather than silently corrupting application state.
+// Stdlib counterpart: none - fills gap: locking by string/key identifier
 //
-// # Example
+// Rejected compromise: sync.Map or map[*]*sync.Mutex leaks memory over time as keys accumulate without automated cleanup.
 //
-//	package main
+// Accepted cost: slightly higher lock acquisition time due to global map lock and reference counting overhead.
 //
-//	import (
-//	    "fmt"
-//	    "sync"
-//	    "time"
-//
-//	    "github.com/lemon4ksan/foundation/sync/keylock"
-//	)
-//
-//	func main() {
-//	    kl := keylock.New[string]()
-//	    var wg sync.WaitGroup
-//
-//	    wg.Add(2)
-//
-//	    go func() {
-//	        defer wg.Done()
-//	        kl.Lock("user-alice")
-//	        defer kl.Unlock("user-alice")
-//	        fmt.Println("Locked alice")
-//	        time.Sleep(50 * time.Millisecond)
-//	    }()
-//
-//	    go func() {
-//	        defer wg.Done()
-//	        kl.Lock("user-bob")
-//	        defer kl.Unlock("user-bob")
-//	        fmt.Println("Locked bob - no wait for alice")
-//	        time.Sleep(50 * time.Millisecond)
-//	    }()
-//
-//	    wg.Wait()
-//	}
+// Allocations: amortized
 package keylock

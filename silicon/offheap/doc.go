@@ -2,76 +2,29 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package offheap provides zero-GC arena memory allocation via direct OS kernel memory pages.
+// Package offheap provides unmanaged direct memory allocation and slab allocators
+// bypassing the Go Garbage Collector (GC).
 //
-// # Architecture Overview
-//
-// Memory is allocated directly from the OS kernel, bypassing the Go runtime heap (mheap)
-// and its garbage collector entirely. This eliminates GC mark/sweep overhead and latency
-// jitter on high-throughput networking code paths.
-//
-// # Platform Backends
-//
-//   - Linux & macOS (Darwin): mmap(MAP_ANON|MAP_PRIVATE) via golang.org/x/sys/unix
-//   - Windows: VirtualAlloc(MEM_COMMIT|MEM_RESERVE) via golang.org/x/sys/windows
-//   - Other (FreeBSD, plan9, wasm): heap fallback - no off-heap guarantee
-//
-// # Thread Safety
-//
-//   - [Arena] is NOT thread-safe. One arena must not be shared across goroutines.
-//   - [OffHeapBuffer] is NOT thread-safe.
-//   - [ArenaPool] is thread-safe via sync.Pool. Use it for concurrent arena access.
-//
-// # GC Safety - CRITICAL
+// Maintaining hundreds of megabytes of cached network packets, proxy buffers, or
+// long-lived protocol state on the Go runtime heap forces the garbage collector
+// to traverse large pointer graphs on every GC cycle. This traversal introduces
+// unpredictable Stop-The-World latency spikes and causes heap fragmentation.
+// Allocating raw memory outside the Go heap eliminates GC scan overhead and provides
+// deterministic memory lifecycle control. This package allocates contiguous memory pages
+// directly via OS virtual memory APIs without registering pointers in the Go runtime heap.
 //
 // Types allocated with [AllocStruct] MUST be Plain Old Data (POD) structures.
 // They MUST NOT contain Go heap pointers, strings, maps, channels, or slice headers.
 // The Go GC does NOT scan off-heap physical pages. Any Go heap object referenced from
 // off-heap memory will appear unreachable to the GC and be collected, causing use-after-free.
 //
-// Safe POD types: structs containing only integer, float, bool, array, or fixed-size byte fields.
+// # Compared to the standard library
 //
-// Unsafe non-POD examples (FORBIDDEN inside AllocStruct):
+// Stdlib counterpart: none - fills gap: memory allocated directly from the OS bypassing the Go GC.
 //
-//	type Bad struct {
-//	    Name string      // ← heap pointer inside string header
-//	    Data []byte      // ← heap pointer inside slice header
-//	    Ch   chan int    // ← heap pointer
-//	}
+// Rejected compromise: The Go runtime garbage collector scanning large pointer graphs of cached data on every GC cycle, causing unpredictable latency spikes.
 //
-// # Volatile References
+// Accepted cost: Memory is entirely unmanaged by the Go runtime and must be explicitly freed to prevent leaks. The caller assumes all safety responsibilities, including ensuring that only POD structures are stored off-heap.
 //
-//   - [OffHeapBuffer.Bytes] returns a volatile slice. Invalid after [OffHeapBuffer.Release].
-//   - [Arena.AllocBuffer] memory is arena-owned. Invalid after [Arena.Release] or [Arena.Reset].
-//   - Pointers from [AllocStruct] are invalid after [Arena.Release] or [Arena.Reset].
-//
-// # Usage Patterns
-//
-// Request-scoped allocation with automatic cleanup:
-//
-//	err := offheap.Scope(1<<20, func(a *offheap.Arena) {
-//	    hdr := offheap.AllocStruct[MyPODHeader](a)
-//	    hdr.StreamID = 42
-//	    // ... use hdr within this scope only
-//	}) // arena freed on return, even on panic
-//
-// Concurrent reuse via pool:
-//
-//	pool := offheap.NewArenaPool(2 << 20)
-//
-//	func handler() {
-//	    a := pool.Acquire()
-//	    defer pool.Release(a)
-//	    buf := a.AllocBuffer(4096)
-//	    // ... use buf
-//	}
-//
-// Standalone off-heap buffer:
-//
-//	buf, err := offheap.NewBuffer(64 * 1024)
-//	if err != nil { ... }
-//	defer buf.Release()
-//
-//	buf.WriteString("SAMPLE PAYLOAD\n")
-//	// buf.Bytes() → zero-alloc slice view
+// Allocations: amortized
 package offheap

@@ -1,9 +1,6 @@
 // Copyright (c) 2026 Lemon4ksan All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
-
-// Package simd provides SWAR (SIMD Within A Register) 64-bit vector byte scanning operations,
-// processing 8 bytes per CPU instruction to achieve mechanical sympathy on modern x86-64 and ARM64 CPUs.
 package simd
 
 import (

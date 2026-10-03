@@ -2,57 +2,26 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package scheduler provides a priority-queue task scheduler and execution
-// rate limiters.
+// Package scheduler provides a unified, precision-timed task execution loop.
 //
-// It manages periodic and one-off tasks sorted by (NextRun, Priority) using a
-// min-heap. Tasks with Interval > 0 are automatically re-enqueued after
-// execution. The package also includes standalone [Debounce] and [Throttle]
-// utilities for rate-limiting function calls.
+// The [Scheduler] maintains a priority-sorted execution list of independent tasks.
+// Instead of dedicating a ticker and a goroutine to every background job, tasks are
+// scheduled into a central heap. A single coordinator loop sleeps exactly until the
+// next task is due, avoiding CPU busy-wait and preventing uncoordinated timer drift.
+// When a task deadline arrives, it is dispatched to a background goroutine for
+// execution, ensuring the scheduler loop itself is never blocked by task payloads.
 //
-// # Architecture
+// Tasks are managed via a memory pool using [Scheduler.AcquireTask] and
+// [Scheduler.ReleaseTask] to eliminate garbage collection overhead during
+// high-frequency rescheduling.
 //
-// The [Scheduler] uses a min-heap for O(log n) task insertion and extraction.
-// A dedicated goroutine runs the event loop, sleeping until the next task's
-// NextRun time. Dynamic wake-up via a channel avoids busy-waiting. Tasks are
-// object-pooled via [sync.Pool] to minimize allocations.
+// # Compared to the standard library
 //
-// # Error Handling
+// Stdlib counterpart: time.Ticker and time.AfterFunc
 //
-// Task execution errors are returned from the [Task.Execute] function. The
-// scheduler logs errors but does not stop - it continues processing the next
-// task in the queue. Context cancellation of the scheduler gracefully shuts
-// down the event loop.
+// Rejected compromise: individual time.Ticker instances manage their own background timer goroutines, consuming system resources and drifting under load without centralized coordination.
 //
-// # Example
+// Accepted cost: all tasks are dispatched onto new background goroutines when executed, meaning a flood of tasks arriving simultaneously will spawn an equal number of goroutines.
 //
-//	package main
-//
-//	import (
-//	    "context"
-//	    "fmt"
-//	    "time"
-//
-//	    "github.com/lemon4ksan/foundation/async/scheduler"
-//	)
-//
-//	func main() {
-//	    s := scheduler.New()
-//	    ctx, cancel := context.WithCancel(context.Background())
-//	    defer cancel()
-//
-//	    go s.Start(ctx)
-//
-//	    t := s.AcquireTask()
-//	    t.ID = "example-task"
-//	    t.Priority = scheduler.PriorityNormal
-//	    t.NextRun = time.Now().Add(50 * time.Millisecond)
-//	    t.Execute = func(ctx context.Context) error {
-//	        fmt.Println("Task executed!")
-//	        return nil
-//	    }
-//
-//	    s.Schedule(t)
-//	    time.Sleep(100 * time.Millisecond)
-//	}
+// Allocations: amortized
 package scheduler

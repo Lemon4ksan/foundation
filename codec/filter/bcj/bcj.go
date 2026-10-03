@@ -2,9 +2,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package bcj implements Branch-Call-Jump (BCJ) bytecode pre-filters for executable binaries.
-// BCJ converts relative branch targets (e.g. x86 E8/E9 CALL/JMP instructions) into absolute addresses,
-// significantly improving entropy and compression ratios for subsequent LZMA/Deflate stages.
 package bcj
 
 import (

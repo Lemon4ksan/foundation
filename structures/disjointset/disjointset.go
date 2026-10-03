@@ -2,10 +2,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package disjointset implements an array-backed Disjoint Set Union (DSU / Union-Find) data structure.
-// Elements are indexed from 0 to N-1. It provides near-O(1) amortized set operations
-// using two-pass iterative path compression and union-by-size heuristics.
-// All steady-state queries, unions, and resets operate with zero heap allocations.
 package disjointset
 
 // DisjointSet implements an array-backed Disjoint Set Union data structure.

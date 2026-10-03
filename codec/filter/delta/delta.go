@@ -2,9 +2,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package delta implements the byte distance prediction filter (Delta) used in 7-Zip archives.
-// The Delta filter converts sequence differences (e.g. in uncompressed audio PCM, table columns,
-// RGB bitmap planes) into small delta values, dramatically boosting subsequent entropy compression.
 package delta
 
 import (

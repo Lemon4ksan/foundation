@@ -2,31 +2,21 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package secret provides protected in-memory containers for sensitive authentication material,
-// preventing accidental exposure across logging pipelines, stack traces, and serialized outputs.
+// Package secret provides protected in-memory containers for sensitive authentication material.
 //
-// # Example
+// The [Secret] container wraps sensitive data (passwords, bearer tokens, API keys) to prevent
+// accidental exposure across logging pipelines, stack traces, and serialized outputs.
+// It leverages the standard library's encoding/json to ensure secrets remain masked
+// during JSON serialization. The raw sensitive value can only be retrieved via explicit calls
+// to [Secret.Value] or [Secret.Expose] when strictly necessary for authorized operations.
 //
-//	package main
+// # Compared to the standard library
 //
-//	import (
-//		"fmt"
-//		"log/slog"
+// Stdlib counterpart: none - fills gap: protected in-memory containers for sensitive material
 //
-//		"github.com/lemon4ksan/foundation/types/secret"
-//	)
+// Rejected compromise: exposing raw strings in standard library structures that accidentally serialize to logs or JSON endpoints
 //
-//	func main() {
-//		apiKey := secret.New("sk_live_983274982374982374")
+// Accepted cost: manual explicit extraction of the raw material when it is actually needed
 //
-//		// Formatted printing masks the value
-//		fmt.Println("Key:", apiKey) // Output: Key: [REDACTED]
-//
-//		// Structured logging masks the value
-//		slog.Info("Authenticating client", "api_key", apiKey)
-//
-//		// Explicit extraction for authorized network requests
-//		rawKey := apiKey.Value()
-//		_ = rawKey
-//	}
+// Allocations: zero
 package secret

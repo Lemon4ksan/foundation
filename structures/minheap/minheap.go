@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package minheap provides a high-performance, generic binary minimum heap ordered by key.
 package minheap
 
 import (

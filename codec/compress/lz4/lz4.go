@@ -1,11 +1,3 @@
-// Package lz4 implements reading and writing lz4 compressed data.
-//
-// The package supports both the LZ4 stream format,
-// as specified in http://fastcompression.blogspot.fr/2013/04/lz4-streaming-format-final.html,
-// and the LZ4 block format, defined at
-// http://fastcompression.blogspot.fr/2011/05/lz4-explained.html.
-//
-// See https://github.com/lz4/lz4 for the reference C implementation.
 package lz4
 
 import (

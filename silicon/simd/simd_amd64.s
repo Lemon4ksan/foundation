@@ -51,7 +51,7 @@ found:
 	RET
 
 // func indexTwoBytesAVX2(b []byte, c1, c2 byte) int
-TEXT ·indexTwoBytesAVX2(SB), NOSPLIT, $0-48
+TEXT ·indexTwoBytesAVX2(SB), NOSPLIT, $0-40
 	MOVQ b_base+0(FP), AX
 	MOVQ b_len+8(FP), BX
 	MOVB c1+24(FP), CX

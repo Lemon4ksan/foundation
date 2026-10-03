@@ -2,17 +2,23 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package brotli provides an ultra-high-performance, RFC 7932 compliant Brotli
-// decompression engine tailored for zero-allocation streaming and high-throughput
-// network protocols.
+// Package brotli provides an RFC 7932 compliant Brotli compression and decompression engine.
 //
-// # Architecture & Silicon Characteristics
+// The package implements a single-pass streaming decoder architecture with a
+// 64-bit sliding bit-reader accumulator and a compact memory layout aligned for
+// CPU cache locality. It uses a static RFC 7932 dictionary and a ring-buffer
+// sliding window. The [Reader] and [Writer] allocate on construction, but can
+// be fully reused across streams using their Reset methods to eliminate heap churn.
 //
-// The package implements a single-pass streaming decoder architecture with:
-//   - 64-bit sliding bit-reader accumulator (bit_reader.go)
-//   - Compact memory layout aligned for CPU L1/L2 cache locality (state.go)
-//   - Zero-allocation static RFC 7932 dictionary slice (dictionary.go)
-//   - Ring-buffer sliding window with zero heap churn across reuse cycles (ringbuffer.go)
-//   - Direct in-memory fast-path for block decompression (Decompress)
-//   - Fully pooled streaming readers implementing io.ReadCloser (AcquireReader, ReleaseReader)
+// This package is a port of github.com/andybalholm/brotli.
+//
+// # Compared to the standard library
+//
+// Stdlib counterpart: none - fills gap: RFC 7932 Brotli compression
+//
+// Rejected compromise: none (Brotli is missing from stdlib)
+//
+// Accepted cost: the caller must manually manage [Reader] and [Writer] lifetime and call Reset to avoid allocations.
+//
+// Allocations: amortized
 package brotli

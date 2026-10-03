@@ -4,46 +4,20 @@
 
 // Package lazy provides a thread-safe lazy initializer with reset support.
 //
-// Unlike [sync.Once], the cached value can be discarded via [Lazy.Reset],
-// causing the next [Lazy.Get] to re-run the initialization function. This is
-// useful for error recovery, configuration hot-reload, or any scenario where
-// re-initialization is required.
+// The [Lazy] container caches the result of its initialization function
+// after the first call. All subsequent [Lazy.Get] calls return the cached
+// result without re-executing the function. [Lazy.Reset] clears the cache,
+// allowing the next Get to re-initialize. If the initialization function
+// returns an error, it is cached and returned on all subsequent Get calls
+// until [Lazy.Reset] is called, allowing callers to retry initialization.
 //
-// # Architecture
+// # Compared to the standard library
 //
-// The [Lazy] container caches the result (value + error) of its initialization
-// function after the first call. All subsequent [Lazy.Get] calls return the
-// cached result without re-executing the function. [Lazy.Reset] clears the
-// cache and resets the done flag, allowing the next Get to re-initialize.
-// All operations are protected by [sync.Mutex].
+// Stdlib counterpart: sync.Once
 //
-// # Error Handling
+// Rejected compromise: sync.Once does not support resetting and re-initialization.
 //
-// If the initialization function returns an error, it is cached and returned
-// on all subsequent Get calls until [Lazy.Reset] is called. This allows
-// callers to retry initialization after fixing the underlying problem.
+// Accepted cost: Get operations require an uncontended mutex lock instead of an atomic load.
 //
-// # Example
-//
-//	package main
-//
-//	import (
-//	    "fmt"
-//
-//	    "github.com/lemon4ksan/foundation/sync/lazy"
-//	)
-//
-//	func main() {
-//	    db := lazy.New(func() (string, error) {
-//	        return "connected", nil
-//	    })
-//
-//	    val, err := db.Get()
-//	    fmt.Println(val, err) // connected <nil>
-//
-//	    db.Reset()
-//
-//	    val, err = db.Get()
-//	    fmt.Println(val, err) // connected <nil> (re-initialized)
-//	}
+// Allocations: zero
 package lazy

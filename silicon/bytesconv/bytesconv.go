@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package bytesconv provides zero-allocation byte slice and string manipulation utilities,
-// optimized with mechanical sympathy for Go compiler SSA passes, BCE, and SWAR execution.
 package bytesconv
 
 import (

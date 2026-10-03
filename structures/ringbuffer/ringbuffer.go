@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package ringbuffer implements a growable, circular FIFO queue that reuses backing storage.
 package ringbuffer
 
 import "iter"

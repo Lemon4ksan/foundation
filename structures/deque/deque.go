@@ -2,9 +2,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package deque implements a high-performance, generic double-ended circular queue (deque).
-// Elements can be pushed and popped from both front and back in amortized O(1) time
-// with zero heap allocations on steady-state operations.
 package deque
 
 import "iter"

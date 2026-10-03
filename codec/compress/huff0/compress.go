@@ -116,7 +116,6 @@ func compress(in []byte, s *Scratch, compressor func(src []byte) ([]byte, error)
 		return nil, false, err
 	}
 
-
 	if s.Reuse == ReusePolicyAllow && canReuse {
 		hSize := len(s.Out)
 		oldSize := s.prevTable.estimateSize(s.count[:s.symbolLen])
@@ -228,7 +227,6 @@ func EstimateSizes(in []byte, s *Scratch) (tableSz, dataSz, reuseSz int, err err
 	if err != nil {
 		return 0, 0, 0, err
 	}
-
 
 	tableSz, err = s.cTable.estTableSize(s)
 	if err != nil {

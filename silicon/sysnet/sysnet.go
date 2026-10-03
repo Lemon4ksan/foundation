@@ -1,9 +1,6 @@
 // Copyright (c) 2026 Lemon4ksan All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
-
-// Package sysnet provides low-level OS socket syscall overrides via syscall.RawConn,
-// configuring TCP_QUICKACK, TCP_NODELAY, TCP_FASTOPEN, and SO_BUSY_POLL to minimize network tail latency.
 package sysnet
 
 import "net"

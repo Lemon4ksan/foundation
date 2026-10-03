@@ -38,3 +38,19 @@ func ExampleBox() {
 	// Updated workers: 8
 	// Box is valid after release: false
 }
+
+func ExampleScoped() {
+	borrow.Scoped(func(s *borrow.Scope) (string, error) {
+		// Allocates an owned box inside the scope
+		box := borrow.Alloc[int](s)
+
+		mut := box.BorrowMut()
+		mut.Write(42)
+
+		return "", nil
+	})
+	fmt.Println("Scope completed")
+
+	// Output:
+	// Scope completed
+}

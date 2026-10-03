@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package sign provides Ed25519 digital signature generation, verification, and PEM key marshaling.
 package sign
 
 import (

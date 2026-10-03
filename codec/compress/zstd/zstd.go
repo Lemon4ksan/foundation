@@ -3,9 +3,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package zstd provides decompression of zstandard files.
-//
-// For advanced usage and examples, go to the README: https://github.com/klauspost/compress/tree/master/zstd#zstd
 package zstd
 
 import (

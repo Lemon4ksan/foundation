@@ -2,13 +2,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package list implements a high-performance, array-backed generic doubly linked list.
-//
-// To iterate over a list (where l is a *List[T]):
-//
-//	for v := range l.Values() {
-//		// do something with v
-//	}
 package list
 
 import "iter"

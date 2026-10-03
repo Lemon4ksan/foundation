@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package kdf provides standard Key Derivation Functions (HKDF RFC 5869, PBKDF2 RFC 2898,
-// Argon2id profiles, and deterministic domain-separated subkey and nonce derivation).
 package kdf
 
 import (

@@ -4,9 +4,6 @@
 // license that can be found in the LICENSE file.
 // Based on work Copyright (c) 2013, Yann Collet, released under BSD License.
 
-// Package huff0 provides fast huffman encoding as used in zstd.
-//
-// See README.md at https://github.com/klauspost/compress/tree/master/huff0 for details.
 package huff0
 
 import (

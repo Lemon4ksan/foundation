@@ -1,18 +1,6 @@
 // Copyright (c) 2026 Lemon4ksan All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
-
-// Package clock provides high-performance coarse atomic time and hardware RDTSC cycle measurement utilities.
-//
-// Architectural Concept & Mechanical Sympathy:
-// System calls to time.Now() invoke kernel vDSO routines, which incur branch prediction overhead,
-// registers saving, and CPU pipeline stalls on extreme-throughput hot paths (1M-2M+ RPS).
-//
-// This package provides two complimentary hardware-sympathetic clocks:
-//  1. Coarse Clock: A dedicated 1ms background ticker atomically updating an [atomic.Int64],
-//     reducing time and timeout checks to a sub-nanosecond L1 cache load (0 B/op).
-//  2. Hardware RDTSC: Direct single-instruction CPU cycle counter (RDTSC on x86_64 / CNTVCT_EL0 on ARM64)
-//     for sub-nanosecond latency benchmarking and timer deltas.
 package clock
 
 import (

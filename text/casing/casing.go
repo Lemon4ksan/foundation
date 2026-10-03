@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package casing provides high-performance zero-allocation string case conversion algorithms
-// (snake_case, camelCase, PascalCase, kebab-case, SCREAMING_SNAKE_CASE).
 package casing
 
 import (
@@ -25,8 +23,6 @@ const (
 	Pascal Kind = "PascalCase"
 	// Kebab represents lowercase hyphen-separated casing (e.g. "kebab-case").
 	Kebab Kind = "kebab-case"
-	// ScreamingSnake represents uppercase underscore-separated casing (e.g. "SCREAMING_SNAKE_CASE").
-	ScreamingSnake Kind = "SCREAMING_SNAKE_CASE"
 )
 
 // ToSnake converts s into snake_case (e.g. "HTTPServerURL" -> "http_server_url", "userName" -> "user_name").
@@ -34,7 +30,6 @@ func ToSnake(s string) string {
 	return convertDelimited(s, '_', false)
 }
 
-// ToScreamingSnake converts s into SCREAMING_SNAKE_CASE (e.g. "timeoutSeconds" -> "TIMEOUT_SECONDS").
 func ToScreamingSnake(s string) string {
 	return convertDelimited(s, '_', true)
 }

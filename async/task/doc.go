@@ -44,77 +44,13 @@
 //     [context.AfterFunc] subscription watchers) are guaranteed to be stopped and cleaned up
 //     to prevent resource leaks.
 //
-// # Example - Callback Style
+// # Compared to the standard library
 //
-//	package main
+// Stdlib counterpart: manual maps and unpooled goroutines
 //
-//	import (
-//		"context"
-//		"fmt"
-//		"log"
-//		"sync"
+// Rejected compromise: manual maps and per-request timer goroutines introduce significant scheduler churn and garbage collector overhead under high concurrency.
 //
-//		"github.com/lemon4ksan/foundation/async/task"
-//	)
+// Accepted cost: tasks are managed centrally with a mutex, introducing lock contention under extreme concurrency.
 //
-//	func main() {
-//		mgr := task.NewManager[string, string](100)
-//		id := mgr.NextID()
-//
-//		var wg sync.WaitGroup
-//		wg.Add(1)
-//
-//		err := mgr.Add(id, func(ctx context.Context, res string, err error) {
-//			defer wg.Done()
-//			if err != nil {
-//				log.Printf("Job %s failed: %v", id, err)
-//				return
-//			}
-//			fmt.Printf("Job %s received: %s\n", id, res)
-//		})
-//		if err != nil {
-//			log.Fatalf("Failed to add job: %v", err)
-//		}
-//
-//		// Simulate asynchronous response arrival
-//		mgr.Resolve(id, "Hello, World!", nil)
-//
-//		wg.Wait()
-//	}
-//
-// # Example - Blocking Style
-//
-//	package main
-//
-//	import (
-//		"context"
-//		"fmt"
-//		"log"
-//		"time"
-//
-//		"github.com/lemon4ksan/foundation/async/task"
-//	)
-//
-//	func main() {
-//		mgr := task.NewManager[string, string](0)
-//		id := mgr.NextID()
-//
-//		// Configure with WithWait and a 1-second timeout limit
-//		err := mgr.Add(id, nil, task.WithWait[string](), task.WithTimeout[string](time.Second))
-//		if err != nil {
-//			log.Fatalf("Failed to add job: %v", err)
-//		}
-//
-//		// Block and wait for resolution synchronously
-//		go func() {
-//			time.Sleep(100 * time.Millisecond)
-//			mgr.Resolve(id, "Hello from background!", nil)
-//		}()
-//
-//		res, err := mgr.WaitFor(context.Background(), id)
-//		if err != nil {
-//			log.Fatalf("Job failed: %v", err)
-//		}
-//		fmt.Println("Result:", res)
-//	}
+// Allocations: bounded(4/op)
 package task

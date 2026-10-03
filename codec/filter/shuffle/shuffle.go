@@ -2,12 +2,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package shuffle implements a high-performance byte transposition (shuffle) filter
-// for multi-byte numeric arrays (e.g. FP16, BF16, FP32, FP64, ML tensors, safetensors,
-// time-series, and geometric vertices).
-//
-// Shuffling groups identical significance bytes (such as IEEE-754 sign/exponent bytes)
-// contiguously, drastically improving entropy and LZ-based compression ratios.
 package shuffle
 
 import "errors"

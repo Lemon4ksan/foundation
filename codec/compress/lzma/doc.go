@@ -60,4 +60,14 @@
 //     to eliminate Go runtime bounds checks on critical paths.
 //   - Buffer recycling: Encoder and decoder structures are pooled per logical processor (PerPStorage)
 //     to prevent heap allocations during multi-threaded operation.
+//
+// # Compared to the standard library
+//
+// Stdlib counterpart: none - fills gap: LZMA compression support
+//
+// Rejected compromise: No stdlib LZMA; existing third-party packages allocate heavily and lack silicon SWAR optimizations.
+//
+// Accepted cost: Large memory footprint (MBs) for dictionary windows, higher codebase complexity.
+//
+// Allocations: bounded(30/op)
 package lzma

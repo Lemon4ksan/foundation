@@ -2,10 +2,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package json implements a silicon-grade, zero-allocation, lockless pure-Go JSON encoder and decoder.
-//
-// It compiles type metadata once into an opcode execution sequence and performs direct memory writes
-// via standard ABI-safe unsafe offsets without reflection overhead, runtime linkname hacks, or GC churn.
 package json
 
 import (

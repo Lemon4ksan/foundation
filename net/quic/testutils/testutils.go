@@ -2,9 +2,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package testutils contains utilities for simulating packet injection and man-in-the-middle (MITM) attacker tests.
-// It is not supposed to be used for non-testing purposes.
-// The API is not guaranteed to be stable.
 package testutils
 
 import (
