@@ -31,11 +31,8 @@ func AppendPathToURI(dst []byte, osPath string) []byte {
 		return append(dst, osPath...)
 	}
 
-	// Normalize any Windows backslashes to forward slashes
-	startLen := len(dst)
-
 	// Check for UNC path (starts with // or \\)
-	isUNC := (len(osPath) >= 2 && (osPath[0] == '/' || osPath[0] == '\\') && (osPath[1] == '/' || osPath[1] == '\\'))
+	isUNC := len(osPath) >= 2 && (osPath[0] == '/' || osPath[0] == '\\') && (osPath[1] == '/' || osPath[1] == '\\')
 	if isUNC {
 		dst = append(dst, "file:"...)
 		for i := 0; i < len(osPath); i++ {
@@ -91,7 +88,6 @@ func AppendPathToURI(dst []byte, osPath string) []byte {
 		}
 	}
 
-	_ = startLen
 	return dst
 }
 
