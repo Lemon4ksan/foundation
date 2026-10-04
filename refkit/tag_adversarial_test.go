@@ -7,6 +7,7 @@ package refkit_test
 import (
 	"fmt"
 	"math"
+	"slices"
 	"strings"
 	"testing"
 
@@ -255,7 +256,7 @@ func TestTag_MethodRobustness(t *testing.T) {
 	}
 
 	// SplitOption
-	parts := tag.SplitOption("delim", "|")
+	parts := slices.Collect(tag.SplitOption("delim", "|"))
 	expected := []string{"a", "b", "c"}
 	if len(parts) != len(expected) {
 		t.Fatalf("SplitOption expected %v, got %v", expected, parts)
@@ -267,8 +268,8 @@ func TestTag_MethodRobustness(t *testing.T) {
 	}
 
 	// SplitOption on missing key
-	if parts := tag.SplitOption("nonexistent", ","); parts != nil {
-		t.Errorf("expected nil for missing SplitOption, got %v", parts)
+	if parts := slices.Collect(tag.SplitOption("nonexistent", ",")); len(parts) > 0 {
+		t.Errorf("expected empty for missing SplitOption, got %v", parts)
 	}
 }
 

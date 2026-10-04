@@ -70,6 +70,61 @@ func ToString(v any) (string, error) {
 	}
 }
 
+// AppendToString appends the string representation of v to dst and returns the extended buffer.
+func AppendToString(dst []byte, v any) ([]byte, error) {
+	if v == nil {
+		return dst, nil
+	}
+
+	switch val := v.(type) {
+	case string:
+		return append(dst, val...), nil
+	case int:
+		return strconv.AppendInt(dst, int64(val), 10), nil
+	case int64:
+		return strconv.AppendInt(dst, val, 10), nil
+	case int32:
+		return strconv.AppendInt(dst, int64(val), 10), nil
+	case int16:
+		return strconv.AppendInt(dst, int64(val), 10), nil
+	case int8:
+		return strconv.AppendInt(dst, int64(val), 10), nil
+	case uint:
+		return strconv.AppendUint(dst, uint64(val), 10), nil
+	case uint64:
+		return strconv.AppendUint(dst, val, 10), nil
+	case uint32:
+		return strconv.AppendUint(dst, uint64(val), 10), nil
+	case uint16:
+		return strconv.AppendUint(dst, uint64(val), 10), nil
+	case uint8:
+		return strconv.AppendUint(dst, uint64(val), 10), nil
+	case bool:
+		return strconv.AppendBool(dst, val), nil
+	case float64:
+		return strconv.AppendFloat(dst, val, 'f', -1, 64), nil
+	case float32:
+		return strconv.AppendFloat(dst, float64(val), 'f', -1, 32), nil
+	case []byte:
+		return append(dst, val...), nil
+	case encoding.TextMarshaler:
+		b, err := val.MarshalText()
+		if err != nil {
+			return dst, err
+		}
+		return append(dst, b...), nil
+	case fmt.Stringer:
+		return append(dst, val.String()...), nil
+	default:
+		// Fallback to ToString for complex reflective cases
+		s, err := ValueToString(reflect.ValueOf(v))
+		if err != nil {
+			return dst, err
+		}
+		return append(dst, s...), nil
+	}
+}
+
 // ValueToString unwraps consecutive pointers and interfaces in v and formats
 // primitive scalars, [encoding.TextMarshaler], and [fmt.Stringer] implementations into a string.
 func ValueToString(v reflect.Value) (string, error) {

@@ -6,6 +6,7 @@ package refkit_test
 
 import (
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/lemon4ksan/foundation/refkit"
@@ -128,20 +129,10 @@ func TestCheck_Kinds_And_Numbers(t *testing.T) {
 	assert.False(t, refkit.IsCollection("str"))
 }
 
-func TestAlloc_New_And_EnsureAlloc(t *testing.T) {
+func TestAlloc_EnsureAlloc(t *testing.T) {
 	t.Parallel()
 
-	// 1. New[T]
-	ptr := refkit.New[SampleModel]()
-	assert.NotNil(t, ptr)
-	assert.Equal(t, "", ptr.Name)
-
-	// 2. NewOf
-	valOf := refkit.NewOf(reflect.TypeFor[SampleModel]())
-	assert.True(t, valOf.IsValid())
-	assert.False(t, refkit.NewOf(nil).IsValid())
-
-	// 3. EnsureAlloc on nil settable pointer
+	// EnsureAlloc on nil settable pointer
 	var target *SampleModel
 	targetVal := reflect.ValueOf(&target).Elem()
 	elem, allocated := refkit.EnsureAlloc(targetVal)
@@ -196,9 +187,9 @@ func TestTag_Parsing_And_Getters(t *testing.T) {
 	assert.False(t, ok)
 
 	// SplitOption
-	enumParts := tag.SplitOption("enum", "|")
+	enumParts := slices.Collect(tag.SplitOption("enum", "|"))
 	assert.Equal(t, []string{"a", "b"}, enumParts)
-	assert.Nil(t, tag.SplitOption("missing", "|"))
+	assert.Empty(t, slices.Collect(tag.SplitOption("missing", "|")))
 
 	// Ignored field `json:"-"`
 	skipField, _ := reflect.TypeFor[SampleModel]().FieldByName("Skip")
