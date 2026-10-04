@@ -30,9 +30,7 @@ func New(s string) Path {
 		return Path{}
 	}
 
-	schemeIdx := strings.Index(s, "://")
-	if schemeIdx != -1 {
-		rawScheme := s[:schemeIdx]
+	if rawScheme, _, ok := strings.Cut(s, "://"); ok {
 		scheme := normalizeScheme(rawScheme)
 		if scheme == "file" {
 			return Path{
@@ -363,13 +361,13 @@ func (p Path) URI() string {
 	return PathToURI(p.raw)
 }
 
-// SegmentsSeq returns an iterator over the non-empty path segments of pathStr.
+// Segments returns an iterator over the non-empty path segments of pathStr.
 // Iteration stops immediately when yield returns false.
 //
 // Concurrency & Zero-Allocation Semantics:
-// SegmentsSeq operates purely by slicing substrings without heap allocations across all operating systems.
+// Segments operates purely by slicing substrings without heap allocations across all operating systems.
 // It is fully thread-safe and safe for concurrent execution.
-func SegmentsSeq(pathStr string) iter.Seq[string] {
+func Segments(pathStr string) iter.Seq[string] {
 	return func(yield func(string) bool) {
 		p := pathStr
 		if idx := strings.Index(p, "://"); idx != -1 {
@@ -407,14 +405,9 @@ func SegmentsSeq(pathStr string) iter.Seq[string] {
 	}
 }
 
-// SegmentsSeq returns an iterator over the path segments of p.
-func (p Path) SegmentsSeq() iter.Seq[string] {
-	return SegmentsSeq(p.raw)
-}
-
 // Segments returns an iterator over the path segments of p.
 func (p Path) Segments() iter.Seq[string] {
-	return SegmentsSeq(p.raw)
+	return Segments(p.raw)
 }
 
 // Segments2 returns a push iterator over index and segment pairs of p.
@@ -424,7 +417,7 @@ func (p Path) Segments() iter.Seq[string] {
 func (p Path) Segments2() iter.Seq2[int, string] {
 	return func(yield func(int, string) bool) {
 		idx := 0
-		for seg := range p.SegmentsSeq() {
+		for seg := range p.Segments() {
 			if !yield(idx, seg) {
 				return
 			}

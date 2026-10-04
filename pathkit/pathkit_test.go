@@ -7,6 +7,7 @@ package pathkit_test
 import (
 	"net/url"
 	"runtime"
+	"slices"
 	"testing"
 
 	"github.com/lemon4ksan/foundation/pathkit"
@@ -52,7 +53,27 @@ func TestPath_ConstructorsAndClassification(t *testing.T) {
 	assert.Equal(t, "https://example.com/test", p5.String())
 	assert.True(t, p5.IsURL())
 
-	// 6. Empty
+	pNil := pathkit.FromURL(nil)
+	assert.True(t, pNil.IsEmpty())
+
+	// 6. FromFilePath & FromURI
+	pFromPath := pathkit.FromFilePath("/var/log/syslog")
+	assert.Equal(t, "/var/log/syslog", pFromPath.String())
+
+	pFromURI, err := pathkit.FromURI("https://api.github.com/repos")
+	require.NoError(t, err)
+	assert.Equal(t, "https://api.github.com/repos", pFromURI.String())
+
+	// 7. Scheme normalization (uppercase & mixed case)
+	assert.Equal(t, "http", pathkit.New("HTTP://example.com").Scheme())
+	assert.Equal(t, "https", pathkit.New("HTTPS://example.com").Scheme())
+	assert.Equal(t, "file", pathkit.New("FILE:///var/log").Scheme())
+	assert.Equal(t, "s3", pathkit.New("S3://my-bucket/key").Scheme())
+	assert.Equal(t, "ws", pathkit.New("WS://socket.io").Scheme())
+	assert.Equal(t, "wss", pathkit.New("WSS://socket.io").Scheme())
+	assert.Equal(t, "custom", pathkit.New("CUSTOM://my/path").Scheme())
+
+	// 8. Empty
 	empty := pathkit.New("")
 	assert.True(t, empty.IsEmpty())
 	assert.False(t, empty.IsAbs())
@@ -76,11 +97,29 @@ func TestPath_Navigation(t *testing.T) {
 	withExtNoDot := p.WithExt("toml")
 	assert.Equal(t, "/var/log/app.prod.toml", withExtNoDot.String())
 
+	assert.True(t, pathkit.New("").WithExt(".txt").IsEmpty())
+
 	// 3. Base & Dir on URL
 	urlP := pathkit.New("https://api.example.com/v1/users/42")
 	assert.Equal(t, "42", urlP.Base())
 	assert.Equal(t, "https://api.example.com/v1/users", urlP.Dir().String())
 	assert.Equal(t, "", urlP.Ext())
+
+	// 4. Base edge cases
+	assert.Equal(t, "/", pathkit.New("/").Base())
+	assert.Equal(t, "/", pathkit.New(`\`).Base())
+	assert.Equal(t, ".", pathkit.New("").Base())
+	assert.Equal(t, "C:", pathkit.New("C:/").Base())
+	assert.Equal(t, "file", pathkit.New("https://domain.com/path/to/file/").Base())
+
+	// 5. Dir edge cases
+	assert.Equal(t, ".", pathkit.New("").Dir().String())
+	assert.Equal(t, "/", pathkit.New("/").Dir().String())
+	assert.Equal(t, "C:/", pathkit.New("C:/file.txt").Dir().String())
+	assert.Equal(t, ".", pathkit.New("file.txt").Dir().String())
+	assert.Equal(t, "/", pathkit.New("/file.txt").Dir().String())
+	assert.Equal(t, "https://api.com", pathkit.New("https://api.com/v1").Dir().String())
+	assert.Equal(t, "https://api.com", pathkit.New("https://api.com").Dir().String())
 }
 
 func TestPath_JoinAndClean(t *testing.T) {
@@ -96,6 +135,10 @@ func TestPath_JoinAndClean(t *testing.T) {
 	joined2 := apiSlash.Join("/v1/", "/users/", "123")
 	assert.Equal(t, "https://api.example.com/v1/users/123", joined2.String())
 
+	// Join with empty Path
+	assert.Equal(t, "a/b", pathkit.New("").Join("a", "b").String())
+	assert.Equal(t, "/var/log", pathkit.New("/var/log").Join().String())
+
 	// 2. Clean URL
 	dirtyURL := pathkit.New("https://api.com/v1/../v2/users/./42")
 	assert.Equal(t, "https://api.com/v2/users/42", dirtyURL.Clean().String())
@@ -103,6 +146,90 @@ func TestPath_JoinAndClean(t *testing.T) {
 	// 3. Clean File
 	dirtyFile := pathkit.New("/a/b/../c/./d")
 	assert.Equal(t, "/a/c/d", dirtyFile.Clean().String())
+
+	// Lexical root popping in Clean
+	assert.Equal(t, "/", pathkit.Clean("/.."))
+	assert.Equal(t, "/", pathkit.Clean("/a/b/../../.."))
+	assert.Equal(t, "../../a", pathkit.Clean("../../a"))
+	assert.Equal(t, ".", pathkit.Clean("a/.."))
+	assert.Equal(t, "a", pathkit.Clean("./a"))
+	assert.Equal(t, "/", pathkit.Clean("///"))
+	assert.Equal(t, "https://domain.com", pathkit.Clean("https://domain.com"))
+}
+
+func TestPath_AppendMethods(t *testing.T) {
+	t.Parallel()
+
+	p := pathkit.New("/var/log/app.json")
+
+	// 1. Append
+	buf := make([]byte, 0, 64)
+	buf = p.Append(buf)
+	assert.Equal(t, "/var/log/app.json", string(buf))
+
+	// 2. AppendFilePath
+	buf = buf[:0]
+	buf = p.AppendFilePath(buf)
+	assert.Equal(t, p.FilePath(), string(buf))
+
+	// 3. AppendURI
+	buf = buf[:0]
+	buf = p.AppendURI(buf)
+	assert.Equal(t, p.URI(), string(buf))
+
+	// 4. Append on file:// and URL
+	fileURI := pathkit.New("file:///C:/Users/senya/app.json")
+	buf = buf[:0]
+	buf = fileURI.AppendFilePath(buf)
+	assert.NotEmpty(t, buf)
+
+	buf = buf[:0]
+	buf = fileURI.AppendURI(buf)
+	assert.Equal(t, "file:///C:/Users/senya/app.json", string(buf))
+
+	urlP := pathkit.New("https://example.com/api")
+	buf = buf[:0]
+	buf = urlP.AppendURI(buf)
+	assert.Equal(t, "https://example.com/api", string(buf))
+
+	// 5. AppendJoinURL
+	buf = buf[:0]
+	buf = pathkit.AppendJoinURL(buf, "https://api.example.com", "v1", "users", "100")
+	assert.Equal(t, "https://api.example.com/v1/users/100", string(buf))
+
+	buf = buf[:0]
+	buf = pathkit.AppendJoinURL(buf, "", "base", "part")
+	assert.Equal(t, "base/part", string(buf))
+
+	buf = buf[:0]
+	buf = pathkit.AppendJoinURL(buf, "https://api.example.com/", "/v1/", "/users/")
+	assert.Equal(t, "https://api.example.com/v1/users/", string(buf))
+
+	// 6. AppendClean
+	buf = buf[:0]
+	buf = pathkit.AppendClean(buf, "/a/b/../c/./d")
+	assert.Equal(t, "/a/c/d", string(buf))
+
+	buf = buf[:0]
+	buf = pathkit.AppendClean(buf, "https://domain.com/v1/../v2/app")
+	assert.Equal(t, "https://domain.com/v2/app", string(buf))
+
+	buf = buf[:0]
+	buf = pathkit.AppendClean(buf, "")
+	assert.Equal(t, ".", string(buf))
+
+	// 7. AppendSanitize
+	buf = buf[:0]
+	buf = pathkit.AppendSanitize(buf, "../../../etc/passwd")
+	assert.Equal(t, "etc/passwd", string(buf))
+
+	buf = buf[:0]
+	buf = pathkit.AppendSanitize(buf, `..\..\windows\system32`)
+	assert.Equal(t, "windows/system32", string(buf))
+
+	buf = buf[:0]
+	buf = pathkit.AppendSanitize(buf, "")
+	assert.Equal(t, "", string(buf))
 }
 
 func TestPath_CrossPlatformFileURI(t *testing.T) {
@@ -119,6 +246,15 @@ func TestPath_CrossPlatformFileURI(t *testing.T) {
 
 		p := pathkit.New(uri)
 		assert.Equal(t, winPath, p.FilePath())
+
+		// Windows UNC
+		uncPath := `\\server\share\folder\file.txt`
+		uncURI := pathkit.PathToURI(uncPath)
+		assert.Equal(t, "file://server/share/folder/file.txt", uncURI)
+
+		uncBack, err := pathkit.URIToPath(uncURI)
+		require.NoError(t, err)
+		assert.Equal(t, uncPath, uncBack)
 	} else {
 		unixPath := "/etc/hosts"
 		uri := pathkit.PathToURI(unixPath)
@@ -130,16 +266,297 @@ func TestPath_CrossPlatformFileURI(t *testing.T) {
 
 		p := pathkit.New(uri)
 		assert.Equal(t, unixPath, p.FilePath())
+
+		_, err = pathkit.URIToPath("file://server/share/folder/file.txt")
+		assert.Error(t, err)
 	}
+
+	// General URI edge cases
+	_, err := pathkit.URIToPath("https://example.com/file")
+	assert.ErrorIs(t, err, pathkit.ErrInvalidFileURI)
+
+	pathEmpty, err := pathkit.URIToPath("")
+	require.NoError(t, err)
+	assert.Equal(t, "", pathEmpty)
+
+	// Percent-encoded URI
+	pathWithSpaces, err := pathkit.URIToPath("file:///var/log/my%20app%20dir/file.log")
+	require.NoError(t, err)
+	if runtime.GOOS == "windows" {
+		assert.Equal(t, `\var\log\my app dir\file.log`, pathWithSpaces)
+	} else {
+		assert.Equal(t, "/var/log/my app dir/file.log", pathWithSpaces)
+	}
+
+	// Invalid percent encoding
+	_, err = pathkit.URIToPath("file:///var/log/bad%2")
+	assert.Error(t, err)
+	_, err = pathkit.URIToPath("file:///var/log/bad%ZZ")
+	assert.Error(t, err)
+
+	// Localhost
+	localHostPath, err := pathkit.URIToPath("file://localhost/etc/hosts")
+	require.NoError(t, err)
+	if runtime.GOOS == "windows" {
+		assert.Equal(t, `\etc\hosts`, localHostPath)
+	} else {
+		assert.Equal(t, "/etc/hosts", localHostPath)
+	}
+
+	// Relative PathToURI
+	assert.Equal(t, "file:relative/sub/file.txt", pathkit.PathToURI(`relative/sub/file.txt`))
+	assert.Equal(t, "file:///etc/hosts", pathkit.PathToURI("file:///etc/hosts"))
+	assert.Equal(t, "https://example.com", pathkit.PathToURI("https://example.com"))
 }
 
-func TestSanitize(t *testing.T) {
+func TestPath_Sanitize(t *testing.T) {
 	t.Parallel()
 
 	assert.Equal(t, "etc/passwd", pathkit.Sanitize("../../../etc/passwd"))
 	assert.Equal(t, "var/log", pathkit.Sanitize(`..\..\var\log`))
 	assert.Equal(t, "safe/path", pathkit.Sanitize("./safe/path"))
 	assert.Equal(t, "", pathkit.Sanitize(""))
+}
+
+func TestPath_Iterators(t *testing.T) {
+	t.Parallel()
+
+	pathStr := "/usr/local/bin/foundation/exec"
+
+	// 1. SegmentsSeq early termination
+	count := 0
+	for range pathkit.Segments(pathStr) {
+		count++
+		break
+	}
+	assert.Equal(t, 1, count)
+
+	count = 0
+	for range pathkit.Segments(pathStr) {
+		count++
+		if count == 2 {
+			break
+		}
+	}
+	assert.Equal(t, 2, count)
+
+	// 2. Full SegmentsSeq traversal
+	var segments []string
+	for seg := range pathkit.Segments(pathStr) {
+		segments = append(segments, seg)
+	}
+	expected := []string{"usr", "local", "bin", "foundation", "exec"}
+	assert.True(t, slices.Equal(segments, expected))
+
+	// 3. SegmentsSeq edge cases (empty & multiple slashes)
+	for range pathkit.Segments("") {
+		t.Fatal("expected no segments for empty string")
+	}
+	for range pathkit.Segments("////") {
+		t.Fatal("expected no segments for slashes only")
+	}
+
+	// 4. URL format segments
+	urlPath := "https://api.github.com/v1/repos/foundation"
+	var urlSegs []string
+	for seg := range pathkit.Segments(urlPath) {
+		urlSegs = append(urlSegs, seg)
+	}
+	assert.Equal(t, []string{"v1", "repos", "foundation"}, urlSegs)
+
+	// 5. Segments2
+	p := pathkit.New("/usr/local/bin")
+	var idxs []int
+	var segs []string
+	for i, seg := range p.Segments2() {
+		idxs = append(idxs, i)
+		segs = append(segs, seg)
+	}
+	assert.Equal(t, []int{0, 1, 2}, idxs)
+	assert.Equal(t, []string{"usr", "local", "bin"}, segs)
+
+	count2 := 0
+	for range p.Segments2() {
+		count2++
+		if count2 == 2 {
+			break
+		}
+	}
+	assert.Equal(t, 2, count2)
+
+	// 6. Ancestors
+	ancP := pathkit.New("/a/b/c")
+	var anc []string
+	for a := range ancP.Ancestors() {
+		anc = append(anc, a.String())
+	}
+	assert.Equal(t, []string{"/a/b", "/a", "/"}, anc)
+
+	urlP := pathkit.New("https://example.com/v1/api/users")
+	var urlAnc []string
+	for a := range urlP.Ancestors() {
+		urlAnc = append(urlAnc, a.String())
+	}
+	assert.Equal(t, []string{"https://example.com/v1/api", "https://example.com/v1", "https://example.com"}, urlAnc)
+
+	rootP := pathkit.New("/")
+	var rootAnc []string
+	for a := range rootP.Ancestors() {
+		rootAnc = append(rootAnc, a.String())
+	}
+	assert.Empty(t, rootAnc)
+
+	ancCount := 0
+	for range ancP.Ancestors() {
+		ancCount++
+		if ancCount == 2 {
+			break
+		}
+	}
+	assert.Equal(t, 2, ancCount)
+}
+
+func TestPath_LexicalRelations(t *testing.T) {
+	t.Parallel()
+
+	// 1. HasPrefix
+	p1 := pathkit.New("/var/log/nginx/access.log")
+	assert.True(t, p1.HasPrefix(pathkit.New("/var/log")))
+	assert.True(t, p1.HasPrefix(pathkit.New("/var/log/nginx")))
+	assert.True(t, p1.HasPrefix(pathkit.New("/var/log/nginx/access.log")))
+	assert.False(t, p1.HasPrefix(pathkit.New("/var/lib")))
+	assert.False(t, p1.HasPrefix(pathkit.New("/var/log/ngin")))
+	assert.False(t, p1.HasPrefix(pathkit.New("https://var/log")))
+
+	// 2. Rel
+	base := pathkit.New("/a/b")
+	rel, ok := pathkit.New("/a/b/c/d").Rel(base)
+	require.True(t, ok)
+	assert.Equal(t, "c/d", rel.String())
+
+	rel, ok = pathkit.New("/a/b").Rel(base)
+	require.True(t, ok)
+	assert.Equal(t, ".", rel.String())
+
+	rel, ok = pathkit.New("/a/c").Rel(base)
+	require.True(t, ok)
+	assert.Equal(t, "../c", rel.String())
+
+	_, ok = pathkit.New("https://api.com/a").Rel(base)
+	assert.False(t, ok)
+
+	// 3. Match
+	pMatch := pathkit.New("/var/log/app.prod.json")
+	assert.True(t, pMatch.Match("*.json"))
+	assert.True(t, pMatch.Match("app.*.json"))
+	assert.False(t, pMatch.Match("*.log"))
+}
+
+func TestPath_ZeroAllocGuarantees(t *testing.T) {
+	// 1. SegmentsSeq on Unix path
+	unixPath := "/usr/local/bin/exec"
+	allocs := testing.AllocsPerRun(1000, func() {
+		for seg := range pathkit.Segments(unixPath) {
+			_ = seg
+		}
+	})
+	assert.Equal(t, 0.0, allocs)
+
+	// 2. SegmentsSeq on Windows path (contains backslashes)
+	winPath := `C:\Windows\System32\drivers\etc\hosts`
+	allocsWin := testing.AllocsPerRun(1000, func() {
+		for seg := range pathkit.Segments(winPath) {
+			_ = seg
+		}
+	})
+	assert.Equal(t, 0.0, allocsWin)
+
+	// 3. Base, Ext, Stem, IsAbs, Scheme on Path
+	p := pathkit.New("https://api.github.com/v1/repos/foundation/app.json")
+	allocsMethods := testing.AllocsPerRun(1000, func() {
+		_ = p.Base()
+		_ = p.Ext()
+		_ = p.Stem()
+		_ = p.IsAbs()
+		_ = p.Scheme()
+	})
+	assert.Equal(t, 0.0, allocsMethods)
+
+	// 4. AppendJoinURL with pre-allocated buffer
+	scratch := make([]byte, 0, 128)
+	allocsJoin := testing.AllocsPerRun(1000, func() {
+		buf := scratch[:0]
+		_ = pathkit.AppendJoinURL(buf, "https://api.github.com/v1", "repos", "lemon4ksan", "aoni")
+	})
+	assert.Equal(t, 0.0, allocsJoin)
+
+	// 5. AppendClean with pre-allocated buffer
+	allocsClean := testing.AllocsPerRun(1000, func() {
+		buf := scratch[:0]
+		_ = pathkit.AppendClean(buf, "/a/b/../c/./d")
+	})
+	assert.Equal(t, 0.0, allocsClean)
+
+	// 6. Ancestors iteration
+	ancPath := pathkit.New("/var/log/nginx/access.log")
+	allocsAnc := testing.AllocsPerRun(1000, func() {
+		for a := range ancPath.Ancestors() {
+			_ = a
+		}
+	})
+	assert.Equal(t, 0.0, allocsAnc)
+}
+
+func BenchmarkSegmentsSeq_ZeroAlloc(b *testing.B) {
+	path := "/usr/local/bin/foundation/exec"
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for b.Loop() {
+		for seg := range pathkit.Segments(path) {
+			_ = seg
+		}
+	}
+}
+
+func BenchmarkSegmentsSeq_Windows_ZeroAlloc(b *testing.B) {
+	path := `C:\Windows\System32\drivers\etc\hosts`
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for b.Loop() {
+		for seg := range pathkit.Segments(path) {
+			_ = seg
+		}
+	}
+}
+
+func BenchmarkAppendJoinURL_ZeroAlloc(b *testing.B) {
+	scratch := make([]byte, 0, 128)
+	base := "https://api.github.com/v1"
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for b.Loop() {
+		buf := scratch[:0]
+		_ = pathkit.AppendJoinURL(buf, base, "repos", "lemon4ksan", "aoni", "issues", "100")
+	}
+}
+
+func BenchmarkAncestors_ZeroAlloc(b *testing.B) {
+	p := pathkit.New("/var/log/nginx/app/access.log")
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for b.Loop() {
+		for a := range p.Ancestors() {
+			_ = a
+		}
+	}
 }
 
 func BenchmarkPath_JoinURL(b *testing.B) {
