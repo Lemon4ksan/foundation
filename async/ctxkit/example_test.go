@@ -55,3 +55,17 @@ func ExamplePool() {
 
 	// Output: 9876
 }
+
+func ExampleEntries() {
+	ctx := ctxkit.Background()
+	ctx.Set("user_id", 42)
+	ctx.Set("role", "admin")
+
+	for k, v := range ctx.Entries() {
+		fmt.Printf("%s=%v\n", k, v)
+	}
+
+	// Output:
+	// role=admin
+	// user_id=42
+}

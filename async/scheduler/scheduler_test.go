@@ -221,6 +221,75 @@ func TestThrottle_Execution_LimitsRate(t *testing.T) {
 	})
 }
 
+func TestDebounceFn_Execution_DelaysAndPassesArgument(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		var lastArg atomic.Pointer[string]
+
+		debounced := DebounceFn(100*time.Millisecond, func(s string) {
+			lastArg.Store(&s)
+		})
+
+		debounced("first")
+		time.Sleep(50 * time.Millisecond)
+		debounced("second")
+		time.Sleep(50 * time.Millisecond)
+
+		if lastArg.Load() != nil {
+			t.Errorf("lastArg before full timeout = %v, want nil", lastArg.Load())
+		}
+
+		time.Sleep(100 * time.Millisecond)
+
+		got := lastArg.Load()
+		if got == nil || *got != "second" {
+			t.Errorf("lastArg after timeout = %v, want 'second'", got)
+		}
+	})
+}
+
+func TestThrottleFn_Execution_LimitsRateAndPassesArgument(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		var (
+			mu   sync.Mutex
+			args []string
+		)
+
+		throttled := ThrottleFn(100*time.Millisecond, func(s string) {
+			mu.Lock()
+			args = append(args, s)
+			mu.Unlock()
+		})
+
+		throttled("A")
+		throttled("B")
+		throttled("C")
+
+		synctest.Wait()
+
+		mu.Lock()
+		count := len(args)
+		mu.Unlock()
+
+		if count != 1 {
+			t.Errorf("count immediately = %d, want 1", count)
+		}
+
+		time.Sleep(150 * time.Millisecond)
+
+		throttled("D")
+		synctest.Wait()
+
+		mu.Lock()
+		got := append([]string(nil), args...)
+		mu.Unlock()
+
+		want := []string{"A", "D"}
+		if !slices.Equal(got, want) {
+			t.Errorf("received args = %v, want %v", got, want)
+		}
+	})
+}
+
 func TestScheduler_Start_WakeChanDuringTimer(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		sched := New()
@@ -335,4 +404,22 @@ func TestScheduler_TaskPanicRecovery(t *testing.T) {
 			t.Errorf("expected at least 2 runs of periodic task, got %d", periodicRuns.Load())
 		}
 	})
+}
+
+func TestAllocations(t *testing.T) {
+	s := New()
+
+	task := s.AcquireTask()
+	task.NextRun = time.Now().Add(time.Hour)
+	task.Execute = func(ctx context.Context) error { return nil }
+
+	s.tasks = make(taskHeap, 0, 1024)
+
+	allocs := testing.AllocsPerRun(1000, func() {
+		s.Schedule(task)
+	})
+
+	if allocs != 0 {
+		t.Fatalf("expected 0 allocs, got %v", allocs)
+	}
 }

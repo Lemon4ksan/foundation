@@ -655,3 +655,63 @@ func TestTinyLimit(t *testing.T) {
 		t.Errorf("Limit(1e-10, 1) want false when already used")
 	}
 }
+
+func TestSometimesZero(t *testing.T) {
+	s := Sometimes{Interval: 0}
+	s.Do(func() {})
+	s.Do(func() {})
+}
+
+func TestSometimesMax(t *testing.T) {
+	s := Sometimes{Interval: math.MaxInt64}
+	s.Do(func() {})
+	s.Do(func() {})
+}
+
+func TestSometimesNegative(t *testing.T) {
+	s := Sometimes{Interval: -1}
+	s.Do(func() {})
+	s.Do(func() {})
+}
+
+func BenchmarkSometimes(b *testing.B) {
+	b.Run("no-interval", func(b *testing.B) {
+		s := Sometimes{Every: 10}
+		for i := 0; i < b.N; i++ {
+			s.Do(func() {})
+		}
+	})
+	b.Run("with-interval", func(b *testing.B) {
+		s := Sometimes{Interval: time.Second}
+		for i := 0; i < b.N; i++ {
+			s.Do(func() {})
+		}
+	})
+}
+
+func TestAllocations(t *testing.T) {
+	limiter := NewLimiter(Inf, 1)
+
+	allocs := testing.AllocsPerRun(1000, func() {
+		limiter.Allow()
+	})
+	if allocs != 0 {
+		t.Fatalf("expected 0 allocs for Allow(), got %v", allocs)
+	}
+
+	ctx := context.Background()
+	allocsWait := testing.AllocsPerRun(1000, func() {
+		_ = limiter.Wait(ctx)
+	})
+	if allocsWait != 0 {
+		t.Fatalf("expected 0 allocs for Wait(), got %v", allocsWait)
+	}
+
+	sometimes := &Sometimes{First: 1, Interval: time.Hour}
+	allocsSometimes := testing.AllocsPerRun(1000, func() {
+		sometimes.Do(func() {})
+	})
+	if allocsSometimes != 0 {
+		t.Fatalf("expected 0 allocs for Sometimes.Do(), got %v", allocsSometimes)
+	}
+}

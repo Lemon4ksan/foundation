@@ -6,11 +6,14 @@ package event
 
 import (
 	"context"
+	"runtime"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/lemon4ksan/foundation/testing/assert"
+	"github.com/lemon4ksan/foundation/testing/require"
 )
 
 type (
@@ -329,4 +332,539 @@ func TestBus_SetOnDropped(t *testing.T) {
 
 	// Clean up sub
 	sub.Unsubscribe()
+}
+
+type CustomTestEvent struct {
+	BaseEvent
+	Data string
+}
+
+type OtherTestEvent struct {
+	BaseEvent
+	ID int
+}
+
+func TestEmpirical_Event_SubscribeTyped_ValueAndPointer(t *testing.T) {
+	b := New()
+	defer b.Close()
+
+	// Subscribe to value type CustomTestEvent
+	subVal := SubscribeTyped[CustomTestEvent](b, 10)
+	defer subVal.Unsubscribe()
+
+	// Publish value
+	b.Publish(CustomTestEvent{Data: "value-payload"})
+
+	select {
+	case ev := <-subVal.C():
+		if ev.Data != "value-payload" {
+			t.Fatalf("expected value-payload, got %q", ev.Data)
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("timeout waiting for typed value event")
+	}
+
+	// Publish pointer to CustomTestEvent — SubscribeTyped should unwrap pointer to value
+	b.Publish(&CustomTestEvent{Data: "pointer-payload"})
+
+	select {
+	case ev := <-subVal.C():
+		if ev.Data != "pointer-payload" {
+			t.Fatalf("expected pointer-payload, got %q", ev.Data)
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("timeout waiting for unwrapped pointer event")
+	}
+
+	// Publish irrelevant event: should NOT be delivered
+	b.Publish(OtherTestEvent{ID: 123})
+	select {
+	case ev := <-subVal.C():
+		t.Fatalf("unexpected event received on typed sub: %+v", ev)
+	case <-time.After(50 * time.Millisecond):
+		// Expected: no event delivered
+	}
+}
+
+func TestEmpirical_Event_EventsSeq_EarlyTerminationAndNoLeak(t *testing.T) {
+	b := New()
+	defer b.Close()
+
+	ctx := t.Context()
+
+	beforeG := runtime.NumGoroutine()
+
+	// 1. Raw Subscription EventsSeq early break
+	subRaw := b.Subscribe(CustomTestEvent{})
+	go func() {
+		for i := range 10 {
+			b.Publish(CustomTestEvent{Data: "seq"})
+			time.Sleep(2 * time.Millisecond)
+			_ = i
+		}
+	}()
+
+	rawCount := 0
+	for ev := range subRaw.EventsSeq(ctx) {
+		_ = ev
+		rawCount++
+		if rawCount == 2 {
+			break // early termination
+		}
+	}
+	if rawCount != 2 {
+		t.Fatalf("expected rawCount 2, got %d", rawCount)
+	}
+	subRaw.Unsubscribe()
+
+	// 2. TypedSubscription EventsSeq early break
+	subTyped := SubscribeTyped[CustomTestEvent](b)
+	go func() {
+		for range 10 {
+			b.Publish(CustomTestEvent{Data: "typed-seq"})
+			time.Sleep(2 * time.Millisecond)
+		}
+	}()
+
+	typedCount := 0
+	for ev := range subTyped.EventsSeq(ctx) {
+		_ = ev
+		typedCount++
+		if typedCount == 3 {
+			break // early termination
+		}
+	}
+	if typedCount != 3 {
+		t.Fatalf("expected typedCount 3, got %d", typedCount)
+	}
+	subTyped.Unsubscribe()
+
+	// Verify goroutines after unsubscribe
+	time.Sleep(50 * time.Millisecond)
+	runtime.GC()
+	afterG := runtime.NumGoroutine()
+	if afterG > beforeG+2 {
+		t.Fatalf("goroutines leaked in event iteration: before=%d, after=%d", beforeG, afterG)
+	}
+}
+
+func TestEmpirical_Event_SubscribeTyped_ConcurrentPublishAndUnsubscribe(t *testing.T) {
+	b := New()
+	defer b.Close()
+
+	sub := SubscribeTyped[CustomTestEvent](b, 100)
+
+	var wg sync.WaitGroup
+	// 5 concurrent publishers
+	for p := range 5 {
+		wg.Add(1)
+		go func(pid int) {
+			defer wg.Done()
+			for i := range 50 {
+				b.Publish(CustomTestEvent{Data: "msg"})
+				if i%10 == 0 {
+					runtime.Gosched()
+				}
+			}
+		}(p)
+	}
+
+	// 1 consumer goroutine
+	consumed := 0
+	wg.Go(func() {
+		for range sub.C() {
+			consumed++
+			if consumed >= 50 {
+				sub.Unsubscribe()
+				return
+			}
+		}
+	})
+
+	wg.Wait()
+}
+
+type utilTestEvent struct {
+	BaseEvent
+	Data string
+}
+
+func TestSubscribeTo_DispatchesTypedEvent(t *testing.T) {
+	t.Parallel()
+
+	bus := New()
+	defer bus.Close()
+
+	ctx := t.Context()
+
+	received := make(chan string, 1)
+
+	subCancel := SubscribeTo[*utilTestEvent](ctx, bus, func(ev *utilTestEvent) {
+		received <- ev.Data
+	})
+	defer subCancel()
+
+	bus.Publish(&utilTestEvent{Data: "hello_event"})
+
+	select {
+	case data := <-received:
+		assert.Equal(t, "hello_event", data)
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for event delivery")
+	}
+}
+
+func TestSubscribeTo_CancelStopsDelivery(t *testing.T) {
+	t.Parallel()
+
+	bus := New()
+	defer bus.Close()
+
+	ctx := t.Context()
+
+	var count atomic.Int32
+
+	subCancel := SubscribeTo[*utilTestEvent](ctx, bus, func(ev *utilTestEvent) {
+		count.Add(1)
+	})
+
+	bus.Publish(&utilTestEvent{Data: "first"})
+
+	require.Eventually(t, func() bool {
+		return count.Load() == 1
+	}, 2*time.Second, 10*time.Millisecond)
+
+	probeReceived := make(chan struct{}, 1)
+
+	probeCancel := SubscribeTo[*utilTestEvent](ctx, bus, func(ev *utilTestEvent) {
+		if ev.Data == "second" {
+			select {
+			case probeReceived <- struct{}{}:
+			default:
+			}
+		}
+	})
+	defer probeCancel()
+
+	subCancel()
+
+	bus.Publish(&utilTestEvent{Data: "second"})
+
+	select {
+	case <-probeReceived:
+	case <-time.After(2 * time.Second):
+		t.Fatal("timeout waiting for probe event to confirm dispatch")
+	}
+
+	assert.Equal(t, int32(1), count.Load())
+}
+
+func TestSubscribeTo_ContextCancellation(t *testing.T) {
+	t.Parallel()
+
+	bus := New()
+	defer bus.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	var count atomic.Int32
+	SubscribeTo[*utilTestEvent](ctx, bus, func(ev *utilTestEvent) {
+		count.Add(1)
+	})
+
+	bus.Publish(&utilTestEvent{Data: "e1"})
+	require.Eventually(t, func() bool {
+		return count.Load() == 1
+	}, 2*time.Second, 10*time.Millisecond)
+
+	probeReceived := make(chan struct{}, 1)
+
+	probeCancel := SubscribeTo[*utilTestEvent](context.Background(), bus, func(ev *utilTestEvent) {
+		if ev.Data == "e2" {
+			select {
+			case probeReceived <- struct{}{}:
+			default:
+			}
+		}
+	})
+	defer probeCancel()
+
+	cancel()
+
+	bus.Publish(&utilTestEvent{Data: "e2"})
+
+	select {
+	case <-probeReceived:
+	case <-time.After(2 * time.Second):
+		t.Fatal("timeout waiting for probe event to confirm dispatch")
+	}
+
+	assert.Equal(t, int32(1), count.Load())
+}
+
+func TestSubscribeTo_NilSafety(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	// Nil bus
+	c1 := SubscribeTo[*utilTestEvent](ctx, nil, func(ev *utilTestEvent) {})
+	assert.NotNil(t, c1)
+	c1() // no panic
+
+	// Nil handler
+	bus := New()
+	defer bus.Close()
+
+	c2 := SubscribeTo[*utilTestEvent](ctx, bus, nil)
+	assert.NotNil(t, c2)
+	c2() // no panic
+}
+
+func TestSubscribeTo_IdempotentCancel(t *testing.T) {
+	t.Parallel()
+
+	bus := New()
+	defer bus.Close()
+
+	ctx := context.Background()
+	cancel := SubscribeTo[*utilTestEvent](ctx, bus, func(ev *utilTestEvent) {})
+
+	var wg sync.WaitGroup
+	for range 20 {
+		wg.Go(func() {
+			cancel()
+		})
+	}
+
+	wg.Wait()
+}
+
+func TestSubscribeSeq_StreamsEvents(t *testing.T) {
+	t.Parallel()
+
+	bus := New()
+	defer bus.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	seq := SubscribeSeq[*utilTestEvent](ctx, bus)
+
+	go func() {
+		bus.Publish(&utilTestEvent{Data: "msg1"})
+		bus.Publish(&utilTestEvent{Data: "msg2"})
+		bus.Publish(&utilTestEvent{Data: "msg3"})
+	}()
+
+	var received []string
+	for ev := range seq {
+		received = append(received, ev.Data)
+		if len(received) == 3 {
+			break
+		}
+	}
+
+	assert.Equal(t, []string{"msg1", "msg2", "msg3"}, received)
+}
+
+func TestSubscribeSeq_EarlyBreakCleansUp(t *testing.T) {
+	t.Parallel()
+
+	bus := New()
+	defer bus.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	seq := SubscribeSeq[*utilTestEvent](ctx, bus)
+
+	go func() {
+		bus.Publish(&utilTestEvent{Data: "event_1"})
+		bus.Publish(&utilTestEvent{Data: "event_2"})
+	}()
+
+	count := 0
+	for range seq {
+		count++
+		break // Break immediately after 1 event
+	}
+
+	assert.Equal(t, 1, count)
+}
+
+func TestSubscribeSeq_ContextCancellationStopsLoop(t *testing.T) {
+	t.Parallel()
+
+	bus := New()
+	defer bus.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	done := make(chan struct{})
+	count := 0
+
+	go func() {
+		for range SubscribeSeq[*utilTestEvent](ctx, bus) {
+			count++
+		}
+
+		close(done)
+	}()
+
+	cancel()
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("timeout waiting for iterator loop to stop on context cancellation")
+	}
+
+	assert.Equal(t, 0, count)
+}
+
+func TestSubscribeSeq_BusClosedStopsLoop(t *testing.T) {
+	t.Parallel()
+
+	bus := New()
+
+	done := make(chan struct{})
+	count := 0
+
+	go func() {
+		for range SubscribeSeq[*utilTestEvent](context.Background(), bus) {
+			count++
+		}
+
+		close(done)
+	}()
+
+	_ = bus.Close()
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("timeout waiting for iterator loop to stop on bus close")
+	}
+
+	assert.Equal(t, 0, count)
+}
+
+func TestSubscribeSeq_NilBus(t *testing.T) {
+	t.Parallel()
+
+	count := 0
+	for range SubscribeSeq[*utilTestEvent](context.Background(), nil) {
+		count++
+	}
+
+	assert.Equal(t, 0, count)
+}
+
+func TestSubscribe_ParallelAndRaceDetector(t *testing.T) {
+	t.Parallel()
+
+	bus := New()
+	defer bus.Close()
+
+	ctx := t.Context()
+
+	var receivedCount atomic.Int64
+
+	numSubs := 5
+	cancels := make([]func(), numSubs)
+
+	for i := range numSubs {
+		cancels[i] = SubscribeTo[*utilTestEvent](ctx, bus, func(ev *utilTestEvent) {
+			receivedCount.Add(1)
+		}, 1024)
+	}
+
+	var wg sync.WaitGroup
+
+	publishers := 10
+	eventsPerPublisher := 50
+
+	for p := range publishers {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+
+			for range eventsPerPublisher {
+				bus.Publish(&utilTestEvent{Data: "data"})
+			}
+		}(p)
+	}
+
+	wg.Wait()
+
+	expectedTotal := int64(numSubs * publishers * eventsPerPublisher)
+	require.Eventually(t, func() bool {
+		return receivedCount.Load() == expectedTotal
+	}, 3*time.Second, 10*time.Millisecond)
+
+	for _, c := range cancels {
+		c()
+	}
+}
+
+func TestBaseEvent_Methods(t *testing.T) {
+	var be BaseEvent
+	be.isEvent()
+	ctx := be.Context()
+	if ctx == nil {
+		t.Fatal("expected non-nil context")
+	}
+	customCtx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	be.SetContext(customCtx)
+	if be.Context() != customCtx {
+		t.Fatal("expected set context")
+	}
+}
+
+func TestStandaloneEventsSeq(t *testing.T) {
+	b := New()
+	defer b.Close()
+
+	sub := b.SubscribeBuffer(10, CustomTestEvent{})
+	defer sub.Unsubscribe()
+
+	b.Publish(CustomTestEvent{Data: "hello"})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	count := 0
+	for ev := range EventsSeq(ctx, sub) {
+		if ev.(CustomTestEvent).Data == "hello" {
+			count++
+			break
+		}
+	}
+	if count != 1 {
+		t.Fatalf("expected 1 event, got %d", count)
+	}
+}
+
+func TestEventsSeq_ContextCancellation(t *testing.T) {
+	b := New()
+	defer b.Close()
+
+	sub := b.SubscribeBuffer(10, CustomTestEvent{})
+	defer sub.Unsubscribe()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // canceled upfront
+
+	for range sub.EventsSeq(ctx) {
+		t.Fatal("should not yield")
+	}
+
+	typedSub := SubscribeTyped[CustomTestEvent](b, 10)
+	defer typedSub.Unsubscribe()
+
+	for range typedSub.EventsSeq(ctx) {
+		t.Fatal("should not yield")
+	}
 }

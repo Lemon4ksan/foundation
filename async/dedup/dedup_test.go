@@ -7,6 +7,7 @@ package dedup
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -470,32 +471,161 @@ func TestGroup_CallAlreadyDoneBranches(t *testing.T) {
 
 func TestGroup_Wait_CancellationAfterDone(t *testing.T) {
 	g := &Group[string, string]{}
-	ctx, cancel := context.WithCancel(context.Background())
 
-	resCh := make(chan Result[string], 1)
-	c := &call[string]{
-		done: true,
-	}
-
-	// Place result on channel
-	resCh <- Result[string]{Val: "cancelled-but-done"}
-	cancel() // Cancel context
-
-	val, err := g.wait(ctx, "test-key", c, resCh)
-	if err != nil || val != "cancelled-but-done" {
-		t.Errorf("wait with cancelled ctx but done=true returned val=%q, err=%v", val, err)
-	}
-
-	// Test panic propagation on cancellation when done=true
-	resChPanic := make(chan Result[string], 1)
-	resChPanic <- Result[string]{PanicVal: "wait-panic"}
-
-	defer func() {
-		r := recover()
-		if r != "wait-panic" {
-			t.Errorf("recovered = %v, want 'wait-panic'", r)
+	for range 30 {
+		c := &call[string]{
+			done: true,
 		}
-	}()
+		resCh := make(chan Result[string], 1)
+		resCh <- Result[string]{Val: "cancelled-but-done"}
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
 
-	_, _ = g.wait(ctx, "test-key-panic", c, resChPanic)
+		val, err := g.wait(ctx, "test-key", c, resCh)
+		if err != nil || val != "cancelled-but-done" {
+			t.Errorf("wait with cancelled ctx but done=true returned val=%q, err=%v", val, err)
+		}
+	}
+
+	for range 30 {
+		func() {
+			c := &call[string]{
+				done: true,
+			}
+			resCh := make(chan Result[string], 1)
+			resCh <- Result[string]{PanicVal: "wait-panic"}
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+
+			defer func() {
+				r := recover()
+				if r != "wait-panic" {
+					t.Errorf("recovered = %v, want 'wait-panic'", r)
+				}
+			}()
+
+			_, _ = g.wait(ctx, "test-key-panic", c, resCh)
+		}()
+	}
+}
+
+func TestEmpirical_Dedup_KeysSeq_Empty(t *testing.T) {
+	g := &Group[string, int]{}
+
+	if g.InFlight() != 0 || g.Len() != 0 {
+		t.Fatalf("expected 0 in flight, got %d", g.InFlight())
+	}
+
+	for k := range g.KeysSeq() {
+		t.Fatalf("expected no keys, got %s", k)
+	}
+
+	for k := range KeysSeq(g) {
+		t.Fatalf("expected no keys from package function, got %s", k)
+	}
+}
+
+func TestEmpirical_Dedup_KeysSeq_InFlightAndEarlyTermination(t *testing.T) {
+	g := &Group[string, int]{}
+
+	release := make(chan struct{})
+	var started sync.WaitGroup
+
+	const numKeys = 5
+	for i := range numKeys {
+		started.Add(1)
+		key := fmt.Sprintf("key-%d", i)
+		go func(k string) {
+			_, _ = g.Do(context.Background(), k, func(_ context.Context) (int, error) {
+				started.Done()
+				<-release
+				return 42, nil
+			})
+		}(key)
+	}
+
+	started.Wait()
+
+	if g.InFlight() != numKeys || g.Len() != numKeys {
+		t.Fatalf("expected %d in flight, got %d", numKeys, g.InFlight())
+	}
+
+	// 1. Full traversal
+	keys := make(map[string]bool)
+	for k := range g.KeysSeq() {
+		keys[k] = true
+	}
+	if len(keys) != numKeys {
+		t.Fatalf("expected %d in-flight keys, got %d", numKeys, len(keys))
+	}
+
+	// 2. Early termination: break after 0 iterations (first item returns false)
+	count := 0
+	for range g.KeysSeq() {
+		count++
+		break
+	}
+	if count != 1 {
+		t.Fatalf("expected count 1 on immediate break, got %d", count)
+	}
+
+	// 3. Early termination: break after 2 iterations
+	count = 0
+	for range g.KeysSeq() {
+		count++
+		if count == 2 {
+			break
+		}
+	}
+	if count != 2 {
+		t.Fatalf("expected count 2, got %d", count)
+	}
+
+	close(release)
+	time.Sleep(20 * time.Millisecond)
+
+	emptyCount := 0
+	for range g.KeysSeq() {
+		emptyCount++
+	}
+	if emptyCount != 0 {
+		t.Fatalf("expected 0 in-flight keys after completion, got %d", emptyCount)
+	}
+	if g.InFlight() != 0 {
+		t.Fatalf("expected 0 in flight, got %d", g.InFlight())
+	}
+	if g.Len() != 0 {
+		t.Fatalf("expected 0 len, got %d", g.Len())
+	}
+}
+
+func TestGroup_NilReceiver(t *testing.T) {
+	var g *Group[string, int]
+
+	count := 0
+	for range g.KeysSeq() {
+		count++
+	}
+	if count != 0 {
+		t.Fatalf("expected 0 from nil KeysSeq, got %d", count)
+	}
+	if n := g.InFlight(); n != 0 {
+		t.Fatalf("expected 0 from nil InFlight, got %d", n)
+	}
+	if n := g.Len(); n != 0 {
+		t.Fatalf("expected 0 from nil Len, got %d", n)
+	}
+}
+
+func BenchmarkKeysSeq_Empty(b *testing.B) {
+	g := &Group[string, int]{}
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for b.Loop() {
+		for k := range g.KeysSeq() {
+			_ = k
+		}
+	}
 }

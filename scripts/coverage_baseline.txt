@@ -2,16 +2,16 @@
 # Generated automatically. Coverage must never drop below these values.
 # Package                                                            Coverage
 github.com/lemon4ksan/foundation/argkit                            85.1%
-github.com/lemon4ksan/foundation/async/ctxkit                      99.1%
-github.com/lemon4ksan/foundation/async/dedup                       99.6%
-github.com/lemon4ksan/foundation/async/event                       95.9%
+github.com/lemon4ksan/foundation/async/ctxkit                      99.2%
+github.com/lemon4ksan/foundation/async/dedup                       100.0%
+github.com/lemon4ksan/foundation/async/event                       97.1%
 github.com/lemon4ksan/foundation/async/fsm                         100.0%
 github.com/lemon4ksan/foundation/async/lifecycle                   98.2%
-github.com/lemon4ksan/foundation/async/logkit                      96.5%
+github.com/lemon4ksan/foundation/async/logkit                      97.0%
 github.com/lemon4ksan/foundation/async/pipeline                    97.3%
 github.com/lemon4ksan/foundation/async/pool                        94.3%
-github.com/lemon4ksan/foundation/async/rate                        85.5%
-github.com/lemon4ksan/foundation/async/scheduler                   81.3%
+github.com/lemon4ksan/foundation/async/rate                        91.7%
+github.com/lemon4ksan/foundation/async/scheduler                   99.5%
 github.com/lemon4ksan/foundation/async/task                        98.7%
 github.com/lemon4ksan/foundation/borrow                            94.9%
 github.com/lemon4ksan/foundation/bufkit                            94.3%
