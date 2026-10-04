@@ -33,3 +33,34 @@ func ExamplePathToURI() {
 	// file:///var/log/config.json
 	// /var/log/config.json
 }
+
+func ExamplePath_Ancestors() {
+	p := pathkit.New("/usr/local/bin")
+	for parent := range p.Ancestors() {
+		fmt.Println(parent.String())
+	}
+	// Output:
+	// /usr/local
+	// /usr
+	// /
+}
+
+func ExamplePath_Rel() {
+	base := pathkit.New("/var/www")
+	target := pathkit.New("/var/www/html/index.html")
+
+	rel, ok := target.Rel(base)
+	if ok {
+		fmt.Println(rel.String())
+	}
+	// Output:
+	// html/index.html
+}
+
+func ExampleAppendJoinURL() {
+	scratch := make([]byte, 0, 64)
+	buf := pathkit.AppendJoinURL(scratch, "https://api.example.com", "v1", "status")
+	fmt.Println(string(buf))
+	// Output:
+	// https://api.example.com/v1/status
+}

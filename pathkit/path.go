@@ -7,8 +7,8 @@ package pathkit
 import (
 	"iter"
 	"net/url"
-	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -21,6 +21,9 @@ type Path struct {
 }
 
 // New creates a new [Path] from a raw string, automatically classifying its scheme and structure.
+//
+// Concurrency & Zero-Allocation Semantics:
+// When s contains no backslashes and already has a normalized scheme, New performs zero heap allocations.
 func New(s string) Path {
 	s = strings.TrimSpace(s)
 	if s == "" {
@@ -29,7 +32,8 @@ func New(s string) Path {
 
 	schemeIdx := strings.Index(s, "://")
 	if schemeIdx != -1 {
-		scheme := strings.ToLower(s[:schemeIdx])
+		rawScheme := s[:schemeIdx]
+		scheme := normalizeScheme(rawScheme)
 		if scheme == "file" {
 			return Path{
 				raw:    s,
@@ -45,12 +49,53 @@ func New(s string) Path {
 		}
 	}
 
-	// Local path
+	// Local path: only replace backslashes if present
+	if strings.IndexByte(s, '\\') != -1 {
+		return Path{
+			raw:    strings.ReplaceAll(s, "\\", "/"),
+			scheme: "",
+			isURL:  false,
+		}
+	}
+
 	return Path{
-		raw:    strings.ReplaceAll(s, "\\", "/"),
+		raw:    s,
 		scheme: "",
 		isURL:  false,
 	}
+}
+
+// normalizeScheme returns a lowercase scheme string without allocating if already lowercase.
+func normalizeScheme(s string) string {
+	switch s {
+	case "http", "https", "file", "s3", "ws", "wss", "ftp", "ssh", "git":
+		return s
+	case "HTTP":
+		return "http"
+	case "HTTPS":
+		return "https"
+	case "FILE":
+		return "file"
+	case "S3":
+		return "s3"
+	case "WS":
+		return "ws"
+	case "WSS":
+		return "wss"
+	}
+
+	hasUpper := false
+	for i := 0; i < len(s); i++ {
+		if s[i] >= 'A' && s[i] <= 'Z' {
+			hasUpper = true
+			break
+		}
+	}
+	if !hasUpper {
+		return s
+	}
+
+	return strings.ToLower(s)
 }
 
 // FromFilePath constructs a [Path] from an OS-native file system path.
@@ -76,6 +121,14 @@ func FromURL(u *url.URL) Path {
 // String returns the normalized string representation.
 func (p Path) String() string {
 	return p.raw
+}
+
+// Append appends the normalized string representation of p to dst.
+//
+// Concurrency & Zero-Allocation Semantics:
+// Strictly zero heap allocations when dst has capacity.
+func (p Path) Append(dst []byte) []byte {
+	return append(dst, p.raw...)
 }
 
 // IsEmpty reports whether the path is empty.
@@ -125,38 +178,45 @@ func (p Path) Base() string {
 		}
 	}
 
+	if raw == "/" || raw == "\\" {
+		return "/"
+	}
+
 	// Trim trailing slashes
-	raw = strings.TrimRight(raw, "/")
-	if raw == "" {
-		return ""
+	trimmed := strings.TrimRight(raw, "/\\")
+	if trimmed == "" {
+		return "/"
 	}
 
-	slashIdx := strings.LastIndexByte(raw, '/')
+	slashIdx := strings.LastIndexAny(trimmed, "/\\")
 	if slashIdx == -1 {
-		return raw
+		return trimmed
 	}
 
-	return raw[slashIdx+1:]
+	return trimmed[slashIdx+1:]
 }
 
 // Ext returns the file name extension (e.g. ".json" or ".gz").
 func (p Path) Ext() string {
 	base := p.Base()
-	return path.Ext(base)
+	i := strings.LastIndexByte(base, '.')
+	if i <= 0 {
+		return ""
+	}
+	return base[i:]
 }
 
 // Stem returns the base file name without its extension (e.g. "app.prod" from "app.prod.json").
 func (p Path) Stem() string {
 	base := p.Base()
-	ext := path.Ext(base)
-
+	ext := p.Ext()
 	return strings.TrimSuffix(base, ext)
 }
 
 // Dir returns all but the last element of path, typically the path's directory.
 func (p Path) Dir() Path {
 	if p.raw == "" {
-		return New(".")
+		return Path{raw: ".", scheme: "", isURL: false}
 	}
 
 	if p.isURL || p.scheme != "" {
@@ -164,16 +224,48 @@ func (p Path) Dir() Path {
 		prefix := p.raw[:schemeIdx+3]
 		rest := p.raw[schemeIdx+3:]
 
-		slashIdx := strings.LastIndexByte(rest, '/')
+		trimmedRest := strings.TrimRight(rest, "/\\")
+		slashIdx := strings.LastIndexAny(trimmedRest, "/\\")
 		if slashIdx == -1 {
-			return New(prefix + rest)
+			return Path{
+				raw:    p.raw,
+				scheme: p.scheme,
+				isURL:  p.isURL,
+			}
 		}
 
-		return New(prefix + rest[:slashIdx])
+		return Path{
+			raw:    prefix + trimmedRest[:slashIdx],
+			scheme: p.scheme,
+			isURL:  p.isURL,
+		}
 	}
 
-	dir := path.Dir(p.raw)
-	return New(dir)
+	// Local path
+	trimmed := strings.TrimRight(p.raw, "/\\")
+	if trimmed == "" {
+		return Path{raw: "/", scheme: "", isURL: false}
+	}
+
+	slashIdx := strings.LastIndexAny(trimmed, "/\\")
+	if slashIdx == -1 {
+		return Path{raw: ".", scheme: "", isURL: false}
+	}
+
+	if slashIdx == 0 {
+		return Path{raw: "/", scheme: "", isURL: false}
+	}
+
+	// Windows drive letter e.g. "C:/"
+	if slashIdx == 2 && len(trimmed) >= 2 && trimmed[1] == ':' {
+		return Path{raw: trimmed[:3], scheme: "", isURL: false}
+	}
+
+	return Path{
+		raw:    trimmed[:slashIdx],
+		scheme: "",
+		isURL:  false,
+	}
 }
 
 // WithExt returns a new [Path] with its extension replaced or appended.
@@ -189,7 +281,11 @@ func (p Path) WithExt(newExt string) Path {
 	currentExt := p.Ext()
 	newRaw := strings.TrimSuffix(p.raw, currentExt) + newExt
 
-	return New(newRaw)
+	return Path{
+		raw:    newRaw,
+		scheme: p.scheme,
+		isURL:  p.isURL,
+	}
 }
 
 // Join joins path with subsequent path segments safely.
@@ -207,7 +303,34 @@ func (p Path) Join(segments ...string) Path {
 
 // Clean returns the shortest path name equivalent to path by purely lexical processing.
 func (p Path) Clean() Path {
-	return New(Clean(p.raw))
+	return Path{
+		raw:    Clean(p.raw),
+		scheme: p.scheme,
+		isURL:  p.isURL,
+	}
+}
+
+// AppendFilePath appends the native OS file path representation suitable for [os.Open] into dst.
+// On Windows, appends backslashed paths ("C:\foo\bar"); on Unix, appends forward slashes ("/foo/bar").
+func (p Path) AppendFilePath(dst []byte) []byte {
+	if p.scheme == "file" {
+		var err error
+		dst, err = AppendURIToPath(dst, p.raw)
+		if err == nil {
+			return dst
+		}
+	}
+
+	start := len(dst)
+	dst = append(dst, p.raw...)
+	if runtime.GOOS == "windows" {
+		for i := start; i < len(dst); i++ {
+			if dst[i] == '/' {
+				dst[i] = '\\'
+			}
+		}
+	}
+	return dst
 }
 
 // FilePath returns the native OS file path representation suitable for [os.Open] or standard file operations.
@@ -220,6 +343,15 @@ func (p Path) FilePath() string {
 	}
 
 	return filepath.FromSlash(p.raw)
+}
+
+// AppendURI appends an RFC 8089 compliant URI string to dst.
+func (p Path) AppendURI(dst []byte) []byte {
+	if p.isURL || p.scheme == "file" {
+		return append(dst, p.raw...)
+	}
+
+	return AppendPathToURI(dst, p.raw)
 }
 
 // URI returns an RFC 8089 compliant URI string (e.g. "file:///C:/foo/bar" or "https://domain.com/path").
@@ -235,28 +367,30 @@ func (p Path) URI() string {
 // Iteration stops immediately when yield returns false.
 //
 // Concurrency & Zero-Allocation Semantics:
-// SegmentsSeq operates purely by slicing substrings without heap allocations.
+// SegmentsSeq operates purely by slicing substrings without heap allocations across all operating systems.
 // It is fully thread-safe and safe for concurrent execution.
 func SegmentsSeq(pathStr string) iter.Seq[string] {
 	return func(yield func(string) bool) {
 		p := pathStr
 		if idx := strings.Index(p, "://"); idx != -1 {
 			rest := p[idx+3:]
-			if slash := strings.IndexByte(rest, '/'); slash != -1 {
+			if slash := strings.IndexAny(rest, "/\\"); slash != -1 {
 				p = rest[slash:]
 			} else {
 				p = ""
 			}
 		}
-		p = strings.ReplaceAll(p, "\\", "/")
+
 		for len(p) > 0 {
-			for len(p) > 0 && p[0] == '/' {
+			// Skip leading slashes
+			for len(p) > 0 && (p[0] == '/' || p[0] == '\\') {
 				p = p[1:]
 			}
 			if len(p) == 0 {
 				break
 			}
-			nextSlash := strings.IndexByte(p, '/')
+
+			nextSlash := strings.IndexAny(p, "/\\")
 			var seg string
 			if nextSlash == -1 {
 				seg = p
@@ -265,6 +399,7 @@ func SegmentsSeq(pathStr string) iter.Seq[string] {
 				seg = p[:nextSlash]
 				p = p[nextSlash+1:]
 			}
+
 			if !yield(seg) {
 				return
 			}
@@ -280,4 +415,122 @@ func (p Path) SegmentsSeq() iter.Seq[string] {
 // Segments returns an iterator over the path segments of p.
 func (p Path) Segments() iter.Seq[string] {
 	return SegmentsSeq(p.raw)
+}
+
+// Segments2 returns a push iterator over index and segment pairs of p.
+//
+// Concurrency & Zero-Allocation Semantics:
+// Strictly zero heap allocations.
+func (p Path) Segments2() iter.Seq2[int, string] {
+	return func(yield func(int, string) bool) {
+		idx := 0
+		for seg := range p.SegmentsSeq() {
+			if !yield(idx, seg) {
+				return
+			}
+			idx++
+		}
+	}
+}
+
+// Ancestors returns a push iterator yielding directory ancestors from immediate parent up to the root.
+// For example, for "/a/b/c", yields "/a/b", "/a", and "/".
+//
+// Concurrency & Zero-Allocation Semantics:
+// Strictly zero heap allocations.
+func (p Path) Ancestors() iter.Seq[Path] {
+	return func(yield func(Path) bool) {
+		curr := p.Dir()
+		prev := p
+		for !curr.IsEmpty() && curr != prev && curr.raw != "." {
+			if !yield(curr) {
+				return
+			}
+			prev = curr
+			curr = curr.Dir()
+		}
+	}
+}
+
+// HasPrefix reports whether p has the directory prefix prefix.
+// Both paths are compared segment by segment.
+func (p Path) HasPrefix(prefix Path) bool {
+	if p.isURL != prefix.isURL || p.scheme != prefix.scheme {
+		return false
+	}
+
+	pSegs := p.Segments()
+	prefixSegs := prefix.Segments()
+
+	pNext, pStop := iter.Pull(pSegs)
+	defer pStop()
+
+	prefixNext, prefixStop := iter.Pull(prefixSegs)
+	defer prefixStop()
+
+	for {
+		preSeg, preOk := prefixNext()
+		if !preOk {
+			// All prefix segments matched
+			return true
+		}
+
+		pSeg, pOk := pNext()
+		if !pOk || pSeg != preSeg {
+			return false
+		}
+	}
+}
+
+// Rel computes the relative path from base to p.
+// If the paths do not share a common base or have incompatible schemes, returns (Path{}, false).
+func (p Path) Rel(base Path) (Path, bool) {
+	if p.isURL != base.isURL || p.scheme != base.scheme {
+		return Path{}, false
+	}
+
+	var baseParts []string
+	for s := range base.Segments() {
+		baseParts = append(baseParts, s)
+	}
+
+	var targetParts []string
+	for s := range p.Segments() {
+		targetParts = append(targetParts, s)
+	}
+
+	// Find common prefix
+	common := 0
+	for common < len(baseParts) && common < len(targetParts) && baseParts[common] == targetParts[common] {
+		common++
+	}
+
+	var resParts []string
+	for i := common; i < len(baseParts); i++ {
+		resParts = append(resParts, "..")
+	}
+	resParts = append(resParts, targetParts[common:]...)
+
+	if len(resParts) == 0 {
+		return Path{raw: ".", scheme: "", isURL: false}, true
+	}
+
+	var sb strings.Builder
+	for i, part := range resParts {
+		if i > 0 {
+			sb.WriteByte('/')
+		}
+		sb.WriteString(part)
+	}
+
+	return Path{raw: sb.String(), scheme: "", isURL: false}, true
+}
+
+// Match reports whether the path's Base matches the shell pattern.
+// Supported patterns: '*' (matches any sequence of non-separator chars),
+// '?' (matches any single non-separator char), and character classes '[...]'.
+func (p Path) Match(pattern string) bool {
+	base := p.Base()
+	matched, _ := filepath.Match(pattern, base)
+	return matched
 }
