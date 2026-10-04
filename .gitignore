@@ -4,8 +4,9 @@
 *.exe
 *.test
 *.out
+*.pprof
 coverage.txt
-profile.pprof
 vendor/
 go.work
 go.work.sum
+.agents/teamwork
