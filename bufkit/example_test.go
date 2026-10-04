@@ -36,6 +36,18 @@ func ExampleChain() {
 	// Read 41 bytes
 }
 
+func ExampleChain_Peek() {
+	chain := bufkit.NewChain()
+	defer chain.Release()
+
+	chain.WriteString("PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n")
+	peeked, _ := chain.Peek(3)
+	fmt.Printf("Peeked prefix: %s (Len remains %d)\n", string(peeked), chain.Len())
+
+	// Output:
+	// Peeked prefix: PRI (Len remains 24)
+}
+
 func ExampleRing() {
 	ring := bufkit.NewRing[byte](64 * 1024)
 
@@ -48,4 +60,19 @@ func ExampleRing() {
 
 	// Output:
 	// Popped a (ok: true)
+}
+
+func ExampleRing_PushBatch() {
+	ring := bufkit.NewRing[int](16)
+
+	items := []int{10, 20, 30, 40}
+	pushed := ring.PushBatch(items)
+
+	dest := make([]int, 2)
+	popped := ring.PopBatch(dest)
+
+	fmt.Printf("Pushed: %d, Popped: %d, Values: %v\n", pushed, popped, dest)
+
+	// Output:
+	// Pushed: 4, Popped: 2, Values: [10 20]
 }

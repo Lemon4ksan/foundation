@@ -38,6 +38,7 @@ func releaseChunk(b []byte) {
 // Chain is a zero-allocation scatter-gather buffer composed of fixed-size pooled memory chunks.
 // It avoids continuous memory reallocation and copying when growing dynamic payloads.
 type Chain struct {
+	initial [8][]byte // inline storage for up to 8 chunks (32KB) without heap slice allocation
 	chunks  [][]byte
 	headIdx int // Read offset within chunks[0]
 	tailIdx int // Write offset within chunks[len(chunks)-1]
@@ -46,14 +47,21 @@ type Chain struct {
 
 // NewChain instantiates an empty [Chain].
 func NewChain() *Chain {
-	return &Chain{
-		chunks: make([][]byte, 0, 4),
-	}
+	c := &Chain{}
+	c.chunks = c.initial[:0]
+	return c
 }
 
 // Len returns the total number of unread bytes in the buffer chain.
 func (c *Chain) Len() int {
 	return c.length
+}
+
+// ensureInit ensures chunks slice points to inline storage if uninitialized.
+func (c *Chain) ensureInit() {
+	if c.chunks == nil {
+		c.chunks = c.initial[:0]
+	}
 }
 
 // Write appends the contents of p to the chain, acquiring new pooled chunks as needed.
@@ -62,6 +70,7 @@ func (c *Chain) Write(p []byte) (int, error) {
 		return 0, nil
 	}
 
+	c.ensureInit()
 	totalWritten := len(p)
 	c.length += totalWritten
 
@@ -89,6 +98,7 @@ func (c *Chain) WriteString(s string) (int, error) {
 		return 0, nil
 	}
 
+	c.ensureInit()
 	totalWritten := len(s)
 	c.length += totalWritten
 
@@ -112,6 +122,7 @@ func (c *Chain) WriteString(s string) (int, error) {
 
 // WriteByte appends a single byte to the chain.
 func (c *Chain) WriteByte(b byte) error {
+	c.ensureInit()
 	if len(c.chunks) == 0 || c.tailIdx == DefaultChunkSize {
 		c.chunks = append(c.chunks, acquireChunk())
 		c.tailIdx = 0
@@ -121,6 +132,28 @@ func (c *Chain) WriteByte(b byte) error {
 	c.tailIdx++
 	c.length++
 	return nil
+}
+
+// ReadByte reads and returns the next byte from the chain.
+// Implements the [io.ByteReader] interface.
+func (c *Chain) ReadByte() (byte, error) {
+	if c.length == 0 {
+		return 0, io.EOF
+	}
+
+	currentChunk := c.chunks[0]
+	b := currentChunk[c.headIdx]
+	c.headIdx++
+	c.length--
+	if len(c.chunks) > 1 && c.headIdx == DefaultChunkSize {
+		releaseChunk(currentChunk)
+		c.chunks = c.chunks[1:]
+		c.headIdx = 0
+	} else if len(c.chunks) == 1 && c.headIdx == c.tailIdx {
+		c.headIdx = 0
+		c.tailIdx = 0
+	}
+	return b, nil
 }
 
 // Read reads up to len(p) bytes into p from the chain.
@@ -133,20 +166,13 @@ func (c *Chain) Read(p []byte) (int, error) {
 	}
 
 	var n int
-	for len(p) > 0 && len(c.chunks) > 0 {
+	for len(p) > 0 && c.length > 0 {
 		currentChunk := c.chunks[0]
 		var available int
 		if len(c.chunks) == 1 {
 			available = c.tailIdx - c.headIdx
 		} else {
 			available = DefaultChunkSize - c.headIdx
-		}
-
-		if available <= 0 {
-			releaseChunk(currentChunk)
-			c.chunks = c.chunks[1:]
-			c.headIdx = 0
-			continue
 		}
 
 		toCopy := min(len(p), available)
@@ -161,10 +187,174 @@ func (c *Chain) Read(p []byte) (int, error) {
 			releaseChunk(currentChunk)
 			c.chunks = c.chunks[1:]
 			c.headIdx = 0
+		} else if len(c.chunks) == 1 && c.headIdx == c.tailIdx {
+			c.headIdx = 0
+			c.tailIdx = 0
 		}
 	}
 
 	return n, nil
+}
+
+// Peek returns the next n unread bytes without advancing the read position.
+// If n bytes fit in the current active chunk, it returns a zero-copy slice directly into that chunk.
+// Returns io.EOF if fewer than n bytes are available.
+func (c *Chain) Peek(n int) ([]byte, error) {
+	if n <= 0 {
+		return nil, nil
+	}
+	if n > c.length {
+		return nil, io.EOF
+	}
+
+	firstChunk := c.chunks[0]
+	var available int
+	if len(c.chunks) == 1 {
+		available = c.tailIdx - c.headIdx
+	} else {
+		available = DefaultChunkSize - c.headIdx
+	}
+
+	if n <= available {
+		return firstChunk[c.headIdx : c.headIdx+n], nil
+	}
+
+	buf := make([]byte, n)
+	offset := 0
+	remaining := n
+
+	for i, ch := range c.chunks {
+		var start, end int
+		if i == 0 {
+			start = c.headIdx
+		} else {
+			start = 0
+		}
+
+		if i == len(c.chunks)-1 {
+			end = c.tailIdx
+		} else {
+			end = DefaultChunkSize
+		}
+
+		chunkAvail := end - start
+		toCopy := min(remaining, chunkAvail)
+		copy(buf[offset:], ch[start:start+toCopy])
+		offset += toCopy
+		remaining -= toCopy
+		if remaining == 0 {
+			break
+		}
+	}
+
+	return buf, nil
+}
+
+// Discard advances the read position by up to n bytes without reading them into a destination buffer.
+// Returns the number of bytes discarded.
+func (c *Chain) Discard(n int) (int, error) {
+	if n <= 0 {
+		return 0, nil
+	}
+	if c.length == 0 {
+		return 0, io.EOF
+	}
+
+	toDiscard := min(n, c.length)
+	remaining := toDiscard
+
+	for remaining > 0 && c.length > 0 {
+		currentChunk := c.chunks[0]
+		var available int
+		if len(c.chunks) == 1 {
+			available = c.tailIdx - c.headIdx
+		} else {
+			available = DefaultChunkSize - c.headIdx
+		}
+
+		step := min(remaining, available)
+		c.headIdx += step
+		c.length -= step
+		remaining -= step
+
+		if len(c.chunks) > 1 && c.headIdx == DefaultChunkSize {
+			releaseChunk(currentChunk)
+			c.chunks = c.chunks[1:]
+			c.headIdx = 0
+		} else if len(c.chunks) == 1 && c.headIdx == c.tailIdx {
+			c.headIdx = 0
+			c.tailIdx = 0
+		}
+	}
+
+	return toDiscard, nil
+}
+
+// Next returns a slice containing the next n bytes from the buffer, advancing the read position.
+// If n fits within the current active chunk, it returns a zero-copy sub-slice directly.
+// If fewer than n bytes are available, returns the remaining unread bytes.
+func (c *Chain) Next(n int) []byte {
+	if n <= 0 || c.length == 0 {
+		return nil
+	}
+
+	n = min(n, c.length)
+	var available int
+	if len(c.chunks) == 1 {
+		available = c.tailIdx - c.headIdx
+	} else {
+		available = DefaultChunkSize - c.headIdx
+	}
+
+	if n <= available {
+		res := c.chunks[0][c.headIdx : c.headIdx+n]
+		c.headIdx += n
+		c.length -= n
+		if len(c.chunks) > 1 && c.headIdx == DefaultChunkSize {
+			releaseChunk(c.chunks[0])
+			c.chunks = c.chunks[1:]
+			c.headIdx = 0
+		} else if len(c.chunks) == 1 && c.headIdx == c.tailIdx {
+			c.headIdx = 0
+			c.tailIdx = 0
+		}
+		return res
+	}
+
+	buf := make([]byte, n)
+	_, _ = c.Read(buf)
+	return buf
+}
+
+// ReadFrom reads data from r until EOF or error and writes it to the chain without intermediate heap allocations.
+// Implements the [io.ReaderFrom] interface.
+func (c *Chain) ReadFrom(r io.Reader) (int64, error) {
+	var totalRead int64
+	c.ensureInit()
+
+	for {
+		if len(c.chunks) == 0 || c.tailIdx == DefaultChunkSize {
+			c.chunks = append(c.chunks, acquireChunk())
+			c.tailIdx = 0
+		}
+
+		lastChunk := c.chunks[len(c.chunks)-1]
+		available := DefaultChunkSize - c.tailIdx
+
+		n, err := r.Read(lastChunk[c.tailIdx : c.tailIdx+available])
+		if n > 0 {
+			c.tailIdx += n
+			c.length += n
+			totalRead += int64(n)
+		}
+
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				return totalRead, nil
+			}
+			return totalRead, err
+		}
+	}
 }
 
 // WriteTo writes all unread chain data directly to an [io.Writer] without flattening or intermediary allocation.
@@ -211,7 +401,16 @@ func (c *Chain) Bytes() []byte {
 	}
 
 	buf := make([]byte, c.length)
-	var offset int
+	_ = c.AppendBytes(buf[:0])
+	return buf
+}
+
+// AppendBytes appends all unread bytes in the chain to dst and returns the resulting slice,
+// avoiding allocations if dst has sufficient capacity.
+func (c *Chain) AppendBytes(dst []byte) []byte {
+	if c.length == 0 {
+		return dst
+	}
 
 	for i, chunk := range c.chunks {
 		var start, end int
@@ -227,11 +426,12 @@ func (c *Chain) Bytes() []byte {
 			end = DefaultChunkSize
 		}
 
-		n := copy(buf[offset:], chunk[start:end])
-		offset += n
+		if end > start {
+			dst = append(dst, chunk[start:end]...)
+		}
 	}
 
-	return buf
+	return dst
 }
 
 // Chunks returns slices of all active chunks for vectored write operations (such as [net.Buffers]).
@@ -306,7 +506,11 @@ func (c *Chain) Reset() {
 	for _, chunk := range c.chunks {
 		releaseChunk(chunk)
 	}
-	c.chunks = c.chunks[:0]
+	if cap(c.chunks) <= len(c.initial) {
+		c.chunks = c.initial[:0]
+	} else {
+		c.chunks = c.chunks[:0]
+	}
 	c.headIdx = 0
 	c.tailIdx = 0
 	c.length = 0
