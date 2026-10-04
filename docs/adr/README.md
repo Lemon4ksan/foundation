@@ -11,3 +11,4 @@ This directory documents architectural decisions. To add a new decision, copy `0
 - [ADR-0007: Baseline statement coverage ratchet](0007-coverage-ratchet.md)
 - [ADR-0008: Canonical package documentation in doc.go](0008-doc-go-canonical-truth.md)
 - [ADR-0009: Pull-request only workflow and automated releases](0009-pr-release-lifecycle.md)
+- [ADR-0010: Vectored I/O queues and DNS wire transport codecs](0010-vectored-io-and-dns-wire-codecs.md)
