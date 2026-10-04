@@ -7,6 +7,7 @@ package urlkit
 import (
 	"errors"
 	"hash/crc32"
+	"iter"
 	"net/url"
 	"strings"
 	"sync"
@@ -21,6 +22,9 @@ const (
 	UnescapeModePath
 )
 
+// ErrInvalidHost indicates that a host name contains forbidden or invalid ASCII characters.
+var ErrInvalidHost = errors.New("url: invalid character in host name")
+
 // fastHash computes a hardware CRC32 hash of string s to select a cache shard index.
 //
 //go:inline
@@ -29,9 +33,11 @@ func fastHash(s string) uint32 {
 }
 
 // cacheShard protects an isolated hash map partition with an RWMutex to minimize lock contention.
+// It is padded to 64 bytes to eliminate false sharing across CPU cachelines under high concurrent load.
 type cacheShard struct {
 	mu sync.RWMutex
 	m  map[string]*url.URL
+	_  [32]byte
 }
 
 type shardedURLCache struct {
@@ -153,33 +159,77 @@ func (u URLView) QueryValue(key string) (string, bool) {
 	return "", false
 }
 
-// String reconstructs the full URL string.
-func (u URLView) String() string {
-	var sb strings.Builder
+// QuerySeq returns a zero-allocation iterator yielding key-value pairs from RawQuery.
+// Keys and values with percent-encoding or '+' are unescaped using fast vector routines.
+func (u URLView) QuerySeq() iter.Seq2[string, string] {
+	return func(yield func(string, string) bool) {
+		q := u.RawQuery
+		for len(q) > 0 {
+			var pair string
+			if idx := strings.IndexByte(q, '&'); idx >= 0 {
+				pair = q[:idx]
+				q = q[idx+1:]
+			} else {
+				pair = q
+				q = ""
+			}
+			if pair == "" {
+				continue
+			}
+			k, val, found := strings.Cut(pair, "=")
+			if !found {
+				val = ""
+			}
+			if strings.IndexByte(k, '%') >= 0 || strings.IndexByte(k, '+') >= 0 {
+				if unescK, err := QueryUnescape(k); err == nil {
+					k = unescK
+				}
+			}
+			if strings.IndexByte(val, '%') >= 0 || strings.IndexByte(val, '+') >= 0 {
+				if unescVal, err := QueryUnescape(val); err == nil {
+					val = unescVal
+				}
+			}
+			if !yield(k, val) {
+				return
+			}
+		}
+	}
+}
+
+// AppendTo appends the reconstructed URL string to dst without heap allocations.
+func (u URLView) AppendTo(dst []byte) []byte {
 	if u.Scheme != "" {
-		sb.WriteString(u.Scheme)
-		sb.WriteString(":")
+		dst = append(dst, u.Scheme...)
+		dst = append(dst, ':')
 	}
 	if u.Host != "" || u.User != "" || (u.Scheme != "" && (u.Scheme == "http" || u.Scheme == "https")) {
-		sb.WriteString("//")
+		dst = append(dst, '/', '/')
 		if u.User != "" {
-			sb.WriteString(u.User)
-			sb.WriteString("@")
+			dst = append(dst, u.User...)
+			dst = append(dst, '@')
 		}
-		sb.WriteString(u.Host)
+		dst = append(dst, u.Host...)
 	}
 	if u.Path != "" {
-		sb.WriteString(u.Path)
+		dst = append(dst, u.Path...)
 	}
 	if u.RawQuery != "" {
-		sb.WriteString("?")
-		sb.WriteString(u.RawQuery)
+		dst = append(dst, '?')
+		dst = append(dst, u.RawQuery...)
 	}
 	if u.Fragment != "" {
-		sb.WriteString("#")
-		sb.WriteString(u.Fragment)
+		dst = append(dst, '#')
+		dst = append(dst, u.Fragment...)
 	}
-	return sb.String()
+	return dst
+}
+
+// String reconstructs the full URL string.
+func (u URLView) String() string {
+	estLen := len(u.Scheme) + len(u.User) + len(u.Host) + len(u.Path) + len(u.RawQuery) + len(u.Fragment) + 6
+	buf := make([]byte, 0, estLen)
+	return string(u.AppendTo(buf))
 }
 
 // ToURL converts URLView to a standard [*url.URL].
@@ -247,7 +297,20 @@ func ParseView(rawURL string) (URLView, error) {
 				}
 			}
 			if validScheme {
-				view.Scheme = strings.ToLower(schemeCandidate)
+				switch schemeCandidate {
+				case "http", "https", "ws", "wss", "ftp", "file", "tcp", "udp":
+					view.Scheme = schemeCandidate
+				case "HTTP":
+					view.Scheme = "http"
+				case "HTTPS":
+					view.Scheme = "https"
+				case "WS":
+					view.Scheme = "ws"
+				case "WSS":
+					view.Scheme = "wss"
+				default:
+					view.Scheme = strings.ToLower(schemeCandidate)
+				}
 				rest = rawURL[colonIdx+1:]
 			}
 		}
@@ -280,7 +343,7 @@ func ParseView(rawURL string) (URLView, error) {
 		b := view.Host[i]
 		if b <= ' ' || b == '<' || b == '>' || b == '"' || b == 92 || b == '^' || b == 96 || b == '{' || b == '|' ||
 			b == '}' {
-			return URLView{}, errors.New("url: invalid character in host name")
+			return URLView{}, ErrInvalidHost
 		}
 	}
 
@@ -307,8 +370,7 @@ func Parse(rawURL string) (*url.URL, error) {
 	sh.mu.RUnlock()
 
 	if ok {
-		clone := *u
-		return &clone, nil
+		return CloneURL(u), nil
 	}
 
 	parsed, err := url.Parse(rawURL)
@@ -406,12 +468,23 @@ func ResolveString(baseURL *url.URL, path string) (string, error) {
 
 // ReplaceVar performs path variable replacement ({key} -> value) in path.
 func ReplaceVar(path, key, value string) string {
-	target := "{" + key + "}"
-
-	before, after, ok := strings.Cut(path, target)
-	if !ok {
+	if key == "" || len(path) < len(key)+2 {
 		return path
 	}
+
+	idx := -1
+	for i := 0; i <= len(path)-len(key)-2; i++ {
+		if path[i] == '{' && path[i+1+len(key)] == '}' && path[i+1:i+1+len(key)] == key {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		return path
+	}
+
+	before := path[:idx]
+	after := path[idx+len(key)+2:]
 
 	bufPtr := bufPool.Get().(*[]byte)
 	buf := (*bufPtr)[:0]
@@ -426,6 +499,29 @@ func ReplaceVar(path, key, value string) string {
 	bufPool.Put(bufPtr)
 
 	return res
+}
+
+// AppendReplaceVar appends path with {key} replaced by value into dst without heap allocations.
+func AppendReplaceVar(dst []byte, path, key, value string) []byte {
+	if key == "" || len(path) < len(key)+2 {
+		return append(dst, path...)
+	}
+
+	idx := -1
+	for i := 0; i <= len(path)-len(key)-2; i++ {
+		if path[i] == '{' && path[i+1+len(key)] == '}' && path[i+1:i+1+len(key)] == key {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		return append(dst, path...)
+	}
+
+	dst = append(dst, path[:idx]...)
+	dst = append(dst, value...)
+	dst = append(dst, path[idx+len(key)+2:]...)
+	return dst
 }
 
 // FastAppendQuery appends key=value to targetURL using SIMD byte detection and pooled buffers.
@@ -483,16 +579,23 @@ func AppendRawQuery(targetURL, rawQuery string) string {
 
 // MatchDomainPattern checks if host matches pattern (supporting exact and *.wildcard matches).
 func MatchDomainPattern(host, pattern string) bool {
-	host = strings.ToLower(strings.TrimSuffix(host, "."))
-	pattern = strings.ToLower(strings.TrimSuffix(pattern, "."))
+	host = strings.TrimSuffix(host, ".")
+	pattern = strings.TrimSuffix(pattern, ".")
 
 	if !strings.HasPrefix(pattern, "*.") {
-		return host == pattern
+		return bytesconv.EqualFoldASCII(host, pattern)
 	}
 
-	suffix := pattern[1:] // ".example.com"
+	domain := pattern[2:] // "example.com"
+	if bytesconv.EqualFoldASCII(host, domain) {
+		return true
+	}
 
-	return strings.HasSuffix(host, suffix) || host == pattern[2:]
+	if len(host) > len(domain) && host[len(host)-len(domain)-1] == '.' {
+		return bytesconv.EqualFoldASCII(host[len(host)-len(domain):], domain)
+	}
+
+	return false
 }
 
 // IsCrossOrigin determines whether u1 and u2 belong to different RFC 6454 web origins.
@@ -539,20 +642,31 @@ func CanonicalPort(u *url.URL) string {
 
 // IsSameDomainOrSubdomain reports whether clean host h1 and h2 match domain or subdomain suffix.
 func IsSameDomainOrSubdomain(clean1, clean2 string) bool {
-	clean1 = strings.ToLower(clean1)
-	clean2 = strings.ToLower(clean2)
+	clean1 = strings.TrimSuffix(clean1, ".")
+	clean2 = strings.TrimSuffix(clean2, ".")
 
-	if clean1 == clean2 {
+	if bytesconv.EqualFoldASCII(clean1, clean2) {
 		return true
 	}
 
-	return strings.HasSuffix(clean1, "."+clean2) || strings.HasSuffix(clean2, "."+clean1)
+	if len(clean1) > len(clean2) && clean1[len(clean1)-len(clean2)-1] == '.' {
+		return bytesconv.EqualFoldASCII(clean1[len(clean1)-len(clean2):], clean2)
+	}
+
+	if len(clean2) > len(clean1) && clean2[len(clean2)-len(clean1)-1] == '.' {
+		return bytesconv.EqualFoldASCII(clean2[len(clean2)-len(clean1):], clean1)
+	}
+
+	return false
 }
 
 // BuildPath constructs a final URL path by interpolating pathParams and appending queryParams efficiently.
 func BuildPath(basePath string, pathParams map[string]string, queryParams url.Values) string {
-	res := basePath
+	if len(pathParams) == 0 && len(queryParams) == 0 {
+		return basePath
+	}
 
+	res := basePath
 	for k, v := range pathParams {
 		res = ReplaceVar(res, k, url.PathEscape(v))
 	}
@@ -615,11 +729,25 @@ func AppendQueryEscapeString(dst []byte, src string) []byte {
 	return dst
 }
 
-// Unescape unescapes URL percent-encoded characters (%XX) and replaces '+' with ' '
+// AppendPathEscape appends percent-encoded bytes of src to dst according to RFC 3986 §3.3.
+func AppendPathEscape(dst, src []byte) []byte {
+	return AppendQueryEscape(dst, src)
+}
+
+// AppendPathEscapeString appends percent-encoded bytes of string src to dst.
+func AppendPathEscapeString(dst []byte, src string) []byte {
+	return AppendQueryEscapeString(dst, src)
+}
+
+// QueryUnescape unescapes URL percent-encoded characters (%XX) and replaces '+' with ' '
 // using hardware vector acceleration.
 func QueryUnescape(s string) (string, error) {
 	if len(s) == 0 {
 		return "", nil
+	}
+	// Zero-allocation fast-path: if no '%' and no '+', return s directly!
+	if strings.IndexByte(s, '%') < 0 && strings.IndexByte(s, '+') < 0 {
+		return s, nil
 	}
 	src := bytesconv.S2B(s)
 	buf := make([]byte, len(src))
@@ -630,7 +758,7 @@ func QueryUnescape(s string) (string, error) {
 	return string(buf[:n]), nil
 }
 
-// UnescapeBytes unescapes URL percent-encoded characters from src into dst.
+// QueryUnescapeBytes unescapes URL percent-encoded characters from src into dst.
 func QueryUnescapeBytes(dst, src []byte) ([]byte, error) {
 	if len(src) == 0 {
 		return dst, nil
@@ -703,36 +831,35 @@ func PathUnescape(s string) (string, error) {
 	if len(s) == 0 {
 		return "", nil
 	}
+	// Zero-allocation fast-path: if no '%', return s directly!
+	if strings.IndexByte(s, '%') < 0 {
+		return s, nil
+	}
 	src := bytesconv.S2B(s)
 	buf := make([]byte, len(src))
-	n, err := pathUnescapeScalar(buf, src)
+	n, err := unescapeScalar(buf, src, UnescapeModePath)
 	if err != nil {
 		return "", err
 	}
 	return string(buf[:n]), nil
 }
 
-func pathUnescapeScalar(dst, src []byte) (int, error) {
-	out := 0
-	for i := 0; i < len(src); {
-		c := src[i]
-		if c == '%' {
-			if i+2 >= len(src) {
-				return 0, ErrInvalidEscape
-			}
-			hi := fromHexChar(src[i+1])
-			lo := fromHexChar(src[i+2])
-			if hi < 0 || lo < 0 {
-				return 0, ErrInvalidEscape
-			}
-			dst[out] = byte((hi << 4) | lo)
-			out++
-			i += 3
-		} else {
-			dst[out] = c
-			out++
-			i++
-		}
+// PathUnescapeBytes unescapes URL percent-encoded characters (%XX) from src into dst without touching '+'.
+func PathUnescapeBytes(dst, src []byte) ([]byte, error) {
+	if len(src) == 0 {
+		return dst, nil
 	}
-	return out, nil
+	start := len(dst)
+	if cap(dst)-start < len(src) {
+		newDst := make([]byte, start+len(src))
+		copy(newDst, dst)
+		dst = newDst
+	} else {
+		dst = dst[:start+len(src)]
+	}
+	n, err := unescapeScalar(dst[start:], src, UnescapeModePath)
+	if err != nil {
+		return nil, err
+	}
+	return dst[:start+n], nil
 }
