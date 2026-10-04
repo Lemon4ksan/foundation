@@ -36,17 +36,3 @@ func EnsureAlloc(v reflect.Value) (elem reflect.Value, allocated bool) {
 
 	return v, false
 }
-
-// NewOf creates a new pointer value allocating zero-initialized storage for type t.
-func NewOf(t reflect.Type) reflect.Value {
-	if t == nil {
-		return reflect.Value{}
-	}
-
-	return reflect.New(t)
-}
-
-// New creates a new zero-initialized heap-allocated instance of T.
-func New[T any]() *T {
-	return new(T)
-}

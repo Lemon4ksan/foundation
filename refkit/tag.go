@@ -5,6 +5,7 @@
 package refkit
 
 import (
+	"iter"
 	"reflect"
 	"slices"
 	"strconv"
@@ -133,14 +134,15 @@ func parseTagASCII(tagStr string) Tag {
 }
 
 func parseTagUnicode(tagStr string) Tag {
-	var parts []string
-	var start int
-	var depth int
-	var inQuotes bool
-	var quoteChar rune
+	var (
+		parts     []string
+		start     int
+		depth     int
+		inQuotes  bool
+		quoteChar rune
+	)
 
-	runes := []rune(tagStr)
-	for i, r := range runes {
+	for i, r := range tagStr {
 		switch r {
 		case '"', '\'':
 			if !inQuotes {
@@ -159,12 +161,12 @@ func parseTagUnicode(tagStr string) Tag {
 			}
 		case ',':
 			if !inQuotes && depth == 0 {
-				parts = append(parts, string(runes[start:i]))
+				parts = append(parts, tagStr[start:i])
 				start = i + 1
 			}
 		}
 	}
-	parts = append(parts, string(runes[start:]))
+	parts = append(parts, tagStr[start:])
 
 	name := strings.TrimSpace(parts[0])
 	var options []string
@@ -218,20 +220,32 @@ func (t Tag) GetFloat(key string) (float64, bool) {
 	return f, err == nil
 }
 
-// SplitOption splits a key-value option by delim (e.g. `enum=admin|user` with "|" -> ["admin", "user"]).
-func (t Tag) SplitOption(key, delim string) []string {
+// SplitOption splits a key-value option by delim, returning an iterator over the non-empty parts.
+func (t Tag) SplitOption(key, delim string) iter.Seq[string] {
 	val := t.Get(key)
-	if val == "" {
-		return nil
-	}
-	items := strings.Split(val, delim)
-	var res []string
-	for _, item := range items {
-		if item = strings.TrimSpace(item); item != "" {
-			res = append(res, item)
+	return func(yield func(string) bool) {
+		if val == "" {
+			return
+		}
+
+		remaining := val
+		for {
+			idx := strings.Index(remaining, delim)
+			if idx < 0 {
+				if item := strings.TrimSpace(remaining); item != "" {
+					yield(item)
+				}
+				return
+			}
+
+			if item := strings.TrimSpace(remaining[:idx]); item != "" {
+				if !yield(item) {
+					return
+				}
+			}
+			remaining = remaining[idx+len(delim):]
 		}
 	}
-	return res
 }
 
 // IsEmpty reports whether the tag contains no name or options.
