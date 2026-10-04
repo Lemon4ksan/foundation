@@ -10,6 +10,7 @@
 // If the capacity is exceeded, it falls back to a slice. Use [Wrap] at pipeline
 // ingress to convert a standard [context.Context] into a [*Context], and then pass
 // it everywhere. For generic value extraction, use [Value] and [ValueOr].
+// Call [Entries] or [*Context.Entries] to iterate over stored key-value pairs without allocations.
 // A [Pool] is available for recycling contexts across requests to keep allocations at zero.
 //
 // # Compared to the standard library

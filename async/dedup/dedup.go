@@ -84,6 +84,22 @@ func KeysSeq[K comparable, V any](group *Group[K, V]) iter.Seq[K] {
 	return group.KeysSeq()
 }
 
+// InFlight returns the number of currently active in-flight deduplication calls.
+func (group *Group[K, V]) InFlight() int {
+	if group == nil {
+		return 0
+	}
+	group.mu.Lock()
+	n := len(group.calls)
+	group.mu.Unlock()
+	return n
+}
+
+// Len returns the number of currently active in-flight deduplication calls.
+func (group *Group[K, V]) Len() int {
+	return group.InFlight()
+}
+
 // CallFn represents a context-aware generic function executed by a [Group].
 type CallFn[V any] func(ctx context.Context) (V, error)
 

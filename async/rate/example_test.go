@@ -39,3 +39,32 @@ func ExampleSometimes() {
 	fmt.Println(count)
 	// Output: 3
 }
+
+func ExampleSometimes_once() {
+	var s rate.Sometimes
+	s.Do(func() { fmt.Println("1") })
+	s.Do(func() { fmt.Println("2") })
+	s.Do(func() { fmt.Println("3") })
+	// Output:
+	// 1
+}
+
+func ExampleSometimes_first() {
+	s := rate.Sometimes{First: 2}
+	s.Do(func() { fmt.Println("1") })
+	s.Do(func() { fmt.Println("2") })
+	s.Do(func() { fmt.Println("3") })
+	// Output:
+	// 1
+	// 2
+}
+
+func ExampleSometimes_every() {
+	s := rate.Sometimes{Every: 2}
+	s.Do(func() { fmt.Println("1") })
+	s.Do(func() { fmt.Println("2") })
+	s.Do(func() { fmt.Println("3") })
+	// Output:
+	// 1
+	// 3
+}

@@ -6,6 +6,7 @@ package ctxkit
 
 import (
 	"context"
+	"iter"
 	"slices"
 	"sync"
 	"time"
@@ -108,6 +109,33 @@ func (c *Context) Value(key any) any {
 	}
 
 	return nil
+}
+
+// Entries returns an iterator over all key-value entries stored in this [Context],
+// yielding the most recently added entries first.
+// It executes with zero heap allocations.
+func (c *Context) Entries() iter.Seq2[any, any] {
+	return func(yield func(any, any) bool) {
+		if c == nil {
+			return
+		}
+		for _, v := range slices.Backward(c.extra) {
+			if !yield(v.key, v.value) {
+				return
+			}
+		}
+		limit := min(c.count, inlineCapacity)
+		for i := limit - 1; i >= 0; i-- {
+			if !yield(c.inline[i].key, c.inline[i].value) {
+				return
+			}
+		}
+	}
+}
+
+// Entries returns an iterator over all key-value entries in c.
+func Entries(c *Context) iter.Seq2[any, any] {
+	return c.Entries()
 }
 
 // Set attaches or updates key and val in-place within the current [Context].

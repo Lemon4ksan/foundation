@@ -279,3 +279,75 @@ func BenchmarkFastContext_Lookup_Miss(b *testing.B) {
 		_ = ctx.Value(999)
 	}
 }
+
+func TestContext_Entries(t *testing.T) {
+	// Test nil context
+	var nilCtx *ctxkit.Context
+	for k, v := range nilCtx.Entries() {
+		t.Fatalf("expected 0 entries from nil context, got %v: %v", k, v)
+	}
+	for k, v := range ctxkit.Entries(nilCtx) {
+		t.Fatalf("expected 0 entries from nil context, got %v: %v", k, v)
+	}
+
+	// Test populated context (both inline and extra)
+	ctx := ctxkit.Background()
+	for i := range 12 {
+		ctx.Set(i, i*10)
+	}
+
+	count := 0
+	seen := make(map[any]any)
+	for k, v := range ctx.Entries() {
+		seen[k] = v
+		count++
+	}
+	if count != 12 {
+		t.Fatalf("expected 12 entries, got %d", count)
+	}
+	for i := range 12 {
+		if seen[i] != i*10 {
+			t.Errorf("expected entry %d to be %d, got %v", i, i*10, seen[i])
+		}
+	}
+
+	// Test early break
+	breakCount := 0
+	for range ctx.Entries() {
+		breakCount++
+		if breakCount == 3 {
+			break
+		}
+	}
+	if breakCount != 3 {
+		t.Fatalf("expected early break at 3, got %d", breakCount)
+	}
+
+	// Test zero allocs
+	allocs := testing.AllocsPerRun(100, func() {
+		for k, v := range ctx.Entries() {
+			_ = k
+			_ = v
+		}
+	})
+	if allocs != 0 {
+		t.Fatalf("expected 0 allocs for Entries, got %f", allocs)
+	}
+}
+
+func BenchmarkContext_Entries(b *testing.B) {
+	ctx := ctxkit.Background()
+	for i := range 8 {
+		ctx.Set(i, i*10)
+	}
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for b.Loop() {
+		for k, v := range ctx.Entries() {
+			_ = k
+			_ = v
+		}
+	}
+}
