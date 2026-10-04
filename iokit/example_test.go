@@ -40,3 +40,17 @@ func ExampleMultiReadBody() {
 	// Prefix: payload
 	// Replayed: payload to inspect and replay
 }
+
+func ExampleBufferQueue() {
+	q := iokit.NewBufferQueue()
+	q.Push([]byte("hello "))
+	q.Push([]byte("vectored "))
+	q.Push([]byte("world\n"))
+
+	var buf bytes.Buffer
+	_, _ = q.WriteTo(&buf)
+	fmt.Print(buf.String())
+
+	// Output:
+	// hello vectored world
+}
