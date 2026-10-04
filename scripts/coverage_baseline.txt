@@ -42,7 +42,7 @@ github.com/lemon4ksan/foundation/crypto/sign                       83.1%
 github.com/lemon4ksan/foundation/encoding/base64                   68.4%
 github.com/lemon4ksan/foundation/encoding/bin                      77.7%
 github.com/lemon4ksan/foundation/encoding/varint                   87.2%
-github.com/lemon4ksan/foundation/fskit                             56.5%
+github.com/lemon4ksan/foundation/fskit                             90.5%
 github.com/lemon4ksan/foundation/generic                           81.6%
 github.com/lemon4ksan/foundation/iokit                             84.6%
 github.com/lemon4ksan/foundation/net/ip                            84.3%
