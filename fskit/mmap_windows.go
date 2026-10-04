@@ -7,19 +7,23 @@
 package fskit
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
+	"sync"
 	"syscall"
 	"unsafe"
 )
 
 type windowsMmap struct {
+	mu     sync.RWMutex
 	f      *os.File
 	hMap   syscall.Handle
 	addr   uintptr
 	data   []byte
 	length int64
+	closed bool
 }
 
 // OpenMmap maps the specified file path directly into the process virtual memory address space.
@@ -31,25 +35,29 @@ func OpenMmap(path string) (MmapFile, error) {
 
 	fi, err := f.Stat()
 	if err != nil {
-		f.Close()
+		_ = f.Close()
 		return nil, err
 	}
 	size := fi.Size()
+	if size < 0 {
+		_ = f.Close()
+		return nil, errors.New("fskit: negative file size")
+	}
 	if size == 0 {
-		return &windowsMmap{f: f, data: []byte{}}, nil
+		return &windowsMmap{f: f, data: []byte{}, length: 0}, nil
 	}
 
 	hMap, err := syscall.CreateFileMapping(syscall.Handle(f.Fd()), nil, syscall.PAGE_READONLY, 0, 0, nil)
 	if err != nil {
-		f.Close()
-		return nil, fmt.Errorf("CreateFileMapping: %w", err)
+		_ = f.Close()
+		return nil, fmt.Errorf("fskit: CreateFileMapping: %w", err)
 	}
 
 	addr, err := syscall.MapViewOfFile(hMap, syscall.FILE_MAP_READ, 0, 0, uintptr(size))
 	if err != nil {
 		_ = syscall.CloseHandle(hMap)
 		_ = f.Close()
-		return nil, fmt.Errorf("MapViewOfFile: %w", err)
+		return nil, fmt.Errorf("fskit: MapViewOfFile: %w", err)
 	}
 	//nolint:govet // addr is an OS memory-mapped address outside the Go heap
 	data := unsafe.Slice((*byte)(unsafe.Pointer(addr)), int(size))
@@ -64,6 +72,8 @@ func OpenMmap(path string) (MmapFile, error) {
 }
 
 func (m *windowsMmap) Bytes() []byte {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	return m.data
 }
 
@@ -72,6 +82,14 @@ func (m *windowsMmap) Len() int64 {
 }
 
 func (m *windowsMmap) ReadAt(p []byte, off int64) (int, error) {
+	if len(p) == 0 {
+		return 0, nil
+	}
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	if m.closed {
+		return 0, os.ErrClosed
+	}
 	if off < 0 || off >= m.length {
 		return 0, io.EOF
 	}
@@ -83,6 +101,13 @@ func (m *windowsMmap) ReadAt(p []byte, off int64) (int, error) {
 }
 
 func (m *windowsMmap) Close() error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.closed {
+		return nil
+	}
+	m.closed = true
+
 	var firstErr error
 	if m.addr != 0 {
 		if err := syscall.UnmapViewOfFile(m.addr); err != nil && firstErr == nil {

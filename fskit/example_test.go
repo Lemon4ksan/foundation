@@ -17,7 +17,6 @@ func ExampleFastWalk() {
 			return err
 		}
 		if !d.IsDir() {
-			// Found file
 			_ = path
 		}
 		return nil
@@ -25,8 +24,15 @@ func ExampleFastWalk() {
 	_ = err
 }
 
+func ExampleFastWalkSeq() {
+	for path, entry := range fskit.FastWalkSeq(".") {
+		if !entry.IsDir() {
+			_ = path
+		}
+	}
+}
+
 func ExampleOpenMmap() {
-	// Memory map large dataset
 	mapping, err := fskit.OpenMmap("large_dataset.bin")
 	if err != nil {
 		return
@@ -35,4 +41,16 @@ func ExampleOpenMmap() {
 
 	data := mapping.Bytes()
 	fmt.Printf("Mapped %d bytes\n", len(data))
+}
+
+func ExampleIsIncompressibleExtension() {
+	isCompressed := fskit.IsIncompressibleExtension("archive.tar.gz")
+	fmt.Println(isCompressed)
+	// Output:
+	// true
+}
+
+func ExampleAtomicWriteFile() {
+	err := fskit.AtomicWriteFile("config.json", []byte(`{"version": 1}`), 0o644)
+	_ = err
 }

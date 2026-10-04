@@ -5,23 +5,92 @@
 package fskit
 
 import (
+	"context"
+	"errors"
 	"io/fs"
 	"iter"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 )
 
 // Entry describes a filesystem entry discovered during concurrent traversal.
 type Entry struct {
-	Path    string
-	RelPath string
-	IsDir   bool
-	Size    int64
-	ModTime time.Time
+	Path     string
+	RelPath  string
+	IsDir    bool
+	FileMode fs.FileMode
+	Size     int64
+	ModTime  time.Time
 }
+
+// Name returns the base filename of the entry.
+func (e *Entry) Name() string {
+	if idx := strings.LastIndexAny(e.Path, "/\\"); idx >= 0 {
+		return e.Path[idx+1:]
+	}
+	return e.Path
+}
+
+// Size returns the length in bytes for a regular file.
+func (e *Entry) SizeBytes() int64 {
+	return e.Size
+}
+
+// Mode returns the file mode bits.
+func (e *Entry) Mode() fs.FileMode {
+	if e.FileMode != 0 {
+		return e.FileMode
+	}
+	if e.IsDir {
+		return 0o755 | fs.ModeDir
+	}
+	return 0o644
+}
+
+// ModTime returns the modification time.
+func (e *Entry) ModTimeUTC() time.Time {
+	return e.ModTime
+}
+
+// Sys returns underlying data source (always nil).
+func (e *Entry) Sys() any {
+	return nil
+}
+
+// Info returns an [fs.FileInfo] view of the Entry.
+func (e *Entry) Info() fs.FileInfo {
+	return &entryFileInfo{e: e}
+}
+
+// Type returns type bits for fs.DirEntry.
+func (e *Entry) Type() fs.FileMode {
+	return e.Mode().Type()
+}
+
+type entryFileInfo struct {
+	e *Entry
+}
+
+func (fi *entryFileInfo) Name() string       { return fi.e.Name() }
+func (fi *entryFileInfo) Size() int64        { return fi.e.Size }
+func (fi *entryFileInfo) Mode() fs.FileMode  { return fi.e.Mode() }
+func (fi *entryFileInfo) ModTime() time.Time { return fi.e.ModTime }
+func (fi *entryFileInfo) IsDir() bool        { return fi.e.IsDir }
+func (fi *entryFileInfo) Sys() any           { return nil }
+
+type entryDirEntry struct {
+	e Entry
+}
+
+func (de *entryDirEntry) Name() string               { return de.e.Name() }
+func (de *entryDirEntry) IsDir() bool                { return de.e.IsDir }
+func (de *entryDirEntry) Type() fs.FileMode          { return de.e.Type() }
+func (de *entryDirEntry) Info() (fs.FileInfo, error) { return de.e.Info(), nil }
+func (de *entryDirEntry) Entry() Entry               { return de.e }
 
 type queue struct {
 	mu     sync.Mutex
@@ -39,8 +108,10 @@ func newQueue() *queue {
 
 func (q *queue) push(d string) {
 	q.mu.Lock()
-	q.dirs = append(q.dirs, d)
-	q.cond.Signal()
+	if !q.closed {
+		q.dirs = append(q.dirs, d)
+		q.cond.Signal()
+	}
 	q.mu.Unlock()
 }
 
@@ -77,19 +148,150 @@ func (q *queue) done() {
 	q.mu.Unlock()
 }
 
-// Walk traverses targetRoot concurrently using a worker pool and emits entries to outChan.
-// It closes outChan when traversal is complete.
-func Walk(targetRoot string, outChan chan<- Entry) {
-	numWorkers := max(runtime.GOMAXPROCS(0)*2, 8)
+func (q *queue) cancel() {
+	q.mu.Lock()
+	q.closed = true
+	q.dirs = nil
+	q.cond.Broadcast()
+	q.mu.Unlock()
+}
 
-	q := newQueue()
+// WalkConfig holds configuration options for directory traversal.
+type WalkConfig struct {
+	NumWorkers     int
+	BufferSize     int
+	FollowSymlinks bool
+	Filter         func(path string, isDir bool) bool
+}
+
+// WalkOption configures directory traversal behaviour.
+type WalkOption func(*WalkConfig)
+
+// WithWorkers sets the number of concurrent worker goroutines.
+func WithWorkers(n int) WalkOption {
+	return func(c *WalkConfig) {
+		if n > 0 {
+			c.NumWorkers = n
+		}
+	}
+}
+
+// WithBufferSize sets the buffer capacity of the entry channel.
+func WithBufferSize(n int) WalkOption {
+	return func(c *WalkConfig) {
+		if n > 0 {
+			c.BufferSize = n
+		}
+	}
+}
+
+// WithFollowSymlinks configures whether symbolic links should be followed.
+func WithFollowSymlinks(follow bool) WalkOption {
+	return func(c *WalkConfig) {
+		c.FollowSymlinks = follow
+	}
+}
+
+// WithFilter sets a callback to filter encountered filesystem paths.
+// If the callback returns false, the file or directory is ignored and not entered.
+func WithFilter(filter func(path string, isDir bool) bool) WalkOption {
+	return func(c *WalkConfig) {
+		c.Filter = filter
+	}
+}
+
+func joinPath(dir, name string) string {
+	if len(dir) == 0 {
+		return name
+	}
+	last := dir[len(dir)-1]
+	if last == '/' || last == filepath.Separator {
+		return dir + name
+	}
+	return dir + string(filepath.Separator) + name
+}
+
+func fastRelPath(basePrefix, fullPath string) string {
+	if basePrefix == "." {
+		return filepath.ToSlash(fullPath)
+	}
+	prefixLen := len(basePrefix)
+	if len(fullPath) > prefixLen && strings.HasPrefix(fullPath, basePrefix) {
+		c := fullPath[prefixLen]
+		if c == '/' || c == '\\' {
+			return filepath.ToSlash(fullPath[prefixLen+1:])
+		}
+	}
+	rel, err := filepath.Rel(basePrefix, fullPath)
+	if err != nil {
+		return filepath.ToSlash(fullPath)
+	}
+	return filepath.ToSlash(rel)
+}
+
+// WalkContext traverses targetRoot concurrently using a worker pool and emits entries to outChan.
+// It closes outChan when traversal completes or when ctx is cancelled.
+func WalkContext(ctx context.Context, targetRoot string, outChan chan<- Entry, opts ...WalkOption) {
+	cfg := WalkConfig{
+		NumWorkers:     max(runtime.GOMAXPROCS(0)*2, 8),
+		BufferSize:     2048,
+		FollowSymlinks: false,
+		Filter:         nil,
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(&cfg)
+		}
+	}
+
 	cleanRoot := filepath.Clean(targetRoot)
 	basePrefix := filepath.Dir(cleanRoot)
 
+	fi, err := os.Stat(cleanRoot)
+	if err != nil {
+		close(outChan)
+		return
+	}
+
+	if !fi.IsDir() {
+		rel := filepath.Base(cleanRoot)
+		select {
+		case <-ctx.Done():
+		case outChan <- Entry{
+			Path:     cleanRoot,
+			RelPath:  filepath.ToSlash(rel),
+			IsDir:    false,
+			FileMode: fi.Mode(),
+			Size:     fi.Size(),
+			ModTime:  fi.ModTime(),
+		}:
+		}
+		close(outChan)
+		return
+	}
+
+	q := newQueue()
 	q.push(cleanRoot)
 
+	stopCh := make(chan struct{})
+	var stopOnce sync.Once
+	stop := func() {
+		stopOnce.Do(func() {
+			close(stopCh)
+			q.cancel()
+		})
+	}
+
+	go func() {
+		select {
+		case <-ctx.Done():
+			stop()
+		case <-stopCh:
+		}
+	}()
+
 	var wg sync.WaitGroup
-	for range numWorkers {
+	for range cfg.NumWorkers {
 		wg.Go(func() {
 			for {
 				dir, ok := q.pop()
@@ -100,28 +302,53 @@ func Walk(targetRoot string, outChan chan<- Entry) {
 				entries, err := os.ReadDir(dir)
 				if err == nil {
 					for _, d := range entries {
-						fullPath := filepath.Join(dir, d.Name())
-						rel, err := filepath.Rel(basePrefix, fullPath)
-						if err != nil {
+						select {
+						case <-stopCh:
+							q.done()
+							return
+						default:
+						}
+
+						dName := d.Name()
+						fullPath := joinPath(dir, dName)
+						isDir := d.IsDir()
+
+						if cfg.Filter != nil && !cfg.Filter(fullPath, isDir) {
 							continue
 						}
 
-						if d.IsDir() {
-							outChan <- Entry{
-								Path:    fullPath,
-								RelPath: filepath.ToSlash(rel) + "/",
-								IsDir:   true,
+						rel := fastRelPath(basePrefix, fullPath)
+
+						if isDir {
+							entry := Entry{
+								Path:     fullPath,
+								RelPath:  rel + "/",
+								IsDir:    true,
+								FileMode: d.Type(),
+							}
+							select {
+							case <-stopCh:
+								q.done()
+								return
+							case outChan <- entry:
 							}
 							q.push(fullPath)
 						} else {
-							fi, err := d.Info()
+							info, err := d.Info()
 							if err == nil {
-								outChan <- Entry{
-									Path:    fullPath,
-									RelPath: filepath.ToSlash(rel),
-									IsDir:   false,
-									Size:    fi.Size(),
-									ModTime: fi.ModTime(),
+								entry := Entry{
+									Path:     fullPath,
+									RelPath:  rel,
+									IsDir:    false,
+									FileMode: info.Mode(),
+									Size:     info.Size(),
+									ModTime:  info.ModTime(),
+								}
+								select {
+								case <-stopCh:
+									q.done()
+									return
+								case outChan <- entry:
 								}
 							}
 						}
@@ -133,21 +360,97 @@ func Walk(targetRoot string, outChan chan<- Entry) {
 	}
 
 	wg.Wait()
+	stop()
 	close(outChan)
 }
 
-// FastWalk traverses the directory tree rooted at root, calling walkFn for each file or directory.
-func FastWalk(root string, walkFn func(path string, d fs.DirEntry, err error) error) error {
-	ch := make(chan Entry, 2048)
-	go Walk(root, ch)
+// Walk traverses targetRoot concurrently using a worker pool and emits entries to outChan.
+// It closes outChan when traversal is complete.
+func Walk(targetRoot string, outChan chan<- Entry) {
+	WalkContext(context.Background(), targetRoot, outChan)
+}
 
-	for e := range ch {
-		de := &entryDirEntry{e: e}
-		if err := walkFn(e.Path, de, nil); err != nil {
-			return err
+// FastWalk traverses the directory tree rooted at root, calling walkFn for each file or directory.
+// It executes traversal concurrently using a worker pool.
+// If walkFn returns [filepath.SkipAll], FastWalk terminates traversal immediately and returns nil.
+// If walkFn returns any other non-nil error, FastWalk terminates traversal immediately and returns that error.
+func FastWalk(root string, walkFn func(path string, d fs.DirEntry, err error) error, opts ...WalkOption) error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	cfg := WalkConfig{
+		BufferSize: 2048,
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(&cfg)
 		}
 	}
-	return nil
+
+	ch := make(chan Entry, cfg.BufferSize)
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		WalkContext(ctx, root, ch, opts...)
+	}()
+
+	var walkErr error
+	for e := range ch {
+		if walkErr != nil {
+			continue
+		}
+		de := &entryDirEntry{e: e}
+		if err := walkFn(e.Path, de, nil); err != nil {
+			if errors.Is(err, filepath.SkipAll) {
+				walkErr = nil
+				cancel()
+				continue
+			}
+			if errors.Is(err, filepath.SkipDir) {
+				continue
+			}
+			walkErr = err
+			cancel()
+		}
+	}
+	<-done
+	return walkErr
+}
+
+// FastWalkSeq returns an iterator over the directory tree rooted at root using concurrent workers.
+// Traversal ceases immediately if yield returns false, and all worker goroutines terminate cleanly without leaking.
+func FastWalkSeq(root string, opts ...WalkOption) iter.Seq2[string, fs.DirEntry] {
+	return func(yield func(string, fs.DirEntry) bool) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		cfg := WalkConfig{
+			BufferSize: 256,
+		}
+		for _, opt := range opts {
+			if opt != nil {
+				opt(&cfg)
+			}
+		}
+
+		ch := make(chan Entry, cfg.BufferSize)
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			WalkContext(ctx, root, ch, opts...)
+		}()
+
+		for e := range ch {
+			de := &entryDirEntry{e: e}
+			if !yield(e.Path, de) {
+				cancel()
+				for range ch {
+				}
+				break
+			}
+		}
+		<-done
+	}
 }
 
 // WalkSeq returns an iterator over the directory tree rooted at root,
@@ -170,33 +473,3 @@ func WalkSeq(root string) iter.Seq2[string, os.DirEntry] {
 		})
 	}
 }
-
-type entryDirEntry struct {
-	e Entry
-}
-
-func (de *entryDirEntry) Name() string               { return filepath.Base(de.e.Path) }
-func (de *entryDirEntry) IsDir() bool                { return de.e.IsDir }
-func (de *entryDirEntry) Type() fs.FileMode          { return de.e.Info().Mode().Type() }
-func (de *entryDirEntry) Info() (fs.FileInfo, error) { return de.e.Info(), nil }
-
-// Info returns an [fs.FileInfo] view of the Entry.
-func (e *Entry) Info() fs.FileInfo {
-	var mode fs.FileMode = 0o644
-	if e.IsDir {
-		mode = 0o755 | fs.ModeDir
-	}
-	return &entryFileInfo{e: e, mode: mode}
-}
-
-type entryFileInfo struct {
-	e    *Entry
-	mode fs.FileMode
-}
-
-func (fi *entryFileInfo) Name() string       { return filepath.Base(fi.e.Path) }
-func (fi *entryFileInfo) Size() int64        { return fi.e.Size }
-func (fi *entryFileInfo) Mode() fs.FileMode  { return fi.mode }
-func (fi *entryFileInfo) ModTime() time.Time { return fi.e.ModTime }
-func (fi *entryFileInfo) IsDir() bool        { return fi.e.IsDir }
-func (fi *entryFileInfo) Sys() any           { return nil }

@@ -7,16 +7,20 @@
 package fskit
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
+	"sync"
 	"syscall"
 )
 
 type unixMmap struct {
+	mu     sync.RWMutex
 	f      *os.File
 	data   []byte
 	length int64
+	closed bool
 }
 
 // OpenMmap maps the specified file path directly into the process virtual memory address space.
@@ -28,18 +32,22 @@ func OpenMmap(path string) (MmapFile, error) {
 
 	fi, err := f.Stat()
 	if err != nil {
-		f.Close()
+		_ = f.Close()
 		return nil, err
 	}
 	size := fi.Size()
+	if size < 0 {
+		_ = f.Close()
+		return nil, errors.New("fskit: negative file size")
+	}
 	if size == 0 {
-		return &unixMmap{f: f, data: []byte{}}, nil
+		return &unixMmap{f: f, data: []byte{}, length: 0}, nil
 	}
 
 	data, err := syscall.Mmap(int(f.Fd()), 0, int(size), syscall.PROT_READ, syscall.MAP_SHARED)
 	if err != nil {
-		f.Close()
-		return nil, fmt.Errorf("mmap: %w", err)
+		_ = f.Close()
+		return nil, fmt.Errorf("fskit: mmap: %w", err)
 	}
 
 	return &unixMmap{
@@ -50,6 +58,8 @@ func OpenMmap(path string) (MmapFile, error) {
 }
 
 func (m *unixMmap) Bytes() []byte {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	return m.data
 }
 
@@ -58,6 +68,14 @@ func (m *unixMmap) Len() int64 {
 }
 
 func (m *unixMmap) ReadAt(p []byte, off int64) (int, error) {
+	if len(p) == 0 {
+		return 0, nil
+	}
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	if m.closed {
+		return 0, os.ErrClosed
+	}
 	if off < 0 || off >= m.length {
 		return 0, io.EOF
 	}
@@ -69,13 +87,20 @@ func (m *unixMmap) ReadAt(p []byte, off int64) (int, error) {
 }
 
 func (m *unixMmap) Close() error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.closed {
+		return nil
+	}
+	m.closed = true
+
 	var firstErr error
-	if m.data != nil {
+	if len(m.data) > 0 {
 		if err := syscall.Munmap(m.data); err != nil && firstErr == nil {
 			firstErr = err
 		}
-		m.data = nil
 	}
+	m.data = nil
 	if m.f != nil {
 		if err := m.f.Close(); err != nil && firstErr == nil {
 			firstErr = err

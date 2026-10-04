@@ -4,8 +4,10 @@
 
 // Package fskit provides high-performance filesystem primitives.
 //
-// It includes a concurrent multi-threaded directory traversal ([FastWalk]), cross-platform
-// memory-mapped I/O ([OpenMmap]), and fast file media heuristics.
+// It includes concurrent multi-threaded directory traversal ([FastWalk], [FastWalkSeq]),
+// push iterator directory traversal ([WalkSeq]), cross-platform memory-mapped I/O ([OpenMmap]),
+// atomic file replacement ([AtomicWriteFile]), bounded file ingestion ([ReadFileLimited]),
+// and zero-allocation file media heuristics ([IsIncompressibleExtension]).
 //
 // # Compared to the standard library
 //
