@@ -53,19 +53,19 @@ func verifyMatchesCumulative(t *testing.T, cumulative []byte, chunkStart int, ch
 
 // TestAdversarialIdenticalByteRuns tests all matchfinders with large runs of identical bytes.
 func TestAdversarialIdenticalByteRuns(t *testing.T) {
-	finders := map[string]func() MatchFinder{
-		"M0":         func() MatchFinder { return &M0{} },
-		"M0_Lazy":    func() MatchFinder { return &M0{Lazy: true} },
-		"M4":         func() MatchFinder { return &M4{} },
-		"M4_Chained": func() MatchFinder { return &M4{ChainLength: 16, DistanceBitCost: 32} },
-		"ZFast":      func() MatchFinder { return &ZFast{} },
-		"ZDFast":     func() MatchFinder { return &ZDFast{} },
-		"ZM":         func() MatchFinder { return &ZM{} },
-		"Trio":       func() MatchFinder { return &Trio{} },
-		"Bargain1":   func() MatchFinder { return &Bargain1{} },
-		"Bargain2":   func() MatchFinder { return &Bargain2{} },
-		"Bargain3":   func() MatchFinder { return &Bargain3{} },
-		"Pathfinder": func() MatchFinder { return &Pathfinder{} },
+	finders := map[string]func() Finder{
+		"M0":         func() Finder { return &M0{} },
+		"M0_Lazy":    func() Finder { return &M0{Lazy: true} },
+		"M4":         func() Finder { return &M4{} },
+		"M4_Chained": func() Finder { return &M4{ChainLength: 16, DistanceBitCost: 32} },
+		"ZFast":      func() Finder { return &ZFast{} },
+		"ZDFast":     func() Finder { return &ZDFast{} },
+		"ZM":         func() Finder { return &ZM{} },
+		"Trio":       func() Finder { return &Trio{} },
+		"Bargain1":   func() Finder { return &Bargain1{} },
+		"Bargain2":   func() Finder { return &Bargain2{} },
+		"Bargain3":   func() Finder { return &Bargain3{} },
+		"Pathfinder": func() Finder { return &Pathfinder{} },
 	}
 
 	byteRuns := []struct {
@@ -102,15 +102,15 @@ func TestAdversarialIdenticalByteRuns(t *testing.T) {
 
 // TestAdversarialWorstCaseHashing tests pathological repeating and collision patterns.
 func TestAdversarialWorstCaseHashing(t *testing.T) {
-	finders := map[string]func() MatchFinder{
-		"M0":         func() MatchFinder { return &M0{} },
-		"M4":         func() MatchFinder { return &M4{} },
-		"ZFast":      func() MatchFinder { return &ZFast{} },
-		"ZDFast":     func() MatchFinder { return &ZDFast{} },
-		"ZM":         func() MatchFinder { return &ZM{} },
-		"Trio":       func() MatchFinder { return &Trio{} },
-		"Bargain1":   func() MatchFinder { return &Bargain1{} },
-		"Pathfinder": func() MatchFinder { return &Pathfinder{} },
+	finders := map[string]func() Finder{
+		"M0":         func() Finder { return &M0{} },
+		"M4":         func() Finder { return &M4{} },
+		"ZFast":      func() Finder { return &ZFast{} },
+		"ZDFast":     func() Finder { return &ZDFast{} },
+		"ZM":         func() Finder { return &ZM{} },
+		"Trio":       func() Finder { return &Trio{} },
+		"Bargain1":   func() Finder { return &Bargain1{} },
+		"Pathfinder": func() Finder { return &Pathfinder{} },
 	}
 
 	patterns := []struct {
@@ -158,16 +158,16 @@ func TestAdversarialWorstCaseHashing(t *testing.T) {
 
 // TestAdversarialSlidingWindowAndHistoryTrim tests multi-chunk streams exceeding MaxDistance.
 func TestAdversarialSlidingWindowAndHistoryTrim(t *testing.T) {
-	finders := map[string]func() MatchFinder{
-		"M4":         func() MatchFinder { return &M4{MaxDistance: 16384} },
-		"ZFast":      func() MatchFinder { return &ZFast{MaxDistance: 16384} },
-		"ZDFast":     func() MatchFinder { return &ZDFast{MaxDistance: 16384} },
-		"ZM":         func() MatchFinder { return &ZM{MaxDistance: 16384} },
-		"Trio":       func() MatchFinder { return &Trio{MaxDistance: 16384} },
-		"Bargain1":   func() MatchFinder { return &Bargain1{MaxDistance: 16384} },
-		"Bargain2":   func() MatchFinder { return &Bargain2{MaxDistance: 16384} },
-		"Bargain3":   func() MatchFinder { return &Bargain3{MaxDistance: 16384} },
-		"Pathfinder": func() MatchFinder { return &Pathfinder{MaxDistance: 16384} },
+	finders := map[string]func() Finder{
+		"M4":         func() Finder { return &M4{MaxDistance: 16384} },
+		"ZFast":      func() Finder { return &ZFast{MaxDistance: 16384} },
+		"ZDFast":     func() Finder { return &ZDFast{MaxDistance: 16384} },
+		"ZM":         func() Finder { return &ZM{MaxDistance: 16384} },
+		"Trio":       func() Finder { return &Trio{MaxDistance: 16384} },
+		"Bargain1":   func() Finder { return &Bargain1{MaxDistance: 16384} },
+		"Bargain2":   func() Finder { return &Bargain2{MaxDistance: 16384} },
+		"Bargain3":   func() Finder { return &Bargain3{MaxDistance: 16384} },
+		"Pathfinder": func() Finder { return &Pathfinder{MaxDistance: 16384} },
 	}
 
 	chunkSizes := []int{16, 128, 1024, 8192, 16384, 32768, 65536}
@@ -196,15 +196,15 @@ func TestAdversarialSlidingWindowAndHistoryTrim(t *testing.T) {
 
 // TestAdversarialRapidHistoryResets tests rapid alternating resets and varied block feeding.
 func TestAdversarialRapidHistoryResets(t *testing.T) {
-	finders := map[string]func() MatchFinder{
-		"M0":         func() MatchFinder { return &M0{} },
-		"M4":         func() MatchFinder { return &M4{} },
-		"ZFast":      func() MatchFinder { return &ZFast{} },
-		"ZDFast":     func() MatchFinder { return &ZDFast{} },
-		"ZM":         func() MatchFinder { return &ZM{} },
-		"Trio":       func() MatchFinder { return &Trio{} },
-		"Bargain1":   func() MatchFinder { return &Bargain1{} },
-		"Pathfinder": func() MatchFinder { return &Pathfinder{} },
+	finders := map[string]func() Finder{
+		"M0":         func() Finder { return &M0{} },
+		"M4":         func() Finder { return &M4{} },
+		"ZFast":      func() Finder { return &ZFast{} },
+		"ZDFast":     func() Finder { return &ZDFast{} },
+		"ZM":         func() Finder { return &ZM{} },
+		"Trio":       func() Finder { return &Trio{} },
+		"Bargain1":   func() Finder { return &Bargain1{} },
+		"Pathfinder": func() Finder { return &Pathfinder{} },
 	}
 
 	for fname, newFinder := range finders {
@@ -227,15 +227,15 @@ func TestAdversarialRapidHistoryResets(t *testing.T) {
 
 // TestAdversarialCryptoRandomData tests random incompressible noise through all matchfinders.
 func TestAdversarialCryptoRandomData(t *testing.T) {
-	finders := map[string]func() MatchFinder{
-		"M0":         func() MatchFinder { return &M0{} },
-		"M4":         func() MatchFinder { return &M4{} },
-		"ZFast":      func() MatchFinder { return &ZFast{} },
-		"ZDFast":     func() MatchFinder { return &ZDFast{} },
-		"ZM":         func() MatchFinder { return &ZM{} },
-		"Trio":       func() MatchFinder { return &Trio{} },
-		"Bargain1":   func() MatchFinder { return &Bargain1{} },
-		"Pathfinder": func() MatchFinder { return &Pathfinder{} },
+	finders := map[string]func() Finder{
+		"M0":         func() Finder { return &M0{} },
+		"M4":         func() Finder { return &M4{} },
+		"ZFast":      func() Finder { return &ZFast{} },
+		"ZDFast":     func() Finder { return &ZDFast{} },
+		"ZM":         func() Finder { return &ZM{} },
+		"Trio":       func() Finder { return &Trio{} },
+		"Bargain1":   func() Finder { return &Bargain1{} },
+		"Pathfinder": func() Finder { return &Pathfinder{} },
 	}
 
 	data := make([]byte, 32768)
@@ -401,9 +401,9 @@ func TestAdversarialM4ChainedDstStress(t *testing.T) {
 func TestAdversarialZFastZDFastZeroBytesStress(t *testing.T) {
 	sizes := []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 16, 31, 32, 63, 64, 127, 128, 255, 256, 512, 1024, 4096, 65536}
 
-	finders := map[string]func() MatchFinder{
-		"ZFast":  func() MatchFinder { return &ZFast{} },
-		"ZDFast": func() MatchFinder { return &ZDFast{} },
+	finders := map[string]func() Finder{
+		"ZFast":  func() Finder { return &ZFast{} },
+		"ZDFast": func() Finder { return &ZDFast{} },
 	}
 
 	for name, newFinder := range finders {
@@ -429,9 +429,9 @@ func TestAdversarialZFastZDFastZeroBytesStress(t *testing.T) {
 func TestAdversarialZFastZDFastFibonacciCollisions(t *testing.T) {
 	sizes := []int{16, 32, 64, 128, 256, 512, 1024, 4096, 16384, 32768, 65536}
 
-	finders := map[string]func() MatchFinder{
-		"ZFast":  func() MatchFinder { return &ZFast{} },
-		"ZDFast": func() MatchFinder { return &ZDFast{} },
+	finders := map[string]func() Finder{
+		"ZFast":  func() Finder { return &ZFast{} },
+		"ZDFast": func() Finder { return &ZDFast{} },
 	}
 
 	for name, newFinder := range finders {
@@ -462,9 +462,9 @@ func TestAdversarialZFastZDFastFibonacciCollisions(t *testing.T) {
 
 // TestAdversarialZFastZDFastLookaheadCollisions tests lookahead collisions where candidate values match.
 func TestAdversarialZFastZDFastLookaheadCollisions(t *testing.T) {
-	finders := map[string]func() MatchFinder{
-		"ZFast":  func() MatchFinder { return &ZFast{} },
-		"ZDFast": func() MatchFinder { return &ZDFast{} },
+	finders := map[string]func() Finder{
+		"ZFast":  func() Finder { return &ZFast{} },
+		"ZDFast": func() Finder { return &ZDFast{} },
 	}
 
 	for name, newFinder := range finders {
@@ -493,19 +493,19 @@ func TestAdversarialZFastZDFastLookaheadCollisions(t *testing.T) {
 
 // TestAdversarialAllFindersPrePopulatedDst tests all matchfinders with pre-populated dst containing valid and literal entries.
 func TestAdversarialAllFindersPrePopulatedDst(t *testing.T) {
-	finders := map[string]func() MatchFinder{
-		"M0":         func() MatchFinder { return &M0{} },
-		"M0_Lazy":    func() MatchFinder { return &M0{Lazy: true} },
-		"M4":         func() MatchFinder { return &M4{} },
-		"M4_Chained": func() MatchFinder { return &M4{ChainLength: 16, DistanceBitCost: 32} },
-		"ZFast":      func() MatchFinder { return &ZFast{} },
-		"ZDFast":     func() MatchFinder { return &ZDFast{} },
-		"ZM":         func() MatchFinder { return &ZM{} },
-		"Trio":       func() MatchFinder { return &Trio{} },
-		"Bargain1":   func() MatchFinder { return &Bargain1{} },
-		"Bargain2":   func() MatchFinder { return &Bargain2{} },
-		"Bargain3":   func() MatchFinder { return &Bargain3{} },
-		"Pathfinder": func() MatchFinder { return &Pathfinder{} },
+	finders := map[string]func() Finder{
+		"M0":         func() Finder { return &M0{} },
+		"M0_Lazy":    func() Finder { return &M0{Lazy: true} },
+		"M4":         func() Finder { return &M4{} },
+		"M4_Chained": func() Finder { return &M4{ChainLength: 16, DistanceBitCost: 32} },
+		"ZFast":      func() Finder { return &ZFast{} },
+		"ZDFast":     func() Finder { return &ZDFast{} },
+		"ZM":         func() Finder { return &ZM{} },
+		"Trio":       func() Finder { return &Trio{} },
+		"Bargain1":   func() Finder { return &Bargain1{} },
+		"Bargain2":   func() Finder { return &Bargain2{} },
+		"Bargain3":   func() Finder { return &Bargain3{} },
+		"Pathfinder": func() Finder { return &Pathfinder{} },
 	}
 
 	prePopulations := [][]Match{

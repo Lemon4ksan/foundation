@@ -77,9 +77,9 @@ func TestParseTag_AdversarialInputs(t *testing.T) {
 			_ = tag.IsEmpty()
 			_ = tag.IsIgnored()
 			_ = tag.Has("anything")
-			_ = tag.Get("key")
-			_, _ = tag.GetInt("key")
-			_, _ = tag.GetFloat("key")
+			_ = tag.Value("key")
+			_, _ = tag.Int("key")
+			_, _ = tag.Float("key")
 			_ = tag.SplitOption("key", ",")
 		})
 	}
@@ -205,11 +205,11 @@ func TestParseTag_UnicodeAndInvalidBytes(t *testing.T) {
 		}()
 		tag := refkit.ParseTag(inv)
 		_ = tag.IsEmpty()
-		_ = tag.Get("key")
+		_ = tag.Value("key")
 	}
 }
 
-// TestTag_MethodRobustness verifies GetInt, GetFloat, SplitOption with pathological values.
+// TestTag_MethodRobustness verifies Int, Float, SplitOption with pathological values.
 func TestTag_MethodRobustness(t *testing.T) {
 	t.Parallel()
 
@@ -218,40 +218,40 @@ func TestTag_MethodRobustness(t *testing.T) {
 	)
 
 	// Valid Int
-	if val, ok := tag.GetInt("min"); !ok || val != 5 {
+	if val, ok := tag.Int("min"); !ok || val != 5 {
 		t.Errorf("expected min=5, got (%d, %v)", val, ok)
 	}
 
 	// Overflow Int
-	if _, ok := tag.GetInt("max"); ok {
+	if _, ok := tag.Int("max"); ok {
 		t.Errorf("expected overflow int to fail ok=false")
 	}
 
 	// Invalid Int string
-	if _, ok := tag.GetInt("bad_num"); ok {
+	if _, ok := tag.Int("bad_num"); ok {
 		t.Errorf("expected non-numeric int to fail ok=false")
 	}
 
 	// Empty value
-	if _, ok := tag.GetInt("empty"); ok {
+	if _, ok := tag.Int("empty"); ok {
 		t.Errorf("expected empty value int to fail ok=false")
 	}
 
 	// Missing key
-	if _, ok := tag.GetInt("nonexistent"); ok {
+	if _, ok := tag.Int("nonexistent"); ok {
 		t.Errorf("expected missing key int to fail ok=false")
 	}
 
 	// Valid Float
-	if val, ok := tag.GetFloat("rate"); !ok || math.Abs(val-3.1415) > 1e-9 {
+	if val, ok := tag.Float("rate"); !ok || math.Abs(val-3.1415) > 1e-9 {
 		t.Errorf("expected rate=3.1415, got (%f, %v)", val, ok)
 	}
 
 	// Float NaN & Inf
-	if val, ok := tag.GetFloat("nan"); !ok || !math.IsNaN(val) {
+	if val, ok := tag.Float("nan"); !ok || !math.IsNaN(val) {
 		t.Errorf("expected NaN float")
 	}
-	if val, ok := tag.GetFloat("inf"); !ok || !math.IsInf(val, 1) {
+	if val, ok := tag.Float("inf"); !ok || !math.IsInf(val, 1) {
 		t.Errorf("expected +Inf float")
 	}
 

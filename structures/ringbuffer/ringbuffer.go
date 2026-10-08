@@ -6,32 +6,32 @@ package ringbuffer
 
 import "iter"
 
-// RingBuffer is a growable FIFO queue that reuses its backing storage.
+// Buffer is a growable FIFO queue that reuses its backing storage.
 // The slice length stores the queue length, so wrapped positions are accessed by reslicing to capacity.
-type RingBuffer[T any] struct {
+type Buffer[T any] struct {
 	ring    []T // len is the number of queued elements; cap is the storage size
 	headPos int // index of the first element in the full backing storage
 }
 
 // Init preallocates a buffer with a certain size.
-func (r *RingBuffer[T]) Init(size int) {
+func (r *Buffer[T]) Init(size int) {
 	r.ring = make([]T, 0, size)
 	r.headPos = 0
 }
 
 // Len returns the number of elements in the ring buffer.
-func (r *RingBuffer[T]) Len() int {
+func (r *Buffer[T]) Len() int {
 	return len(r.ring)
 }
 
 // Empty says if the ring buffer is empty.
-func (r *RingBuffer[T]) Empty() bool {
+func (r *Buffer[T]) Empty() bool {
 	return len(r.ring) == 0
 }
 
 // PushBack adds a new element.
 // If the ring buffer is full, its capacity is increased first.
-func (r *RingBuffer[T]) PushBack(t T) {
+func (r *Buffer[T]) PushBack(t T) {
 	if len(r.ring) == cap(r.ring) {
 		r.grow()
 	}
@@ -52,7 +52,7 @@ func (r *RingBuffer[T]) PushBack(t T) {
 // PopFront returns the next element.
 // It must not be called when the buffer is empty, that means that
 // callers might need to check if there are elements in the buffer first.
-func (r *RingBuffer[T]) PopFront() T {
+func (r *Buffer[T]) PopFront() T {
 	if r.Empty() {
 		panic("ringbuffer: pop from an empty queue")
 	}
@@ -74,7 +74,7 @@ func (r *RingBuffer[T]) PopFront() T {
 // PeekFront returns the next element.
 // It must not be called when the buffer is empty, that means that
 // callers might need to check if there are elements in the buffer first.
-func (r *RingBuffer[T]) PeekFront() T {
+func (r *Buffer[T]) PeekFront() T {
 	if r.Empty() {
 		panic("ringbuffer: peek from an empty queue")
 	}
@@ -83,7 +83,7 @@ func (r *RingBuffer[T]) PeekFront() T {
 }
 
 // grow doubles the storage and copies the queued elements into FIFO order.
-func (r *RingBuffer[T]) grow() {
+func (r *Buffer[T]) grow() {
 	oldRing := r.ring
 
 	newSize := cap(oldRing) * 2
@@ -99,14 +99,14 @@ func (r *RingBuffer[T]) grow() {
 }
 
 // Clear removes all elements while retaining the allocated storage.
-func (r *RingBuffer[T]) Clear() {
+func (r *Buffer[T]) Clear() {
 	clear(r.ring[:cap(r.ring)])
 	r.ring = r.ring[:0]
 	r.headPos = 0
 }
 
 // All returns an iterator over queued elements in FIFO order without mutating the ring buffer.
-func (r *RingBuffer[T]) All() iter.Seq[T] {
+func (r *Buffer[T]) All() iter.Seq[T] {
 	return func(yield func(T) bool) {
 		n := len(r.ring)
 		c := cap(r.ring)
@@ -127,12 +127,12 @@ func (r *RingBuffer[T]) All() iter.Seq[T] {
 }
 
 // Values returns an iterator over queued elements in FIFO order without mutating the ring buffer.
-func (r *RingBuffer[T]) Values() iter.Seq[T] {
+func (r *Buffer[T]) Values() iter.Seq[T] {
 	return r.All()
 }
 
 // Drain pops and yields all buffered items in FIFO order until the buffer is empty.
-func (r *RingBuffer[T]) Drain() iter.Seq[T] {
+func (r *Buffer[T]) Drain() iter.Seq[T] {
 	return func(yield func(T) bool) {
 		for !r.Empty() {
 			item := r.PopFront()
@@ -144,7 +144,7 @@ func (r *RingBuffer[T]) Drain() iter.Seq[T] {
 }
 
 // Backward returns an iterator over queued elements in reverse order (LIFO) without mutating the ring buffer.
-func (r *RingBuffer[T]) Backward() iter.Seq[T] {
+func (r *Buffer[T]) Backward() iter.Seq[T] {
 	return func(yield func(T) bool) {
 		n := len(r.ring)
 		c := cap(r.ring)

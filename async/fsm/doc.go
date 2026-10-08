@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package fsm implements a strictly typed, thread-safe finite state machine (FSM).
+// Package fsm implements a strictly typed, thread-safe finite state machine.
 //
-// It provides a generic FSM framework parameterized over comparable [State] and
-// [Event] types, ensuring that invalid transitions are caught at compile time.
+// The core coordinator is [Machine], a generic state machine parameterized over comparable
+// State and Event types, ensuring that invalid transitions are caught at compile time.
 // All state transitions are atomic, thread-safe, and support transactional
-// cancellation via pre-transition hooks. The FSM separates transition execution
+// cancellation via pre-transition hooks. The [Machine] separates transition execution
 // from state reads using a dual-lock architecture. An internal mutex serializes
 // transitions, preventing optimistic side-effect leaks. Non-blocking reads use
 // a read-write lock so readers are not blocked by transition hooks.

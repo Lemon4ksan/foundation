@@ -16,24 +16,24 @@ import (
 
 // Event is the marker interface satisfied by all types that can be dispatched through a [Bus].
 //
-// Custom event structures must embed [BaseEvent] to satisfy this interface.
+// Custom event structures must embed [Envelope] to satisfy this interface.
 type Event interface {
 	isEvent()
 }
 
-// BaseEvent provides a default, reusable implementation of the [Event] interface.
+// Envelope provides a default, reusable implementation of the [Event] interface.
 //
-// By embedding BaseEvent, custom event structs automatically satisfy the [Event]
+// By embedding Envelope, custom event structs automatically satisfy the [Event]
 // interface and gain request-scoped context propagation capabilities.
-type BaseEvent struct {
+type Envelope struct {
 	// Ctx represents the request context associated with the event execution.
 	Ctx context.Context
 }
 
-func (BaseEvent) isEvent() {}
+func (Envelope) isEvent() {}
 
 // Context returns the event's execution context, defaulting to [context.Background] if nil.
-func (b *BaseEvent) Context() context.Context {
+func (b *Envelope) Context() context.Context {
 	if b.Ctx == nil {
 		b.Ctx = context.Background()
 	}
@@ -42,7 +42,7 @@ func (b *BaseEvent) Context() context.Context {
 }
 
 // SetContext binds the provided request-scoped context to the event.
-func (b *BaseEvent) SetContext(ctx context.Context) {
+func (b *Envelope) SetContext(ctx context.Context) {
 	b.Ctx = ctx
 }
 
@@ -100,11 +100,6 @@ func (s *Subscription) EventsSeq(ctx context.Context) iter.Seq[Event] {
 	}
 }
 
-// EventsSeq returns an iterator over events from subscription sub until ctx is cancelled or sub is closed.
-func EventsSeq(ctx context.Context, sub *Subscription) iter.Seq[Event] {
-	return sub.EventsSeq(ctx)
-}
-
 // TypedSubscription provides a type-safe subscription wrapper for event type E.
 type TypedSubscription[E any] struct {
 	sub    *Subscription
@@ -141,65 +136,6 @@ func (ts *TypedSubscription[E]) EventsSeq(ctx context.Context) iter.Seq[E] {
 			}
 		}
 	}
-}
-
-// SubscribeTyped registers a type-safe subscription on b for events of type E.
-// E can be a value or pointer type that satisfies [Event].
-// An optional custom bufferSize can be provided (default 128).
-func SubscribeTyped[E any](b *Bus, bufSize ...int) *TypedSubscription[E] {
-	size := 128
-	if len(bufSize) > 0 && bufSize[0] > 0 {
-		size = bufSize[0]
-	}
-
-	t := reflect.TypeFor[E]()
-	if t.Kind() == reflect.Pointer {
-		t = t.Elem()
-	}
-
-	b.mu.Lock()
-	id := b.nextID.Add(1)
-	sub := &Subscription{
-		id:    id,
-		types: []reflect.Type{t},
-		ch:    make(chan Event, size),
-		bus:   b,
-	}
-
-	if b.closed {
-		sub.closed.Store(true)
-		close(sub.ch)
-	} else {
-		if b.subs[t] == nil {
-			b.subs[t] = make(map[uint64]*Subscription)
-		}
-		b.subs[t][id] = sub
-	}
-	b.mu.Unlock()
-
-	ts := &TypedSubscription[E]{
-		sub: sub,
-		ch:  make(chan E, size),
-	}
-
-	go func() {
-		defer close(ts.ch)
-		for raw := range sub.C() {
-			if typed, ok := raw.(E); ok {
-				select {
-				case ts.ch <- typed:
-				default:
-				}
-			} else if typedPtr, ok := any(raw).(*E); ok && typedPtr != nil {
-				select {
-				case ts.ch <- *typedPtr:
-				default:
-				}
-			}
-		}
-	}()
-
-	return ts
 }
 
 // Bus implements a thread-safe, non-blocking, type-based event dispatcher.
@@ -282,6 +218,65 @@ func (b *Bus) SubscribeBuffer(bufferSize int, evs ...Event) *Subscription {
 	}
 
 	return sub
+}
+
+// SubscribeTyped registers a type-safe subscription on b for events of type E.
+// E can be a value or pointer type that satisfies [Event].
+// An optional custom bufferSize can be provided (default 128).
+func (b *Bus) SubscribeTyped[E any](bufSize ...int) *TypedSubscription[E] {
+	size := 128
+	if len(bufSize) > 0 && bufSize[0] > 0 {
+		size = bufSize[0]
+	}
+
+	t := reflect.TypeFor[E]()
+	if t.Kind() == reflect.Pointer {
+		t = t.Elem()
+	}
+
+	b.mu.Lock()
+	id := b.nextID.Add(1)
+	sub := &Subscription{
+		id:    id,
+		types: []reflect.Type{t},
+		ch:    make(chan Event, size),
+		bus:   b,
+	}
+
+	if b.closed {
+		sub.closed.Store(true)
+		close(sub.ch)
+	} else {
+		if b.subs[t] == nil {
+			b.subs[t] = make(map[uint64]*Subscription)
+		}
+		b.subs[t][id] = sub
+	}
+	b.mu.Unlock()
+
+	ts := &TypedSubscription[E]{
+		sub: sub,
+		ch:  make(chan E, size),
+	}
+
+	go func() {
+		defer close(ts.ch)
+		for raw := range sub.C() {
+			if typed, ok := raw.(E); ok {
+				select {
+				case ts.ch <- typed:
+				default:
+				}
+			} else if typedPtr, ok := any(raw).(*E); ok && typedPtr != nil {
+				select {
+				case ts.ch <- *typedPtr:
+				default:
+				}
+			}
+		}
+	}()
+
+	return ts
 }
 
 // SubscribeAll registers a subscription to receive every event published on the [Bus].

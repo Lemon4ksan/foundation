@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package breaker implements a thread-safe, generic circuit breaker with sliding
+// Package breaker implements a thread-safe, generic circuit [Breaker] with sliding
 // window metrics and automatic state transition coordination.
 //
 // The circuit breaker pattern prevents cascading failures in distributed systems

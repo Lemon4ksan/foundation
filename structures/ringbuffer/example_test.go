@@ -6,8 +6,8 @@ import (
 	"github.com/lemon4ksan/foundation/structures/ringbuffer"
 )
 
-func ExampleRingBuffer() {
-	rb := new(ringbuffer.RingBuffer[int])
+func ExampleBuffer() {
+	rb := new(ringbuffer.Buffer[int])
 	rb.Init(2)
 	rb.PushBack(1)
 	rb.PushBack(2)

@@ -56,7 +56,7 @@ func ExamplePool() {
 	// Output: 9876
 }
 
-func ExampleEntries() {
+func ExampleContext_Entries() {
 	ctx := ctxkit.Background()
 	ctx.Set("user_id", 42)
 	ctx.Set("role", "admin")

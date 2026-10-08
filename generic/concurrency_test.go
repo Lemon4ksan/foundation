@@ -141,16 +141,16 @@ func TestSingleFlight_NilGuards(t *testing.T) {
 	}
 }
 
-// TestDataLoader_PanicSafety verifies that when batchFn panics:
+// TestBatchLoader_PanicSafety verifies that when batchFn panics:
 // 1. The background goroutine does not terminate the process.
 // 2. All concurrent callers waiting on Load() unblock promptly.
 // 3. Callers receive an error wrapping ErrBatchPanicked.
-// 4. Subsequent batches on the same DataLoader instance continue working normally.
-func TestDataLoader_PanicSafety(t *testing.T) {
+// 4. Subsequent batches on the same BatchLoader instance continue working normally.
+func TestBatchLoader_PanicSafety(t *testing.T) {
 	var callCount atomic.Int32
 	shouldPanic := true
 
-	dl := NewDataLoader[string, int](
+	dl := NewBatchLoader[string, int](
 		20*time.Millisecond,
 		func(ctx context.Context, keys []string) (map[string]int, error) {
 			callCount.Add(1)
@@ -199,7 +199,7 @@ func TestDataLoader_PanicSafety(t *testing.T) {
 		}
 	}
 
-	// Verify DataLoader recovery: subsequent batch should work normally
+	// Verify BatchLoader recovery: subsequent batch should work normally
 	shouldPanic = false
 	val, err := dl.Load(context.Background(), "healthy-key")
 	if err != nil {
@@ -210,14 +210,14 @@ func TestDataLoader_PanicSafety(t *testing.T) {
 	}
 }
 
-// TestDataLoader_MissingKeysAndNilResult verifies that when batchFn returns fewer
+// TestBatchLoader_MissingKeysAndNilResult verifies that when batchFn returns fewer
 // results than requested keys or returns a nil map:
 // 1. Existing keys receive their correct values.
 // 2. Missing keys receive ErrKeyNotFound.
 // 3. Nil map results in ErrKeyNotFound for all requested keys without panicking.
-func TestDataLoader_MissingKeysAndNilResult(t *testing.T) {
+func TestBatchLoader_MissingKeysAndNilResult(t *testing.T) {
 	// Subtest 1: Partial results
-	dlPartial := NewDataLoader[string, string](
+	dlPartial := NewBatchLoader[string, string](
 		15*time.Millisecond,
 		func(ctx context.Context, keys []string) (map[string]string, error) {
 			return map[string]string{
@@ -251,7 +251,7 @@ func TestDataLoader_MissingKeysAndNilResult(t *testing.T) {
 	}
 
 	// Subtest 2: Nil map returned
-	dlNilMap := NewDataLoader[string, int](
+	dlNilMap := NewBatchLoader[string, int](
 		15*time.Millisecond,
 		func(ctx context.Context, keys []string) (map[string]int, error) {
 			return nil, nil
@@ -264,15 +264,15 @@ func TestDataLoader_MissingKeysAndNilResult(t *testing.T) {
 	}
 }
 
-// TestDataLoader_ContextCancellationCleanup verifies that:
+// TestBatchLoader_ContextCancellationCleanup verifies that:
 // 1. An already cancelled context returns immediately without executing batchFn.
 // 2. A context cancelled during the delay window deregisters its channel.
 // 3. If all callers cancel, the timer is stopped and batchFn is NOT executed.
 // 4. If only some callers cancel, the remaining callers receive their results.
-func TestDataLoader_ContextCancellationCleanup(t *testing.T) {
+func TestBatchLoader_ContextCancellationCleanup(t *testing.T) {
 	var batchExecutions int32
 
-	dl := NewDataLoader[string, int](
+	dl := NewBatchLoader[string, int](
 		50*time.Millisecond,
 		func(ctx context.Context, keys []string) (map[string]int, error) {
 			atomic.AddInt32(&batchExecutions, 1)
@@ -349,14 +349,14 @@ func TestDataLoader_ContextCancellationCleanup(t *testing.T) {
 	}
 }
 
-// TestDataLoader_DuplicateKeys verifies that multiple callers requesting the
+// TestBatchLoader_DuplicateKeys verifies that multiple callers requesting the
 // identical key within the window are deduplicated in batchFn input, and all
 // callers receive the identical result.
-func TestDataLoader_DuplicateKeys(t *testing.T) {
+func TestBatchLoader_DuplicateKeys(t *testing.T) {
 	var requestedKeys []string
 	var mu sync.Mutex
 
-	dl := NewDataLoader[string, int](
+	dl := NewBatchLoader[string, int](
 		25*time.Millisecond,
 		func(ctx context.Context, keys []string) (map[string]int, error) {
 			mu.Lock()
@@ -396,23 +396,23 @@ func TestDataLoader_DuplicateKeys(t *testing.T) {
 	}
 }
 
-// TestDataLoader_NilGuards verifies that calling Load on nil DataLoader, nil batchFn,
+// TestBatchLoader_NilGuards verifies that calling Load on nil BatchLoader, nil batchFn,
 // or with nil Context returns appropriate errors without crashing.
-func TestDataLoader_NilGuards(t *testing.T) {
-	var nilDL *DataLoader[string, int]
+func TestBatchLoader_NilGuards(t *testing.T) {
+	var nilDL *BatchLoader[string, int]
 	_, err1 := nilDL.Load(context.Background(), "k")
-	if !errors.Is(err1, ErrDataLoaderNil) {
-		t.Errorf("expected ErrDataLoaderNil, got %v", err1)
+	if !errors.Is(err1, ErrBatchLoaderNil) {
+		t.Errorf("expected ErrBatchLoaderNil, got %v", err1)
 	}
 
-	dlNilFn := NewDataLoader[string, int](10*time.Millisecond, nil)
+	dlNilFn := NewBatchLoader[string, int](10*time.Millisecond, nil)
 	_, err2 := dlNilFn.Load(context.Background(), "k")
 	if !errors.Is(err2, ErrBatchFnNil) {
 		t.Errorf("expected ErrBatchFnNil, got %v", err2)
 	}
 
 	// Nil context should default to context.Background() and succeed
-	dlValid := NewDataLoader[string, int](
+	dlValid := NewBatchLoader[string, int](
 		10*time.Millisecond,
 		func(ctx context.Context, keys []string) (map[string]int, error) {
 			return map[string]int{"ok": 1}, nil
@@ -424,10 +424,10 @@ func TestDataLoader_NilGuards(t *testing.T) {
 	}
 }
 
-// TestDataLoader_HighConcurrencyStress runs 200 concurrent callers mixing successes,
+// TestBatchLoader_HighConcurrencyStress runs 200 concurrent callers mixing successes,
 // missing keys, and context cancellations to verify race-free execution under -race.
-func TestDataLoader_HighConcurrencyStress(t *testing.T) {
-	dl := NewDataLoader[int, int](10*time.Millisecond, func(ctx context.Context, keys []int) (map[int]int, error) {
+func TestBatchLoader_HighConcurrencyStress(t *testing.T) {
+	dl := NewBatchLoader[int, int](10*time.Millisecond, func(ctx context.Context, keys []int) (map[int]int, error) {
 		resMap := make(map[int]int)
 		for _, k := range keys {
 			if k%3 != 0 { // Every 3rd key is intentionally missing
@@ -462,4 +462,156 @@ func TestDataLoader_HighConcurrencyStress(t *testing.T) {
 	}
 
 	wg.Wait()
+}
+
+// TestParallelMap_ContextCancellation_NoZombies verifies structured concurrency:
+// When ctx is cancelled, ParallelMap must wait for all in-flight goroutines to complete
+// before returning, ensuring no leaked or zombie goroutines exist.
+func TestParallelMap_ContextCancellation_NoZombies(t *testing.T) {
+	t.Run("CancelWhileRunning", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		const totalTasks = 30
+		const limit = 3
+
+		inputs := make([]int, totalTasks)
+		for i := range totalTasks {
+			inputs[i] = i
+		}
+
+		var (
+			activeWorkers atomic.Int32
+			started       atomic.Int32
+			finished      atomic.Int32
+		)
+
+		var cancelOnce sync.Once
+
+		res := ParallelMap(ctx, inputs, limit, func(c context.Context, item int) int {
+			started.Add(1)
+			activeWorkers.Add(1)
+			defer func() {
+				activeWorkers.Add(-1)
+				finished.Add(1)
+			}()
+
+			// Cancel context on the first worker
+			cancelOnce.Do(func() {
+				cancel()
+			})
+
+			// Simulate slow worker
+			select {
+			case <-c.Done():
+				// Worker notices cancellation
+			case <-time.After(20 * time.Millisecond):
+			}
+
+			return item * 10
+		})
+
+		// ParallelMap must return nil on cancellation
+		if res != nil {
+			t.Fatalf("expected nil result on cancellation, got %v", res)
+		}
+
+		// Structured concurrency assertion: ParallelMap MUST NOT return while workers are running
+		if active := activeWorkers.Load(); active != 0 {
+			t.Fatalf("ZOMBIE GOROUTINES DETECTED: %d workers still active after ParallelMap returned", active)
+		}
+
+		// All started workers must have finished
+		if finished.Load() != started.Load() {
+			t.Fatalf("mismatch: started %d, finished %d", started.Load(), finished.Load())
+		}
+
+		// Due to cancellation, not all tasks should have been started
+		if started.Load() >= int32(totalTasks) {
+			t.Fatalf("expected dispatch loop to break early, but all %d tasks started", totalTasks)
+		}
+	})
+
+	t.Run("AsynchronousExternalCancel", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+
+		const totalTasks = 40
+		const limit = 4
+
+		inputs := make([]int, totalTasks)
+		for i := range totalTasks {
+			inputs[i] = i
+		}
+
+		var (
+			activeWorkers atomic.Int32
+			started       atomic.Int32
+			finished      atomic.Int32
+		)
+
+		workerRunning := make(chan struct{})
+		var once sync.Once
+
+		go func() {
+			<-workerRunning
+			time.Sleep(5 * time.Millisecond)
+			cancel()
+		}()
+
+		res := ParallelMap(ctx, inputs, limit, func(c context.Context, item int) int {
+			started.Add(1)
+			activeWorkers.Add(1)
+			defer func() {
+				activeWorkers.Add(-1)
+				finished.Add(1)
+			}()
+
+			once.Do(func() {
+				close(workerRunning)
+			})
+
+			time.Sleep(15 * time.Millisecond)
+			return item
+		})
+
+		if res != nil {
+			t.Fatalf("expected nil result on cancellation, got %v", res)
+		}
+
+		if active := activeWorkers.Load(); active != 0 {
+			t.Fatalf("ZOMBIE GOROUTINES DETECTED: %d workers still active", active)
+		}
+
+		if finished.Load() != started.Load() {
+			t.Fatalf("mismatch: started %d, finished %d", started.Load(), finished.Load())
+		}
+	})
+
+	t.Run("PreCancelledContext", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel() // pre-cancelled
+
+		var started atomic.Int32
+		res := ParallelMap(ctx, []int{1, 2, 3, 4}, 2, func(c context.Context, item int) int {
+			started.Add(1)
+			return item
+		})
+
+		if res != nil {
+			t.Fatalf("expected nil result on pre-cancelled context, got %v", res)
+		}
+		if started.Load() != 0 {
+			t.Fatalf("expected 0 started tasks, got %d", started.Load())
+		}
+	})
+
+	t.Run("NilContext", func(t *testing.T) {
+		res := ParallelMap[int, int](nil, []int{1, 2, 3}, 2, func(c context.Context, item int) int {
+			return item * 2
+		})
+
+		if len(res) != 3 || res[0] != 2 || res[1] != 4 || res[2] != 6 {
+			t.Fatalf("expected [2, 4, 6] with nil context, got %v", res)
+		}
+	})
 }

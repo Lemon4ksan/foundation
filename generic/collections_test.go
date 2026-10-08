@@ -6,6 +6,7 @@ package generic
 
 import (
 	"fmt"
+	"reflect"
 	"runtime"
 	"sync"
 	"testing"
@@ -290,4 +291,151 @@ func TestCache_FinalizerCleanup(t *testing.T) {
 	runtime.GC()
 	time.Sleep(30 * time.Millisecond)
 	runtime.GC()
+}
+
+// 12. LRU Values Recency Order Regression Test
+func TestLRU_Values_RecencyOrder(t *testing.T) {
+	lru := NewLRU[string, int](3)
+
+	// Empty LRU must return empty slice
+	if vals := lru.Values(); len(vals) != 0 {
+		t.Fatalf("expected empty values for empty LRU, got %v", vals)
+	}
+
+	// Insert items
+	lru.Put("a", 1)
+	lru.Put("b", 2)
+	lru.Put("c", 3)
+
+	// Recency order must be MRU to LRU: [3, 2, 1]
+	expected := []int{3, 2, 1}
+	if vals := lru.Values(); !reflect.DeepEqual(vals, expected) {
+		t.Fatalf("expected %v, got %v", expected, vals)
+	}
+
+	// Access "b" -> moves "b" to MRU: [2, 3, 1]
+	if val, ok := lru.Get("b"); !ok || val != 2 {
+		t.Fatalf("expected Get(b) == 2, got %v, %t", val, ok)
+	}
+	expected = []int{2, 3, 1}
+	if vals := lru.Values(); !reflect.DeepEqual(vals, expected) {
+		t.Fatalf("expected after Get(b): %v, got %v", expected, vals)
+	}
+
+	// Access "a" -> moves "a" to MRU: [1, 2, 3]
+	if val, ok := lru.Get("a"); !ok || val != 1 {
+		t.Fatalf("expected Get(a) == 1, got %v, %t", val, ok)
+	}
+	expected = []int{1, 2, 3}
+	if vals := lru.Values(); !reflect.DeepEqual(vals, expected) {
+		t.Fatalf("expected after Get(a): %v, got %v", expected, vals)
+	}
+
+	// Put "d" (new key) -> capacity 3 exceeded, evicts LRU which is "c": [4, 1, 2]
+	lru.Put("d", 4)
+	expected = []int{4, 1, 2}
+	if vals := lru.Values(); !reflect.DeepEqual(vals, expected) {
+		t.Fatalf("expected after Put(d): %v, got %v", expected, vals)
+	}
+
+	// Update existing key "b" -> moves to MRU with updated value: [20, 4, 1]
+	lru.Put("b", 20)
+	expected = []int{20, 4, 1}
+	if vals := lru.Values(); !reflect.DeepEqual(vals, expected) {
+		t.Fatalf("expected after update Put(b, 20): %v, got %v", expected, vals)
+	}
+
+	// Delete "d" -> remaining: [20, 1]
+	if !lru.Delete("d") {
+		t.Fatalf("expected Delete(d) to return true")
+	}
+	expected = []int{20, 1}
+	if vals := lru.Values(); !reflect.DeepEqual(vals, expected) {
+		t.Fatalf("expected after Delete(d): %v, got %v", expected, vals)
+	}
+}
+
+// 13. Set Intersect Asymmetric Sizes Regression Test
+func TestSet_Intersect_Asymmetric(t *testing.T) {
+	// Large set vs small set
+	large := NewSet[int]()
+	const largeCount = 100_000
+	for i := range largeCount {
+		large.Add(i)
+	}
+
+	small := NewSet[int](500, 999_999, 1000, 2_000_000, 50_000)
+
+	// Common elements: 500, 1000, 50000 (3 elements)
+	inter1 := large.Intersect(small)
+	inter2 := small.Intersect(large)
+
+	if len(inter1) != 3 || !inter1.Has(500) || !inter1.Has(1000) || !inter1.Has(50000) {
+		t.Fatalf("unexpected intersection large.Intersect(small): %v", inter1.ToSlice())
+	}
+
+	if len(inter2) != 3 || !inter2.Has(500) || !inter2.Has(1000) || !inter2.Has(50000) {
+		t.Fatalf("unexpected intersection small.Intersect(large): %v", inter2.ToSlice())
+	}
+
+	// Verify both intersections contain identical elements
+	for item := range inter1 {
+		if !inter2.Has(item) {
+			t.Fatalf("expected inter2 to contain %d", item)
+		}
+	}
+
+	// Edge cases: nil sets
+	var nilSet Set[int]
+	if res := nilSet.Intersect(small); len(res) != 0 {
+		t.Fatalf("expected empty set when receiver is nil, got len %d", len(res))
+	}
+	if res := small.Intersect(nilSet); len(res) != 0 {
+		t.Fatalf("expected empty set when arg is nil, got len %d", len(res))
+	}
+	if res := nilSet.Intersect(nilSet); len(res) != 0 {
+		t.Fatalf("expected empty set when both nil, got len %d", len(res))
+	}
+
+	// Edge cases: empty set
+	empty := NewSet[int]()
+	if res := empty.Intersect(small); len(res) != 0 {
+		t.Fatalf("expected empty set, got len %d", len(res))
+	}
+	if res := small.Intersect(empty); len(res) != 0 {
+		t.Fatalf("expected empty set, got len %d", len(res))
+	}
+
+	// Disjoint sets
+	disjoint1 := NewSet(1, 2, 3)
+	disjoint2 := NewSet(4, 5, 6)
+	if res := disjoint1.Intersect(disjoint2); len(res) != 0 {
+		t.Fatalf("expected empty set for disjoint sets, got len %d", len(res))
+	}
+}
+
+func BenchmarkSet_Intersect_AsymmetricLargeReceiver(b *testing.B) {
+	large := NewSet[int]()
+	for i := range 100_000 {
+		large.Add(i)
+	}
+	small := NewSet(10, 20, 30, 40, 50)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = large.Intersect(small)
+	}
+}
+
+func BenchmarkSet_Intersect_AsymmetricSmallReceiver(b *testing.B) {
+	large := NewSet[int]()
+	for i := range 100_000 {
+		large.Add(i)
+	}
+	small := NewSet(10, 20, 30, 40, 50)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = small.Intersect(large)
+	}
 }

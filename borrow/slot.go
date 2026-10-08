@@ -22,18 +22,53 @@ var (
 	ErrExpiredGeneration = errors.New("borrow: use-after-free detected, generation mismatch")
 )
 
+// SlotKind defines whether a slot uniquely owns its lifetime or is bound to an enclosing scope.
+type SlotKind uint8
+
+const (
+	// SlotOwning indicates that the slot owns its resource lifetime and can be invalidated.
+	SlotOwning SlotKind = iota
+	// SlotBound indicates that the slot is bound to an enclosing scope arena.
+	SlotBound
+)
+
 // Slot manages the generational lifecycle and borrow counts for an owned or borrowed resource.
 type Slot struct {
 	gen     atomic.Uint32
 	readers atomic.Int32
 	writer  atomic.Bool
+	kind    SlotKind
 }
 
-// NewSlot creates and initializes a new generational slot with generation 1.
+// NewSlot creates and initializes a new owning generational slot with generation 1.
 func NewSlot() *Slot {
-	s := &Slot{}
+	s := &Slot{kind: SlotOwning}
 	s.gen.Store(1)
 	return s
+}
+
+// NewBoundSlot creates and initializes a new bound generational slot with generation 1.
+// Bound slots are tied to an enclosing scope and cannot be invalidated by sub-allocated resources.
+func NewBoundSlot() *Slot {
+	s := &Slot{kind: SlotBound}
+	s.gen.Store(1)
+	return s
+}
+
+// Kind returns whether this slot is owning or bound.
+func (s *Slot) Kind() SlotKind {
+	if s == nil {
+		return SlotOwning
+	}
+	return s.kind
+}
+
+// IsBound reports whether this slot is bound to an enclosing scope.
+func (s *Slot) IsBound() bool {
+	if s == nil {
+		return false
+	}
+	return s.kind == SlotBound
 }
 
 // Generation returns the current generation counter of the slot.
@@ -52,15 +87,39 @@ func (s *Slot) IsValid(gen uint32) bool {
 	return s.gen.Load() == gen
 }
 
-// Invalidate increments the generation counter, immediately revoking all active
-// and outstanding borrows associated with previous generations.
+// Invalidate increments the generation counter if the slot is an owning slot,
+// immediately revoking all active and outstanding borrows.
+// If the slot is bound to an enclosing scope, Invalidate is a safe no-op.
+// Use [Slot.ForceInvalidate] or scope lifecycle methods to invalidate a bound slot.
 func (s *Slot) Invalidate() {
+	if s == nil || s.kind == SlotBound {
+		return
+	}
+	s.ForceInvalidate()
+}
+
+// ForceInvalidate unconditionally increments the generation counter and revokes
+// all active borrows regardless of whether the slot is owning or bound.
+func (s *Slot) ForceInvalidate() {
 	if s == nil {
 		return
 	}
 	s.gen.Add(1)
 	s.writer.Store(false)
 	s.readers.Store(0)
+}
+
+// AdvanceGeneration increments the generation counter and resets active borrows,
+// returning the new generation. This revokes prior borrows while keeping the slot
+// active for a moved owner.
+func (s *Slot) AdvanceGeneration() uint32 {
+	if s == nil {
+		return 0
+	}
+	newGen := s.gen.Add(1)
+	s.writer.Store(false)
+	s.readers.Store(0)
+	return newGen
 }
 
 // TryAcquireShared attempts to acquire an immutable shared borrow.
@@ -124,6 +183,15 @@ func (s *Slot) ReleaseExclusive() {
 		return
 	}
 	s.writer.Store(false)
+}
+
+// Freeze transitions an active exclusive mutable borrow to a single shared immutable borrow.
+func (s *Slot) Freeze() {
+	if s == nil {
+		return
+	}
+	s.writer.Store(false)
+	s.readers.Add(1)
 }
 
 // CheckValid verifies the generation and panics with a descriptive message if invalid.

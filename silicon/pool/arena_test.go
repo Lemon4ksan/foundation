@@ -12,7 +12,7 @@ import (
 )
 
 func TestRequestArena_AllocAndReset(t *testing.T) {
-	arena := pool.GetRequestArena()
+	arena := pool.AcquireRequestArena()
 	defer pool.ReleaseRequestArena(arena)
 
 	b1 := arena.Alloc(128)

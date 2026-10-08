@@ -14,18 +14,18 @@ func TestWriterAllocs(t *testing.T) {
 	var buf bytes.Buffer
 	buf.Grow(4096)
 	w := gzip.NewWriter(&buf)
-	
+
 	// Warm up
 	_, _ = w.Write(data)
 	w.Close()
-	
+
 	allocs := testing.AllocsPerRun(10, func() {
 		buf.Reset()
 		w.Reset(&buf)
 		_, _ = w.Write(data)
 		w.Close()
 	})
-	
+
 	if allocs > 0 {
 		t.Errorf("Writer steady state allocated %v times", allocs)
 	}
@@ -38,7 +38,7 @@ func TestReaderAllocs(t *testing.T) {
 	_, _ = w.Write(data)
 	w.Close()
 	compressed := buf.Bytes()
-	
+
 	rdr := bytes.NewReader(compressed)
 	r, _ := gzip.NewReader(rdr)
 	outBuf := make([]byte, 4096)
@@ -49,7 +49,7 @@ func TestReaderAllocs(t *testing.T) {
 		}
 	}
 	r.Close()
-	
+
 	allocs := testing.AllocsPerRun(10, func() {
 		rdr.Reset(compressed)
 		_ = r.Reset(rdr)
@@ -61,7 +61,7 @@ func TestReaderAllocs(t *testing.T) {
 		}
 		r.Close()
 	})
-	
+
 	if allocs > 0 {
 		t.Errorf("Reader steady state allocated %v times", allocs)
 	}

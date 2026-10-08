@@ -10,8 +10,8 @@ import (
 	"github.com/lemon4ksan/foundation/sync/spinlock"
 )
 
-func ExampleSpinLock() {
-	var mu spinlock.SpinLock
+func ExampleLock() {
+	var mu spinlock.Lock
 
 	mu.Lock()
 	fmt.Println("locked")

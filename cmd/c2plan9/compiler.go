@@ -64,7 +64,7 @@ func Compile(opts CompileOptions) (string, error) {
 				"-fno-stack-protector",
 				"-fomit-frame-pointer",
 				"-fno-jump-tables",
-				"-target", "aarch64-unknown-linux-gnu",
+				"-target", "aarch64-linux-gnu",
 				"-march=armv8-a+simd+crypto",
 			)
 		} else {
@@ -78,6 +78,7 @@ func Compile(opts CompileOptions) (string, error) {
 				"-fno-stack-protector",
 				"-fomit-frame-pointer",
 				"-fno-jump-tables",
+				"-target", "x86_64-pc-linux-gnu",
 				"-mno-red-zone",
 				"-mavx2",
 				"-mpclmul",
@@ -94,41 +95,7 @@ func Compile(opts CompileOptions) (string, error) {
 		return out, nil
 	}
 
-	args := []string{
-		"-c",
-		opts.SourceFile,
-		"-o", out,
-		"-O3",
-		"-ffreestanding",
-		"-fno-asynchronous-unwind-tables",
-		"-fno-exceptions",
-		"-fno-rtti",
-		"-fno-stack-protector",
-		"-fomit-frame-pointer",
-		"-fno-jump-tables",
-	}
-
-	switch opts.TargetArch {
-	case "", "amd64":
-		args = append(args,
-			"-mno-red-zone",
-			"-mavx2",
-			"-mpclmul",
-			"-mfma",
-		)
-
-		// On Windows, compile with SysV ABI target to maintain standard DI/SI/DX/CX argument register mapping
-		if opts.TargetSysV || runtime.GOOS == "windows" {
-			args = append(args, "-target", "x86_64-unknown-linux-gnu")
-		}
-	case "arm64":
-		args = append(args,
-			"-target", "aarch64-unknown-linux-gnu",
-			"-march=armv8-a+simd+crypto",
-		)
-	}
-
-	args = append(args, opts.ExtraFlags...)
+	args := BuildClangArgs(opts, out)
 
 	cmd := exec.CommandContext(context.Background(), clang, args...)
 	var stderr bytes.Buffer
@@ -151,3 +118,51 @@ func toWSLPath(winPath string) string {
 	}
 	return filepath.ToSlash(cleaned)
 }
+
+// ClangTarget returns the standard ELF target triple for the specified architecture.
+func ClangTarget(arch string) string {
+	switch arch {
+	case "arm64":
+		return "aarch64-linux-gnu"
+	default:
+		return "x86_64-pc-linux-gnu"
+	}
+}
+
+// BuildClangArgs constructs command line arguments for Clang given options,
+// enforcing an ELF target on all platforms for consistent relocation generation.
+func BuildClangArgs(opts CompileOptions, out string) []string {
+	args := []string{
+		"-c",
+		opts.SourceFile,
+		"-o", out,
+		"-O3",
+		"-ffreestanding",
+		"-fno-asynchronous-unwind-tables",
+		"-fno-exceptions",
+		"-fno-rtti",
+		"-fno-stack-protector",
+		"-fomit-frame-pointer",
+		"-fno-jump-tables",
+	}
+
+	switch opts.TargetArch {
+	case "", "amd64":
+		args = append(args,
+			"-target", "x86_64-pc-linux-gnu",
+			"-mno-red-zone",
+			"-mavx2",
+			"-mpclmul",
+			"-mfma",
+		)
+	case "arm64":
+		args = append(args,
+			"-target", "aarch64-linux-gnu",
+			"-march=armv8-a+simd+crypto",
+		)
+	}
+
+	args = append(args, opts.ExtraFlags...)
+	return args
+}
+

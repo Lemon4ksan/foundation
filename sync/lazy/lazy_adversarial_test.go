@@ -49,10 +49,10 @@ func verifyPayload(p stressPayload) bool {
 	return true
 }
 
-// TestLazy_HighContentionRace verifies that concurrent Get and Reset cycles
+// TestValue_HighContentionRace verifies that concurrent Get and Reset cycles
 // under extreme contention never exhibit word tearing, partial struct publication,
 // or data races.
-func TestLazy_HighContentionRace(t *testing.T) {
+func TestValue_HighContentionRace(t *testing.T) {
 	var seq atomic.Int64
 
 	l := New(func() (stressPayload, error) {
@@ -122,8 +122,8 @@ func TestLazy_HighContentionRace(t *testing.T) {
 	wg.Wait()
 }
 
-// TestLazy_ErrorCachingAndReset verifies error caching semantics under concurrent access.
-func TestLazy_ErrorCachingAndReset(t *testing.T) {
+// TestValue_ErrorCachingAndReset verifies error caching semantics under concurrent access.
+func TestValue_ErrorCachingAndReset(t *testing.T) {
 	expectedErr := errors.New("transient failure")
 	var shouldFail atomic.Bool
 	shouldFail.Store(true)
@@ -178,9 +178,9 @@ func TestLazy_ErrorCachingAndReset(t *testing.T) {
 	}
 }
 
-// TestLazy_PanicSafety verifies that if init panics, the lock is properly
+// TestValue_PanicSafety verifies that if init panics, the lock is properly
 // released and does not deadlock future callers.
-func TestLazy_PanicSafety(t *testing.T) {
+func TestValue_PanicSafety(t *testing.T) {
 	var shouldPanic atomic.Bool
 	shouldPanic.Store(true)
 
@@ -213,8 +213,8 @@ func TestLazy_PanicSafety(t *testing.T) {
 	}
 }
 
-// TestLazy_FastPathZeroAlloc verifies that initialized Get produces 0 allocations.
-func TestLazy_FastPathZeroAlloc(t *testing.T) {
+// TestValue_FastPathZeroAlloc verifies that initialized Get produces 0 allocations.
+func TestValue_FastPathZeroAlloc(t *testing.T) {
 	l := New(func() (int, error) {
 		return 12345, nil
 	})

@@ -10,8 +10,9 @@ import (
 	"github.com/lemon4ksan/foundation/async/task"
 )
 
-func ExampleManager_callback() {
-	mgr := task.NewManager[uint64, string](100)
+func ExampleTracker_callback() {
+	ctx := context.Background()
+	mgr := task.NewTracker[uint64, string](100)
 	id := mgr.NextID()
 
 	var wg sync.WaitGroup
@@ -30,15 +31,16 @@ func ExampleManager_callback() {
 	}
 
 	// Simulate asynchronous response arrival
-	mgr.Resolve(id, "Hello, World!", nil)
+	mgr.Resolve(ctx, id, "Hello, World!", nil)
 
 	wg.Wait()
 	// Output:
 	// Job 1 received: Hello, World!
 }
 
-func ExampleManager_blocking() {
-	mgr := task.NewManager[uint64, string](0)
+func ExampleTracker_blocking() {
+	ctx := context.Background()
+	mgr := task.NewTracker[uint64, string](0)
 	id := mgr.NextID()
 
 	// Configure with WithWait and a 1-second timeout limit
@@ -50,10 +52,10 @@ func ExampleManager_blocking() {
 	// Block and wait for resolution synchronously
 	go func() {
 		time.Sleep(10 * time.Millisecond)
-		mgr.Resolve(id, "Hello from background!", nil)
+		mgr.Resolve(ctx, id, "Hello from background!", nil)
 	}()
 
-	res, err := mgr.WaitFor(context.Background(), id)
+	res, err := mgr.WaitFor(ctx, id)
 	if err != nil {
 		log.Fatalf("Job failed: %v", err)
 	}

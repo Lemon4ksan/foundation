@@ -5,7 +5,7 @@
 // Package tuikit provides a zero-dependency terminal UI toolkit for building CLI applications,
 // REPLs, formatted tables, styled borders, badges, and progress indicators.
 //
-// It includes a CLI application framework ([App]) with subcommand routing and help generation,
+// It includes a CLI application framework ([App]) with subcommand routing ([Command], [FuncCommand]) and help generation,
 // a terminal capability sniffer ([ProbeTerminal]), formatted auto-aligned tables ([Table]),
 // bordered boxes ([Box]), and interactive indicators like progress bars and badges.
 //

@@ -10,8 +10,8 @@ import (
 	"github.com/lemon4ksan/foundation/sync/limiter"
 )
 
-func TestAdaptiveLimiter_Allocations(t *testing.T) {
-	adLim := limiter.NewAdaptiveLimiter(10.0)
+func TestAdaptive_Allocations(t *testing.T) {
+	adLim := limiter.NewAdaptive(10.0)
 	ctx := context.Background()
 
 	allocs := testing.AllocsPerRun(1000, func() {
@@ -21,6 +21,6 @@ func TestAdaptiveLimiter_Allocations(t *testing.T) {
 
 	if allocs > 0 {
 		// Log the allocations to know what it is.
-		t.Logf("AdaptiveLimiter allocates %v per op", allocs)
+		t.Logf("Adaptive allocates %v per op", allocs)
 	}
 }

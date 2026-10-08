@@ -11,7 +11,7 @@ import (
 	"testing"
 )
 
-func TestLazy_Basic(t *testing.T) {
+func TestValue_Basic(t *testing.T) {
 	var calls int32
 
 	l := New(func() (int, error) {
@@ -48,7 +48,7 @@ func TestLazy_Basic(t *testing.T) {
 	}
 }
 
-func TestLazy_Error(t *testing.T) {
+func TestValue_Error(t *testing.T) {
 	expectedErr := errors.New("init error")
 	l := New(func() (string, error) {
 		return "", expectedErr
@@ -64,7 +64,7 @@ func TestLazy_Error(t *testing.T) {
 	}
 }
 
-func TestLazy_Reset(t *testing.T) {
+func TestValue_Reset(t *testing.T) {
 	var calls atomic.Int32
 
 	l := New(func() (int, error) {
@@ -85,7 +85,7 @@ func TestLazy_Reset(t *testing.T) {
 	}
 }
 
-func TestLazy_Concurrent(t *testing.T) {
+func TestValue_Concurrent(t *testing.T) {
 	var calls int32
 
 	l := New(func() (int, error) {
@@ -116,7 +116,7 @@ func TestLazy_Concurrent(t *testing.T) {
 	}
 }
 
-func TestLazy_ConcurrentWithReset(t *testing.T) {
+func TestValue_ConcurrentWithReset(t *testing.T) {
 	var calls atomic.Int32
 	l := New(func() (int, error) {
 		return int(calls.Add(1)), nil
@@ -164,7 +164,7 @@ func TestLazy_ConcurrentWithReset(t *testing.T) {
 	wg.Wait()
 }
 
-func BenchmarkLazy_Get_Initialized(b *testing.B) {
+func BenchmarkValue_Get_Initialized(b *testing.B) {
 	l := New(func() (int, error) {
 		return 42, nil
 	})
@@ -183,7 +183,7 @@ func BenchmarkLazy_Get_Initialized(b *testing.B) {
 	}
 }
 
-func BenchmarkLazy_Get_Parallel(b *testing.B) {
+func BenchmarkValue_Get_Parallel(b *testing.B) {
 	l := New(func() (int, error) {
 		return 42, nil
 	})

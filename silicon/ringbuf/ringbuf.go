@@ -15,8 +15,8 @@ type cell[T any] struct {
 	data     atomic.Pointer[T]
 }
 
-// RingBuffer is a lock-free power-of-two capacity MPMC queue.
-type RingBuffer[T any] struct {
+// Buffer is a lock-free power-of-two capacity MPMC queue.
+type Buffer[T any] struct {
 	_          cpu.CacheLinePad
 	enqueuePos atomic.Uint64
 	_          cpu.CacheLinePad
@@ -27,8 +27,8 @@ type RingBuffer[T any] struct {
 	buffer     []cell[T]
 }
 
-// NewRingBuffer instantiates a lock-free [RingBuffer] with power-of-two capacity.
-func NewRingBuffer[T any](capacity int) *RingBuffer[T] {
+// New instantiates a lock-free [Buffer] with power-of-two capacity.
+func New[T any](capacity int) *Buffer[T] {
 	if capacity < 2 {
 		capacity = 2
 	}
@@ -46,7 +46,7 @@ func NewRingBuffer[T any](capacity int) *RingBuffer[T] {
 		buf[i].sequence.Store(i)
 	}
 
-	return &RingBuffer[T]{
+	return &Buffer[T]{
 		capacity: capPow2,
 		mask:     capPow2 - 1,
 		buffer:   buf,
@@ -55,7 +55,7 @@ func NewRingBuffer[T any](capacity int) *RingBuffer[T] {
 
 // Push enqueues item into the ring buffer using atomic CAS.
 // Returns false if buffer is full.
-func (r *RingBuffer[T]) Push(item *T) bool {
+func (r *Buffer[T]) Push(item *T) bool {
 	pos := r.enqueuePos.Load()
 	for {
 		c := &r.buffer[pos&r.mask]
@@ -81,7 +81,7 @@ func (r *RingBuffer[T]) Push(item *T) bool {
 
 // Pop dequeues item from the ring buffer using atomic CAS.
 // Returns nil if buffer is empty.
-func (r *RingBuffer[T]) Pop() *T {
+func (r *Buffer[T]) Pop() *T {
 	pos := r.dequeuePos.Load()
 	for {
 		c := &r.buffer[pos&r.mask]
@@ -106,7 +106,7 @@ func (r *RingBuffer[T]) Pop() *T {
 }
 
 // Len returns approximate current element count.
-func (r *RingBuffer[T]) Len() int {
+func (r *Buffer[T]) Len() int {
 	head := r.enqueuePos.Load()
 	tail := r.dequeuePos.Load()
 
@@ -118,7 +118,7 @@ func (r *RingBuffer[T]) Len() int {
 }
 
 // Drain pops and yields all buffered items in FIFO order until the buffer is empty.
-func (r *RingBuffer[T]) Drain() iter.Seq[*T] {
+func (r *Buffer[T]) Drain() iter.Seq[*T] {
 	return func(yield func(*T) bool) {
 		for {
 			item := r.Pop()

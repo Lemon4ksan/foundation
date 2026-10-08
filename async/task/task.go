@@ -17,29 +17,39 @@ import (
 )
 
 var (
-	// ErrTaskTimeout is returned when a task exceeds its allowed execution time
+	// ErrTimeout is returned when a task exceeds its allowed execution time
 	// defined by [WithTimeout].
-	ErrTaskTimeout = errors.New("task: request timed out")
+	ErrTimeout = errors.New("task: request timed out")
 
-	// ErrTaskClosed is returned when the manager is shutting down and all
+	// ErrClosed is returned when the tracker is shutting down and all
 	// pending tasks are being cancelled.
-	ErrTaskClosed = errors.New("task: manager closed")
+	ErrClosed = errors.New("task: tracker closed")
 
-	// ErrTaskCancelled is returned when the context associated with the task
+	// ErrCancelled is returned when the context associated with the task
 	// is cancelled or expires.
-	ErrTaskCancelled = errors.New("task: context cancelled")
+	ErrCancelled = errors.New("task: context cancelled")
 
-	// ErrTaskDuplicate is returned when attempting to add a task ID that is
-	// already being tracked by the manager.
-	ErrTaskDuplicate = errors.New("task: duplicate task ID")
+	// ErrDuplicate is returned when attempting to add a task ID that is
+	// already being tracked by the tracker.
+	ErrDuplicate = errors.New("task: duplicate task ID")
 
-	// ErrTaskNotFound is returned when attempting to resolve, wait for, or remove
-	// a task ID that does not exist in the manager's registry.
-	ErrTaskNotFound = errors.New("task: not found")
+	// ErrAlreadyExists is returned when attempting to add a task ID that
+	// already exists in the tracker.
+	ErrAlreadyExists = errors.New("task: duplicate task ID")
 
-	// ErrTaskWaitFor is returned when [Manager.WaitFor] is invoked on a task
+	// ErrNotFound is returned when attempting to resolve, wait for, or remove
+	// a task ID that does not exist in the tracker's registry.
+	ErrNotFound = errors.New("task: not found")
+
+	// ErrWaitFor is returned when [Tracker.WaitFor] is invoked on a task
 	// that was not initialized with the [WithWait] option.
-	ErrTaskWaitFor = errors.New("task: was not created with WithWait option")
+	ErrWaitFor = errors.New("task: was not created with WithWait option")
+
+	// ErrFailed is returned when a task fails execution.
+	ErrFailed = errors.New("task: execution failed")
+
+	// ErrPanic is returned when a task execution panics.
+	ErrPanic = errors.New("task: execution panicked")
 )
 
 // Callback defines the function signature for handling completed jobs.
@@ -85,7 +95,7 @@ type Result[T any] struct {
 //
 // This allows users to implement custom backends (e.g., in-memory map, Redis,
 // or persistent SQL databases). All write and read operations on the Store
-// are fully protected by the [Manager]'s internal lock, meaning custom implementations
+// are fully protected by the [Tracker]'s internal lock, meaning custom implementations
 // do not need to be safe for concurrent use.
 type Store[K comparable, T any] interface {
 	// Add registers a new job entry.
@@ -100,18 +110,18 @@ type Store[K comparable, T any] interface {
 	// Len returns the total number of currently active jobs.
 	Len(ctx context.Context) (int, error)
 
-	// GetAll retrieves a shallow copy of all currently active job entries.
-	GetAll(ctx context.Context) (map[K]*Entry[T], error)
+	// All retrieves a shallow copy of all currently active job entries.
+	All(ctx context.Context) (map[K]*Entry[T], error)
 }
 
-// Manager coordinates the lifecycle, asynchronous resolution, and synchronous
+// Tracker coordinates the lifecycle, asynchronous resolution, and synchronous
 // wait states of multiple correlation-tracked jobs.
 //
 // Entries are highly lightweight and recycled through an internal [sync.Pool]
 // to eliminate memory allocation overhead on hot paths.
 //
-// A Manager is safe for concurrent use by multiple goroutines.
-type Manager[K comparable, T any] struct {
+// A Tracker is safe for concurrent use by multiple goroutines.
+type Tracker[K comparable, T any] struct {
 	mu       sync.Mutex
 	store    Store[K, T]
 	counter  atomic.Uint64
@@ -122,12 +132,12 @@ type Manager[K comparable, T any] struct {
 	entryPool sync.Pool
 }
 
-// NewManager creates a new [Manager] instance using the default in-memory storage.
+// NewTracker creates a new [Tracker] instance using the default in-memory storage.
 //
 // The capacity parameter limits the maximum number of concurrent pending jobs
 // to protect against memory exhaustion. Set capacity to 0 for unlimited jobs.
-func NewManager[K comparable, T any](capacity int) *Manager[K, T] {
-	m := &Manager[K, T]{
+func NewTracker[K comparable, T any](capacity int) *Tracker[K, T] {
+	m := &Tracker[K, T]{
 		capacity: capacity,
 		store:    newMemoryStore[K, T](),
 	}
@@ -138,12 +148,12 @@ func NewManager[K comparable, T any](capacity int) *Manager[K, T] {
 	return m
 }
 
-// NewManagerWithStore creates a new [Manager] instance using a custom [Store] backend.
+// NewTrackerWithStore creates a new [Tracker] instance using a custom [Store] backend.
 //
 // The capacity parameter limits the maximum number of concurrent pending jobs.
 // Set capacity to 0 for unlimited jobs.
-func NewManagerWithStore[K comparable, T any](capacity int, store Store[K, T]) *Manager[K, T] {
-	m := &Manager[K, T]{
+func NewTrackerWithStore[K comparable, T any](capacity int, store Store[K, T]) *Tracker[K, T] {
+	m := &Tracker[K, T]{
 		capacity: capacity,
 		store:    store,
 	}
@@ -154,9 +164,9 @@ func NewManagerWithStore[K comparable, T any](capacity int, store Store[K, T]) *
 	return m
 }
 
-// SetStore updates the backend storage used by the manager.
-// It is safe to call concurrently while the manager is running.
-func (m *Manager[K, T]) SetStore(store Store[K, T]) {
+// SetStore updates the backend storage used by the tracker.
+// It is safe to call concurrently while the tracker is running.
+func (m *Tracker[K, T]) SetStore(store Store[K, T]) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -166,8 +176,8 @@ func (m *Manager[K, T]) SetStore(store Store[K, T]) {
 }
 
 // SetCallbackStrategy updates the default callback execution strategy.
-// It is safe to call concurrently while the manager is running.
-func (m *Manager[K, T]) SetCallbackStrategy(strategy CallbackStrategy) {
+// It is safe to call concurrently while the tracker is running.
+func (m *Tracker[K, T]) SetCallbackStrategy(strategy CallbackStrategy) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -178,7 +188,7 @@ func (m *Manager[K, T]) SetCallbackStrategy(strategy CallbackStrategy) {
 
 // WithTimeout sets a maximum duration the job is allowed to remain pending.
 // If the timeout is reached before resolution, the job is automatically resolved
-// with [ErrTaskTimeout].
+// with [ErrTimeout].
 func WithTimeout[T any](timeout time.Duration) Option[T] {
 	return func(c *config[T]) {
 		c.timeout = timeout
@@ -187,7 +197,7 @@ func WithTimeout[T any](timeout time.Duration) Option[T] {
 
 // WithContext associates a [context.Context] with the job.
 // If the context is cancelled or expires before resolution, the job is automatically
-// resolved with [ErrTaskCancelled].
+// resolved with [ErrCancelled].
 func WithContext[T any](ctx context.Context) Option[T] {
 	return func(c *config[T]) {
 		c.ctx = ctx
@@ -197,7 +207,7 @@ func WithContext[T any](ctx context.Context) Option[T] {
 // WithKeepAlive indicates that the job should persist in the storage after its
 // first resolution. This is useful for streaming, multiplexed, or multipart responses.
 //
-// If keepAlive is true, the job must be manually removed using [Manager.Remove]
+// If keepAlive is true, the job must be manually removed using [Tracker.Remove]
 // once the stream is completed to prevent memory leaks.
 func WithKeepAlive[T any](keepAlive bool) Option[T] {
 	return func(c *config[T]) {
@@ -205,8 +215,8 @@ func WithKeepAlive[T any](keepAlive bool) Option[T] {
 	}
 }
 
-// WithWait enables synchronous waiting for this job using the [Manager.WaitFor] method.
-// Without this option, calling WaitFor on the job ID will return an [ErrTaskWaitFor] error.
+// WithWait enables synchronous waiting for this job using the [Tracker.WaitFor] method.
+// Without this option, calling WaitFor on the job ID will return an [ErrWaitFor] error.
 func WithWait[T any]() Option[T] {
 	return func(c *config[T]) {
 		c.wait = true
@@ -225,7 +235,7 @@ func WithCallbackStrategy[T any](strategy CallbackStrategy) Option[T] {
 //
 // If the key type K is not supported (not an integer or string type), it returns
 // the zero value of K.
-func (m *Manager[K, T]) NextID() K {
+func (m *Tracker[K, T]) NextID() K {
 	val := m.counter.Add(1)
 
 	var zero K
@@ -252,24 +262,24 @@ func (m *Manager[K, T]) NextID() K {
 // Add registers a new job for tracking.
 //
 // The cb argument can be nil if you plan to wait for the job synchronously
-// using the [Manager.WaitFor] method. If you pass nil, make sure to configure
+// using the [Tracker.WaitFor] method. If you pass nil, make sure to configure
 // the job with the [WithWait] option.
 //
 // # Errors
 //
-// It returns [ErrTaskClosed] if the manager is already closed, or [ErrTaskDuplicate]
+// It returns [ErrClosed] if the tracker is already closed, or [ErrDuplicate]
 // if the provided id is already registered. If a capacity limit is configured
 // and reached, it returns an error wrapping the capacity limit details.
 //
 // # Complexity
 //
 // Time Complexity: O(1) when using the default in-memory store.
-func (m *Manager[K, T]) Add(id K, cb Callback[T], opts ...Option[T]) error {
+func (m *Tracker[K, T]) Add(id K, cb Callback[T], opts ...Option[T]) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	if m.closed {
-		return ErrTaskClosed
+		return ErrClosed
 	}
 
 	cfg := defaultConfig[T]()
@@ -285,7 +295,7 @@ func (m *Manager[K, T]) Add(id K, cb Callback[T], opts ...Option[T]) error {
 	}
 
 	if m.capacity > 0 && storeLen >= m.capacity {
-		return fmt.Errorf("task manager capacity reached (%d)", m.capacity)
+		return fmt.Errorf("task tracker capacity reached (%d)", m.capacity)
 	}
 
 	_, exists, err := m.store.Get(cfg.ctx, id)
@@ -294,7 +304,7 @@ func (m *Manager[K, T]) Add(id K, cb Callback[T], opts ...Option[T]) error {
 	}
 
 	if exists {
-		return ErrTaskDuplicate
+		return ErrDuplicate
 	}
 
 	e := m.entryPool.Get().(*Entry[T])
@@ -312,14 +322,14 @@ func (m *Manager[K, T]) Add(id K, cb Callback[T], opts ...Option[T]) error {
 
 	if cfg.timeout > 0 {
 		timer := time.AfterFunc(cfg.timeout, func() {
-			m.Resolve(id, *new(T), ErrTaskTimeout)
+			m.Resolve(context.Background(), id, *new(T), ErrTimeout)
 		})
 		e.timerStop = timer.Stop
 	}
 
 	if cfg.ctx != nil && cfg.ctx != context.Background() {
 		stop := context.AfterFunc(cfg.ctx, func() {
-			m.Resolve(id, *new(T), ErrTaskCancelled)
+			m.Resolve(cfg.ctx, id, *new(T), ErrCancelled)
 		})
 		e.ctxStop = stop
 	}
@@ -341,11 +351,11 @@ func (m *Manager[K, T]) Add(id K, cb Callback[T], opts ...Option[T]) error {
 	return nil
 }
 
-// Resolve marks a job as complete by providing a response or an error.
+// Resolve marks a job as complete by providing a response or an error using the given context.
 //
 // The internal state is cleaned up immediately unless the job was registered
 // with the [WithKeepAlive] option. Any goroutine currently blocked in the
-// [Manager.WaitFor] call for this job ID will be unblocked and receive
+// [Tracker.WaitFor] call for this job ID will be unblocked and receive
 // the response and error.
 //
 // If a callback was registered, it is executed according to the configured
@@ -358,12 +368,7 @@ func (m *Manager[K, T]) Add(id K, cb Callback[T], opts ...Option[T]) error {
 // # Complexity
 //
 // Time Complexity: O(1) when using the default in-memory store.
-func (m *Manager[K, T]) Resolve(id K, response T, err error) bool {
-	return m.ResolveContext(context.Background(), id, response, err)
-}
-
-// ResolveContext marks a job as complete by providing a response or an error using a specific context.
-func (m *Manager[K, T]) ResolveContext(ctx context.Context, id K, response T, err error) bool {
+func (m *Tracker[K, T]) Resolve(ctx context.Context, id K, response T, err error) bool {
 	m.mu.Lock()
 	if m.closed {
 		m.mu.Unlock()
@@ -422,10 +427,10 @@ func (m *Manager[K, T]) ResolveContext(ctx context.Context, id K, response T, er
 	return true
 }
 
-// Remove removes the specific job without resolving it or invoking its callback.
+// Remove removes the specific job without resolving it or invoking its callback using the given context.
 //
 // This method can be used to manually clean up jobs that were registered
-// with the [WithKeepAlive] option. Any blocked [Manager.WaitFor] calls for
+// with the [WithKeepAlive] option. Any blocked [Tracker.WaitFor] calls for
 // this job ID will be closed immediately without a result.
 //
 // It returns true if the job was found and removed, or false otherwise.
@@ -433,12 +438,7 @@ func (m *Manager[K, T]) ResolveContext(ctx context.Context, id K, response T, er
 // # Complexity
 //
 // Time Complexity: O(1) when using the default in-memory store.
-func (m *Manager[K, T]) Remove(id K) bool {
-	return m.RemoveContext(context.Background(), id)
-}
-
-// RemoveContext removes the specific job without resolving it or invoking its callback using a specific context.
-func (m *Manager[K, T]) RemoveContext(ctx context.Context, id K) bool {
+func (m *Tracker[K, T]) Remove(ctx context.Context, id K) bool {
 	m.mu.Lock()
 	if m.closed {
 		m.mu.Unlock()
@@ -477,13 +477,13 @@ func (m *Manager[K, T]) RemoveContext(ctx context.Context, id K) bool {
 }
 
 // WaitFor blocks the current goroutine until the specific job is resolved,
-// the provided ctx is canceled, or the manager is closed.
+// the provided ctx is canceled, or the tracker is closed.
 //
-// It returns [ErrTaskWaitFor] if the job was registered without the [WithWait] option,
-// or [ErrTaskNotFound] if the job does not exist. If the context is canceled
-// before the job is resolved, it returns the context error. If the manager
-// is closed while waiting, it returns [ErrTaskClosed].
-func (m *Manager[K, T]) WaitFor(ctx context.Context, id K) (T, error) {
+// It returns [ErrWaitFor] if the job was registered without the [WithWait] option,
+// or [ErrNotFound] if the job does not exist. If the context is canceled
+// before the job is resolved, it returns the context error. If the tracker
+// is closed while waiting, it returns [ErrClosed].
+func (m *Tracker[K, T]) WaitFor(ctx context.Context, id K) (T, error) {
 	m.mu.Lock()
 
 	e, ok, err := m.store.Get(ctx, id)
@@ -500,39 +500,41 @@ func (m *Manager[K, T]) WaitFor(ctx context.Context, id K) (T, error) {
 	m.mu.Unlock()
 
 	if !ok {
-		return *new(T), ErrTaskNotFound
+		return *new(T), ErrNotFound
 	}
 
 	if wCh == nil {
-		return *new(T), ErrTaskWaitFor
+		return *new(T), ErrWaitFor
 	}
 
 	select {
 	case res, ok := <-wCh:
 		if !ok {
-			return *new(T), ErrTaskClosed
+			return *new(T), ErrClosed
 		}
 
 		return res.val, res.err
 
 	case <-ctx.Done():
+		select {
+		case res, ok := <-wCh:
+			if ok {
+				return res.val, res.err
+			}
+		default:
+		}
 		return *new(T), ctx.Err()
 	}
 }
 
-// CancelAll cancels all the currently pending jobs.
+// CancelAll cancels all the currently pending jobs using the given context.
 //
-// All active job callbacks are executed, and any blocked [Manager.WaitFor]
+// All active job callbacks are executed, and any blocked [Tracker.WaitFor]
 // calls are unblocked, receiving the provided err value.
-func (m *Manager[K, T]) CancelAll(err error) {
-	m.CancelAllContext(context.Background(), err)
-}
-
-// CancelAllContext cancels all the currently pending jobs using a specific context.
-func (m *Manager[K, T]) CancelAllContext(ctx context.Context, err error) {
+func (m *Tracker[K, T]) CancelAll(ctx context.Context, err error) {
 	m.mu.Lock()
 
-	pending, getErr := m.store.GetAll(ctx)
+	pending, getErr := m.store.All(ctx)
 	if getErr == nil {
 		for id := range pending {
 			_, _ = m.store.Delete(ctx, id)
@@ -546,12 +548,12 @@ func (m *Manager[K, T]) CancelAllContext(ctx context.Context, err error) {
 	}
 }
 
-// Close shuts down the manager, marks it as closed, and cancels all currently
-// pending jobs with [ErrTaskClosed].
+// Close shuts down the tracker, marks it as closed, and cancels all currently
+// pending jobs with [ErrClosed].
 //
-// Once the manager is closed, no new jobs can be added via the [Manager.Add] method.
+// Once the tracker is closed, no new jobs can be added via the [Tracker.Add] method.
 // Close is safe for concurrent use and idempotent; subsequent calls return nil.
-func (m *Manager[K, T]) Close() error {
+func (m *Tracker[K, T]) Close() error {
 	m.mu.Lock()
 	if m.closed {
 		m.mu.Unlock()
@@ -560,7 +562,7 @@ func (m *Manager[K, T]) Close() error {
 
 	m.closed = true
 
-	pending, getErr := m.store.GetAll(context.Background())
+	pending, getErr := m.store.All(context.Background())
 	if getErr == nil {
 		for id := range pending {
 			_, _ = m.store.Delete(context.Background(), id)
@@ -570,14 +572,14 @@ func (m *Manager[K, T]) Close() error {
 	m.mu.Unlock()
 
 	if getErr == nil {
-		m.closePending(pending, ErrTaskClosed)
+		m.closePending(pending, ErrClosed)
 	}
 
 	return nil
 }
 
 // Count returns the number of currently active jobs being tracked.
-func (m *Manager[K, T]) Count() int {
+func (m *Tracker[K, T]) Count() int {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -586,7 +588,7 @@ func (m *Manager[K, T]) Count() int {
 	return c
 }
 
-func (m *Manager[K, T]) closePending(pending map[K]*Entry[T], err error) {
+func (m *Tracker[K, T]) closePending(pending map[K]*Entry[T], err error) {
 	for _, e := range pending {
 		if e.timerStop != nil {
 			e.timerStop()
@@ -637,7 +639,7 @@ func defaultConfig[T any]() config[T] {
 }
 
 // memoryStore is the default in-memory implementation of [Store].
-// Since all store access within Manager is fully guarded by the manager's
+// Since all store access within Tracker is fully guarded by the tracker's
 // internal lock, memoryStore does not implement internal locking.
 type memoryStore[K comparable, T any] struct {
 	jobs map[K]*Entry[T]
@@ -672,7 +674,7 @@ func (s *memoryStore[K, T]) Len(ctx context.Context) (int, error) {
 	return len(s.jobs), nil
 }
 
-func (s *memoryStore[K, T]) GetAll(ctx context.Context) (map[K]*Entry[T], error) {
+func (s *memoryStore[K, T]) All(ctx context.Context) (map[K]*Entry[T], error) {
 	res := make(map[K]*Entry[T], len(s.jobs))
 	maps.Copy(res, s.jobs)
 	return res, nil

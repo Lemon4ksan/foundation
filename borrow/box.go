@@ -43,19 +43,51 @@ func NewBoxPtr[T any](ptr *T, slot *Slot) Box[T] {
 }
 
 // Borrow borrows the boxed value as an immutable reference.
+// It acquires a shared immutable borrow on the underlying slot,
+// panicking if the slot is already exclusively borrowed or invalid.
 func (b Box[T]) Borrow() Ref[T] {
-	if b.slot != nil {
-		b.slot.CheckValid(b.gen)
+	ref, err := b.TryBorrow()
+	if err != nil {
+		panic(err)
 	}
-	return Ref[T](b)
+	return ref
+}
+
+// TryBorrow attempts to borrow the boxed value as an immutable reference.
+// Returns an error if the resource is already exclusively borrowed or invalid.
+func (b Box[T]) TryBorrow() (Ref[T], error) {
+	if b.slot != nil {
+		if err := b.slot.TryAcquireShared(b.gen); err != nil {
+			return Ref[T]{}, err
+		}
+	}
+	return Ref[T](b), nil
 }
 
 // BorrowMut borrows the boxed value as an exclusive mutable reference.
+// It acquires an exclusive mutable borrow on the underlying slot,
+// panicking if the slot is already borrowed or invalid.
 func (b *Box[T]) BorrowMut() Mut[T] {
-	if b.slot != nil {
-		b.slot.CheckValid(b.gen)
+	mut, err := b.TryBorrowMut()
+	if err != nil {
+		panic(err)
 	}
-	return Mut[T](*b)
+	return mut
+}
+
+// TryBorrowMut attempts to borrow the boxed value as an exclusive mutable reference.
+// Returns an error if the resource is actively borrowed or invalid.
+func (b *Box[T]) TryBorrowMut() (Mut[T], error) {
+	if b.slot != nil {
+		if err := b.slot.TryAcquireExclusive(b.gen); err != nil {
+			return Mut[T]{}, err
+		}
+	}
+	return Mut[T]{
+		ptr:  b.ptr,
+		slot: b.slot,
+		gen:  b.gen,
+	}, nil
 }
 
 // Get returns the underlying pointer after verifying generation validity.
@@ -67,15 +99,20 @@ func (b Box[T]) Get() *T {
 }
 
 // Move transfers ownership of this Box to a new Box instance,
-// invalidating the current instance.
+// invalidating the current instance and advancing the slot generation
+// so that any pre-existing borrows are invalidated.
 func (b *Box[T]) Move() Box[T] {
 	if b.slot != nil {
 		b.slot.CheckValid(b.gen)
 	}
+	var newGen uint32
+	if b.slot != nil {
+		newGen = b.slot.AdvanceGeneration()
+	}
 	res := Box[T]{
 		ptr:  b.ptr,
 		slot: b.slot,
-		gen:  b.gen,
+		gen:  newGen,
 	}
 	// Zero out original to prevent double usage
 	b.ptr = nil
@@ -85,9 +122,15 @@ func (b *Box[T]) Move() Box[T] {
 
 // Release consumes and destroys this Box, incrementing the generational counter
 // and invalidating all borrowed references derived from it.
+// If the underlying slot is bound to an enclosing scope, Invalidate is a safe no-op.
 func (b *Box[T]) Release() {
+	if b == nil || b.ptr == nil {
+		return
+	}
 	if b.slot != nil && b.gen != 0 {
-		b.slot.Invalidate()
+		if !b.slot.IsBound() {
+			b.slot.Invalidate()
+		}
 	}
 	b.ptr = nil
 	b.gen = 0

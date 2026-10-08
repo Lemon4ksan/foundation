@@ -6,7 +6,7 @@
 //
 // It compares local and remote API definitions to detect breaking changes,
 // non-breaking modifications, and ghost endpoints (endpoints missing in one contract).
-// The package produces a [DiffReport] summarizing the detected [DriftItem] changes.
+// The package produces a [Report] summarizing the detected [Drift] changes.
 //
 // # Compared to the standard library
 //

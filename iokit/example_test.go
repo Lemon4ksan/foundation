@@ -54,3 +54,22 @@ func ExampleBufferQueue() {
 	// Output:
 	// hello vectored world
 }
+
+func ExampleAsReplayable() {
+	data := []byte("replayable payload stream")
+	rep := iokit.AsReplayable(io.NopCloser(bytes.NewReader(data)))
+
+	// Inspect initial prefix
+	prefix := make([]byte, 10)
+	_, _ = io.ReadFull(rep, prefix)
+	fmt.Printf("Prefix: %s\n", prefix)
+
+	// Reset cursor for replay
+	rep.Reset()
+	full, _ := io.ReadAll(rep)
+	fmt.Printf("Full: %s\n", full)
+
+	// Output:
+	// Prefix: replayable
+	// Full: replayable payload stream
+}

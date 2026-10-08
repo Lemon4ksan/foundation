@@ -20,8 +20,8 @@ type (
 	Matcher = mock.Matcher
 	// TestReporter is the interface for error reporting in tests.
 	TestReporter = mock.TestReporter
-	// TestHelper is the interface for helper annotation.
-	TestHelper = mock.TestHelper
+	// TestingT is the interface for helper annotation.
+	TestingT = mock.TestingT
 )
 
 var (

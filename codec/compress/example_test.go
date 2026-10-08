@@ -12,7 +12,7 @@ func ExampleDecompress() {
 	payload := []byte("hello world")
 
 	// Compress the payload using gzip
-	compressedData, err := compress.CompressGzip(payload, nil)
+	compressedData, err := compress.Gzip(payload, nil)
 	if err != nil {
 		log.Fatalf("Compression error: %v", err)
 	}

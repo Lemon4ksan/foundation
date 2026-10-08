@@ -60,7 +60,7 @@ type framer struct {
 	activeStreams         map[protocol.StreamID]queuedStream
 	retransmissionStreams map[protocol.StreamID]streamFrameGetter
 
-	incrementalStreams    [8]ringbuffer.RingBuffer[streamQueueEntry]
+	incrementalStreams    [8]ringbuffer.Buffer[streamQueueEntry]
 	nonIncrementalStreams [8]minheap.Heap[protocol.StreamID, uint32 /* generation */]
 	// If an urgency level contains both incremental and non-incremental streams,
 	// we round-robin between incremental and non-incremental streams.
@@ -70,7 +70,7 @@ type framer struct {
 	// Retransmissions are not incremental: repair all lost data for the first queued stream.
 	// New losses extend its batch, so A, B, A is repaired as A, A, B, delaying B.
 	// The ring buffer provides FIFO scheduling while reusing its storage.
-	retransmissionQueue [8]ringbuffer.RingBuffer[protocol.StreamID]
+	retransmissionQueue [8]ringbuffer.Buffer[protocol.StreamID]
 
 	controlFrameMutex          sync.Mutex
 	controlFrames              []wire.Frame

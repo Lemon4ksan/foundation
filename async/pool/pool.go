@@ -14,9 +14,9 @@ import (
 )
 
 var (
-	// ErrPoolClosed is returned by [Pool.Submit] when attempting to enqueue
+	// ErrClosed is returned by [Pool.Submit] when attempting to enqueue
 	// a task to a pool that has already been closed.
-	ErrPoolClosed = errors.New("worker pool is closed")
+	ErrClosed = errors.New("worker pool is closed")
 
 	// ErrQueueFull is returned by [Pool.Submit] when the task queue reaches
 	// its configured capacity limit and cannot accept more tasks.
@@ -191,7 +191,7 @@ func (pool *Pool[T]) runTask(t task[T]) {
 // Submit enqueues a task for asynchronous execution by an idle worker.
 //
 // It returns a [Future] to await the task result, or an error if the pool is closed
-// ([ErrPoolClosed]) or its task queue is full ([ErrQueueFull]).
+// ([ErrClosed]) or its task queue is full ([ErrQueueFull]).
 //
 // Submit dynamically evaluates the load on the pool: if all current workers are busy
 // or tasks are queuing up, and the current worker count is below [Config.MaxWorkers], it
@@ -201,7 +201,7 @@ func (pool *Pool[T]) Submit(ctx context.Context, fn func(context.Context) (T, er
 
 	if pool.closed {
 		pool.mu.Unlock()
-		return nil, ErrPoolClosed
+		return nil, ErrClosed
 	}
 
 	if len(pool.tasks) >= pool.cfg.QueueLimit {

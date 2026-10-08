@@ -75,10 +75,10 @@ func (b *packetBuffer) putBack() {
 }
 
 var (
-	packetBufferStorage = pool.NewPerPStorage(func() *packetBuffer {
+	packetBufferStorage = pool.NewPerCorePool(func() *packetBuffer {
 		return &packetBuffer{Data: make([]byte, 0, protocol.MaxPacketBufferSize)}
 	})
-	largePacketBufferStorage = pool.NewPerPStorage(func() *packetBuffer {
+	largePacketBufferStorage = pool.NewPerCorePool(func() *packetBuffer {
 		return &packetBuffer{Data: make([]byte, 0, protocol.MaxLargePacketBufferSize)}
 	})
 )

@@ -25,18 +25,18 @@ func numWords(nbits int) int {
 	return (nbits + wordMask) >> wordShift
 }
 
-// BitSet represents a dense, growable bit array backed by []uint64 words.
-// Bit indices are 0-indexed. The zero value is an empty BitSet ready to use.
+// Set represents a dense, growable bit array backed by []uint64 words.
+// Bit indices are 0-indexed. The zero value is an empty Set ready to use.
 //
 // Read-only operations are safe for concurrent use across multiple goroutines.
 // Concurrent mutations or concurrent read/writes must be externally synchronized.
-type BitSet struct {
+type Set struct {
 	words  []uint64
 	length int
 }
 
 // cleanTrailing ensures that all bits at indices >= length in the backing words are strictly 0.
-func (b *BitSet) cleanTrailing() {
+func (b *Set) cleanTrailing() {
 	nWords := numWords(b.length)
 	if nWords < len(b.words) {
 		clear(b.words[nWords:])
@@ -47,7 +47,7 @@ func (b *BitSet) cleanTrailing() {
 	}
 }
 
-func (b *BitSet) ensureWords(needed int) {
+func (b *Set) ensureWords(needed int) {
 	if needed <= len(b.words) {
 		return
 	}
@@ -66,9 +66,9 @@ func (b *BitSet) ensureWords(needed int) {
 	b.words = newWords
 }
 
-// New creates a BitSet with the specified bit capacity/length.
+// New creates a Set with the specified bit capacity/length.
 // All bits are initialized to 0. Panics if nbits < 0.
-func New(nbits int) *BitSet {
+func New(nbits int) *Set {
 	if nbits < 0 {
 		panic("bitset: negative length")
 	}
@@ -77,15 +77,15 @@ func New(nbits int) *BitSet {
 	if n > 0 {
 		words = make([]uint64, n)
 	}
-	return &BitSet{
+	return &Set{
 		words:  words,
 		length: nbits,
 	}
 }
 
-// NewFromWords constructs a BitSet directly from an existing word slice.
+// NewFromWords constructs a Set directly from an existing word slice.
 // Panics if nbits < 0 or if words has insufficient length for nbits.
-func NewFromWords(words []uint64, nbits int) *BitSet {
+func NewFromWords(words []uint64, nbits int) *Set {
 	if nbits < 0 {
 		panic("bitset: negative length")
 	}
@@ -93,7 +93,7 @@ func NewFromWords(words []uint64, nbits int) *BitSet {
 	if needed > len(words) {
 		panic("bitset: words slice too short")
 	}
-	b := &BitSet{
+	b := &Set{
 		words:  words,
 		length: nbits,
 	}
@@ -101,9 +101,9 @@ func NewFromWords(words []uint64, nbits int) *BitSet {
 	return b
 }
 
-// FromBytes constructs a BitSet from a little-endian byte slice.
+// FromBytes constructs a Set from a little-endian byte slice.
 // Panics if nbits < 0.
-func FromBytes(b []byte, nbits int) *BitSet {
+func FromBytes(b []byte, nbits int) *Set {
 	if nbits < 0 {
 		panic("bitset: negative length")
 	}
@@ -119,7 +119,7 @@ func FromBytes(b []byte, nbits int) *BitSet {
 }
 
 // Len returns the logical number of bits in the bitset.
-func (b *BitSet) Len() int {
+func (b *Set) Len() int {
 	if b == nil {
 		return 0
 	}
@@ -127,7 +127,7 @@ func (b *BitSet) Len() int {
 }
 
 // Cap returns the total bit capacity currently allocated without reallocating.
-func (b *BitSet) Cap() int {
+func (b *Set) Cap() int {
 	if b == nil {
 		return 0
 	}
@@ -135,12 +135,12 @@ func (b *BitSet) Cap() int {
 }
 
 // Empty reports whether the bitset contains zero bits logically.
-func (b *BitSet) Empty() bool {
+func (b *Set) Empty() bool {
 	return b == nil || b.length == 0
 }
 
 // Count returns the number of set bits (1-bits) using hardware POPCNT.
-func (b *BitSet) Count() int {
+func (b *Set) Count() int {
 	if b == nil || b.length == 0 {
 		return 0
 	}
@@ -153,7 +153,7 @@ func (b *BitSet) Count() int {
 }
 
 // Any reports whether at least one bit in the bitset is set to 1.
-func (b *BitSet) Any() bool {
+func (b *Set) Any() bool {
 	if b == nil || b.length == 0 {
 		return false
 	}
@@ -167,13 +167,13 @@ func (b *BitSet) Any() bool {
 }
 
 // None reports whether no bits in the bitset are set to 1.
-func (b *BitSet) None() bool {
+func (b *Set) None() bool {
 	return !b.Any()
 }
 
 // AllSet reports whether all bits in the bitset (0 <= i < b.Len()) are set to 1.
 // If b.Len() == 0, it returns true (vacuously true).
-func (b *BitSet) AllSet() bool {
+func (b *Set) AllSet() bool {
 	if b == nil || b.length == 0 {
 		return true
 	}
@@ -194,7 +194,7 @@ func (b *BitSet) AllSet() bool {
 }
 
 // Equal reports whether two bitsets have the same length and identical bit values.
-func (b *BitSet) Equal(other *BitSet) bool {
+func (b *Set) Equal(other *Set) bool {
 	if b == other {
 		return true
 	}
@@ -215,7 +215,7 @@ func (b *BitSet) Equal(other *BitSet) bool {
 
 // Test reports the boolean value of bit i.
 // Panics if i < 0. Returns false if i >= b.Len().
-func (b *BitSet) Test(i int) bool {
+func (b *Set) Test(i int) bool {
 	if i < 0 {
 		panic("bitset: index out of range")
 	}
@@ -228,7 +228,7 @@ func (b *BitSet) Test(i int) bool {
 // Set sets bit i to 1 and returns b.
 // Automatically expands the bitset if i >= b.Len().
 // Panics if i < 0.
-func (b *BitSet) Set(i int) *BitSet {
+func (b *Set) Set(i int) *Set {
 	if i < 0 {
 		panic("bitset: index out of range")
 	}
@@ -242,7 +242,7 @@ func (b *BitSet) Set(i int) *BitSet {
 
 // SetTo sets bit i to the given boolean value and returns b.
 // Panics if i < 0.
-func (b *BitSet) SetTo(i int, val bool) *BitSet {
+func (b *Set) SetTo(i int, val bool) *Set {
 	if val {
 		return b.Set(i)
 	}
@@ -252,7 +252,7 @@ func (b *BitSet) SetTo(i int, val bool) *BitSet {
 // Clear sets bit i to 0 and returns b.
 // If i >= b.Len(), it is a no-op.
 // Panics if i < 0.
-func (b *BitSet) Clear(i int) *BitSet {
+func (b *Set) Clear(i int) *Set {
 	if i < 0 {
 		panic("bitset: index out of range")
 	}
@@ -266,7 +266,7 @@ func (b *BitSet) Clear(i int) *BitSet {
 // Toggle inverts bit i and returns b.
 // If i >= b.Len(), it expands the bitset and sets bit i to 1.
 // Panics if i < 0.
-func (b *BitSet) Toggle(i int) *BitSet {
+func (b *Set) Toggle(i int) *Set {
 	if i < 0 {
 		panic("bitset: index out of range")
 	}
@@ -281,7 +281,7 @@ func (b *BitSet) Toggle(i int) *BitSet {
 }
 
 // SetAll sets all bits in the bitset to 1 and returns b.
-func (b *BitSet) SetAll() *BitSet {
+func (b *Set) SetAll() *Set {
 	if b == nil || b.length == 0 {
 		return b
 	}
@@ -294,7 +294,7 @@ func (b *BitSet) SetAll() *BitSet {
 }
 
 // ClearAll zeroes all bits in the bitset and returns b.
-func (b *BitSet) ClearAll() *BitSet {
+func (b *Set) ClearAll() *Set {
 	if b == nil {
 		return nil
 	}
@@ -303,7 +303,7 @@ func (b *BitSet) ClearAll() *BitSet {
 }
 
 // Not inverts all bits in the bitset and returns b.
-func (b *BitSet) Not() *BitSet {
+func (b *Set) Not() *Set {
 	if b == nil || b.length == 0 {
 		return b
 	}
@@ -316,12 +316,12 @@ func (b *BitSet) Not() *BitSet {
 }
 
 // Flip inverts all bits in the bitset and returns b. Alias for Not().
-func (b *BitSet) Flip() *BitSet {
+func (b *Set) Flip() *Set {
 	return b.Not()
 }
 
 // Clone creates a deep copy of the bitset with identical length and contents.
-func (b *BitSet) Clone() *BitSet {
+func (b *Set) Clone() *Set {
 	if b == nil {
 		return nil
 	}
@@ -331,7 +331,7 @@ func (b *BitSet) Clone() *BitSet {
 		cloned = make([]uint64, n)
 		copy(cloned, b.words[:n])
 	}
-	return &BitSet{
+	return &Set{
 		words:  cloned,
 		length: b.length,
 	}
@@ -340,7 +340,7 @@ func (b *BitSet) Clone() *BitSet {
 // NextSet returns the index of the first bit set to 1 at or after start.
 // It returns (index, true) if a set bit is found, or (-1, false) if no such bit exists.
 // Panics if start < 0. Returns (-1, false) if start >= b.Len().
-func (b *BitSet) NextSet(start int) (int, bool) {
+func (b *Set) NextSet(start int) (int, bool) {
 	if start < 0 {
 		panic("bitset: index out of range")
 	}
@@ -371,7 +371,7 @@ func (b *BitSet) NextSet(start int) (int, bool) {
 // NextClear returns the index of the first bit set to 0 at or after start up to b.Len() - 1.
 // It returns (index, true) if a clear bit is found, or (-1, false) if no such bit exists.
 // Panics if start < 0. Returns (-1, false) if start >= b.Len().
-func (b *BitSet) NextClear(start int) (int, bool) {
+func (b *Set) NextClear(start int) (int, bool) {
 	if start < 0 {
 		panic("bitset: index out of range")
 	}
@@ -408,7 +408,7 @@ func (b *BitSet) NextClear(start int) (int, bool) {
 
 // And computes the bitwise AND of b and other in-place on b, returning b.
 // If other is nil or empty, b is cleared.
-func (b *BitSet) And(other *BitSet) *BitSet {
+func (b *Set) And(other *Set) *Set {
 	if b == nil {
 		return nil
 	}
@@ -432,7 +432,7 @@ func (b *BitSet) And(other *BitSet) *BitSet {
 
 // Or computes the bitwise OR of b and other in-place on b, returning b.
 // If other.Len() > b.Len(), b is grown to accommodate other.Len().
-func (b *BitSet) Or(other *BitSet) *BitSet {
+func (b *Set) Or(other *Set) *Set {
 	if b == nil {
 		return nil
 	}
@@ -453,7 +453,7 @@ func (b *BitSet) Or(other *BitSet) *BitSet {
 
 // Xor computes the bitwise XOR of b and other in-place on b, returning b.
 // If other.Len() > b.Len(), b is grown to accommodate other.Len().
-func (b *BitSet) Xor(other *BitSet) *BitSet {
+func (b *Set) Xor(other *Set) *Set {
 	if b == nil {
 		return nil
 	}
@@ -476,7 +476,7 @@ func (b *BitSet) Xor(other *BitSet) *BitSet {
 }
 
 // AndNot computes the bitwise AND NOT (bit-clear) of b and other in-place on b, returning b.
-func (b *BitSet) AndNot(other *BitSet) *BitSet {
+func (b *Set) AndNot(other *Set) *Set {
 	if b == nil {
 		return nil
 	}
@@ -496,7 +496,7 @@ func (b *BitSet) AndNot(other *BitSet) *BitSet {
 
 // Bits returns an inlined, non-allocating push iterator (iter.Seq[int]) that yields
 // the indices of all set bits (1-bits) in ascending order.
-func (b *BitSet) Bits() iter.Seq[int] {
+func (b *Set) Bits() iter.Seq[int] {
 	return func(yield func(int) bool) {
 		if b == nil || b.length == 0 {
 			return
@@ -518,21 +518,21 @@ func (b *BitSet) Bits() iter.Seq[int] {
 
 // Values returns an iterator yielding indices of all set bits in ascending order.
 // It is an alias for Bits().
-func (b *BitSet) Values() iter.Seq[int] {
+func (b *Set) Values() iter.Seq[int] {
 	return b.Bits()
 }
 
 // All returns an iterator yielding indices of all set bits in ascending order.
 // It is an alias for Bits().
-func (b *BitSet) All() iter.Seq[int] {
+func (b *Set) All() iter.Seq[int] {
 	return b.Bits()
 }
 
-// Resize resizes the BitSet to nbits.
+// Resize resizes the Set to nbits.
 // If nbits < b.Len(), the bitset is truncated and trailing bits are cleared.
 // If nbits > b.Len(), the bitset is grown and new bits are initialized to 0.
 // Panics if nbits < 0.
-func (b *BitSet) Resize(nbits int) *BitSet {
+func (b *Set) Resize(nbits int) *Set {
 	if nbits < 0 {
 		panic("bitset: negative length")
 	}
@@ -551,7 +551,7 @@ func (b *BitSet) Resize(nbits int) *BitSet {
 
 // Grow reserves capacity for at least nbits without changing b.Len().
 // Panics if nbits < 0.
-func (b *BitSet) Grow(nbits int) *BitSet {
+func (b *Set) Grow(nbits int) *Set {
 	if nbits < 0 {
 		panic("bitset: negative length")
 	}
@@ -565,7 +565,7 @@ func (b *BitSet) Grow(nbits int) *BitSet {
 }
 
 // ShrinkToFit reduces the capacity of the backing word slice to fit b.Len().
-func (b *BitSet) ShrinkToFit() *BitSet {
+func (b *Set) ShrinkToFit() *Set {
 	needed := numWords(b.length)
 	if cap(b.words) > needed {
 		var newWords []uint64

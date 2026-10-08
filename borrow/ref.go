@@ -17,6 +17,9 @@ func NewRef[T any](ptr *T, slot *Slot) Ref[T] {
 	var gen uint32
 	if slot != nil {
 		gen = slot.Generation()
+		if err := slot.TryAcquireShared(gen); err != nil {
+			panic(err)
+		}
 	}
 	return Ref[T]{
 		ptr:  ptr,
@@ -46,8 +49,11 @@ func (r Ref[T]) Val() T {
 
 // IsValid checks whether this reference is still active and valid without panicking.
 func (r Ref[T]) IsValid() bool {
+	if r.ptr == nil {
+		return false
+	}
 	if r.slot == nil {
-		return r.ptr != nil
+		return true
 	}
 	return r.slot.IsValid(r.gen)
 }
@@ -55,6 +61,19 @@ func (r Ref[T]) IsValid() bool {
 // Generation returns the generation at which this reference was created.
 func (r Ref[T]) Generation() uint32 {
 	return r.gen
+}
+
+// Release safely releases the shared immutable borrow on the slot.
+// Calling Release multiple times is safe and idempotent.
+func (r *Ref[T]) Release() {
+	if r == nil || r.ptr == nil {
+		return
+	}
+	if r.slot != nil && r.gen != 0 {
+		r.slot.ReleaseShared()
+	}
+	r.ptr = nil
+	r.gen = 0
 }
 
 // Mut represents an exclusive, mutable borrowed reference to a value of type T.
@@ -70,6 +89,9 @@ func NewMut[T any](ptr *T, slot *Slot) Mut[T] {
 	var gen uint32
 	if slot != nil {
 		gen = slot.Generation()
+		if err := slot.TryAcquireExclusive(gen); err != nil {
+			panic(err)
+		}
 	}
 	return Mut[T]{
 		ptr:  ptr,
@@ -96,17 +118,44 @@ func (m Mut[T]) Write(val T) {
 }
 
 // Freeze downgrades this exclusive mutable borrow into a shared immutable reference.
-func (m Mut[T]) Freeze() Ref[T] {
+func (m *Mut[T]) Freeze() Ref[T] {
+	if m == nil || m.ptr == nil {
+		return Ref[T]{}
+	}
 	if m.slot != nil {
 		m.slot.CheckValid(m.gen)
+		m.slot.Freeze()
 	}
-	return Ref[T](m)
+	ref := Ref[T]{
+		ptr:  m.ptr,
+		slot: m.slot,
+		gen:  m.gen,
+	}
+	m.ptr = nil
+	m.gen = 0
+	return ref
+}
+
+// Release safely releases the exclusive mutable borrow on the slot.
+// Calling Release multiple times is safe and idempotent.
+func (m *Mut[T]) Release() {
+	if m == nil || m.ptr == nil {
+		return
+	}
+	if m.slot != nil && m.gen != 0 {
+		m.slot.ReleaseExclusive()
+	}
+	m.ptr = nil
+	m.gen = 0
 }
 
 // IsValid checks whether this mutable reference is still active and valid.
 func (m Mut[T]) IsValid() bool {
+	if m.ptr == nil {
+		return false
+	}
 	if m.slot == nil {
-		return m.ptr != nil
+		return true
 	}
 	return m.slot.IsValid(m.gen)
 }

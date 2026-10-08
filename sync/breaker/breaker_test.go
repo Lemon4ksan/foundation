@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-func TestCircuitBreaker_BasicFlow(t *testing.T) {
+func TestBreaker_BasicFlow(t *testing.T) {
 	ch := make(chan State, 10)
 
 	cb := New[string](Config{
@@ -67,8 +67,8 @@ func TestCircuitBreaker_BasicFlow(t *testing.T) {
 	_, err := cb.Do(ctx, func(ctx context.Context) (string, error) {
 		return "should not run", nil
 	})
-	if !errors.Is(err, ErrCircuitOpen) {
-		t.Errorf("expected ErrCircuitOpen, got %v", err)
+	if !errors.Is(err, ErrOpen) {
+		t.Errorf("expected ErrOpen, got %v", err)
 	}
 
 	// 4. Wait for Cooldown to transition to Half-Open
@@ -171,7 +171,7 @@ func TestCircuitBreaker_BasicFlow(t *testing.T) {
 	}
 }
 
-func TestCircuitBreaker_HalfOpenConcurrency(t *testing.T) {
+func TestBreaker_HalfOpenConcurrency(t *testing.T) {
 	cb := New[string](Config{
 		FailureThreshold: 0.5,
 		Cooldown:         10 * time.Millisecond,
@@ -218,12 +218,12 @@ func TestCircuitBreaker_HalfOpenConcurrency(t *testing.T) {
 		t.Errorf("expected first request to succeed, got %v", err1)
 	}
 
-	if !errors.Is(err2, ErrCircuitOpen) {
-		t.Errorf("expected concurrent request in Half-Open to fail with ErrCircuitOpen, got %v", err2)
+	if !errors.Is(err2, ErrOpen) {
+		t.Errorf("expected concurrent request in Half-Open to fail with ErrOpen, got %v", err2)
 	}
 }
 
-func TestCircuitBreaker_WindowPruning(t *testing.T) {
+func TestBreaker_WindowPruning(t *testing.T) {
 	cb := New[string](Config{
 		FailureThreshold: 0.5,
 		Cooldown:         1 * time.Second,
@@ -252,7 +252,7 @@ func TestCircuitBreaker_WindowPruning(t *testing.T) {
 	}
 }
 
-func TestCircuitBreaker_StateString(t *testing.T) {
+func TestBreaker_StateString(t *testing.T) {
 	if StateClosed.String() != "Closed" {
 		t.Errorf("expected Closed, got %q", StateClosed.String())
 	}
@@ -270,7 +270,7 @@ func TestCircuitBreaker_StateString(t *testing.T) {
 	}
 }
 
-func TestCircuitBreaker_Defaults(t *testing.T) {
+func TestBreaker_Defaults(t *testing.T) {
 	cb := New[int](Config{})
 
 	if cb.cfg.FailureThreshold != 0.5 {

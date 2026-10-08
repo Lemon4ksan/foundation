@@ -76,7 +76,7 @@ func TestTUI_Box(t *testing.T) {
 
 func TestTUI_App(t *testing.T) {
 	var executed bool
-	testCmd := &tuikit.SimpleCommand{
+	testCmd := &tuikit.FuncCommand{
 		CmdName:     "ping",
 		CmdSynopsis: "Test ping command",
 		CmdRun: func(ctx context.Context, args []string, stdout, stderr io.Writer) error {

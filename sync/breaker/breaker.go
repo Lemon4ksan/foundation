@@ -11,17 +11,17 @@ import (
 	"time"
 )
 
-// ErrCircuitOpen is returned immediately when [CircuitBreaker.Do] is invoked
+// ErrOpen is returned immediately when [Breaker.Do] is invoked
 // while the circuit breaker is in the StateOpen or blocked StateHalfOpen state.
-var ErrCircuitOpen = errors.New("circuit breaker is open")
+var ErrOpen = errors.New("circuit breaker is open")
 
-// State represents the operational state of a [CircuitBreaker].
+// State represents the operational state of a [Breaker].
 type State int
 
 const (
 	// StateClosed allows requests to flow normally.
 	StateClosed State = iota
-	// StateOpen fails requests immediately with [ErrCircuitOpen].
+	// StateOpen fails requests immediately with [ErrOpen].
 	StateOpen
 	// StateHalfOpen allows a single trial request to probe downstream health.
 	StateHalfOpen
@@ -46,7 +46,7 @@ type record struct {
 	isFailed bool
 }
 
-// Config defines the operational boundaries and thresholds for a [CircuitBreaker].
+// Config defines the operational boundaries and thresholds for a [Breaker].
 type Config struct {
 	// FailureThreshold is the ratio of failures (0.0 to 1.0) over the sliding
 	// window that triggers a transition from [StateClosed] to [StateOpen].
@@ -88,11 +88,11 @@ func (c *Config) ResolveDefaults() {
 	}
 }
 
-// CircuitBreaker wraps synchronous operations with a fail-fast state machine
+// Breaker wraps synchronous operations with a fail-fast state machine
 // to protect upstream services from cascading failures.
 //
-// A CircuitBreaker is safe for concurrent use by multiple goroutines.
-type CircuitBreaker[T any] struct {
+// A Breaker is safe for concurrent use by multiple goroutines.
+type Breaker[T any] struct {
 	mu       sync.Mutex
 	cfg      Config
 	state    State
@@ -102,20 +102,20 @@ type CircuitBreaker[T any] struct {
 	halfOpenExecuting bool
 }
 
-// New creates and returns a new [CircuitBreaker] instance with the given [Config].
-func New[T any](cfg Config) *CircuitBreaker[T] {
+// New creates and returns a new [Breaker] instance with the given [Config].
+func New[T any](cfg Config) *Breaker[T] {
 	cfg.ResolveDefaults()
 
-	return &CircuitBreaker[T]{
+	return &Breaker[T]{
 		cfg:   cfg,
 		state: StateClosed,
 	}
 }
 
-// State returns the current operational [State] of the CircuitBreaker.
+// State returns the current operational [State] of the Breaker.
 //
 // It is safe for concurrent use and dynamically evaluates cooldown expirations.
-func (cb *CircuitBreaker[T]) State() State {
+func (cb *Breaker[T]) State() State {
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
 
@@ -127,12 +127,12 @@ func (cb *CircuitBreaker[T]) State() State {
 // Do wraps the execution of the provided function fn, monitoring its outcome.
 //
 // If the breaker is in [StateOpen], or if the breaker is in [StateHalfOpen] and
-// another trial request is already executing, Do returns [ErrCircuitOpen]
+// another trial request is already executing, Do returns [ErrOpen]
 // immediately without running fn.
 //
 // If the execution of fn returns an error, it is recorded as a failure.
 // Otherwise, it is recorded as a success.
-func (cb *CircuitBreaker[T]) Do(ctx context.Context, fn func(ctx context.Context) (T, error)) (T, error) {
+func (cb *Breaker[T]) Do(ctx context.Context, fn func(ctx context.Context) (T, error)) (T, error) {
 	cb.mu.Lock()
 
 	now := time.Now()
@@ -143,7 +143,7 @@ func (cb *CircuitBreaker[T]) Do(ctx context.Context, fn func(ctx context.Context
 
 		var zero T
 
-		return zero, ErrCircuitOpen
+		return zero, ErrOpen
 	}
 
 	// Concurrency barrier for StateHalfOpen: only allow a single trial request.
@@ -153,7 +153,7 @@ func (cb *CircuitBreaker[T]) Do(ctx context.Context, fn func(ctx context.Context
 
 			var zero T
 
-			return zero, ErrCircuitOpen
+			return zero, ErrOpen
 		}
 
 		cb.halfOpenExecuting = true
@@ -162,12 +162,25 @@ func (cb *CircuitBreaker[T]) Do(ctx context.Context, fn func(ctx context.Context
 	isHalfOpen := cb.state == StateHalfOpen
 	cb.mu.Unlock()
 
+	defer func() {
+		if r := recover(); r != nil {
+			cb.mu.Lock()
+			if isHalfOpen {
+				cb.halfOpenExecuting = false
+				cb.transitionTo(StateOpen, time.Now())
+			} else {
+				cb.recordResult(time.Now(), true)
+			}
+			cb.mu.Unlock()
+
+			panic(r)
+		}
+	}()
+
 	// Execute the payload outside the lock to prevent thread blocking.
 	val, err := fn(ctx)
 
 	cb.mu.Lock()
-	defer cb.mu.Unlock()
-
 	if isHalfOpen {
 		cb.halfOpenExecuting = false
 
@@ -177,18 +190,26 @@ func (cb *CircuitBreaker[T]) Do(ctx context.Context, fn func(ctx context.Context
 		} else {
 			cb.transitionTo(StateClosed, time.Time{})
 		}
+		cb.mu.Unlock()
 
 		return val, err
 	}
 
+	cb.recordResult(time.Now(), err != nil)
+	cb.mu.Unlock()
+
+	return val, err
+}
+
+func (cb *Breaker[T]) recordResult(now time.Time, isFailed bool) {
 	// If the state transitioned away from [StateClosed] while we were executing,
 	// do not record this metric to prevent dirtying the new state's window.
 	if cb.state != StateClosed {
-		return val, err
+		return
 	}
 
-	cb.records = append(cb.records, record{time: time.Now(), isFailed: err != nil})
-	cb.pruneRecords(time.Now())
+	cb.records = append(cb.records, record{time: now, isFailed: isFailed})
+	cb.pruneRecords(now)
 
 	// Evaluate failure threshold if we have accumulated enough requests.
 	if len(cb.records) >= cb.cfg.MinRequests {
@@ -201,18 +222,16 @@ func (cb *CircuitBreaker[T]) Do(ctx context.Context, fn func(ctx context.Context
 
 		ratio := float64(failures) / float64(len(cb.records))
 		if ratio >= cb.cfg.FailureThreshold {
-			cb.transitionTo(StateOpen, time.Now())
+			cb.transitionTo(StateOpen, now)
 		}
 	}
-
-	return val, err
 }
 
 // checkState evaluates if the cooldown timer has expired and transitions
 // the state from [StateOpen] to [StateHalfOpen].
 //
 // The caller must hold cb.mu.
-func (cb *CircuitBreaker[T]) checkState(now time.Time) {
+func (cb *Breaker[T]) checkState(now time.Time) {
 	if cb.state == StateOpen && now.Sub(cb.openTime) > cb.cfg.Cooldown {
 		cb.transitionTo(StateHalfOpen, time.Time{})
 	}
@@ -222,7 +241,7 @@ func (cb *CircuitBreaker[T]) checkState(now time.Time) {
 // and triggers transition callbacks.
 //
 // The caller must hold cb.mu.
-func (cb *CircuitBreaker[T]) transitionTo(target State, openTime time.Time) {
+func (cb *Breaker[T]) transitionTo(target State, openTime time.Time) {
 	if cb.state == target {
 		return
 	}
@@ -246,7 +265,7 @@ func (cb *CircuitBreaker[T]) transitionTo(target State, openTime time.Time) {
 // pruneRecords discards any metrics that have slid out of the configured window.
 //
 // The caller must hold cb.mu.
-func (cb *CircuitBreaker[T]) pruneRecords(now time.Time) {
+func (cb *Breaker[T]) pruneRecords(now time.Time) {
 	cutoff := now.Add(-cb.cfg.Window)
 	i := 0
 

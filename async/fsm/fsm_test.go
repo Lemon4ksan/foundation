@@ -379,7 +379,7 @@ func TestFSM_ToDOT(t *testing.T) {
 
 	dot := fsm.ToDOT()
 
-	if !strings.Contains(dot, "digraph FSM") {
+	if !strings.Contains(dot, "digraph Machine") {
 		t.Fatal("DOT output missing digraph header")
 	}
 
@@ -770,7 +770,7 @@ func TestFSM_Adversarial_ConcurrentHookRegistrationAndTransitions(t *testing.T) 
 // TestFSM_Adversarial_LargeScaleGraph verifies graph manipulation on 200 states.
 func TestFSM_Adversarial_LargeScaleGraph(t *testing.T) {
 	const numStates = 200
-	f := NewFSM[int, int](0)
+	f := New[int, int](0)
 
 	rules := make([]TransitionRule[int, int], 0, numStates*2)
 	for i := range numStates {
@@ -808,11 +808,11 @@ func TestFSM_Adversarial_LargeScaleGraph(t *testing.T) {
 	}
 }
 
-// TestNewFSM_Alias verifies that NewFSM functions identically to New as a backwards-compatible constructor alias.
-func TestNewFSM_Alias(t *testing.T) {
-	machine := NewFSM[string, string]("init")
+// TestMachine_Constructor verifies that New returns a valid Machine instance.
+func TestMachine_Constructor(t *testing.T) {
+	machine := New[string, string]("init")
 	if machine == nil {
-		t.Fatal("expected non-nil FSM instance from NewFSM")
+		t.Fatal("expected non-nil Machine instance from New")
 	}
 	if got := machine.CurrentState(); got != "init" {
 		t.Fatalf("expected initial state 'init', got %q", got)

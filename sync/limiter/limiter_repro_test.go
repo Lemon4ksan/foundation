@@ -15,11 +15,11 @@ import (
 	"github.com/lemon4ksan/foundation/testing/require"
 )
 
-func TestRepro_SlidingWindowLimiter_ZeroLimitPanic(t *testing.T) {
+func TestRepro_SlidingWindow_ZeroLimitPanic(t *testing.T) {
 	t.Parallel()
 
 	// Zero-limit limiter must not panic and must return false
-	sw := limiter.NewSlidingWindowLimiter(0, time.Minute)
+	sw := limiter.NewSlidingWindow(0, time.Minute)
 	require.NotNil(t, sw)
 
 	assert.NotPanics(t, func() {
@@ -29,11 +29,11 @@ func TestRepro_SlidingWindowLimiter_ZeroLimitPanic(t *testing.T) {
 	})
 }
 
-func TestRepro_AdaptiveLimiter_CancelRaceSlotLeak(t *testing.T) {
+func TestRepro_Adaptive_CancelRaceSlotLeak(t *testing.T) {
 	t.Parallel()
 
 	// Limiter with capacity 1
-	l := limiter.NewAdaptiveLimiter(1)
+	l := limiter.NewAdaptive(1)
 
 	// Hold the only available slot
 	require.NoError(t, l.Acquire(context.Background()))

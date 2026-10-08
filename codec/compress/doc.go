@@ -6,7 +6,8 @@
 //
 // The package acts as a high-performance substrate for compressing and decompressing
 // data streams using various codecs (gzip, zstd, brotli, deflate, lz4, lzma). It exposes
-// transparent decompression mechanisms that automatically detect the payload format
+// [Gzip], [Deflate], [Brotli], [Zstd], [LZMA2], and [LZ4] for direct compression, as well
+// as transparent decompression mechanisms that automatically detect the payload format
 // and decode it into pre-allocated destination slices.
 //
 // To protect against resource exhaustion attacks (decompression bombs), the engine

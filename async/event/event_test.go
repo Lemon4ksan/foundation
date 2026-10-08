@@ -17,16 +17,16 @@ import (
 )
 
 type (
-	TestEventA    struct{ BaseEvent }
-	TestEventB    struct{ BaseEvent }
+	TestEventA    struct{ Envelope }
+	TestEventB    struct{ Envelope }
 	TestEventData struct {
-		BaseEvent
+		Envelope
 		Payload string
 	}
 )
 
 func TestBus_SubscribeAndPublish(t *testing.T) {
-	BaseEvent{}.isEvent() // safe no-op marker invoke
+	Envelope{}.isEvent() // safe no-op marker invoke
 
 	b := New()
 	defer b.Close()
@@ -276,8 +276,8 @@ func TestBus_ConcurrentUsage(t *testing.T) {
 	wg.Wait()
 }
 
-func TestBus_BaseEventAndClosedSub(t *testing.T) {
-	var ev BaseEvent
+func TestBus_EnvelopeAndClosedSub(t *testing.T) {
+	var ev Envelope
 	ev.isEvent()
 
 	ctx := ev.Context()
@@ -335,12 +335,12 @@ func TestBus_SetOnDropped(t *testing.T) {
 }
 
 type CustomTestEvent struct {
-	BaseEvent
+	Envelope
 	Data string
 }
 
 type OtherTestEvent struct {
-	BaseEvent
+	Envelope
 	ID int
 }
 
@@ -349,7 +349,7 @@ func TestEmpirical_Event_SubscribeTyped_ValueAndPointer(t *testing.T) {
 	defer b.Close()
 
 	// Subscribe to value type CustomTestEvent
-	subVal := SubscribeTyped[CustomTestEvent](b, 10)
+	subVal := b.SubscribeTyped[CustomTestEvent](10)
 	defer subVal.Unsubscribe()
 
 	// Publish value
@@ -418,7 +418,7 @@ func TestEmpirical_Event_EventsSeq_EarlyTerminationAndNoLeak(t *testing.T) {
 	subRaw.Unsubscribe()
 
 	// 2. TypedSubscription EventsSeq early break
-	subTyped := SubscribeTyped[CustomTestEvent](b)
+	subTyped := b.SubscribeTyped[CustomTestEvent]()
 	go func() {
 		for range 10 {
 			b.Publish(CustomTestEvent{Data: "typed-seq"})
@@ -452,7 +452,7 @@ func TestEmpirical_Event_SubscribeTyped_ConcurrentPublishAndUnsubscribe(t *testi
 	b := New()
 	defer b.Close()
 
-	sub := SubscribeTyped[CustomTestEvent](b, 100)
+	sub := b.SubscribeTyped[CustomTestEvent](100)
 
 	var wg sync.WaitGroup
 	// 5 concurrent publishers
@@ -485,7 +485,7 @@ func TestEmpirical_Event_SubscribeTyped_ConcurrentPublishAndUnsubscribe(t *testi
 }
 
 type utilTestEvent struct {
-	BaseEvent
+	Envelope
 	Data string
 }
 
@@ -808,8 +808,8 @@ func TestSubscribe_ParallelAndRaceDetector(t *testing.T) {
 	}
 }
 
-func TestBaseEvent_Methods(t *testing.T) {
-	var be BaseEvent
+func TestEnvelope_Methods(t *testing.T) {
+	var be Envelope
 	be.isEvent()
 	ctx := be.Context()
 	if ctx == nil {
@@ -832,11 +832,9 @@ func TestStandaloneEventsSeq(t *testing.T) {
 
 	b.Publish(CustomTestEvent{Data: "hello"})
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
+	ctx := t.Context()
 	count := 0
-	for ev := range EventsSeq(ctx, sub) {
+	for ev := range sub.EventsSeq(ctx) {
 		if ev.(CustomTestEvent).Data == "hello" {
 			count++
 			break
@@ -861,7 +859,7 @@ func TestEventsSeq_ContextCancellation(t *testing.T) {
 		t.Fatal("should not yield")
 	}
 
-	typedSub := SubscribeTyped[CustomTestEvent](b, 10)
+	typedSub := b.SubscribeTyped[CustomTestEvent](10)
 	defer typedSub.Unsubscribe()
 
 	for range typedSub.EventsSeq(ctx) {

@@ -44,3 +44,17 @@ func ExampleSPSCRingBuffer() {
 	// Output:
 	// Consumed all items, last: 1000
 }
+
+func ExampleBuffer() {
+	buf := ringbuf.New[int](4)
+	val1, val2 := 42, 99
+	buf.Push(&val1)
+	buf.Push(&val2)
+
+	item1 := buf.Pop()
+	item2 := buf.Pop()
+	fmt.Printf("Popped: %d, %d\n", *item1, *item2)
+
+	// Output:
+	// Popped: 42, 99
+}

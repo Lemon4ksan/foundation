@@ -52,6 +52,22 @@ func TestShardedMap_TryGetSet(t *testing.T) {
 	assert.Equal(t, "answer", val)
 }
 
+func TestShardedMap_OrSet(t *testing.T) {
+	m := generic.NewShardedMap[string, int]()
+
+	actual, loaded := m.OrSet("key", 42)
+	assert.False(t, loaded)
+	assert.Equal(t, 42, actual)
+
+	actual, loaded = m.OrSet("key", 100)
+	assert.True(t, loaded)
+	assert.Equal(t, 42, actual)
+
+	val, ok := m.Get("key")
+	assert.True(t, ok)
+	assert.Equal(t, 42, val)
+}
+
 func TestShardedMap_Concurrent(t *testing.T) {
 	m := generic.NewShardedMap[string, int]()
 	var wg sync.WaitGroup

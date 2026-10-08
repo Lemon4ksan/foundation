@@ -12,28 +12,28 @@ import (
 )
 
 var (
-	// ErrBufferClosed is returned when operating on a released OffHeapBuffer.
+	// ErrBufferClosed is returned when operating on a released Buffer.
 	ErrBufferClosed = errors.New("offheap: buffer is already released")
-	// ErrBufferFull is returned when writing past the capacity of an OffHeapBuffer.
+	// ErrBufferFull is returned when writing past the capacity of an Buffer.
 	ErrBufferFull = errors.New("offheap: buffer capacity exceeded")
 )
 
-// OffHeapBuffer wraps an OS kernel memory page in a compile-time safe struct container.
+// Buffer wraps an OS kernel memory page in a compile-time safe struct container.
 // Being a struct type, calling append(buf, ...) results in a compile-time type error.
 //
-// OffHeapBuffer is NOT thread-safe. Concurrent reads and writes require external synchronization.
+// Buffer is NOT thread-safe. Concurrent reads and writes require external synchronization.
 //
-// Lifetime: memory is valid until [OffHeapBuffer.Release] is called.
-// [OffHeapBuffer.Bytes] returns a volatile slice that becomes invalid after Release.
-type OffHeapBuffer struct {
+// Lifetime: memory is valid until [Buffer.Release] is called.
+// [Buffer.Bytes] returns a volatile slice that becomes invalid after Release.
+type Buffer struct {
 	ptr     unsafe.Pointer // Points into OS kernel-managed memory (mmap / VirtualAlloc)
 	readPos int32          // Current read cursor position within [0, len)
 	len     int32          // Number of bytes written
 	cap     int32          // Total allocated capacity in bytes
 }
 
-// NewBuffer allocates a new OffHeapBuffer of designated capacity directly from OS kernel.
-func NewBuffer(capacity int) (*OffHeapBuffer, error) {
+// NewBuffer allocates a new Buffer of designated capacity directly from OS kernel.
+func NewBuffer(capacity int) (*Buffer, error) {
 	if capacity <= 0 {
 		capacity = 64 * 1024 // 64KB default
 	}
@@ -43,18 +43,18 @@ func NewBuffer(capacity int) (*OffHeapBuffer, error) {
 		return nil, err
 	}
 
-	buf := &OffHeapBuffer{
+	buf := &Buffer{
 		ptr: ptr,
 		cap: int32(capacity),
 	}
 
-	runtime.SetFinalizer(buf, (*OffHeapBuffer).Release)
+	runtime.SetFinalizer(buf, (*Buffer).Release)
 
 	return buf, nil
 }
 
-// Write appends bytes p to the OffHeapBuffer (implements [io.Writer]).
-func (b *OffHeapBuffer) Write(p []byte) (int, error) {
+// Write appends bytes p to the Buffer (implements [io.Writer]).
+func (b *Buffer) Write(p []byte) (int, error) {
 	if b == nil || b.ptr == nil {
 		return 0, ErrBufferClosed
 	}
@@ -76,8 +76,8 @@ func (b *OffHeapBuffer) Write(p []byte) (int, error) {
 	return n, nil
 }
 
-// WriteString appends string s to the OffHeapBuffer without heap allocations.
-func (b *OffHeapBuffer) WriteString(s string) (int, error) {
+// WriteString appends string s to the Buffer without heap allocations.
+func (b *Buffer) WriteString(s string) (int, error) {
 	if b == nil || b.ptr == nil {
 		return 0, ErrBufferClosed
 	}
@@ -102,7 +102,7 @@ func (b *OffHeapBuffer) WriteString(s string) (int, error) {
 
 // Read reads up to len(p) bytes from the current read position into p (implements [io.Reader]).
 // Returns [io.EOF] when all written bytes have been consumed.
-func (b *OffHeapBuffer) Read(p []byte) (int, error) {
+func (b *Buffer) Read(p []byte) (int, error) {
 	if b == nil || b.ptr == nil {
 		return 0, ErrBufferClosed
 	}
@@ -123,11 +123,11 @@ func (b *OffHeapBuffer) Read(p []byte) (int, error) {
 }
 
 // Bytes returns a volatile slice view over the active off-heap buffer data without heap allocation.
-// The returned slice is invalid after [OffHeapBuffer.Release] is called.
+// The returned slice is invalid after [Buffer.Release] is called.
 //
 //go:nosplit
 //go:inline
-func (b *OffHeapBuffer) Bytes() []byte {
+func (b *Buffer) Bytes() []byte {
 	if b == nil || b.ptr == nil || b.len <= 0 {
 		return nil
 	}
@@ -139,7 +139,7 @@ func (b *OffHeapBuffer) Bytes() []byte {
 //
 //go:nosplit
 //go:inline
-func (b *OffHeapBuffer) RawBytes(length int) []byte {
+func (b *Buffer) RawBytes(length int) []byte {
 	if b == nil || b.ptr == nil || length <= 0 || int32(length) > b.cap {
 		return nil
 	}
@@ -153,7 +153,7 @@ func (b *OffHeapBuffer) RawBytes(length int) []byte {
 //
 //go:nosplit
 //go:inline
-func (b *OffHeapBuffer) Len() int {
+func (b *Buffer) Len() int {
 	if b == nil {
 		return 0
 	}
@@ -165,7 +165,7 @@ func (b *OffHeapBuffer) Len() int {
 //
 //go:nosplit
 //go:inline
-func (b *OffHeapBuffer) Cap() int {
+func (b *Buffer) Cap() int {
 	if b == nil {
 		return 0
 	}
@@ -178,7 +178,7 @@ func (b *OffHeapBuffer) Cap() int {
 //
 //go:nosplit
 //go:inline
-func (b *OffHeapBuffer) Reset() {
+func (b *Buffer) Reset() {
 	if b != nil {
 		b.len = 0
 		b.readPos = 0
@@ -190,15 +190,15 @@ func (b *OffHeapBuffer) Reset() {
 //
 //go:nosplit
 //go:inline
-func (b *OffHeapBuffer) RewindRead() {
+func (b *Buffer) RewindRead() {
 	if b != nil {
 		b.readPos = 0
 	}
 }
 
 // Release returns the raw physical memory page back to the OS kernel.
-// After Release, all slice views obtained via [OffHeapBuffer.Bytes] are invalid.
-func (b *OffHeapBuffer) Release() {
+// After Release, all slice views obtained via [Buffer.Bytes] are invalid.
+func (b *Buffer) Release() {
 	if b != nil && b.ptr != nil {
 		runtime.SetFinalizer(b, nil)
 		_ = freeKernelPage(b.ptr, int(b.cap))

@@ -40,7 +40,7 @@ func TestTimerPool(t *testing.T) {
 func TestRequestArena(t *testing.T) {
 	t.Parallel()
 
-	arena := pool.GetRequestArena()
+	arena := pool.AcquireRequestArena()
 	assert.NotNil(t, arena)
 
 	// Zero or negative alloc
@@ -67,11 +67,11 @@ func TestRequestArena(t *testing.T) {
 	pool.ReleaseRequestArena(nil) // nil safety
 }
 
-func TestPerPStorage(t *testing.T) {
+func TestPerCorePool(t *testing.T) {
 	t.Parallel()
 
 	// With factory
-	storage := pool.NewPerPStorage(func() []byte {
+	storage := pool.NewPerCorePool(func() []byte {
 		return make([]byte, 128)
 	})
 
@@ -83,7 +83,7 @@ func TestPerPStorage(t *testing.T) {
 	assert.Len(t, item2, 128)
 
 	// Without factory (returns zero value)
-	storageNoFactory := pool.NewPerPStorage[int](nil)
+	storageNoFactory := pool.NewPerCorePool[int](nil)
 	assert.Equal(t, 0, storageNoFactory.Get())
 
 	// Fill shard capacity

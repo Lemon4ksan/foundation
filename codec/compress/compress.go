@@ -46,49 +46,49 @@ var (
 )
 
 var (
-	zstdDecoderStorage = pool.NewPerPStorage(func() *zstd.Decoder {
+	zstdDecoderStorage = pool.NewPerCorePool(func() *zstd.Decoder {
 		dec, _ := zstd.NewReader(nil, zstd.WithDecoderConcurrency(1), zstd.WithDecoderLowmem(true))
 		return dec
 	})
 
-	gzipReaderStorage = pool.NewPerPStorage(func() *gzip.Reader {
+	gzipReaderStorage = pool.NewPerCorePool(func() *gzip.Reader {
 		return new(gzip.Reader)
 	})
 
-	flateReaderStorage = pool.NewPerPStorage(func() flate.Resetter {
+	flateReaderStorage = pool.NewPerCorePool(func() flate.Resetter {
 		return flate.NewReader(nil).(flate.Resetter)
 	})
 
-	bytesReaderStorage = pool.NewPerPStorage(func() *bytes.Reader {
+	bytesReaderStorage = pool.NewPerCorePool(func() *bytes.Reader {
 		return bytes.NewReader(nil)
 	})
 
-	byteBufferStorage = pool.NewPerPStorage(func() *bytes.Buffer {
+	byteBufferStorage = pool.NewPerCorePool(func() *bytes.Buffer {
 		return bytes.NewBuffer(make([]byte, 0, 4096))
 	})
 
-	gzipWriterStorage = pool.NewPerPStorage(func() *gzip.Writer {
+	gzipWriterStorage = pool.NewPerCorePool(func() *gzip.Writer {
 		return gzip.NewWriter(io.Discard)
 	})
 
-	flateWriterStorage = pool.NewPerPStorage(func() *flate.Writer {
+	flateWriterStorage = pool.NewPerCorePool(func() *flate.Writer {
 		w, _ := flate.NewWriter(io.Discard, flate.DefaultCompression)
 		return w
 	})
 
-	brotliReaderStorage = pool.NewPerPStorage(func() *brotli.Reader {
+	brotliReaderStorage = pool.NewPerCorePool(func() *brotli.Reader {
 		return brotli.NewReader(bytes.NewReader(nil))
 	})
 
-	brotliWriterStorage = pool.NewPerPStorage(func() *brotli.Writer {
+	brotliWriterStorage = pool.NewPerCorePool(func() *brotli.Writer {
 		return brotli.NewWriterLevel(io.Discard, 6)
 	})
 
-	lz4ReaderStorage = pool.NewPerPStorage(func() *lz4.Reader {
+	lz4ReaderStorage = pool.NewPerCorePool(func() *lz4.Reader {
 		return lz4.NewReader(bytes.NewReader(nil))
 	})
 
-	lz4WriterStorage = pool.NewPerPStorage(func() *lz4.Writer {
+	lz4WriterStorage = pool.NewPerCorePool(func() *lz4.Writer {
 		return lz4.NewWriter(io.Discard)
 	})
 )
@@ -263,17 +263,17 @@ func Compress(encoding string, src, dst []byte, level ...int) ([]byte, error) {
 
 	switch strings.ToLower(strings.TrimSpace(encoding)) {
 	case "gzip", "x-gzip":
-		return CompressGzip(src, dst, lvl)
+		return Gzip(src, dst, lvl)
 	case "deflate":
-		return CompressDeflate(src, dst, lvl)
+		return Deflate(src, dst, lvl)
 	case "br":
-		return CompressBrotli(src, dst, lvl)
+		return Brotli(src, dst, lvl)
 	case "zstd":
-		return CompressZstd(src, dst, lvl)
+		return Zstd(src, dst, lvl)
 	case "lzma2", "7z":
-		return CompressLZMA2(src, dst, lvl)
+		return LZMA2(src, dst, lvl)
 	case "lz4":
-		return CompressLZ4(src, dst, lvl)
+		return LZ4(src, dst, lvl)
 	case "identity", "":
 		if cap(dst) < len(src) {
 			dst = make([]byte, len(src))
@@ -397,10 +397,13 @@ func UnbrotliScoped(s *borrow.Scope, src []byte) (borrow.Bytes, error) {
 
 // Unzstd decompresses a Zstandard payload (RFC 8878) from src into dst with zero allocations.
 func Unzstd(src, dst []byte) ([]byte, error) {
+	if len(src) == 0 {
+		return nil, nil
+	}
 	dec := zstdDecoderStorage.Get()
 	defer zstdDecoderStorage.Put(dec)
 
-	return dec.DecodeAll(src, dst)
+	return dec.DecodeAll(src, dst[:0])
 }
 
 // UnzstdScoped decompresses a Zstandard payload directly into a zero-allocation scoped buffer.
@@ -468,8 +471,8 @@ func InflateScoped(s *borrow.Scope, src []byte) (borrow.Bytes, error) {
 	return readAllSliceScoped(s, fr.(io.Reader), len(src)*2)
 }
 
-// CompressGzip compresses src using RFC 1952 (gzip) format into dst.
-func CompressGzip(src, dst []byte, level ...int) ([]byte, error) {
+// Gzip compresses src using RFC 1952 (gzip) format into dst.
+func Gzip(src, dst []byte, level ...int) ([]byte, error) {
 	if len(src) == 0 {
 		return dst[:0], nil
 	}
@@ -506,7 +509,7 @@ func GzipScoped(s *borrow.Scope, src []byte, level ...int) (borrow.Bytes, error)
 	}
 
 	if s == nil {
-		raw, err := CompressGzip(src, nil, level...)
+		raw, err := Gzip(src, nil, level...)
 		if err != nil {
 			return borrow.Bytes{}, err
 		}
@@ -534,8 +537,8 @@ func GzipScoped(s *borrow.Scope, src []byte, level ...int) (borrow.Bytes, error)
 	return b, nil
 }
 
-// CompressDeflate compresses src using raw RFC 1951 deflate format into dst.
-func CompressDeflate(src, dst []byte, level ...int) ([]byte, error) {
+// Deflate compresses src using raw RFC 1951 deflate format into dst.
+func Deflate(src, dst []byte, level ...int) ([]byte, error) {
 	if len(src) == 0 {
 		return dst[:0], nil
 	}
@@ -572,7 +575,7 @@ func DeflateScoped(s *borrow.Scope, src []byte, level ...int) (borrow.Bytes, err
 	}
 
 	if s == nil {
-		raw, err := CompressDeflate(src, nil, level...)
+		raw, err := Deflate(src, nil, level...)
 		if err != nil {
 			return borrow.Bytes{}, err
 		}
@@ -600,8 +603,8 @@ func DeflateScoped(s *borrow.Scope, src []byte, level ...int) (borrow.Bytes, err
 	return b, nil
 }
 
-// CompressBrotli compresses src using RFC 7932 format into dst.
-func CompressBrotli(src, dst []byte, level ...int) ([]byte, error) {
+// Brotli compresses src using RFC 7932 format into dst.
+func Brotli(src, dst []byte, level ...int) ([]byte, error) {
 	if len(src) == 0 {
 		return dst[:0], nil
 	}
@@ -641,7 +644,7 @@ func BrotliScoped(s *borrow.Scope, src []byte, level ...int) (borrow.Bytes, erro
 		return borrow.Bytes{}, nil
 	}
 
-	compressed, err := CompressBrotli(src, nil, level...)
+	compressed, err := Brotli(src, nil, level...)
 	if err != nil {
 		return borrow.Bytes{}, err
 	}
@@ -655,8 +658,8 @@ func BrotliScoped(s *borrow.Scope, src []byte, level ...int) (borrow.Bytes, erro
 	return b, nil
 }
 
-// CompressZstd compresses src using RFC 8878 Zstandard format into dst.
-func CompressZstd(src, dst []byte, level ...int) ([]byte, error) {
+// Zstd compresses src using RFC 8878 Zstandard format into dst.
+func Zstd(src, dst []byte, level ...int) ([]byte, error) {
 	if len(src) == 0 {
 		return dst[:0], nil
 	}
@@ -713,7 +716,7 @@ func ZstdScoped(s *borrow.Scope, src []byte, level ...int) (borrow.Bytes, error)
 		return borrow.Bytes{}, nil
 	}
 
-	compressed, err := CompressZstd(src, nil, level...)
+	compressed, err := Zstd(src, nil, level...)
 	if err != nil {
 		return borrow.Bytes{}, err
 	}
@@ -1125,8 +1128,8 @@ func Unlzma2Scoped(s *borrow.Scope, src []byte) (borrow.Bytes, error) {
 	return readAllSliceScoped(s, rc, len(src)*3)
 }
 
-// CompressLZMA2 compresses src into dst using LZMA2 chunk framing.
-func CompressLZMA2(src, dst []byte, level ...int) ([]byte, error) {
+// LZMA2 compresses src into dst using LZMA2 chunk framing.
+func LZMA2(src, dst []byte, level ...int) ([]byte, error) {
 	if len(src) == 0 {
 		return dst[:0], nil
 	}
@@ -1199,8 +1202,8 @@ func Unlz4Scoped(s *borrow.Scope, src []byte) (borrow.Bytes, error) {
 	return readAllSliceScoped(s, zr, len(src)*3)
 }
 
-// CompressLZ4 compresses src using LZ4 framed format into dst.
-func CompressLZ4(src, dst []byte, level ...int) ([]byte, error) {
+// LZ4 compresses src using LZ4 framed format into dst.
+func LZ4(src, dst []byte, level ...int) ([]byte, error) {
 	if len(src) == 0 {
 		return dst[:0], nil
 	}
@@ -1262,7 +1265,7 @@ func LZ4Scoped(s *borrow.Scope, src []byte, level ...int) (borrow.Bytes, error) 
 		return borrow.Bytes{}, nil
 	}
 
-	compressed, err := CompressLZ4(src, nil, level...)
+	compressed, err := LZ4(src, nil, level...)
 	if err != nil {
 		return borrow.Bytes{}, err
 	}
@@ -1276,9 +1279,9 @@ func LZ4Scoped(s *borrow.Scope, src []byte, level ...int) (borrow.Bytes, error) 
 	return b, nil
 }
 
-// CompressLZ4Block compresses src into dst using raw un-framed LZ4 block format.
+// LZ4Block compresses src into dst using raw un-framed LZ4 block format.
 // Returns the number of bytes written to dst.
-func CompressLZ4Block(src, dst []byte) (int, error) {
+func LZ4Block(src, dst []byte) (int, error) {
 	return lz4.CompressBlock(src, dst)
 }
 
@@ -1288,7 +1291,7 @@ func Unlz4Block(src, dst []byte) (int, error) {
 	return lz4.UncompressBlock(src, dst)
 }
 
-// CompressLZ4BlockBound returns the maximum compressed size for n bytes in raw block format.
-func CompressLZ4BlockBound(n int) int {
+// LZ4BlockBound returns the maximum compressed size for n bytes in raw block format.
+func LZ4BlockBound(n int) int {
 	return lz4.CompressBlockBound(n)
 }

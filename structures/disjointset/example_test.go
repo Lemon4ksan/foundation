@@ -6,7 +6,7 @@ import (
 	"github.com/lemon4ksan/foundation/structures/disjointset"
 )
 
-func ExampleDisjointSet() {
+func ExampleSet() {
 	ds := disjointset.New(5)
 	ds.Union(0, 1)
 	ds.Union(1, 2)

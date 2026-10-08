@@ -41,11 +41,29 @@ func ExampleChain_Peek() {
 	defer chain.Release()
 
 	chain.WriteString("PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n")
+
+	// Peek provides a zero-copy preview without advancing the buffer read position.
+	// The returned slice is valid until the next read/discard operation on chain.
 	peeked, _ := chain.Peek(3)
 	fmt.Printf("Peeked prefix: %s (Len remains %d)\n", string(peeked), chain.Len())
 
 	// Output:
 	// Peeked prefix: PRI (Len remains 24)
+}
+
+func ExampleChain_Next() {
+	chain := bufkit.NewChain()
+	defer chain.Release()
+
+	chain.WriteString("HEADER_PAYLOAD")
+
+	// Next advances the read position and always returns an independently allocated,
+	// memory-safe slice that callers can retain indefinitely.
+	header := chain.Next(6)
+	fmt.Printf("Read header: %s (Len remains %d)\n", string(header), chain.Len())
+
+	// Output:
+	// Read header: HEADER (Len remains 8)
 }
 
 func ExampleRing() {

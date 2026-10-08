@@ -18,11 +18,11 @@ import (
 
 // decoderPool recycles DecoderCore instances per scheduler processor P.
 // This avoids mutex contention and completely eliminates heap allocation / GC scavenging during multi-core execution.
-var decoderPool = pool.NewPerPStorage(func() *DecoderCore {
+var decoderPool = pool.NewPerCorePool(func() *DecoderCore {
 	return NewDecoderCore(3, 0, 2, 8*1024*1024, 65536)
 })
 
-var encoderPool = pool.NewPerPStorage(func() *EncoderCore {
+var encoderPool = pool.NewPerCorePool(func() *EncoderCore {
 	return NewEncoderCoreWithOptions(Options{
 		Lc:          3,
 		Lp:          0,

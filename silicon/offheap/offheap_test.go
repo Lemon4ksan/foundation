@@ -31,7 +31,7 @@ type testFastHeaderSlot struct {
 	ValLen uint8
 }
 
-// ── OffHeapBuffer ─────────────────────────────────────────────────────────────
+// ── Buffer ─────────────────────────────────────────────────────────────
 
 func TestOffHeapBuffer_WriteRead(t *testing.T) {
 	buf, err := offheap.NewBuffer(64 * 1024)

@@ -13,7 +13,7 @@ import (
 )
 
 func TestRingBufferPushPop(t *testing.T) {
-	rb := ringbuf.NewRingBuffer[string](16)
+	rb := ringbuf.New[string](16)
 
 	val1 := "entry_1"
 	val2 := "entry_2"
@@ -27,7 +27,7 @@ func TestRingBufferPushPop(t *testing.T) {
 }
 
 func TestRingBuffer_Drain(t *testing.T) {
-	rb := ringbuf.NewRingBuffer[int](16)
+	rb := ringbuf.New[int](16)
 
 	// Empty drain
 	for range rb.Drain() {
@@ -58,7 +58,7 @@ func TestRingBuffer_Drain(t *testing.T) {
 }
 
 func TestRingBufferConcurrent(t *testing.T) {
-	rb := ringbuf.NewRingBuffer[int](2048)
+	rb := ringbuf.New[int](2048)
 
 	var wg sync.WaitGroup
 
@@ -85,7 +85,7 @@ func TestRingBufferConcurrent(t *testing.T) {
 }
 
 func TestRingBufferConcurrentProduceConsume(t *testing.T) {
-	rb := ringbuf.NewRingBuffer[int](128)
+	rb := ringbuf.New[int](128)
 
 	var producerWg sync.WaitGroup
 
@@ -140,7 +140,7 @@ func TestRingBufferConcurrentProduceConsume(t *testing.T) {
 
 func TestRingBuffer_EdgeCases(t *testing.T) {
 	// Defaults for zero / negative capacity
-	rbDef := ringbuf.NewRingBuffer[int](0)
+	rbDef := ringbuf.New[int](0)
 	assert.NotNil(t, rbDef)
 
 	spscDef := ringbuf.NewSPSCRingBuffer[int](-10)

@@ -11,8 +11,8 @@ import (
 	"github.com/lemon4ksan/foundation/silicon/pool"
 )
 
-func BenchmarkPerPStorage_GetPut_Sequential(b *testing.B) {
-	storage := pool.NewPerPStorage(func() *[64]byte {
+func BenchmarkPerCorePool_GetPut_Sequential(b *testing.B) {
+	storage := pool.NewPerCorePool(func() *[64]byte {
 		var buf [64]byte
 		return &buf
 	})
@@ -29,8 +29,8 @@ func BenchmarkPerPStorage_GetPut_Sequential(b *testing.B) {
 	}
 }
 
-func BenchmarkPerPStorage_GetPut_Parallel(b *testing.B) {
-	storage := pool.NewPerPStorage(func() *[64]byte {
+func BenchmarkPerCorePool_GetPut_Parallel(b *testing.B) {
+	storage := pool.NewPerCorePool(func() *[64]byte {
 		var buf [64]byte
 		return &buf
 	})
@@ -54,7 +54,7 @@ func BenchmarkPerPStorage_GetPut_Parallel(b *testing.B) {
 }
 
 func BenchmarkRequestArena_AllocReset(b *testing.B) {
-	arena := pool.GetRequestArena()
+	arena := pool.AcquireRequestArena()
 	defer pool.ReleaseRequestArena(arena)
 
 	b.ReportAllocs()
@@ -67,7 +67,7 @@ func BenchmarkRequestArena_AllocReset(b *testing.B) {
 }
 
 func BenchmarkRequestArena_MultipleAllocReset(b *testing.B) {
-	arena := pool.GetRequestArena()
+	arena := pool.AcquireRequestArena()
 	defer pool.ReleaseRequestArena(arena)
 
 	b.ReportAllocs()
@@ -87,7 +87,7 @@ func BenchmarkRequestArena_GetRelease(b *testing.B) {
 	b.ResetTimer()
 
 	for b.Loop() {
-		arena := pool.GetRequestArena()
+		arena := pool.AcquireRequestArena()
 		pool.ReleaseRequestArena(arena)
 	}
 }

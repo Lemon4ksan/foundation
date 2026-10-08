@@ -21,8 +21,8 @@ type bufferShard[T any] struct {
 	_     cpu.CacheLinePad
 }
 
-// PerPStorage provides a sharded per-CPU core memory pool with 0 cross-core CAS contention or Work Stealing locks.
-type PerPStorage[T any] struct {
+// PerCorePool provides a sharded per-CPU core memory pool with 0 cross-core CAS contention or Work Stealing locks.
+type PerCorePool[T any] struct {
 	shards  []bufferShard[T]
 	mask    uint64
 	cursor  atomic.Uint64
@@ -43,8 +43,8 @@ func nextPowerOfTwo(n int) int {
 	return p
 }
 
-// NewPerPStorage constructs a PerPStorage sharded according to runtime.GOMAXPROCS(0) rounded to a power of 2.
-func NewPerPStorage[T any](factory func() T) *PerPStorage[T] {
+// NewPerCorePool constructs a PerCorePool sharded according to runtime.GOMAXPROCS(0) rounded to a power of 2.
+func NewPerCorePool[T any](factory func() T) *PerCorePool[T] {
 	n := runtime.GOMAXPROCS(0)
 	if n <= 0 {
 		n = 1
@@ -53,7 +53,7 @@ func NewPerPStorage[T any](factory func() T) *PerPStorage[T] {
 	powerOfTwoN := nextPowerOfTwo(n)
 	shards := make([]bufferShard[T], powerOfTwoN)
 
-	return &PerPStorage[T]{
+	return &PerCorePool[T]{
 		shards:  shards,
 		mask:    uint64(powerOfTwoN - 1),
 		factory: factory,
@@ -61,7 +61,7 @@ func NewPerPStorage[T any](factory func() T) *PerPStorage[T] {
 }
 
 // Get retrieves an item from a local CPU shard, falling back to scanning other shards before allocating.
-func (p *PerPStorage[T]) Get() T {
+func (p *PerCorePool[T]) Get() T {
 	numShards := uint64(len(p.shards))
 	startIdx := p.cursor.Add(1) & p.mask
 
@@ -102,7 +102,7 @@ func (p *PerPStorage[T]) Get() T {
 }
 
 // Put recycles an item back into a local CPU shard, placing it in the first non-full shard.
-func (p *PerPStorage[T]) Put(item T) {
+func (p *PerCorePool[T]) Put(item T) {
 	numShards := uint64(len(p.shards))
 	startIdx := p.cursor.Add(1) & p.mask
 

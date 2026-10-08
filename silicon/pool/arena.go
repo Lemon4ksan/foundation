@@ -19,8 +19,8 @@ var arenaPool = sync.Pool{
 	},
 }
 
-// GetRequestArena retrieves a pooled [RequestArena] instance.
-func GetRequestArena() *RequestArena {
+// AcquireRequestArena retrieves a pooled [RequestArena] instance.
+func AcquireRequestArena() *RequestArena {
 	arena := arenaPool.Get().(*RequestArena)
 	arena.Reset()
 

@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func BenchmarkDisjointSet_Find_DirectRoot(b *testing.B) {
+func BenchmarkSet_Find_DirectRoot(b *testing.B) {
 	d := New(1024)
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -19,7 +19,7 @@ func BenchmarkDisjointSet_Find_DirectRoot(b *testing.B) {
 	}
 }
 
-func BenchmarkDisjointSet_Find_FlatTree(b *testing.B) {
+func BenchmarkSet_Find_FlatTree(b *testing.B) {
 	d := New(1024)
 	for i := 1; i < 1024; i++ {
 		d.Union(0, i)
@@ -34,7 +34,7 @@ func BenchmarkDisjointSet_Find_FlatTree(b *testing.B) {
 	}
 }
 
-func BenchmarkDisjointSet_Find_Deep(b *testing.B) {
+func BenchmarkSet_Find_Deep(b *testing.B) {
 	n := 1024
 	d := New(n)
 	// Build chain without flattening
@@ -49,7 +49,7 @@ func BenchmarkDisjointSet_Find_Deep(b *testing.B) {
 	}
 }
 
-func BenchmarkDisjointSet_Union_Disjoint(b *testing.B) {
+func BenchmarkSet_Union_Disjoint(b *testing.B) {
 	d := New(1_000_000)
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -63,7 +63,7 @@ func BenchmarkDisjointSet_Union_Disjoint(b *testing.B) {
 	}
 }
 
-func BenchmarkDisjointSet_Union_AlreadyConnected(b *testing.B) {
+func BenchmarkSet_Union_AlreadyConnected(b *testing.B) {
 	d := New(1024)
 	d.Union(10, 20)
 	b.ReportAllocs()
@@ -74,7 +74,7 @@ func BenchmarkDisjointSet_Union_AlreadyConnected(b *testing.B) {
 	}
 }
 
-func BenchmarkDisjointSet_Union_Self(b *testing.B) {
+func BenchmarkSet_Union_Self(b *testing.B) {
 	d := New(1024)
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -84,7 +84,7 @@ func BenchmarkDisjointSet_Union_Self(b *testing.B) {
 	}
 }
 
-func BenchmarkDisjointSet_Connected(b *testing.B) {
+func BenchmarkSet_Connected(b *testing.B) {
 	d := New(1024)
 	for i := 0; i < 512; i++ {
 		d.Union(i, i+512)
@@ -99,7 +99,7 @@ func BenchmarkDisjointSet_Connected(b *testing.B) {
 	}
 }
 
-func BenchmarkDisjointSet_Size(b *testing.B) {
+func BenchmarkSet_Size(b *testing.B) {
 	d := New(1024)
 	for i := 0; i < 512; i++ {
 		d.Union(i, i+512)
@@ -114,7 +114,7 @@ func BenchmarkDisjointSet_Size(b *testing.B) {
 	}
 }
 
-func BenchmarkDisjointSet_Count(b *testing.B) {
+func BenchmarkSet_Count(b *testing.B) {
 	d := New(1024)
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -124,7 +124,7 @@ func BenchmarkDisjointSet_Count(b *testing.B) {
 	}
 }
 
-func BenchmarkDisjointSet_Len(b *testing.B) {
+func BenchmarkSet_Len(b *testing.B) {
 	d := New(1024)
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -134,7 +134,7 @@ func BenchmarkDisjointSet_Len(b *testing.B) {
 	}
 }
 
-func BenchmarkDisjointSet_Reset_1024(b *testing.B) {
+func BenchmarkSet_Reset_1024(b *testing.B) {
 	d := New(1024)
 	for i := 0; i < 500; i++ {
 		d.Union(i, i+1)
@@ -147,7 +147,7 @@ func BenchmarkDisjointSet_Reset_1024(b *testing.B) {
 	}
 }
 
-func BenchmarkDisjointSet_Reset_65536(b *testing.B) {
+func BenchmarkSet_Reset_65536(b *testing.B) {
 	d := New(65536)
 	for i := 0; i < 30000; i++ {
 		d.Union(i, i+1)
@@ -160,7 +160,7 @@ func BenchmarkDisjointSet_Reset_65536(b *testing.B) {
 	}
 }
 
-func BenchmarkDisjointSet_Kruskal_Workload(b *testing.B) {
+func BenchmarkSet_Kruskal_Workload(b *testing.B) {
 	type edge struct {
 		u, v int
 	}

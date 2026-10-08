@@ -15,18 +15,18 @@ type result[T any] struct {
 	err   error
 }
 
-// Lazy implements a thread-safe, generic lazy initializer with support
+// Value implements a thread-safe, generic lazy initializer with support
 // for transactional cache resetting and lockless reads.
-type Lazy[T any] struct {
+type Value[T any] struct {
 	mu   sync.Mutex
 	init func() (T, error)
 	res  atomic.Pointer[result[T]]
 }
 
-// New creates and returns a new [Lazy] instance configured with the given
+// New creates and returns a new [Value] instance configured with the given
 // initialization function.
-func New[T any](init func() (T, error)) *Lazy[T] {
-	return &Lazy[T]{init: init}
+func New[T any](init func() (T, error)) *Value[T] {
+	return &Value[T]{init: init}
 }
 
 // Get returns the computed value.
@@ -43,7 +43,7 @@ func New[T any](init func() (T, error)) *Lazy[T] {
 // # Complexity
 //
 // Time Complexity: O(1) lockless atomic load on already-initialized fast-path reads.
-func (l *Lazy[T]) Get() (T, error) {
+func (l *Value[T]) Get() (T, error) {
 	// Fast Path: Check if the value is already cached via lockless atomic load.
 	if r := l.res.Load(); r != nil {
 		return r.value, r.err
@@ -71,10 +71,10 @@ func (l *Lazy[T]) Get() (T, error) {
 
 // Reset clears the cached state and marks the initializer as uncompleted.
 //
-// The next invocation of [Lazy.Get] will re-run the initialization function.
+// The next invocation of [Value.Get] will re-run the initialization function.
 // Reset is safe for concurrent use: concurrent readers will either observe the
 // previous result or wait/re-initialize safely without data races.
-func (l *Lazy[T]) Reset() {
+func (l *Value[T]) Reset() {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 

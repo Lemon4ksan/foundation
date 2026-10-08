@@ -519,10 +519,6 @@ func TestEmpirical_Dedup_KeysSeq_Empty(t *testing.T) {
 	for k := range g.KeysSeq() {
 		t.Fatalf("expected no keys, got %s", k)
 	}
-
-	for k := range KeysSeq(g) {
-		t.Fatalf("expected no keys from package function, got %s", k)
-	}
 }
 
 func TestEmpirical_Dedup_KeysSeq_InFlightAndEarlyTermination(t *testing.T) {

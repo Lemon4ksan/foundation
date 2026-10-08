@@ -15,7 +15,7 @@ import (
 func TestRepro_RequestArena_IntegerOverflowGuard(t *testing.T) {
 	t.Parallel()
 
-	arena := pool.GetRequestArena()
+	arena := pool.AcquireRequestArena()
 	defer pool.ReleaseRequestArena(arena)
 
 	// Allocating large value > 4096 must not panic and should not corrupt arena offset

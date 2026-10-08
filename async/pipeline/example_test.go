@@ -41,3 +41,25 @@ func ExampleMap() {
 	// User u4 is premium
 	// User u5 is premium
 }
+
+func ExamplePipeline_Transform() {
+	ctx := context.Background()
+	p := pipeline.New[int, int](pipeline.Config{
+		Workers: 2,
+	})
+
+	results, err := p.Transform(ctx, []int{1, 2, 3}, func(ctx context.Context, n int) (int, error) {
+		return n * 2, nil
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	for _, r := range results {
+		fmt.Println(r)
+	}
+	// Output:
+	// 2
+	// 4
+	// 6
+}

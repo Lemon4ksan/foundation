@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package spinlock provides a lightweight CAS-based spin lock.
+// Package spinlock provides a lightweight CAS-based spin [Lock].
 //
 // It is designed for very short critical sections where the cost of goroutine
 // parking and unparking exceeds the cost of spinning. To prevent severe CPU

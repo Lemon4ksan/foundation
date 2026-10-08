@@ -11,12 +11,108 @@ import (
 	"strings"
 )
 
+// ReturnType represents supported C-to-Go return types.
+type ReturnType string
+
+const (
+	TypeNone      ReturnType = ""
+	TypeInt       ReturnType = "int"
+	TypeInt64     ReturnType = "int64"
+	TypeUint64    ReturnType = "uint64"
+	TypeInt32     ReturnType = "int32"
+	TypeUint32    ReturnType = "uint32"
+	TypeFloat32   ReturnType = "float32"
+	TypeFloat64   ReturnType = "float64"
+	TypeVector128 ReturnType = "m128"
+	TypeVector256 ReturnType = "m256"
+)
+
+// ReturnKind classifies a ReturnType into its low-level representation.
+type ReturnKind int
+
+const (
+	RetNone ReturnKind = iota
+	RetInt64
+	RetInt32
+	RetFloat32
+	RetFloat64
+	RetVector128
+	RetVector256
+)
+
+// Kind returns the ReturnKind for this ReturnType.
+func (rt ReturnType) Kind() ReturnKind {
+	switch strings.ToLower(strings.TrimSpace(string(rt))) {
+	case "", "int", "int64", "uint64", "uintptr", "pointer", "ptr", "size_t", "uint64_t", "int64_t":
+		return RetInt64
+	case "int32", "uint32", "int32_t", "uint32_t":
+		return RetInt32
+	case "float", "float32":
+		return RetFloat32
+	case "double", "float64":
+		return RetFloat64
+	case "m128", "__m128", "__m128i", "__m128d", "vec128", "vector128", "[16]byte":
+		return RetVector128
+	case "m256", "__m256", "__m256i", "__m256d", "vec256", "vector256", "[32]byte":
+		return RetVector256
+	default:
+		return RetInt64
+	}
+}
+
+// Size returns the stack size in bytes allocated for this return type.
+func (rt ReturnType) Size() int {
+	switch rt.Kind() {
+	case RetNone:
+		return 0
+	case RetInt32, RetFloat32:
+		return 4
+	case RetInt64, RetFloat64:
+		return 8
+	case RetVector128:
+		return 16
+	case RetVector256:
+		return 32
+	default:
+		return 8
+	}
+}
+
+// GoType returns the corresponding Go type name.
+func (rt ReturnType) GoType() string {
+	switch rt.Kind() {
+	case RetNone:
+		return ""
+	case RetInt32:
+		if string(rt) == "int32" {
+			return "int32"
+		}
+		return "uint32"
+	case RetInt64:
+		if string(rt) == "int64" {
+			return "int64"
+		}
+		return "uint64"
+	case RetFloat32:
+		return "float32"
+	case RetFloat64:
+		return "float64"
+	case RetVector128:
+		return "[16]byte"
+	case RetVector256:
+		return "[32]byte"
+	default:
+		return "uint64"
+	}
+}
+
 // FuncSignature describes arguments and return type for Go/Plan9 translation.
 type FuncSignature struct {
 	Name       string
 	GoName     string
-	ParamCount int // number of 64-bit word parameters
-	HasReturn  bool
+	ParamCount int        // number of 64-bit word parameters
+	HasReturn  bool       // true if function returns a value
+	ReturnType ReturnType // Return type: float32, float64, m128, m256, int32, int64, etc.
 }
 
 // EmitPlan9Assembly formats disassembled functions into a complete Plan 9 .s file.
@@ -47,6 +143,12 @@ func EmitPlan9Assembly(
 			continue
 		}
 
+		sig, hasSig := sigs[sym.Name]
+		kind := RetInt64
+		if hasSig && sig.ReturnType != "" {
+			kind = sig.ReturnType.Kind()
+		}
+
 		var (
 			res      DisassemblyResult
 			err      error
@@ -60,14 +162,47 @@ func EmitPlan9Assembly(
 			res, err = DisassembleARM64(sym.Code, sym.Offset, relocs)
 			regNames = []string{"R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"}
 			loadOp = "MOVD"
-			storeRet = "MOVD"
-			retReg = "R0"
+			switch kind {
+			case RetFloat32:
+				storeRet = "FMOVS"
+				retReg = "F0"
+			case RetFloat64:
+				storeRet = "FMOVD"
+				retReg = "F0"
+			case RetVector128:
+				storeRet = "FMOVQ"
+				retReg = "F0"
+			case RetInt32:
+				storeRet = "MOVW"
+				retReg = "R0"
+			default:
+				storeRet = "MOVD"
+				retReg = "R0"
+			}
 		} else {
 			res, err = DisassembleAMD64(sym.Code, sym.Offset, relocs)
 			regNames = []string{"DI", "SI", "DX", "CX", "R8", "R9"}
 			loadOp = "MOVQ"
-			storeRet = "MOVQ"
-			retReg = "AX"
+			switch kind {
+			case RetFloat32:
+				storeRet = "MOVSS"
+				retReg = "X0"
+			case RetFloat64:
+				storeRet = "MOVSD"
+				retReg = "X0"
+			case RetVector128:
+				storeRet = "MOVOU"
+				retReg = "X0"
+			case RetVector256:
+				storeRet = "VMOVDQU"
+				retReg = "Y0"
+			case RetInt32:
+				storeRet = "MOVL"
+				retReg = "AX"
+			default:
+				storeRet = "MOVQ"
+				retReg = "AX"
+			}
 		}
 
 		if err != nil {
@@ -76,7 +211,6 @@ func EmitPlan9Assembly(
 		insts := res.Insts
 		frameSize := res.FrameSize
 
-		sig, hasSig := sigs[sym.Name]
 		goName := sym.Name
 		if hasSig && sig.GoName != "" {
 			goName = sig.GoName
@@ -93,10 +227,15 @@ func EmitPlan9Assembly(
 			hasRet = sig.HasReturn
 		}
 
-		argSize := paramCount * 8
+		retSize := 0
 		if hasRet {
-			argSize += 8
+			retSize = 8
+			if hasSig && sig.ReturnType != "" {
+				retSize = sig.ReturnType.Size()
+			}
 		}
+
+		argSize := paramCount*8 + retSize
 
 		flags := "NOSPLIT"
 		if frameSize > 256 {
@@ -211,7 +350,7 @@ func EmitGoStub(pkg string, sigs []FuncSignature, arch string) []byte {
 
 		ret := ""
 		if sig.HasReturn {
-			ret = " uint64"
+			ret = " " + sig.ReturnType.GoType()
 		}
 
 		buf.WriteString("//go:noescape\n")

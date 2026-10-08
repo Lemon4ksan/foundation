@@ -8,7 +8,8 @@
 // A worker pool automatically scales the number of active goroutines up to a maximum
 // bound when the internal queue fills, and scales them down to a minimum baseline
 // during periods of idleness. This balances throughput capacity during traffic spikes
-// against memory usage during quiet periods. It gracefully catches panics within
+// against memory usage during quiet periods. Closed pools reject tasks with [ErrClosed],
+// and full queues return [ErrQueueFull]. It gracefully catches panics within
 // worker tasks to prevent the pool from degrading over time.
 //
 // # Compared to the standard library

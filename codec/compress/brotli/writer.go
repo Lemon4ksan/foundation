@@ -132,7 +132,7 @@ func NewWriterV2(dst io.Writer, level int) *matchfinder.Writer {
 	} else if level > 9 {
 		level = 9
 	}
-	var mf matchfinder.MatchFinder
+	var mf matchfinder.Finder
 	switch level {
 	case 0, 1:
 		mf = &matchfinder.ZFast{MaxDistance: 1 << 20}

@@ -98,7 +98,7 @@ func BenchmarkAllocStruct_OffHeap_Parallel(b *testing.B) {
 	})
 }
 
-// ── OffHeapBuffer vs bytes.Buffer ────────────────────────────────────────────
+// ── Buffer vs bytes.Buffer ────────────────────────────────────────────
 
 const benchPayload = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 42\r\n\r\n"
 

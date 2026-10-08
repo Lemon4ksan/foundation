@@ -4,29 +4,29 @@
 
 package disjointset
 
-// DisjointSet implements an array-backed Disjoint Set Union data structure.
+// Set implements an array-backed Disjoint Set Union data structure.
 //
 // Read-only queries such as Len and Count (when not concurrently mutated) are safe
 // for concurrent access. Because Find performs internal path compression (mutating parent pointers),
 // all operations involving Find, Union, Connected, Size, and Reset must be externally
 // synchronized (e.g. using sync.Mutex) in concurrent environments.
-type DisjointSet struct {
+type Set struct {
 	parent []int // parent[i] is the parent of element i; if parent[i] == i, i is the set root
 	size   []int // size[i] is the number of elements in the component rooted at i
 	count  int   // count is the current number of disjoint sets / connected components
 }
 
-// New creates and initializes a new DisjointSet tracking n elements (0 to n-1).
+// New creates and initializes a new Set tracking n elements (0 to n-1).
 // Each element initially belongs to its own singleton set with size 1.
 //
 // Panics with "disjointset: negative element count" if n < 0.
-// If n == 0, returns an empty DisjointSet.
-func New(n int) *DisjointSet {
+// If n == 0, returns an empty Set.
+func New(n int) *Set {
 	if n < 0 {
 		panic("disjointset: negative element count")
 	}
 	if n == 0 {
-		return &DisjointSet{}
+		return &Set{}
 	}
 
 	parent := make([]int, n)
@@ -36,7 +36,7 @@ func New(n int) *DisjointSet {
 		size[i] = 1
 	}
 
-	return &DisjointSet{
+	return &Set{
 		parent: parent,
 		size:   size,
 		count:  n,
@@ -44,7 +44,7 @@ func New(n int) *DisjointSet {
 }
 
 // Len returns the total number of elements tracked by the disjoint set.
-func (d *DisjointSet) Len() int {
+func (d *Set) Len() int {
 	if d == nil {
 		return 0
 	}
@@ -52,7 +52,7 @@ func (d *DisjointSet) Len() int {
 }
 
 // Count returns the number of disjoint sets (connected components) currently tracked.
-func (d *DisjointSet) Count() int {
+func (d *Set) Count() int {
 	if d == nil {
 		return 0
 	}
@@ -64,7 +64,7 @@ func (d *DisjointSet) Count() int {
 // elements directly to the root for optimal amortized O(alpha(N)) performance.
 //
 // Panics with "disjointset: index out of range" if x is out of bounds [0, Len()).
-func (d *DisjointSet) Find(x int) int {
+func (d *Set) Find(x int) int {
 	if d == nil || x < 0 || x >= len(d.parent) {
 		panic("disjointset: index out of range")
 	}
@@ -99,7 +99,7 @@ func (d *DisjointSet) Find(x int) int {
 // or false if they were already in the same set.
 //
 // Panics with "disjointset: index out of range" if either x or y is out of bounds [0, Len()).
-func (d *DisjointSet) Union(x, y int) bool {
+func (d *Set) Union(x, y int) bool {
 	rootX := d.Find(x)
 	rootY := d.Find(y)
 	if rootX == rootY {
@@ -121,21 +121,21 @@ func (d *DisjointSet) Union(x, y int) bool {
 // Connected reports whether elements x and y belong to the same disjoint set.
 //
 // Panics with "disjointset: index out of range" if either x or y is out of bounds [0, Len()).
-func (d *DisjointSet) Connected(x, y int) bool {
+func (d *Set) Connected(x, y int) bool {
 	return d.Find(x) == d.Find(y)
 }
 
 // Size returns the number of elements in the disjoint set containing element x.
 //
 // Panics with "disjointset: index out of range" if x is out of bounds [0, Len()).
-func (d *DisjointSet) Size(x int) int {
+func (d *Set) Size(x int) int {
 	root := d.Find(x)
 	return d.size[root]
 }
 
 // Reset restores all elements into individual singleton sets (parent[i] = i, size[i] = 1, count = Len()).
 // Backing slices are reused in place without allocating new heap memory.
-func (d *DisjointSet) Reset() {
+func (d *Set) Reset() {
 	if d == nil {
 		return
 	}

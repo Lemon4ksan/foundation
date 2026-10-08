@@ -19,13 +19,12 @@ import (
 // producer-local cachedHead and consumer-local cachedTail variables, keeping cacheline ownership
 // private to each core during sustained streaming and eliminating bus contention.
 type Ring[T any] struct {
-	// Producer cacheline (64 bytes)
-	_          [56]byte
+	// Producer cacheline
 	tail       atomic.Uint64
 	cachedHead uint64
 	_          [48]byte
 
-	// Consumer cacheline (64 bytes)
+	// Consumer cacheline
 	head       atomic.Uint64
 	cachedTail uint64
 	_          [48]byte
@@ -189,7 +188,7 @@ func (r *Ring[T]) PopBatch(dst []T) int {
 	if toPop > firstBatch {
 		remaining := toPop - firstBatch
 		copy(dst[firstBatch:toPop], r.slots[:remaining])
-		for i := 0; i < remaining; i++ {
+		for i := range remaining {
 			r.slots[i] = zero
 		}
 	}

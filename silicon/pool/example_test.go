@@ -10,10 +10,10 @@ import (
 	"github.com/lemon4ksan/foundation/silicon/pool"
 )
 
-func ExamplePerPStorage() {
+func ExamplePerCorePool() {
 	// Create a per-CPU sharded memory pool with CPU cache-line padding
 	// to prevent false sharing and lock contention across cores.
-	storage := pool.NewPerPStorage(func() []byte {
+	storage := pool.NewPerCorePool(func() []byte {
 		return make([]byte, 256)
 	})
 
@@ -28,7 +28,7 @@ func ExamplePerPStorage() {
 }
 
 func ExampleRequestArena() {
-	arena := pool.GetRequestArena()
+	arena := pool.AcquireRequestArena()
 	defer pool.ReleaseRequestArena(arena)
 
 	headerBuf := arena.Alloc(128)

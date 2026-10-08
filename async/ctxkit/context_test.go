@@ -286,9 +286,6 @@ func TestContext_Entries(t *testing.T) {
 	for k, v := range nilCtx.Entries() {
 		t.Fatalf("expected 0 entries from nil context, got %v: %v", k, v)
 	}
-	for k, v := range ctxkit.Entries(nilCtx) {
-		t.Fatalf("expected 0 entries from nil context, got %v: %v", k, v)
-	}
 
 	// Test populated context (both inline and extra)
 	ctx := ctxkit.Background()

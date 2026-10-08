@@ -49,12 +49,12 @@ func TestSchemaCache_Get(t *testing.T) {
 	assert.Equal(t, "ID", idField.Field.Name)
 	assert.Equal(t, uintptr(0), idField.Offset)
 	assert.Equal(t, "id", idField.Tag.Name)
-	assert.Equal(t, "primary_key", idField.Tag.Get("db"))
+	assert.Equal(t, "primary_key", idField.Tag.Value("db"))
 
 	nameField := schema.Fields[1]
 	assert.Equal(t, "Name", nameField.Field.Name)
 	assert.True(t, nameField.Tag.Has("omitempty"))
-	minLen, ok := nameField.Tag.GetInt("min")
+	minLen, ok := nameField.Tag.Int("min")
 	assert.True(t, ok)
 	assert.Equal(t, 3, minLen)
 
@@ -117,20 +117,20 @@ func TestSchemaCache_TagParsing(t *testing.T) {
 	}
 
 	pathF := fieldMap["Path"]
-	assert.Equal(t, "/api/v1/users", pathF.Tag.Get("route"))
+	assert.Equal(t, "/api/v1/users", pathF.Tag.Value("route"))
 
 	methodF := fieldMap["Method"]
-	assert.Equal(t, "GET", methodF.Tag.Get("method"))
+	assert.Equal(t, "GET", methodF.Tag.Value("method"))
 
 	timeoutF := fieldMap["Timeout"]
-	assert.Equal(t, "timeout,sec=30", timeoutF.Tag.Get("route"))
-	sec, ok := timeoutF.Tag.GetInt("sec")
+	assert.Equal(t, "timeout,sec=30", timeoutF.Tag.Value("route"))
+	sec, ok := timeoutF.Tag.Int("sec")
 	assert.True(t, ok)
 	assert.Equal(t, 30, sec)
 
 	customF := fieldMap["Custom"]
 	assert.Equal(t, "bare_value", customF.Tag.Name)
-	assert.Equal(t, "bare_value", customF.Tag.Get("custom"))
+	assert.Equal(t, "bare_value", customF.Tag.Value("custom"))
 
 	emptyF := fieldMap["Empty"]
 	assert.True(t, emptyF.Tag.IsEmpty())
@@ -280,7 +280,7 @@ func TestScenario_CodecTagBasedFieldFiltering(t *testing.T) {
 
 	routeFields := make(map[string]string)
 	for _, f := range schema.Fields {
-		if route := f.Tag.Get("route"); route != "" {
+		if route := f.Tag.Value("route"); route != "" {
 			routeFields[f.Field.Name] = route
 		}
 	}

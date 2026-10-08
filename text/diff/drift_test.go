@@ -12,11 +12,11 @@ import (
 	"github.com/lemon4ksan/foundation/text/diff"
 )
 
-func TestDiffReport_Complete(t *testing.T) {
+func TestReport_Complete(t *testing.T) {
 	t.Parallel()
 
 	// 1. Clean report non-additive
-	cleanReport := &diff.DiffReport{
+	cleanReport := &diff.Report{
 		LocalTarget:           "local.go",
 		RemoteTarget:          "remote.json",
 		TotalEndpointsChecked: 5,
@@ -32,22 +32,22 @@ func TestDiffReport_Complete(t *testing.T) {
 	assert.Contains(t, cleanReport.Render(false), "All contracts are 100% in sync")
 
 	// 2. Clean report additive
-	cleanAdditive := &diff.DiffReport{
+	cleanAdditive := &diff.Report{
 		LocalTarget:           "local.go",
 		RemoteTarget:          "remote.json",
 		TotalEndpointsChecked: 5,
 		Additive:              true,
-		Drifts:                []diff.DriftItem{},
+		Drifts:                []diff.Drift{},
 	}
 	assert.Contains(t, cleanAdditive.Render(true), "100% satisfied by local contract")
 
 	// 3. Report with breaking, non-breaking, ghost drifts, suggestions, and expected/actual
-	fullReport := &diff.DiffReport{
+	fullReport := &diff.Report{
 		LocalTarget:           "pkg/api/client.go",
 		RemoteTarget:          "openapi.json",
 		TotalEndpointsChecked: 15,
 		Additive:              false,
-		Drifts: []diff.DriftItem{
+		Drifts: []diff.Drift{
 			{
 				Severity:   diff.SeverityBreaking,
 				Kind:       diff.DriftMissingParam,
@@ -111,8 +111,8 @@ func TestDiffReport_Complete(t *testing.T) {
 	assert.Contains(t, renderedAdditive, "ghost endpoints ignored in additive mode")
 
 	// 5. Ghost-only report exit code
-	ghostOnlyReport := &diff.DiffReport{
-		Drifts: []diff.DriftItem{
+	ghostOnlyReport := &diff.Report{
+		Drifts: []diff.Drift{
 			{
 				Severity: diff.SeverityGhost,
 				Kind:     diff.DriftMissingEndpoint,
@@ -131,7 +131,7 @@ func TestDiffReport_Complete(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, string(jsonBytes), string(renderJSONBytes))
 
-	// 7. DiffOptions
-	opts := diff.DiffOptions{Additive: true}
+	// 7. Options
+	opts := diff.Options{Additive: true}
 	assert.True(t, opts.Additive)
 }

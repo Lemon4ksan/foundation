@@ -23,8 +23,8 @@ type Command interface {
 	Run(ctx context.Context, args []string, stdout, stderr io.Writer) error
 }
 
-// SimpleCommand is a lightweight adapter creating a [Command] from functional closures.
-type SimpleCommand struct {
+// FuncCommand is a lightweight adapter creating a [Command] from functional closures.
+type FuncCommand struct {
 	CmdName     string
 	CmdAliases  []string
 	CmdSynopsis string
@@ -32,11 +32,11 @@ type SimpleCommand struct {
 	CmdRun      func(ctx context.Context, args []string, stdout, stderr io.Writer) error
 }
 
-func (c *SimpleCommand) Name() string      { return c.CmdName }
-func (c *SimpleCommand) Aliases() []string { return c.CmdAliases }
-func (c *SimpleCommand) Synopsis() string  { return c.CmdSynopsis }
-func (c *SimpleCommand) Usage() string     { return c.CmdUsage }
-func (c *SimpleCommand) Run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
+func (c *FuncCommand) Name() string      { return c.CmdName }
+func (c *FuncCommand) Aliases() []string { return c.CmdAliases }
+func (c *FuncCommand) Synopsis() string  { return c.CmdSynopsis }
+func (c *FuncCommand) Usage() string     { return c.CmdUsage }
+func (c *FuncCommand) Run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	if c.CmdRun != nil {
 		return c.CmdRun(ctx, args, stdout, stderr)
 	}

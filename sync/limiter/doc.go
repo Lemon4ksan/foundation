@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package limiter provides dynamic concurrency rate limiters and key-based limiters.
+// Package limiter provides dynamic concurrency rate limiters ([Adaptive], [SlidingWindow]) and key-based limiters ([Keyed]).
 //
 // The package prevents overload in distributed systems by dynamically adjusting the allowed
 // concurrent request limit based on observed response times using a Vegas-style congestion
-// control algorithm, or by managing rate limiters per client identifier with automatic
-// cleanup for inactive users to prevent memory exhaustion.
+// control algorithm ([Adaptive]), or by managing rate limiters per client identifier ([Keyed]) with automatic
+// cleanup for inactive users to prevent memory exhaustion, or via sliding window logs ([SlidingWindow]).
 //
 // # Compared to the standard library
 //

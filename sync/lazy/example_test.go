@@ -11,7 +11,7 @@ import (
 	"github.com/lemon4ksan/foundation/sync/lazy"
 )
 
-func ExampleLazy() {
+func ExampleValue() {
 	initCount := 0
 
 	l := lazy.New(func() (string, error) {

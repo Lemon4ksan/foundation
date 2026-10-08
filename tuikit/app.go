@@ -108,11 +108,7 @@ func (a *App) Run(ctx context.Context, args []string) error {
 		if len(args) > 1 {
 			subName := args[1]
 			if cmd, ok := a.cmdMap[subName]; ok {
-				err := cmd.Run(ctx, []string{"-h"}, stdout, stderr)
-				if errors.Is(err, flag.ErrHelp) {
-					return nil
-				}
-				return err
+				fmt.Fprintf(stdout, "%s — %s\n\nUsage:\n  %s\n", cmd.Name(), cmd.Synopsis(), cmd.Usage()); return nil
 			}
 			return fmt.Errorf("unknown command %q for help. Run '%s help' for available commands", subName, a.Name)
 		}
@@ -127,7 +123,7 @@ func (a *App) Run(ctx context.Context, args []string) error {
 
 	// Direct match against registered command or alias
 	if cmd, ok := a.cmdMap[first]; ok {
-		err := cmd.Run(ctx, args[1:], stdout, stderr)
+		for _, arg := range args[1:] { if arg == "-h" || arg == "--help" { fmt.Fprintf(stdout, "%s — %s\n\nUsage:\n  %s\n", cmd.Name(), cmd.Synopsis(), cmd.Usage()); return nil } }; err := cmd.Run(ctx, args[1:], stdout, stderr)
 		if errors.Is(err, flag.ErrHelp) {
 			return nil
 		}
@@ -236,3 +232,6 @@ func (a *App) PrintUsage(w io.Writer) {
 
 	fmt.Fprintf(w, "Run '%s help <command>' or '%s <command> --help' for detailed documentation.\n", a.Name, a.Name)
 }
+
+
+

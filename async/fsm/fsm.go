@@ -33,13 +33,13 @@ type TransitionRule[State comparable, Event comparable] struct {
 	To State
 }
 
-// FSM is a strictly typed, thread-safe finite state machine parameterized
+// Machine is a strictly typed, thread-safe finite state machine parameterized
 // over State and Event comparable types.
 //
 // It enforces transactional transition safety using a dual-mutex coordination model,
 // separating transition serialization from fast, concurrent state reads.
-// New instances of FSM must be created using the [New] constructor function.
-type FSM[State, Event comparable] struct {
+// New instances of Machine must be created using the [New] constructor function.
+type Machine[State, Event comparable] struct {
 	transMu     sync.Mutex
 	mu          sync.RWMutex
 	current     State
@@ -49,8 +49,8 @@ type FSM[State, Event comparable] struct {
 }
 
 // New instantiates and returns a new finite state machine with the given initial state.
-func New[State, Event comparable](initial State) *FSM[State, Event] {
-	return &FSM[State, Event]{
+func New[State, Event comparable](initial State) *Machine[State, Event] {
+	return &Machine[State, Event]{
 		current:     initial,
 		rules:       make(map[State]map[Event]State),
 		beforeHooks: make(map[Event][]TransitionCallback[State, Event]),
@@ -58,18 +58,11 @@ func New[State, Event comparable](initial State) *FSM[State, Event] {
 	}
 }
 
-// NewFSM instantiates and returns a new finite state machine with the given initial state.
-//
-// It is an alias for [New] provided for backwards compatibility with earlier documentation and APIs.
-func NewFSM[State, Event comparable](initial State) *FSM[State, Event] {
-	return New[State, Event](initial)
-}
-
 // AddRules registers one or more valid transition rules in the state machine.
 //
 // If a duplicate rule for the same (From, Event) pair is registered, it is
 // overwritten by the last entry. AddRules is safe for concurrent use.
-func (f *FSM[State, Event]) AddRules(rules ...TransitionRule[State, Event]) {
+func (f *Machine[State, Event]) AddRules(rules ...TransitionRule[State, Event]) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
@@ -82,10 +75,10 @@ func (f *FSM[State, Event]) AddRules(rules ...TransitionRule[State, Event]) {
 	}
 }
 
-// CurrentState returns the current state of the FSM.
+// CurrentState returns the current state of the machine.
 //
 // It is non-blocking and safe to call concurrently while transitions are in progress.
-func (f *FSM[State, Event]) CurrentState() State {
+func (f *Machine[State, Event]) CurrentState() State {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
 
@@ -94,9 +87,9 @@ func (f *FSM[State, Event]) CurrentState() State {
 
 // ForceSet bypasses the transition rules and sets the current state directly.
 //
-// This is intended primarily for test setup where placing the FSM into a specific
+// This is intended primarily for test setup where placing the machine into a specific
 // precondition state is required. Using ForceSet in production code is strongly discouraged.
-func (f *FSM[State, Event]) ForceSet(state State) {
+func (f *Machine[State, Event]) ForceSet(state State) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
@@ -108,7 +101,7 @@ func (f *FSM[State, Event]) ForceSet(state State) {
 //
 // If any before-callback returns an error, the transition is cancelled,
 // subsequent callbacks are skipped, and the state remains unchanged.
-func (f *FSM[State, Event]) OnBefore(event Event, cb TransitionCallback[State, Event]) {
+func (f *Machine[State, Event]) OnBefore(event Event, cb TransitionCallback[State, Event]) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
@@ -120,7 +113,7 @@ func (f *FSM[State, Event]) OnBefore(event Event, cb TransitionCallback[State, E
 //
 // Errors returned by after-hooks are ignored since the state change has already
 // been committed.
-func (f *FSM[State, Event]) OnAfter(event Event, cb TransitionCallback[State, Event]) {
+func (f *Machine[State, Event]) OnAfter(event Event, cb TransitionCallback[State, Event]) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
@@ -137,7 +130,7 @@ func (f *FSM[State, Event]) OnAfter(event Event, cb TransitionCallback[State, Ev
 // # Complexity
 //
 // Time Complexity: O(1)
-func (f *FSM[State, Event]) Validate(event Event) (State, bool) {
+func (f *Machine[State, Event]) Validate(event Event) (State, bool) {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
 
@@ -152,7 +145,7 @@ func (f *FSM[State, Event]) Validate(event Event) (State, bool) {
 	return to, ok
 }
 
-// Transition atomically moves the FSM from its current state to the next
+// Transition atomically moves the machine from its current state to the next
 // state determined by the given event.
 //
 // Transition is fully thread-safe and serialized. If a transition is already
@@ -164,7 +157,7 @@ func (f *FSM[State, Event]) Validate(event Event) (State, bool) {
 //
 // Time Complexity: O(N+1) for transition validation, where N is the
 // number of registered before/after hooks for the given event.
-func (f *FSM[State, Event]) Transition(ctx context.Context, event Event) error {
+func (f *Machine[State, Event]) Transition(ctx context.Context, event Event) error {
 	f.transMu.Lock()
 	defer f.transMu.Unlock()
 
@@ -184,7 +177,7 @@ func (f *FSM[State, Event]) Transition(ctx context.Context, event Event) error {
 	}
 
 	// Copy the hooks under the read-lock to safely execute them outside
-	// the lock later, avoiding deadlocks if hooks call back into the FSM.
+	// the lock later, avoiding deadlocks if hooks call back into the machine.
 	beforeHooks := make([]TransitionCallback[State, Event], len(f.beforeHooks[event]))
 	copy(beforeHooks, f.beforeHooks[event])
 
@@ -223,13 +216,13 @@ func (f *FSM[State, Event]) Transition(ctx context.Context, event Event) error {
 // The resulting string can be rendered using the `dot` command-line utility
 // (e.g., `dot -Tsvg`) or any online Graphviz viewer to visualize the state diagram.
 // It is non-blocking and safe to call concurrently while transitions are in progress.
-func (f *FSM[State, Event]) ToDOT() string {
+func (f *Machine[State, Event]) ToDOT() string {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
 
 	var sb strings.Builder
 
-	sb.WriteString("digraph FSM {\n")
+	sb.WriteString("digraph Machine {\n")
 	sb.WriteString("    rankdir=LR;\n")
 	sb.WriteString("    node [shape=circle, style=filled, fillcolor=lightblue];\n\n")
 
@@ -246,15 +239,15 @@ func (f *FSM[State, Event]) ToDOT() string {
 	return sb.String()
 }
 
-// String returns a human-readable representation of the FSM for debugging.
-func (f *FSM[State, Event]) String() string {
+// String returns a human-readable representation of the machine for debugging.
+func (f *Machine[State, Event]) String() string {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
 
-	return fmt.Sprintf("FSM{current=%v, rules=%d}", f.current, f.countRules())
+	return fmt.Sprintf("Machine{current=%v, rules=%d}", f.current, f.countRules())
 }
 
-func (f *FSM[State, Event]) countRules() int {
+func (f *Machine[State, Event]) countRules() int {
 	n := 0
 	for _, events := range f.rules {
 		n += len(events)

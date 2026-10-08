@@ -193,3 +193,36 @@ func TestSingleflight_NilGuards(t *testing.T) {
 		t.Errorf("expected 'singleflight fn is nil', got: %v", err2)
 	}
 }
+
+func TestGuarded(t *testing.T) {
+	g := NewGuarded[int](10)
+	if got := g.Get(); got != 10 {
+		t.Fatalf("expected 10, got %d", got)
+	}
+
+	g.Set(20)
+	if got := g.Get(); got != 20 {
+		t.Fatalf("expected 20, got %d", got)
+	}
+
+	old := g.Swap(30)
+	if old != 20 || g.Get() != 30 {
+		t.Fatalf("expected old 20, got %d; current %d", old, g.Get())
+	}
+
+	res := g.Update(func(c int) int { return c + 5 })
+	if res != 35 || g.Get() != 35 {
+		t.Fatalf("expected 35, got res %d, current %d", res, g.Get())
+	}
+
+	g.Mutate(func(v *int) { *v = 100 })
+	if got := g.Get(); got != 100 {
+		t.Fatalf("expected 100, got %d", got)
+	}
+
+	var readVal int
+	g.Read(func(v int) { readVal = v })
+	if readVal != 100 {
+		t.Fatalf("expected readVal 100, got %d", readVal)
+	}
+}

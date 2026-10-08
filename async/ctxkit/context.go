@@ -133,11 +133,6 @@ func (c *Context) Entries() iter.Seq2[any, any] {
 	}
 }
 
-// Entries returns an iterator over all key-value entries in c.
-func Entries(c *Context) iter.Seq2[any, any] {
-	return c.Entries()
-}
-
 // Set attaches or updates key and val in-place within the current [Context].
 //
 // This provides true zero-allocation context enrichment in single-goroutine request pipelines.
@@ -304,8 +299,9 @@ func (p *Pool) Release(fc *Context) {
 
 	fc.parent = nil
 	fc.count = 0
-	fc.extra = fc.extra[:0]
 	clear(fc.inline[:])
+	clear(fc.extra)
+	fc.extra = fc.extra[:0]
 
 	p.pool.Put(fc)
 }

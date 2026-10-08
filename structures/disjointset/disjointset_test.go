@@ -42,7 +42,7 @@ func TestConstructors(t *testing.T) {
 }
 
 func TestNilReceiver(t *testing.T) {
-	var d *DisjointSet
+	var d *Set
 
 	// Safe queries on nil
 	require.Equal(t, 0, d.Len())
@@ -67,7 +67,7 @@ func TestNilReceiver(t *testing.T) {
 }
 
 func TestZeroValueReceiver(t *testing.T) {
-	var d DisjointSet
+	var d Set
 
 	require.Equal(t, 0, d.Len())
 	require.Equal(t, 0, d.Count())

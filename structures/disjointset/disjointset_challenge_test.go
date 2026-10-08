@@ -634,7 +634,7 @@ func TestChallenge_AdversarialBoundaries(t *testing.T) {
 	require.PanicsWithError(t, "disjointset: index out of range", func() { d0.Size(0) })
 
 	// Nil receiver
-	var dNil *DisjointSet
+	var dNil *Set
 	require.Equal(t, 0, dNil.Len())
 	require.Equal(t, 0, dNil.Count())
 	dNil.Reset()
@@ -729,7 +729,7 @@ func TestChallenge_ConcurrentTortureWithRace(t *testing.T) {
 }
 
 func TestChallenge_ConcurrentIndependentInstances(t *testing.T) {
-	// Verify that multiple goroutines operating on distinct DisjointSet instances
+	// Verify that multiple goroutines operating on distinct Set instances
 	// without any external locks have zero data races (ensuring no shared package-level state).
 	var wg sync.WaitGroup
 	const goroutines = 32

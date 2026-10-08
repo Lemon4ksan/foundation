@@ -22,10 +22,12 @@ func ExampleBox() {
 	// Immutable shared borrow
 	ref := box.Borrow()
 	fmt.Printf("Config name: %s, workers: %d\n", ref.Get().Name, ref.Get().Workers)
+	ref.Release()
 
 	// Exclusive mutable borrow
 	mut := box.BorrowMut()
 	mut.Get().Workers = 8
+	mut.Release()
 
 	fmt.Printf("Updated workers: %d\n", box.Get().Workers)
 
@@ -46,6 +48,7 @@ func ExampleScoped() {
 
 		mut := box.BorrowMut()
 		mut.Write(42)
+		mut.Release()
 
 		return "", nil
 	})

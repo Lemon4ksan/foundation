@@ -8,7 +8,7 @@ import (
 	"github.com/lemon4ksan/foundation/sync/keylock"
 )
 
-func ExampleKeyMutex() {
+func ExampleMutex() {
 	kl := keylock.New[string]()
 	var wg sync.WaitGroup
 

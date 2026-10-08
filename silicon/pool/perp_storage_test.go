@@ -11,8 +11,8 @@ import (
 	"github.com/lemon4ksan/foundation/silicon/pool"
 )
 
-func TestPerPStorageBasic(t *testing.T) {
-	storage := pool.NewPerPStorage(func() *[]byte {
+func TestPerCorePoolBasic(t *testing.T) {
+	storage := pool.NewPerCorePool(func() *[]byte {
 		b := make([]byte, 1024)
 		return &b
 	})
@@ -30,8 +30,8 @@ func TestPerPStorageBasic(t *testing.T) {
 	}
 }
 
-func TestPerPStorageParallel(t *testing.T) {
-	storage := pool.NewPerPStorage(func() *[]byte {
+func TestPerCorePoolParallel(t *testing.T) {
+	storage := pool.NewPerCorePool(func() *[]byte {
 		b := make([]byte, 512)
 		return &b
 	})

@@ -17,8 +17,8 @@ type TestReporter interface {
 	Helper()
 }
 
-// TestHelper is an interface for annotating test helper functions.
-type TestHelper interface {
+// TestingT is an interface for annotating test helper functions.
+type TestingT interface {
 	Helper()
 }
 
