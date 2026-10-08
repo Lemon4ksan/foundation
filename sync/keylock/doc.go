@@ -4,13 +4,13 @@
 
 // Package keylock provides a generic, thread-safe, striped/key-based locking mechanism.
 //
-// The [KeyMutex] allows separate goroutines to concurrently lock and work with different
+// The [Mutex] allows separate goroutines to concurrently lock and work with different
 // keys, preventing global application lock bottlenecks. It tracks per-key lock state and
 // reference counts of waiting and holding goroutines. When the reference count drops
 // to zero, the entry is atomically removed, preventing memory leaks in long-running
 // applications with highly dynamic or infinite key sets.
 //
-// [KeyMutex.Unlock] panics if the key is not currently locked or does not exist,
+// [Mutex.Unlock] panics if the key is not currently locked or does not exist,
 // catching double-unlock and unlock-without-lock bugs at the point of failure.
 //
 // # Compared to the standard library

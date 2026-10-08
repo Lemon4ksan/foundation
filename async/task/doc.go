@@ -14,32 +14,32 @@
 //
 // # Architecture
 //
-// The central coordinator is the [Manager]. It maps unique correlation IDs
+// The central coordinator is the [Tracker]. It maps unique correlation IDs
 // of type K to job entries of type [Entry]. A job can be configured with an
 // optional timeout, an associated [context.Context], and a persistence flag.
-// When a response arrives, [Manager.Resolve] is called with the matching ID,
+// When a response arrives, [Tracker.Resolve] is called with the matching ID,
 // which triggers the job's callback and unblocks any goroutine currently waiting
-// on [Manager.WaitFor].
+// on [Tracker.WaitFor].
 //
 // # Memory Management & Pool Reuse
 //
 // To prevent excessive heap allocation churn and minimize Garbage Collector (GC)
-// pressure in high-throughput network applications, [Manager] utilizes an internal,
+// pressure in high-throughput network applications, [Tracker] utilizes an internal,
 // thread-safe object pool ([sync.Pool]) for recycling [Entry] structures.
 // Once a job completes execution and is fully resolved, its state is wiped,
 // its pointers are nil'ed out, and the structure is returned to the pool for reuse.
 //
 // # Concurrency & Safety Invariants
 //
-//   - Exclusive Manager Lock: The [Manager] protects all operations (including
+//   - Exclusive Tracker Lock: The [Tracker] protects all operations (including
 //     all read and write operations on the underlying [Store] backend) using
 //     a single, highly optimized mutex. Custom implementations of the [Store]
 //     interface do not need to implement their own internal locking.
-//   - Safe Callback Execution: Callbacks registered via [Manager.Add] are executed
+//   - Safe Callback Execution: Callbacks registered via [Tracker.Add] are executed
 //     asynchronously using a configurable [CallbackStrategy] (defaulting to [AsyncStrategy]).
 //     This completely prevents deadlocks if a callback attempts to call back into
-//     the same [Manager] instance.
-//   - Safe Resource Cleanup: Upon resolution ([Manager.Resolve]), cancellation, or timeout,
+//     the same [Tracker] instance.
+//   - Safe Resource Cleanup: Upon resolution ([Tracker.Resolve]), cancellation, or timeout,
 //     all associated background resources (such as active [time.AfterFunc] timers or
 //     [context.AfterFunc] subscription watchers) are guaranteed to be stopped and cleaned up
 //     to prevent resource leaks.

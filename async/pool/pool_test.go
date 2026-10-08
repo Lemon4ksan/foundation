@@ -135,12 +135,12 @@ func TestPool_Closed(t *testing.T) {
 	})
 	_ = p.Close()
 
-	// Submitting to a closed pool must return ErrPoolClosed.
+	// Submitting to a closed pool must return ErrClosed.
 	_, err := p.Submit(context.Background(), func(ctx context.Context) (int, error) {
 		return 1, nil
 	})
-	if !errors.Is(err, ErrPoolClosed) {
-		t.Errorf("expected ErrPoolClosed, got %v", err)
+	if !errors.Is(err, ErrClosed) {
+		t.Errorf("expected ErrClosed, got %v", err)
 	}
 
 	// Graceful idempotent Close.

@@ -231,7 +231,6 @@ func (o *Orchestrator) sortDependencies() ([]Service, error) {
 	temp := make(map[string]bool)
 
 	var sorted []Service
-
 	var visit func(name string) error
 
 	visit = func(name string) error {

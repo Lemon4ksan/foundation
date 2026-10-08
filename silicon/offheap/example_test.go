@@ -25,3 +25,17 @@ func ExampleSlabAllocator() {
 	// Output:
 	// Off-heap packet stored: raw ethernet packet payload
 }
+
+func ExampleBuffer() {
+	buf, err := offheap.NewBuffer(1024)
+	if err != nil {
+		panic(err)
+	}
+	defer buf.Release()
+
+	_, _ = buf.WriteString("raw payload")
+	fmt.Printf("Buffer content: %s\n", buf.Bytes())
+
+	// Output:
+	// Buffer content: raw payload
+}

@@ -6,7 +6,7 @@
 //
 // The package leverages Go generics to eliminate repetitive boilerplate code,
 // manual type assertions, and unsafe reflection on hot paths. It provides slice and map
-// operations, lazy sequences powered by Go iterators, thread-safe collections (like TTL caches),
+// operations, lazy sequences powered by Go iterators, collections (like sets, TTL caches, and LRU caches),
 // advanced concurrency controls (like ParallelMap and SingleFlight), and monadic wrappers.
 // The [Optional] and [Result] types are the canonical monads for expressing partial states
 // or batch operation outcomes. Note that this package is exclusively reserved for external consumers;

@@ -54,14 +54,14 @@ const (
 	DriftDeprecationMismatch DriftKind = "deprecation-mismatch"
 )
 
-// DiffOptions configures semantic contract comparison behavior.
-type DiffOptions struct {
+// Options configures semantic contract comparison behavior.
+type Options struct {
 	// Additive mode ignores local methods absent from remote specification/HAR (suppresses ghost noise).
 	Additive bool
 }
 
-// DriftItem represents a single detected discrepancy between contracts.
-type DriftItem struct {
+// Drift represents a single detected discrepancy between contracts.
+type Drift struct {
 	Severity   DriftSeverity `json:"severity"`
 	Kind       DriftKind     `json:"kind"`
 	Service    string        `json:"service,omitempty"`
@@ -74,17 +74,17 @@ type DriftItem struct {
 	Suggestion string        `json:"suggestion,omitempty"`
 }
 
-// DiffReport aggregates all detected discrepancies and summary metrics.
-type DiffReport struct {
-	LocalTarget           string      `json:"local_target"`
-	RemoteTarget          string      `json:"remote_target"`
-	TotalEndpointsChecked int         `json:"total_endpoints_checked"`
-	Additive              bool        `json:"additive,omitempty"`
-	Drifts                []DriftItem `json:"drifts"`
+// Report aggregates all detected discrepancies and summary metrics.
+type Report struct {
+	LocalTarget           string  `json:"local_target"`
+	RemoteTarget          string  `json:"remote_target"`
+	TotalEndpointsChecked int     `json:"total_endpoints_checked"`
+	Additive              bool    `json:"additive,omitempty"`
+	Drifts                []Drift `json:"drifts"`
 }
 
 // BreakingCount returns the number of breaking changes detected.
-func (r *DiffReport) BreakingCount() int {
+func (r *Report) BreakingCount() int {
 	count := 0
 	for _, d := range r.Drifts {
 		if d.Severity == SeverityBreaking {
@@ -96,7 +96,7 @@ func (r *DiffReport) BreakingCount() int {
 }
 
 // NonBreakingCount returns the number of non-breaking changes detected.
-func (r *DiffReport) NonBreakingCount() int {
+func (r *Report) NonBreakingCount() int {
 	count := 0
 	for _, d := range r.Drifts {
 		if d.Severity == SeverityNonBreaking {
@@ -108,7 +108,7 @@ func (r *DiffReport) NonBreakingCount() int {
 }
 
 // GhostCount returns the number of ghost endpoints detected.
-func (r *DiffReport) GhostCount() int {
+func (r *Report) GhostCount() int {
 	count := 0
 	for _, d := range r.Drifts {
 		if d.Severity == SeverityGhost {
@@ -120,17 +120,17 @@ func (r *DiffReport) GhostCount() int {
 }
 
 // HasBreaking reports whether any breaking changes were detected.
-func (r *DiffReport) HasBreaking() bool {
+func (r *Report) HasBreaking() bool {
 	return r.BreakingCount() > 0
 }
 
 // HasDrift reports whether any drifts of any severity exist.
-func (r *DiffReport) HasDrift() bool {
+func (r *Report) HasDrift() bool {
 	return len(r.Drifts) > 0
 }
 
 // Render formats the report as human-readable terminal output.
-func (r *DiffReport) Render(color bool) string {
+func (r *Report) Render(color bool) string {
 	if len(r.Drifts) == 0 {
 		if r.Additive {
 			return "✔ All incoming captured endpoints and schemas are 100% satisfied by local contract! (0 new drifts)\n"
@@ -156,9 +156,9 @@ func (r *DiffReport) Render(color bool) string {
 	}
 
 	var (
-		breaking    []DriftItem
-		nonBreaking []DriftItem
-		ghosts      []DriftItem
+		breaking    []Drift
+		nonBreaking []Drift
+		ghosts      []Drift
 	)
 
 	for _, d := range r.Drifts {
@@ -232,17 +232,17 @@ func (r *DiffReport) Render(color bool) string {
 }
 
 // JSON serializes the diff report into indented JSON.
-func (r *DiffReport) JSON() ([]byte, error) {
+func (r *Report) JSON() ([]byte, error) {
 	return json.MarshalIndent(r, "", "  ")
 }
 
 // RenderJSON returns machine-readable JSON bytes.
-func (r *DiffReport) RenderJSON() ([]byte, error) {
+func (r *Report) RenderJSON() ([]byte, error) {
 	return r.JSON()
 }
 
 // ExitCode returns 1 if breaking changes exist, 2 if ghosts exist, or 0 if clean.
-func (r *DiffReport) ExitCode() int {
+func (r *Report) ExitCode() int {
 	if r.BreakingCount() > 0 {
 		return 1
 	}

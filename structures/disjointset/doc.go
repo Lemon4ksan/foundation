@@ -4,9 +4,9 @@
 
 // Package disjointset implements an array-backed Disjoint Set Union (DSU / Union-Find) data structure.
 //
-// DisjointSet offers near-O(1) amortized set operations utilizing two-pass iterative path compression and union-by-size heuristics. It is optimized for zero steady-state allocations during Find and Union operations.
+// Set offers near-O(1) amortized set operations utilizing two-pass iterative path compression and union-by-size heuristics. It is optimized for zero steady-state allocations during Find and Union operations.
 //
-// Use [New] to instantiate, and [DisjointSet.Find], [DisjointSet.Union] to manage sets.
+// Use [New] to instantiate, and [Set.Find], [Set.Union] to manage sets.
 //
 // # Compared to the standard library
 //

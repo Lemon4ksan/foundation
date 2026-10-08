@@ -17,7 +17,8 @@ import (
 // ParallelMap concurrently transforms each element of a slice using fn,
 // limiting the number of active goroutines to the specified limit.
 //
-// If the provided context is cancelled during execution, ParallelMap returns nil immediately.
+// If the provided context is cancelled during execution, ParallelMap stops dispatching new tasks,
+// waits for all in-flight tasks to complete, and returns nil.
 func ParallelMap[F, T any](ctx context.Context, slice []F, limit int, fn func(context.Context, F) T) []T {
 	if fn == nil || len(slice) == 0 {
 		return nil
@@ -34,14 +35,22 @@ func ParallelMap[F, T any](ctx context.Context, slice []F, limit int, fn func(co
 	sem := make(chan struct{}, limit)
 
 	var wg sync.WaitGroup
+	var done <-chan struct{}
+	if ctx != nil {
+		done = ctx.Done()
+	}
 
+	var cancelled bool
+loop:
 	for i, v := range slice {
 		if ctx != nil && ctx.Err() != nil {
-			return nil
+			cancelled = true
+			break loop
 		}
 		select {
-		case <-ctx.Done():
-			return nil
+		case <-done:
+			cancelled = true
+			break loop
 		case sem <- struct{}{}:
 		}
 
@@ -57,7 +66,7 @@ func ParallelMap[F, T any](ctx context.Context, slice []F, limit int, fn func(co
 
 	wg.Wait()
 
-	if ctx != nil && ctx.Err() != nil {
+	if cancelled || (ctx != nil && ctx.Err() != nil) {
 		return nil
 	}
 
@@ -397,17 +406,17 @@ func (b *Backoff) Reset() {
 }
 
 var (
-	// ErrDataLoaderNil is returned when Load is called on a nil DataLoader.
-	ErrDataLoaderNil = errors.New("dataloader is nil")
+	// ErrBatchLoaderNil is returned when Load is called on a nil BatchLoader.
+	ErrBatchLoaderNil = errors.New("batchloader is nil")
 
-	// ErrBatchFnNil is returned when Load is called on a DataLoader with a nil batchFn.
-	ErrBatchFnNil = errors.New("dataloader batchFn is nil")
+	// ErrBatchFnNil is returned when Load is called on a BatchLoader with a nil batchFn.
+	ErrBatchFnNil = errors.New("batchloader batchFn is nil")
 
 	// ErrKeyNotFound is returned when a batch execution does not contain a result for a requested key.
-	ErrKeyNotFound = errors.New("foundation dataloader: key not found in batch results")
+	ErrKeyNotFound = errors.New("foundation batchloader: key not found in batch results")
 
 	// ErrBatchPanicked is returned when the batch loader function panics during execution.
-	ErrBatchPanicked = errors.New("foundation dataloader: batch function panicked")
+	ErrBatchPanicked = errors.New("foundation batchloader: batch function panicked")
 )
 
 type loaderResult[V any] struct {
@@ -415,11 +424,11 @@ type loaderResult[V any] struct {
 	err error
 }
 
-// DataLoader aggregates multiple individual requests by key K into a single,
+// BatchLoader aggregates multiple individual requests by key K into a single,
 // batched call, returning results of type V.
 //
 // It is fully thread-safe and prevents "N+1" query problems in data fetching.
-type DataLoader[K comparable, V any] struct {
+type BatchLoader[K comparable, V any] struct {
 	mu      sync.Mutex
 	delay   time.Duration
 	batchFn func(context.Context, []K) (map[K]V, error)
@@ -427,12 +436,12 @@ type DataLoader[K comparable, V any] struct {
 	timer   *time.Timer
 }
 
-// NewDataLoader creates and returns a new [DataLoader] with the given batch delay window and batch function.
-func NewDataLoader[K comparable, V any](
+// NewBatchLoader creates and returns a new [BatchLoader] with the given batch delay window and batch function.
+func NewBatchLoader[K comparable, V any](
 	delay time.Duration,
 	batchFn func(context.Context, []K) (map[K]V, error),
-) *DataLoader[K, V] {
-	return &DataLoader[K, V]{
+) *BatchLoader[K, V] {
+	return &BatchLoader[K, V]{
 		delay:   delay,
 		batchFn: batchFn,
 		pending: make(map[K][]chan loaderResult[V]),
@@ -443,10 +452,10 @@ func NewDataLoader[K comparable, V any](
 //
 // If other concurrent Load calls are received within the configured delay window,
 // they are accumulated and dispatched as a single batch call to batchFn.
-func (l *DataLoader[K, V]) Load(ctx context.Context, key K) (V, error) {
+func (l *BatchLoader[K, V]) Load(ctx context.Context, key K) (V, error) {
 	if l == nil {
 		var zero V
-		return zero, ErrDataLoaderNil
+		return zero, ErrBatchLoaderNil
 	}
 
 	if l.batchFn == nil {
@@ -509,7 +518,7 @@ func (l *DataLoader[K, V]) Load(ctx context.Context, key K) (V, error) {
 	}
 }
 
-func (l *DataLoader[K, V]) executeBatch() {
+func (l *BatchLoader[K, V]) executeBatch() {
 	if l == nil {
 		return
 	}

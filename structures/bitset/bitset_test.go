@@ -83,7 +83,7 @@ func TestConstructors(t *testing.T) {
 }
 
 func TestNilAndZeroValueReceiver(t *testing.T) {
-	var nilB *BitSet
+	var nilB *Set
 	require.Equal(t, 0, nilB.Len())
 	require.Equal(t, 0, nilB.Cap())
 	require.True(t, nilB.Empty())
@@ -122,7 +122,7 @@ func TestNilAndZeroValueReceiver(t *testing.T) {
 	require.False(t, ok)
 	require.Equal(t, -1, idx)
 
-	var zeroB BitSet
+	var zeroB Set
 	require.Equal(t, 0, zeroB.Len())
 	require.Equal(t, 0, zeroB.Cap())
 	require.True(t, zeroB.Empty())
@@ -131,7 +131,7 @@ func TestNilAndZeroValueReceiver(t *testing.T) {
 	require.True(t, zeroB.None())
 	require.True(t, zeroB.AllSet())
 
-	// Setting bit on zero value BitSet
+	// Setting bit on zero value Set
 	zeroB.Set(10)
 	require.Equal(t, 11, zeroB.Len())
 	require.True(t, zeroB.Test(10))
@@ -185,12 +185,12 @@ func TestInspection(t *testing.T) {
 }
 
 func TestEqual(t *testing.T) {
-	var b1, b2 *BitSet
+	var b1, b2 *Set
 	require.True(t, b1.Equal(b2)) // both nil
 
 	b1 = New(64)
 	require.False(t, b1.Equal(nil))
-	require.False(t, (*BitSet)(nil).Equal(b1))
+	require.False(t, (*Set)(nil).Equal(b1))
 
 	b2 = New(65)
 	require.False(t, b1.Equal(b2)) // different length
@@ -301,7 +301,7 @@ func TestBulkOperations(t *testing.T) {
 }
 
 func TestClone(t *testing.T) {
-	var nilB *BitSet
+	var nilB *Set
 	require.Nil(t, nilB.Clone())
 
 	b0 := New(0)
@@ -326,7 +326,7 @@ func TestClone(t *testing.T) {
 func TestNextSet(t *testing.T) {
 	require.Panics(t, func() { New(10).NextSet(-1) })
 
-	var nilB *BitSet
+	var nilB *Set
 	idx, ok := nilB.NextSet(0)
 	require.False(t, ok)
 	require.Equal(t, -1, idx)
@@ -373,7 +373,7 @@ func TestNextSet(t *testing.T) {
 func TestNextClear(t *testing.T) {
 	require.Panics(t, func() { New(10).NextClear(-1) })
 
-	var nilB *BitSet
+	var nilB *Set
 	idx, ok := nilB.NextClear(0)
 	require.False(t, ok)
 	require.Equal(t, -1, idx)
@@ -636,8 +636,8 @@ func TestEnsureWordsBranches(t *testing.T) {
 	require.Equal(t, 151, b.Len())
 	require.True(t, b.Test(150))
 
-	// Exercise newCap < needed branch with empty BitSet
-	var bZero BitSet
+	// Exercise newCap < needed branch with empty Set
+	var bZero Set
 	bZero.Set(500) // cap 0, needs 8 words (0*2 < 8)
 	require.Equal(t, 501, bZero.Len())
 	require.True(t, bZero.Test(500))

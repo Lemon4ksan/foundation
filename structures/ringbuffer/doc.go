@@ -4,9 +4,9 @@
 
 // Package ringbuffer implements a growable, circular FIFO queue that reuses backing storage.
 //
-// RingBuffer avoids the constant allocations typical in queue implementations by wrapping around a contiguous backing array. When full, it seamlessly grows its internal capacity. No locking is performed internally, allowing lightweight usage in single-threaded loops.
+// Buffer avoids the constant allocations typical in queue implementations by wrapping around a contiguous backing array. When full, it seamlessly grows its internal capacity. No locking is performed internally, allowing lightweight usage in single-threaded loops.
 //
-// Key operations include [RingBuffer.PushBack], [RingBuffer.PopFront], and [RingBuffer.PeekFront].
+// Key operations include [Buffer.PushBack], [Buffer.PopFront], and [Buffer.PeekFront].
 //
 // # Compared to the standard library
 //

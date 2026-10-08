@@ -58,7 +58,7 @@
 //     to avoid loop branching and pipeline stalls.
 //   - Bounds-check elimination: Multi-dimensional probability array lookups use pointer arithmetic
 //     to eliminate Go runtime bounds checks on critical paths.
-//   - Buffer recycling: Encoder and decoder structures are pooled per logical processor (PerPStorage)
+//   - Buffer recycling: Encoder and decoder structures are pooled per logical processor (PerCorePool)
 //     to prevent heap allocations during multi-threaded operation.
 //
 // # Compared to the standard library

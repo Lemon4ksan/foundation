@@ -11,6 +11,8 @@
 // and scheduler latency. Lock-free ring buffers with cache-line padding eliminate
 // lock contention and false sharing, maximizing L1/L2 cache locality.
 //
+// The primary entry points are [New] for MPMC [Buffer] and [NewSPSCRingBuffer] for [SPSCRingBuffer].
+//
 // # Compared to the standard library
 //
 // Stdlib counterpart: channels

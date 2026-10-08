@@ -19,7 +19,7 @@ type connectionFlowController struct {
 	receiveFlowController
 
 	// Protects send-side state, which TryWriteAll can access from application goroutines.
-	sendMutex     spinlock.SpinLock
+	sendMutex     spinlock.Lock
 	bytesSent     protocol.ByteCount
 	sendWindow    protocol.ByteCount
 	lastBlockedAt protocol.ByteCount

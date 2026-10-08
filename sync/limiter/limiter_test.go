@@ -14,8 +14,8 @@ import (
 	"github.com/lemon4ksan/foundation/async/rate"
 )
 
-func TestNewAdaptiveLimiter(t *testing.T) {
-	l := NewAdaptiveLimiter(10.0)
+func TestNewAdaptive(t *testing.T) {
+	l := NewAdaptive(10.0)
 	if l.limit != 10.0 {
 		t.Errorf("expected limit to be 10.0, got %f", l.limit)
 	}
@@ -41,8 +41,8 @@ func TestNewAdaptiveLimiter(t *testing.T) {
 	}
 }
 
-func TestAdaptiveLimiter_AcquireRelease_Basic(t *testing.T) {
-	l := NewAdaptiveLimiter(2.0)
+func TestAdaptive_AcquireRelease_Basic(t *testing.T) {
+	l := NewAdaptive(2.0)
 
 	// Acquire 1
 	err := l.Acquire(context.Background())
@@ -95,8 +95,8 @@ func TestAdaptiveLimiter_AcquireRelease_Basic(t *testing.T) {
 	}
 }
 
-func TestAdaptiveLimiter_Acquire_CancelWait(t *testing.T) {
-	l := NewAdaptiveLimiter(1.0)
+func TestAdaptive_Acquire_CancelWait(t *testing.T) {
+	l := NewAdaptive(1.0)
 
 	// Acquire first slot
 	if err := l.Acquire(context.Background()); err != nil {
@@ -140,8 +140,8 @@ func TestAdaptiveLimiter_Acquire_CancelWait(t *testing.T) {
 	l.mu.Unlock()
 }
 
-func TestAdaptiveLimiter_Acquire_CancelMultipleWaiters(t *testing.T) {
-	l := NewAdaptiveLimiter(1.0)
+func TestAdaptive_Acquire_CancelMultipleWaiters(t *testing.T) {
+	l := NewAdaptive(1.0)
 	if err := l.Acquire(context.Background()); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -254,8 +254,8 @@ func TestAdaptiveLimiter_Acquire_CancelMultipleWaiters(t *testing.T) {
 	}
 }
 
-func TestAdaptiveLimiter_Release_Reset(t *testing.T) {
-	l := NewAdaptiveLimiter(2.0)
+func TestAdaptive_Release_Reset(t *testing.T) {
+	l := NewAdaptive(2.0)
 	l.minRTT = 5 * time.Millisecond
 	l.lastReset = time.Now().Add(-31 * time.Second)
 
@@ -266,10 +266,8 @@ func TestAdaptiveLimiter_Release_Reset(t *testing.T) {
 	}
 }
 
-func TestAdaptiveLimiter_Release_MinRTT(t *testing.T) {
-	l := NewAdaptiveLimiter(2.0)
-
-	// Case 1: minRTT is 0
+func TestAdaptive_Release_MinRTT(t *testing.T) {
+	l := NewAdaptive(2.0)
 	l.Release(10 * time.Millisecond)
 
 	if l.minRTT != 10*time.Millisecond {
@@ -291,8 +289,8 @@ func TestAdaptiveLimiter_Release_MinRTT(t *testing.T) {
 	}
 }
 
-func TestAdaptiveLimiter_Release_SmoothedRTT(t *testing.T) {
-	l := NewAdaptiveLimiter(2.0)
+func TestAdaptive_Release_SmoothedRTT(t *testing.T) {
+	l := NewAdaptive(2.0)
 
 	// Case 1: smoothedRTT is 0
 	l.Release(10 * time.Millisecond)
@@ -309,13 +307,13 @@ func TestAdaptiveLimiter_Release_SmoothedRTT(t *testing.T) {
 	}
 }
 
-func TestAdaptiveLimiter_Release_LimitDec(t *testing.T) {
+func TestAdaptive_Release_LimitDec(t *testing.T) {
 	// Decrease limit when queue > beta (5.0)
 	// queue = limit * (1.0 - minRTT / smoothedRTT)
 	// if limit = 10.0, minRTT = 5ms, smoothedRTT = 20ms,
 	// queue = 10.0 * (1.0 - 5/20) = 10.0 * 0.75 = 7.5 > 5.0 (beta)
 	// so limit should decrease.
-	l := NewAdaptiveLimiter(10.0)
+	l := NewAdaptive(10.0)
 	l.minRTT = 5 * time.Millisecond
 	l.smoothedRTT = 20 * time.Millisecond
 
@@ -338,13 +336,13 @@ func TestAdaptiveLimiter_Release_LimitDec(t *testing.T) {
 	}
 }
 
-func TestAdaptiveLimiter_Release_LimitInc(t *testing.T) {
+func TestAdaptive_Release_LimitInc(t *testing.T) {
 	// Increase limit when queue < alpha (2.0)
 	// queue = limit * (1.0 - minRTT / smoothedRTT)
 	// if limit = 10.0, minRTT = 10ms, smoothedRTT = 11ms
 	// queue = 10.0 * (1 - 10/11) = 10.0 * 1/11 = 0.909 < 2.0 (alpha)
 	// so limit should increase to 11.0.
-	l := NewAdaptiveLimiter(10.0)
+	l := NewAdaptive(10.0)
 	l.minRTT = 10 * time.Millisecond
 	l.smoothedRTT = 11 * time.Millisecond
 
@@ -366,14 +364,14 @@ func TestAdaptiveLimiter_Release_LimitInc(t *testing.T) {
 	}
 }
 
-func TestAdaptiveLimiter_Release_LimitStay(t *testing.T) {
+func TestAdaptive_Release_LimitStay(t *testing.T) {
 	// Limit stays same when alpha <= queue <= beta
 	// limit = 10.0, alpha = 2.0, beta = 5.0
 	// We want queue to be around 3.0.
 	// queue = 10.0 * (1 - minRTT/smoothedRTT) = 3.0
 	// 1 - minRTT/smoothedRTT = 0.3 => minRTT/smoothedRTT = 0.7
 	// Let minRTT = 7ms, smoothedRTT = 10ms.
-	l := NewAdaptiveLimiter(10.0)
+	l := NewAdaptive(10.0)
 	l.minRTT = 7 * time.Millisecond
 	l.smoothedRTT = 10 * time.Millisecond
 
@@ -384,8 +382,8 @@ func TestAdaptiveLimiter_Release_LimitStay(t *testing.T) {
 	}
 }
 
-func TestAdaptiveLimiter_Release_NotifyMultiple(t *testing.T) {
-	l := NewAdaptiveLimiter(3.0)
+func TestAdaptive_Release_NotifyMultiple(t *testing.T) {
+	l := NewAdaptive(3.0)
 	l.active = 3
 
 	// Add two waiters
@@ -419,16 +417,15 @@ func TestAdaptiveLimiter_Release_NotifyMultiple(t *testing.T) {
 	}
 }
 
-func TestAdaptiveLimiter_Limit(t *testing.T) {
-	l := NewAdaptiveLimiter(5.0)
+func TestAdaptive_Limit(t *testing.T) {
+	l := NewAdaptive(5.0)
 	if l.Limit() != 5.0 {
 		t.Errorf("expected Limit() to be 5.0, got %f", l.Limit())
 	}
 }
 
-func TestAdaptiveLimiter_Acquire_BlockAndRelease(t *testing.T) {
-	l := NewAdaptiveLimiter(1.0)
-
+func TestAdaptive_Acquire_BlockAndRelease(t *testing.T) {
+	l := NewAdaptive(1.0)
 	// Acquire the first slot
 	if err := l.Acquire(context.Background()); err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -471,8 +468,8 @@ func TestAdaptiveLimiter_Acquire_BlockAndRelease(t *testing.T) {
 	}
 }
 
-func TestKeyedLimiter_Basic(t *testing.T) {
-	kl := NewKeyedLimiter[string](rate.Limit(10), 2, 100*time.Millisecond)
+func TestKeyed_Basic(t *testing.T) {
+	kl := NewKeyed[string](rate.Limit(10), 2, 100*time.Millisecond)
 	defer func() {
 		_ = kl.Close()
 	}()
@@ -501,8 +498,8 @@ func TestKeyedLimiter_Basic(t *testing.T) {
 	}
 }
 
-func TestKeyedLimiter_Wait(t *testing.T) {
-	kl := NewKeyedLimiter[string](rate.Limit(100), 1, 100*time.Millisecond)
+func TestKeyed_Wait(t *testing.T) {
+	kl := NewKeyed[string](rate.Limit(100), 1, 100*time.Millisecond)
 	defer func() {
 		_ = kl.Close()
 	}()
@@ -525,9 +522,9 @@ func TestKeyedLimiter_Wait(t *testing.T) {
 	}
 }
 
-func TestKeyedLimiter_Sweep(t *testing.T) {
+func TestKeyed_Sweep(t *testing.T) {
 	// Use small TTL for test
-	kl := NewKeyedLimiter[string](rate.Limit(100), 1, 10*time.Millisecond)
+	kl := NewKeyed[string](rate.Limit(100), 1, 10*time.Millisecond)
 	defer func() {
 		_ = kl.Close()
 	}()
@@ -554,16 +551,16 @@ func TestKeyedLimiter_Sweep(t *testing.T) {
 	}
 }
 
-func TestKeyedLimiter_SweepTinyTTL(t *testing.T) {
+func TestKeyed_SweepTinyTTL(t *testing.T) {
 	// TTL is 1 microsecond, sweepInterval will be 500ns, which is < 1ms
-	kl := NewKeyedLimiter[string](rate.Limit(100), 1, 1*time.Microsecond)
+	kl := NewKeyed[string](rate.Limit(100), 1, 1*time.Microsecond)
 	defer func() {
 		_ = kl.Close()
 	}()
 }
 
-func TestKeyedLimiter_Close(t *testing.T) {
-	kl := NewKeyedLimiter[string](rate.Limit(100), 1, 100*time.Millisecond)
+func TestKeyed_Close(t *testing.T) {
+	kl := NewKeyed[string](rate.Limit(100), 1, 100*time.Millisecond)
 
 	err := kl.Close()
 	if err != nil {
@@ -589,8 +586,8 @@ func TestKeyedLimiter_Close(t *testing.T) {
 	}
 }
 
-func TestKeyedLimiter_Len(t *testing.T) {
-	kl := NewKeyedLimiter[string](rate.Limit(100), 1, 100*time.Millisecond)
+func TestKeyed_Len(t *testing.T) {
+	kl := NewKeyed[string](rate.Limit(100), 1, 100*time.Millisecond)
 	defer func() {
 		_ = kl.Close()
 	}()

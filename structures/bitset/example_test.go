@@ -6,7 +6,7 @@ import (
 	"github.com/lemon4ksan/foundation/structures/bitset"
 )
 
-func ExampleBitSet() {
+func ExampleSet() {
 	b := bitset.New(10)
 	b.Set(2).Set(5).Set(8)
 

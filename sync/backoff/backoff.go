@@ -25,16 +25,16 @@ const (
 	JitterDecorrelated
 )
 
-// Strategy represents a stateful or stateless backoff delay generator.
-type Strategy interface {
+// Policy represents a stateful or stateless backoff delay generator.
+type Policy interface {
 	// NextDelay calculates the sleep duration for the given 1-based attempt index.
 	NextDelay(attempt int) time.Duration
 	// Reset resets any internal stateful state (e.g. for decorrelated jitter).
 	Reset()
 }
 
-// ExponentialBackoff computes backoff growing by factor with an optional jitter distribution.
-type ExponentialBackoff struct {
+// Exponential computes backoff growing by factor with an optional jitter distribution.
+type Exponential struct {
 	Initial   time.Duration
 	Max       time.Duration
 	Factor    float64
@@ -42,8 +42,8 @@ type ExponentialBackoff struct {
 	lastSleep time.Duration
 }
 
-// NewExponential creates an [ExponentialBackoff] with reasonable defaults (factor=2.0).
-func NewExponential(initial, max time.Duration, factor float64) *ExponentialBackoff {
+// NewExponential creates an [Exponential] with reasonable defaults (factor=2.0).
+func NewExponential(initial, max time.Duration, factor float64) *Exponential {
 	if initial <= 0 {
 		initial = 100 * time.Millisecond
 	}
@@ -56,7 +56,7 @@ func NewExponential(initial, max time.Duration, factor float64) *ExponentialBack
 		factor = 2.0
 	}
 
-	return &ExponentialBackoff{
+	return &Exponential{
 		Initial:   initial,
 		Max:       max,
 		Factor:    factor,
@@ -66,30 +66,30 @@ func NewExponential(initial, max time.Duration, factor float64) *ExponentialBack
 }
 
 // WithFullJitter sets JitterMode to Full Jitter (AWS recommended standard).
-func (b *ExponentialBackoff) WithFullJitter() *ExponentialBackoff {
+func (b *Exponential) WithFullJitter() *Exponential {
 	b.Jitter = JitterFull
 	return b
 }
 
 // WithEqualJitter sets JitterMode to Equal Jitter.
-func (b *ExponentialBackoff) WithEqualJitter() *ExponentialBackoff {
+func (b *Exponential) WithEqualJitter() *Exponential {
 	b.Jitter = JitterEqual
 	return b
 }
 
 // WithDecorrelatedJitter sets JitterMode to Decorrelated Jitter.
-func (b *ExponentialBackoff) WithDecorrelatedJitter() *ExponentialBackoff {
+func (b *Exponential) WithDecorrelatedJitter() *Exponential {
 	b.Jitter = JitterDecorrelated
 	return b
 }
 
 // Reset resets the stateful sleep history.
-func (b *ExponentialBackoff) Reset() {
+func (b *Exponential) Reset() {
 	b.lastSleep = b.Initial
 }
 
 // NextDelay calculates the duration for attempt (1-based).
-func (b *ExponentialBackoff) NextDelay(attempt int) time.Duration {
+func (b *Exponential) NextDelay(attempt int) time.Duration {
 	if attempt <= 1 {
 		return b.applyJitter(b.Initial)
 	}
@@ -97,7 +97,6 @@ func (b *ExponentialBackoff) NextDelay(attempt int) time.Duration {
 	if b.Jitter == JitterDecorrelated {
 		// next = min(max, rand(initial, lastSleep * 3))
 		maxRange := min(b.lastSleep*3, b.Max)
-
 		delta := maxRange - b.Initial
 
 		var sleep time.Duration
@@ -125,7 +124,7 @@ func (b *ExponentialBackoff) NextDelay(attempt int) time.Duration {
 	return b.applyJitter(baseDelay)
 }
 
-func (b *ExponentialBackoff) applyJitter(baseDelay time.Duration) time.Duration {
+func (b *Exponential) applyJitter(baseDelay time.Duration) time.Duration {
 	switch b.Jitter {
 	case JitterFull:
 		if baseDelay <= 0 {
@@ -148,16 +147,16 @@ func (b *ExponentialBackoff) applyJitter(baseDelay time.Duration) time.Duration 
 	}
 }
 
-// LinearBackoff computes backoff growing linearly by step on each attempt.
-type LinearBackoff struct {
+// Linear computes backoff growing linearly by step on each attempt.
+type Linear struct {
 	Initial time.Duration
 	Max     time.Duration
 	Step    time.Duration
 	Jitter  JitterMode
 }
 
-// NewLinear creates a [LinearBackoff] calculator.
-func NewLinear(initial, max, step time.Duration) *LinearBackoff {
+// NewLinear creates a [Linear] calculator.
+func NewLinear(initial, max, step time.Duration) *Linear {
 	if initial <= 0 {
 		initial = 100 * time.Millisecond
 	}
@@ -170,7 +169,7 @@ func NewLinear(initial, max, step time.Duration) *LinearBackoff {
 		step = initial
 	}
 
-	return &LinearBackoff{
+	return &Linear{
 		Initial: initial,
 		Max:     max,
 		Step:    step,
@@ -179,24 +178,37 @@ func NewLinear(initial, max, step time.Duration) *LinearBackoff {
 }
 
 // WithFullJitter enables Full Jitter on linear backoff.
-func (b *LinearBackoff) WithFullJitter() *LinearBackoff {
+func (b *Linear) WithFullJitter() *Linear {
 	b.Jitter = JitterFull
 	return b
 }
 
 // Reset is a no-op for stateless linear backoff.
-func (b *LinearBackoff) Reset() {}
+func (b *Linear) Reset() {}
 
 // NextDelay calculates the duration for attempt (1-based).
-func (b *LinearBackoff) NextDelay(attempt int) time.Duration {
+func (b *Linear) NextDelay(attempt int) time.Duration {
 	if attempt <= 1 {
 		return b.applyJitter(b.Initial)
+	}
+
+	if b.Step <= 0 {
+		return b.applyJitter(min(b.Initial, b.Max))
+	}
+
+	if b.Max > b.Initial {
+		maxSafeAttempts := (b.Max - b.Initial) / b.Step
+		if time.Duration(attempt-1) > maxSafeAttempts {
+			return b.applyJitter(b.Max)
+		}
+	} else {
+		return b.applyJitter(b.Max)
 	}
 
 	return b.applyJitter(min(b.Initial+time.Duration(attempt-1)*b.Step, b.Max))
 }
 
-func (b *LinearBackoff) applyJitter(baseDelay time.Duration) time.Duration {
+func (b *Linear) applyJitter(baseDelay time.Duration) time.Duration {
 	if b.Jitter == JitterFull && baseDelay > 0 {
 		return randkit.Jitter(baseDelay)
 	}
@@ -204,31 +216,31 @@ func (b *LinearBackoff) applyJitter(baseDelay time.Duration) time.Duration {
 	return baseDelay
 }
 
-// ConstantBackoff computes a fixed static delay with optional jitter.
-type ConstantBackoff struct {
+// Constant computes a fixed static delay with optional jitter.
+type Constant struct {
 	Delay  time.Duration
 	Jitter JitterMode
 }
 
 // NewConstant creates a fixed static delay backoff.
-func NewConstant(delay time.Duration) *ConstantBackoff {
-	return &ConstantBackoff{
+func NewConstant(delay time.Duration) *Constant {
+	return &Constant{
 		Delay:  delay,
 		Jitter: JitterNone,
 	}
 }
 
 // WithFullJitter enables Full Jitter on constant delay.
-func (b *ConstantBackoff) WithFullJitter() *ConstantBackoff {
+func (b *Constant) WithFullJitter() *Constant {
 	b.Jitter = JitterFull
 	return b
 }
 
 // Reset is a no-op for constant backoff.
-func (b *ConstantBackoff) Reset() {}
+func (b *Constant) Reset() {}
 
 // NextDelay returns the constant delay.
-func (b *ConstantBackoff) NextDelay(attempt int) time.Duration {
+func (b *Constant) NextDelay(attempt int) time.Duration {
 	if b.Jitter == JitterFull && b.Delay > 0 {
 		return randkit.Jitter(b.Delay)
 	}

@@ -57,7 +57,7 @@ func ExampleNew() {
 	// Current state: processing
 }
 
-func ExampleFSM_OnBefore() {
+func ExampleMachine_OnBefore() {
 	machine := fsm.New[State, Event](StateIdle)
 
 	machine.AddRules(

@@ -8,7 +8,7 @@ import (
 )
 
 type UserRegistered struct {
-	event.BaseEvent
+	event.Envelope
 	UserID string
 	Email  string
 }

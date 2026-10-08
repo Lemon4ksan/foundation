@@ -13,7 +13,7 @@ import (
 )
 
 // refBitSet is a simple, unambiguous mathematical reference implementation
-// using a boolean slice and math/big.Int to verify BitSet behavior.
+// using a boolean slice and math/big.Int to verify Set behavior.
 type refBitSet struct {
 	bits   []bool
 	length int
@@ -193,8 +193,8 @@ func (r *refBitSet) andNot(other *refBitSet) {
 	}
 }
 
-// toBigInt converts a BitSet to a math/big.Int for independent arbitrary-precision checks.
-func toBigInt(b *BitSet) *big.Int {
+// toBigInt converts a Set to a math/big.Int for independent arbitrary-precision checks.
+func toBigInt(b *Set) *big.Int {
 	z := new(big.Int)
 	for i := 0; i < b.Len(); i++ {
 		if b.Test(i) {
@@ -204,7 +204,7 @@ func toBigInt(b *BitSet) *big.Int {
 	return z
 }
 
-func assertBitSetMatchesRef(t *testing.T, b *BitSet, r *refBitSet, stepDesc string) {
+func assertBitSetMatchesRef(t *testing.T, b *Set, r *refBitSet, stepDesc string) {
 	t.Helper()
 	require.Equalf(t, r.length, b.Len(), "%s: length mismatch", stepDesc)
 	require.Equalf(t, r.count(), b.Count(), "%s: count mismatch", stepDesc)
@@ -255,7 +255,7 @@ func TestChallenge_DifferentialFuzz(t *testing.T) {
 	const numPool = 5
 	const numSteps = 5000
 
-	bitsets := make([]*BitSet, numPool)
+	bitsets := make([]*Set, numPool)
 	refs := make([]*refBitSet, numPool)
 
 	for i := range bitsets {
@@ -348,7 +348,7 @@ func TestChallenge_AlgebraicLaws(t *testing.T) {
 
 	lengths := []int{0, 1, 63, 64, 65, 127, 128, 129, 255, 256, 500}
 
-	randomBitSet := func(n int) *BitSet {
+	randomBitSet := func(n int) *Set {
 		b := New(n)
 		for i := 0; i < n; i++ {
 			if rng.IntN(2) == 1 {
@@ -458,7 +458,7 @@ func TestChallenge_AlgebraicLaws(t *testing.T) {
 	}
 }
 
-// TestChallenge_BigIntDifferential compares BitSet boolean operations with math/big.Int
+// TestChallenge_BigIntDifferential compares Set boolean operations with math/big.Int
 func TestChallenge_BigIntDifferential(t *testing.T) {
 	rng := rand.New(rand.NewPCG(9876, 54321))
 

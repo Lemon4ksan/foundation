@@ -21,7 +21,7 @@ const (
 
 type datagramQueue struct {
 	sendMx    sync.Mutex
-	sendQueue ringbuffer.RingBuffer[*wire.DatagramFrame]
+	sendQueue ringbuffer.Buffer[*wire.DatagramFrame]
 	sent      chan struct{} // used to notify Add that a datagram was dequeued
 
 	rcvMx    sync.Mutex

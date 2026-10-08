@@ -5,7 +5,7 @@
 // Package mock provides primitives for fluent method mocking and call verification.
 //
 // The package allows test authors to create mock objects that track method invocations,
-// specify expected return values, and verify call counts. By embedding [Mock] in a custom type,
+// specify expected return values, and verify call counts. By using [Controller] in a mock type,
 // you can intercept method calls and return pre-configured responses, enabling robust unit testing
 // of components without their real dependencies.
 //

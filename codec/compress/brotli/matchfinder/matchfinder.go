@@ -9,12 +9,12 @@ type Match struct {
 	Distance  int // how far back in the stream to copy from
 }
 
-// A MatchFinder performs the LZ77 stage of compression, looking for matches.
-type MatchFinder interface {
+// A Finder performs the LZ77 stage of compression, looking for matches.
+type Finder interface {
 	// FindMatches looks for matches in src, appends them to dst, and returns dst.
 	FindMatches(dst []Match, src []byte) []Match
 
-	// Reset clears any internal state, preparing the MatchFinder to be used with
+	// Reset clears any internal state, preparing the Finder to be used with
 	// a new stream.
 	Reset()
 }
@@ -30,10 +30,10 @@ type Encoder interface {
 	Reset()
 }
 
-// A Writer uses MatchFinder and Encoder to write compressed data to Dest.
+// A Writer uses Finder and Encoder to write compressed data to Dest.
 type Writer struct {
 	Dest        io.Writer
-	MatchFinder MatchFinder
+	MatchFinder Finder
 	Encoder     Encoder
 
 	// BlockSize is the number of bytes to compress at a time. If it is zero,

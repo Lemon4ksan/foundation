@@ -40,7 +40,7 @@ type frameSorter struct {
 
 var errDuplicateStreamData = errors.New("duplicate stream data")
 
-var frameSorterPool = pool.NewPerPStorage(func() *frameSorter {
+var frameSorterPool = pool.NewPerCorePool(func() *frameSorter {
 	s := &frameSorter{
 		gaps: list.NewCapacity[byteInterval](protocol.MaxStreamFrameSorterGaps + 1),
 	}

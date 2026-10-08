@@ -7,7 +7,7 @@
 //
 // Processing large slices of data concurrently requires careful concurrency budgeting
 // and rate limiting to avoid overwhelming downstream services. This package simplifies
-// these workflows by providing the [Map] and [ForEach] functions which distribute work
+// these workflows by providing the [Map], [ForEach], [Pipeline.Transform], and [TransformSeq] functions which distribute work
 // across a fixed pool of goroutines, preserving the original order of the input slice
 // without the data races associated with manual wait groups and uncoordinated channels.
 //

@@ -76,14 +76,14 @@ func (a *Arena) Alloc(n int) unsafe.Pointer {
 	return ptr
 }
 
-// AllocBuffer allocates an [OffHeapBuffer] bound to this arena's memory slab.
-func (a *Arena) AllocBuffer(capacity int) *OffHeapBuffer {
+// AllocBuffer allocates an [Buffer] bound to this arena's memory slab.
+func (a *Arena) AllocBuffer(capacity int) *Buffer {
 	ptr := a.Alloc(capacity)
 	if ptr == nil {
 		return nil
 	}
 
-	return &OffHeapBuffer{
+	return &Buffer{
 		ptr: ptr,
 		len: 0,
 		cap: int32(capacity),

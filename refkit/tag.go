@@ -190,8 +190,8 @@ func (t Tag) Has(option string) bool {
 	return slices.Contains(t.Options, option)
 }
 
-// Get extracts the value of a key-value directive flag (e.g. `default=10` -> "10", `min=5` -> "5").
-func (t Tag) Get(key string) string {
+// Value extracts the value of a key-value directive flag (e.g. `default=10` -> "10", `min=5` -> "5").
+func (t Tag) Value(key string) string {
 	for _, opt := range t.Options {
 		if k, v, ok := strings.Cut(opt, "="); ok && k == key {
 			return v
@@ -200,9 +200,9 @@ func (t Tag) Get(key string) string {
 	return ""
 }
 
-// GetInt extracts a numeric option parsed as int.
-func (t Tag) GetInt(key string) (int, bool) {
-	val := t.Get(key)
+// Int extracts a numeric option parsed as int.
+func (t Tag) Int(key string) (int, bool) {
+	val := t.Value(key)
 	if val == "" {
 		return 0, false
 	}
@@ -210,9 +210,9 @@ func (t Tag) GetInt(key string) (int, bool) {
 	return n, err == nil
 }
 
-// GetFloat extracts a numeric option parsed as float64.
-func (t Tag) GetFloat(key string) (float64, bool) {
-	val := t.Get(key)
+// Float extracts a numeric option parsed as float64.
+func (t Tag) Float(key string) (float64, bool) {
+	val := t.Value(key)
 	if val == "" {
 		return 0, false
 	}
@@ -222,7 +222,7 @@ func (t Tag) GetFloat(key string) (float64, bool) {
 
 // SplitOption splits a key-value option by delim, returning an iterator over the non-empty parts.
 func (t Tag) SplitOption(key, delim string) iter.Seq[string] {
-	val := t.Get(key)
+	val := t.Value(key)
 	return func(yield func(string) bool) {
 		if val == "" {
 			return
@@ -258,8 +258,8 @@ func (t Tag) IsIgnored() bool {
 	return t.Name == "-"
 }
 
-// GetTag retrieves and parses the first matching struct tag for keys from field.
-func GetTag(field reflect.StructField, keys ...string) Tag {
+// TagOf retrieves and parses the first matching struct tag for keys from field.
+func TagOf(field reflect.StructField, keys ...string) Tag {
 	for _, key := range keys {
 		if raw, ok := field.Tag.Lookup(key); ok {
 			return ParseTag(raw)

@@ -15,7 +15,7 @@
 // use of assembly routines on amd64 and arm64 for performance-critical components.
 //
 // Decoders and encoders are designed to be reused to prevent garbage collection pressure.
-// Under the hood, decoders utilize thread-local CPU storage (pool.PerPStorage) to avoid
+// Under the hood, decoders utilize thread-local CPU storage (pool.PerCorePool) to avoid
 // lock contention and heap allocations during multi-threaded operation.
 //
 // # Dictionary Compression

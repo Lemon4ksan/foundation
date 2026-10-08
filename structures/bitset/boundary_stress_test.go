@@ -12,7 +12,7 @@ import (
 	"github.com/lemon4ksan/foundation/testing/require"
 )
 
-// Reference oracle using a simple bool slice to verify BitSet behavior bit-by-bit.
+// Reference oracle using a simple bool slice to verify Set behavior bit-by-bit.
 type oracleBitSet struct {
 	bits []bool
 }
@@ -58,7 +58,7 @@ func TestWordBoundaryTransitionsExhaustive(t *testing.T) {
 	boundaries := []int{0, 1, 62, 63, 64, 65, 126, 127, 128, 129, 1022, 1023, 1024, 1025, 2047, 2048, 2049}
 
 	for _, bIdx := range boundaries {
-		// Test BitSet of size bIdx + 1
+		// Test Set of size bIdx + 1
 		b := New(bIdx + 1)
 		require.Equal(t, bIdx+1, b.Len())
 		require.False(t, b.Test(bIdx))
@@ -81,7 +81,7 @@ func TestWordBoundaryTransitionsExhaustive(t *testing.T) {
 		require.False(t, b.Test(bIdx))
 		require.Equal(t, 0, b.Count())
 
-		// Auto-expansion across boundary: BitSet initialized to bIdx, set at bIdx
+		// Auto-expansion across boundary: Set initialized to bIdx, set at bIdx
 		bAuto := New(bIdx)
 		require.Equal(t, bIdx, bAuto.Len())
 		bAuto.Set(bIdx)

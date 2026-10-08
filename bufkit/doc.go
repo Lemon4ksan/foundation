@@ -6,6 +6,8 @@
 //
 // Traditional memory buffers in Go rely heavily on continuous reallocation when growing dynamic payloads, which triggers memory copies and garbage collector churn. This package eliminates reallocation overhead by introducing scatter-gather chunked buffers that chain fixed-size pooled memory blocks, lock-free circular buffers optimized for high-throughput single-producer single-consumer pipelines, and memory buffers aligned to processor cachelines for vector operations.
 //
+// The [Chain] structure manages pooled memory chunks for dynamic scatter-gather buffering without continuous heap reallocation. To preserve memory safety across chunk recycles, [Chain.Next] always allocates and copies safe byte slices that callers can retain indefinitely. In contrast, [Chain.Peek] provides a zero-copy preview into active chunks whose lifetime is valid only until the next read or discard operation on the chain.
+//
 // # Compared to the standard library
 //
 // Stdlib counterpart: bytes.Buffer

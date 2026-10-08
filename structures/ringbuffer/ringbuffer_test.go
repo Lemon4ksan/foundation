@@ -11,7 +11,7 @@ import (
 )
 
 func TestPushPeekPop(t *testing.T) {
-	r := RingBuffer[int]{}
+	r := Buffer[int]{}
 	require.Equal(t, 0, len(r.ring))
 	require.Panics(t, func() { r.PopFront() })
 	r.PushBack(1)
@@ -37,7 +37,7 @@ func TestPushPeekPop(t *testing.T) {
 }
 
 func TestPanicOnEmptyBuffer(t *testing.T) {
-	r := RingBuffer[string]{}
+	r := Buffer[string]{}
 	require.True(t, r.Empty())
 	require.Zero(t, r.Len())
 
@@ -61,7 +61,7 @@ func TestPanicOnEmptyBuffer(t *testing.T) {
 }
 
 func TestRingBuffer_Iterators(t *testing.T) {
-	var r RingBuffer[int]
+	var r Buffer[int]
 	r.Init(4)
 
 	// Empty iterators
@@ -134,7 +134,7 @@ func TestRingBuffer_Iterators(t *testing.T) {
 }
 
 func TestClear(t *testing.T) {
-	r := RingBuffer[int]{}
+	r := Buffer[int]{}
 	r.Init(2)
 	r.PushBack(1)
 	r.PushBack(2)
@@ -146,7 +146,7 @@ func TestClear(t *testing.T) {
 }
 
 func BenchmarkRingBuffer(b *testing.B) {
-	r := RingBuffer[int]{}
+	r := Buffer[int]{}
 
 	var val int
 	for b.Loop() {
@@ -158,7 +158,7 @@ func BenchmarkRingBuffer(b *testing.B) {
 }
 
 func BenchmarkRingBufferWrapped(b *testing.B) {
-	var r RingBuffer[int]
+	var r Buffer[int]
 	r.Init(32)
 
 	for i := range 16 {

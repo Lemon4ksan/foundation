@@ -258,6 +258,17 @@ func DisassembleAMD64(code []byte, baseOffset uint64, relocs []Relocation) (Disa
 			}
 		}
 
+		// Stack alignment instructions (e.g. ANDQ $-32, SP) must be preserved in the prologue!
+		// If stack alignment is present, ensure frame size accounts for alignment padding.
+		if inst.Op == x86asm.AND && (strings.HasPrefix(text, "ANDQ $-") || strings.HasPrefix(text, "ANDL $-")) &&
+			strings.HasSuffix(text, ", SP") {
+			if frameSize < 32 {
+				frameSize = 32
+			} else {
+				frameSize = (frameSize + 31) &^ 31
+			}
+		}
+
 		insts = append(insts, DisassembledInst{
 			Offset:   pc,
 			Length:   inst.Len,
@@ -315,6 +326,20 @@ func cleanPlan9Syntax(s string) string {
 	// Replace CS NOP / prefix NOP with standard NOP
 	if strings.Contains(s, "NOP") {
 		s = "NOP"
+	}
+
+	// Standardize stack alignment instructions to decimal imm (e.g. ANDQ $-0x20, SP -> ANDQ $-32, SP)
+	if strings.HasPrefix(s, "ANDQ $-0x") && strings.HasSuffix(s, ", SP") {
+		switch s {
+		case "ANDQ $-0x10, SP":
+			s = "ANDQ $-16, SP"
+		case "ANDQ $-0x20, SP":
+			s = "ANDQ $-32, SP"
+		case "ANDQ $-0x40, SP":
+			s = "ANDQ $-64, SP"
+		case "ANDQ $-0x80, SP":
+			s = "ANDQ $-128, SP"
+		}
 	}
 
 	// Normalize 8-bit registers for SETcc instructions

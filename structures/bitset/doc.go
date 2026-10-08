@@ -4,9 +4,9 @@
 
 // Package bitset implements a dense, memory-efficient bit array backed by []uint64 words.
 //
-// BitSet represents a growable bit array offering fast set, clear, and hardware-accelerated population counts. It is designed to minimize pointer indirection and GC tracking overhead by using a flat, contiguous word slice. Read-only queries are safe for concurrent use across multiple goroutines, but mutations must be synchronized.
+// Set represents a growable bit array offering fast set, clear, and hardware-accelerated population counts. It is designed to minimize pointer indirection and GC tracking overhead by using a flat, contiguous word slice. Read-only queries are safe for concurrent use across multiple goroutines, but mutations must be synchronized.
 //
-// The primary entry points are [New], [BitSet.Set], and [BitSet.Test].
+// The primary entry points are [New], [Set.Set], and [Set.Test].
 //
 // # Compared to the standard library
 //

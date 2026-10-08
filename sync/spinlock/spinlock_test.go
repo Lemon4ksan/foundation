@@ -10,8 +10,8 @@ import (
 	"time"
 )
 
-func TestSpinLock_Basic(t *testing.T) {
-	var mu SpinLock
+func TestLock_Basic(t *testing.T) {
+	var mu Lock
 
 	// Initial lock
 	mu.Lock()
@@ -35,9 +35,9 @@ func TestSpinLock_Basic(t *testing.T) {
 	mu.Unlock()
 }
 
-func TestSpinLock_Concurrent(t *testing.T) {
+func TestLock_Concurrent(t *testing.T) {
 	var (
-		mu SpinLock
+		mu Lock
 		wg sync.WaitGroup
 	)
 
@@ -67,9 +67,9 @@ func TestSpinLock_Concurrent(t *testing.T) {
 	}
 }
 
-func TestSpinLock_TryLockConcurrent(t *testing.T) {
+func TestLock_TryLockConcurrent(t *testing.T) {
 	var (
-		mu SpinLock
+		mu Lock
 		wg sync.WaitGroup
 	)
 
@@ -104,8 +104,8 @@ func TestSpinLock_TryLockConcurrent(t *testing.T) {
 	}
 }
 
-func TestSpinLock_UnlockPanic(t *testing.T) {
-	var mu SpinLock
+func TestLock_UnlockPanic(t *testing.T) {
+	var mu Lock
 
 	defer func() {
 		r := recover()
@@ -117,8 +117,8 @@ func TestSpinLock_UnlockPanic(t *testing.T) {
 	mu.Unlock()
 }
 
-func BenchmarkSpinLock_Sequential(b *testing.B) {
-	var mu SpinLock
+func BenchmarkLock_Sequential(b *testing.B) {
+	var mu Lock
 	b.ReportAllocs()
 	b.ResetTimer()
 
@@ -139,8 +139,8 @@ func BenchmarkMutex_Sequential(b *testing.B) {
 	}
 }
 
-func BenchmarkSpinLock_Parallel(b *testing.B) {
-	var mu SpinLock
+func BenchmarkLock_Parallel(b *testing.B) {
+	var mu Lock
 	counter := 0
 	b.ReportAllocs()
 	b.ResetTimer()

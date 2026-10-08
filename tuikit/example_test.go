@@ -5,6 +5,9 @@
 package tuikit_test
 
 import (
+	"context"
+	"fmt"
+	"io"
 	"os"
 
 	"github.com/lemon4ksan/foundation/tuikit"
@@ -22,4 +25,18 @@ func ExampleTable() {
 	table.AddRow("GET", "/api/v1/users", "1.2 ms")
 	table.AddRow("POST", "/api/v1/login", "4.8 ms")
 	table.Render(os.Stdout)
+}
+
+func ExampleFuncCommand() {
+	cmd := &tuikit.FuncCommand{
+		CmdName:     "ping",
+		CmdSynopsis: "Send ping",
+		CmdRun: func(ctx context.Context, args []string, stdout, stderr io.Writer) error {
+			fmt.Fprintln(stdout, "pong")
+			return nil
+		},
+	}
+	_ = cmd.Run(context.Background(), nil, os.Stdout, os.Stderr)
+	// Output:
+	// pong
 }

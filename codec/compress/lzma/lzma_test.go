@@ -178,3 +178,28 @@ func BenchmarkLZMA2_Compress_64K(b *testing.B) {
 		}
 	}
 }
+
+func TestLZMA2_CorruptedPayload(t *testing.T) {
+	comp := NewCompressor2(1 << 20)
+	var compressed bytes.Buffer
+	orig := []byte("Testing LZMA2 payload corruption resilience and bounds checking.")
+	_, err := comp.Compress(bytes.NewReader(orig), &compressed)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	raw := compressed.Bytes()
+	for offset := len(raw) / 2; offset < len(raw)-2; offset++ {
+		corrupted := make([]byte, len(raw))
+		copy(corrupted, raw)
+		corrupted[offset] ^= 0xFF
+
+		decomp := NewDecompressor2(1 << 20)
+		rc, err := decomp.Decompress(bytes.NewReader(corrupted))
+		if err == nil {
+			_, _ = io.ReadAll(rc)
+			_ = rc.Close()
+		}
+	}
+}
+

@@ -4,10 +4,10 @@
 
 // Package iokit provides high-performance streaming I/O wrappers.
 //
-// The package offers low-level streaming primitives, replayable body decorators,
-// multi-read buffers, zero-copy vectored scatter-gather queues ([BufferQueue]),
+// The package offers low-level streaming primitives, replayable body decorators ([AsReplayable], [NewReplayableBody]),
+// multi-read buffers ([MultiReadBody]), zero-copy vectored scatter-gather queues ([BufferQueue]),
 // and pooled zero-allocation copy helpers designed for line-rate data processing.
-// A common use case is wrapping an incoming request body in a [MultiReadBody] to inspect
+// A common use case is wrapping an incoming request body via [AsReplayable] or [NewMultiReadBody] to inspect
 // payload contents (e.g. for cryptographic hashing or routing) before resetting the stream
 // and passing it to the final handler. Another is queuing non-contiguous header/body buffers
 // into a [BufferQueue] to flush them via writev/WSASend without memory flattening.

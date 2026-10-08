@@ -41,17 +41,25 @@ func NormalizeArgs(args []string) []string {
 	result := make([]string, 0, len(args))
 
 	for i := 0; i < len(args); i++ {
-		arg := args[i]
-		for i+1 < len(args) && strings.HasPrefix(args[i+1], ".") && !strings.Contains(args[i+1], "/") && !strings.Contains(args[i+1], "\\") {
-			// Orphaned suffix like .go, .json, .har, .yaml
-			arg = strings.Join([]string{arg, args[i+1]}, "")
+		var arg strings.Builder
+		arg.WriteString(args[i])
+		for i+1 < len(args) && isOrphanedSuffix(args[i+1]) {
+			arg.WriteString(args[i+1])
 			i++
 		}
 
-		result = append(result, arg)
+		result = append(result, arg.String())
 	}
 
 	return result
+}
+
+func isOrphanedSuffix(arg string) bool {
+	return strings.HasPrefix(arg, ".") &&
+		arg != "." &&
+		arg != ".." &&
+		!strings.Contains(arg, "/") &&
+		!strings.Contains(arg, "\\")
 }
 
 // ParseInterspersedFlags parses a [flag.FlagSet] correctly with full POSIX semantics:
@@ -61,9 +69,64 @@ func NormalizeArgs(args []string) []string {
 // - Strict POSIX terminator `--` (all subsequent arguments treated as literal positionals).
 // - Fuzzy suggestions ("Did you mean: --flag?") for mistyped options.
 func ParseInterspersedFlags(fs *flag.FlagSet, args []string) ([]string, error) {
-	args = NormalizeArgs(args)
+	args = decomposeFlags(fs, NormalizeArgs(args))
 
-	// Step 1: Pre-process and decompose clumped short flags or attached values
+	// Separate flags from positional arguments while respecting value consumption
+	var (
+		flagArgs []string
+		posArgs  []string
+	)
+
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if arg == "--" {
+			posArgs = append(posArgs, args[i+1:]...)
+			break
+		}
+
+		if !strings.HasPrefix(arg, "-") || arg == "-" {
+			posArgs = append(posArgs, arg)
+			continue
+		}
+
+		cleanArg := strings.TrimLeft(arg, "-")
+		flagName, _, hasEqual := strings.Cut(cleanArg, "=")
+
+		fl := fs.Lookup(flagName)
+		if fl == nil || hasEqual {
+			flagArgs = append(flagArgs, arg)
+			continue
+		}
+
+		bf, ok := fl.Value.(boolFlag)
+		flagArgs = append(flagArgs, arg)
+
+		if !ok || !bf.IsBoolFlag() {
+			if !hasEqual && i+1 < len(args) {
+				i++
+				flagArgs = append(flagArgs, args[i])
+			}
+		}
+	}
+
+	if err := fs.Parse(flagArgs); err != nil {
+		msg := err.Error()
+		if strings.Contains(msg, "flag provided but not defined: ") {
+			parts := strings.Split(msg, "flag provided but not defined: ")
+			if len(parts) == 2 {
+				badFlag := strings.TrimSpace(parts[1])
+				if match := findClosestFlag(fs, badFlag); match != "" {
+					return nil, fmt.Errorf("flag provided but not defined: %s (did you mean: --%s?)", badFlag, match)
+				}
+			}
+		}
+		return nil, err
+	}
+
+	return posArgs, nil
+}
+
+func decomposeFlags(fs *flag.FlagSet, args []string) []string {
 	expanded := make([]string, 0, len(args))
 	hitDoubleDash := false
 
@@ -85,73 +148,11 @@ func ParseInterspersedFlags(fs *flag.FlagSet, args []string) ([]string, error) {
 		}
 	}
 
-	args = expanded
-
-	// Step 2: Separate flags from positional arguments while respecting value consumption
-	var (
-		flagArgs []string
-		posArgs  []string
-	)
-
-	for i := 0; i < len(args); i++ {
-		arg := args[i]
-		if arg == "--" {
-			posArgs = append(posArgs, args[i+1:]...)
-			break
-		}
-
-		if strings.HasPrefix(arg, "-") && arg != "-" {
-			cleanArg := strings.TrimLeft(arg, "-")
-			flagName := cleanArg
-			hasEqual := false
-
-			if before, _, ok := strings.Cut(cleanArg, "="); ok {
-				flagName = before
-				hasEqual = true
-			}
-
-			fl := fs.Lookup(flagName)
-			if fl == nil || hasEqual {
-				flagArgs = append(flagArgs, arg)
-				continue
-			}
-
-			// Check if boolean flag
-			if bf, ok := fl.Value.(boolFlag); ok && bf.IsBoolFlag() {
-				flagArgs = append(flagArgs, arg)
-			} else {
-				flagArgs = append(flagArgs, arg)
-				// Consume next argument as flag value if available and not another flag
-				if i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
-					i++
-					flagArgs = append(flagArgs, args[i])
-				}
-			}
-		} else {
-			posArgs = append(posArgs, arg)
-		}
-	}
-
-	if err := fs.Parse(flagArgs); err != nil {
-		msg := err.Error()
-		if strings.Contains(msg, "flag provided but not defined: ") {
-			parts := strings.Split(msg, "flag provided but not defined: ")
-			if len(parts) == 2 {
-				badFlag := strings.TrimSpace(parts[1])
-				if match := findClosestFlag(fs, badFlag); match != "" {
-					return nil, fmt.Errorf("flag provided but not defined: %s (did you mean: --%s?)", badFlag, match)
-				}
-			}
-		}
-		return nil, err
-	}
-
-	return posArgs, nil
+	return expanded
 }
 
 // decomposeFlag unpacks POSIX short flag clumps (e.g. -la -> [-l, -a]) and attached values (-I*.tmp -> [-I=*.tmp]).
 func decomposeFlag(fs *flag.FlagSet, arg string) ([]string, bool) {
-	// Must start with single '-' and not '--'
 	if !strings.HasPrefix(arg, "-") || strings.HasPrefix(arg, "--") || arg == "-" {
 		return nil, false
 	}
@@ -162,12 +163,10 @@ func decomposeFlag(fs *flag.FlagSet, arg string) ([]string, bool) {
 	}
 
 	// If the entire string is already registered (e.g. -where, -all, -sort), keep as is
-	flagName := clean
-	if before, _, ok := strings.Cut(clean, "="); ok {
-		flagName = before
-	}
-	if fs.Lookup(flagName) != nil {
-		return nil, false
+	if flagName, _, ok := strings.Cut(clean, "="); ok {
+		if fs.Lookup(flagName) != nil {
+			return nil, false
+		}
 	}
 
 	var result []string
@@ -204,8 +203,7 @@ func decomposeFlag(fs *flag.FlagSet, arg string) ([]string, bool) {
 
 // findClosestFlag calculates Levenshtein distance to suggest the closest defined flag for typos.
 func findClosestFlag(fs *flag.FlagSet, unknown string) string {
-	clean := strings.TrimLeft(unknown, "-")
-	clean, _, _ = strings.Cut(clean, "=")
+	clean, _, _ := strings.Cut(strings.TrimLeft(unknown, "-"), "=")
 	if len(clean) == 0 {
 		return ""
 	}
@@ -215,7 +213,7 @@ func findClosestFlag(fs *flag.FlagSet, unknown string) string {
 	cleanLower := strings.ToLower(clean)
 
 	fs.VisitAll(func(fl *flag.Flag) {
-		dist := levenshtein(cleanLower, strings.ToLower(fl.Name))
+		dist := Levenshtein(cleanLower, strings.ToLower(fl.Name))
 		if dist < minDist {
 			minDist = dist
 			bestMatch = fl.Name
@@ -234,10 +232,6 @@ func Suggest(fs *flag.FlagSet, name string) string {
 // It uses stack-allocated buffers for typical strings up to 64 runes to achieve
 // 0 heap allocations.
 func Levenshtein(s1, s2 string) int {
-	return levenshtein(s1, s2)
-}
-
-func levenshtein(s1, s2 string) int {
 	if isASCII(s1) && isASCII(s2) {
 		n1, n2 := len(s1), len(s2)
 		if n1 == 0 {

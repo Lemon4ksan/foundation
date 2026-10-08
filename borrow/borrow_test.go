@@ -30,26 +30,49 @@ func TestBox_Ownership_And_Release(t *testing.T) {
 	require.Equal(t, "Aoni", ref.Val().Name)
 	assert.Equal(t, uint32(1), ref.Generation())
 
-	// Mutable borrow
+	// Mutable borrow while shared borrow is active must fail/panic
+	assert.Panics(t, func() {
+		_ = box.BorrowMut()
+	})
+	_, err := box.TryBorrowMut()
+	assert.ErrorIs(t, err, borrow.ErrAlreadyBorrowedShared)
+
+	// Release shared borrow
+	ref.Release()
+	assert.False(t, ref.IsValid())
+
+	// Mutable borrow now succeeds
 	mut := box.BorrowMut()
 	mut.Get().Name = "Aoni-Engine"
-	require.Equal(t, "Aoni-Engine", ref.Get().Name)
 	assert.Equal(t, uint32(1), mut.Generation())
 	assert.True(t, mut.IsValid())
+
+	// Shared borrow while mutable borrow is active must fail/panic
+	assert.Panics(t, func() {
+		_ = box.Borrow()
+	})
+	_, err = box.TryBorrow()
+	assert.ErrorIs(t, err, borrow.ErrAlreadyBorrowedMut)
 
 	// Write
 	mut.Write(SampleData{ID: 99, Name: "Written"})
 	assert.Equal(t, 99, box.Get().ID)
 
-	// Freeze
+	// Freeze mut into ref
 	frozen := mut.Freeze()
 	assert.Equal(t, 99, frozen.Get().ID)
+	assert.False(t, mut.IsValid())
+
+	// Release frozen ref
+	frozen.Release()
+	assert.False(t, frozen.IsValid())
 
 	// Release invalidates all handles
 	box.Release()
 	require.False(t, box.IsValid())
 	require.False(t, ref.IsValid())
 	require.False(t, mut.IsValid())
+	require.False(t, frozen.IsValid())
 
 	// Accessing invalid ref must panic deterministically
 	assert.Panics(t, func() {
@@ -57,6 +80,9 @@ func TestBox_Ownership_And_Release(t *testing.T) {
 	})
 	assert.Panics(t, func() {
 		_ = mut.Get()
+	})
+	assert.Panics(t, func() {
+		_ = frozen.Get()
 	})
 	assert.Panics(t, func() {
 		_ = box.Get()
@@ -115,8 +141,8 @@ func TestCell_InteriorMutability_And_BorrowChecking(t *testing.T) {
 	})
 
 	// Release shared
-	cell.Slot().ReleaseShared()
-	cell.Slot().ReleaseShared()
+	r1.Release()
+	r2.Release()
 
 	// 4. Mutable borrow exclusive
 	m1, err := cell.BorrowMut()
@@ -132,7 +158,7 @@ func TestCell_InteriorMutability_And_BorrowChecking(t *testing.T) {
 	_, err = cell.BorrowMut()
 	assert.ErrorIs(t, err, borrow.ErrAlreadyBorrowedMut)
 
-	cell.Slot().ReleaseExclusive()
+	m1.Release()
 
 	// Nil cell Slot()
 	var nilCell *borrow.Cell[int]

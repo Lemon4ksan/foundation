@@ -9,12 +9,12 @@ import (
 	"time"
 )
 
-func TestRepro_NewRingBuffer_NegativeCapacityHangs(t *testing.T) {
+func TestRepro_New_NegativeCapacityHangs(t *testing.T) {
 	done := make(chan struct{})
 
 	go func() {
 		// Passing negative capacity should not hang in an infinite loop
-		rb := NewRingBuffer[int](-1)
+		rb := New[int](-1)
 		if rb.capacity < 2 {
 			t.Errorf("expected capacity >= 2, got %d", rb.capacity)
 		}
@@ -25,6 +25,6 @@ func TestRepro_NewRingBuffer_NegativeCapacityHangs(t *testing.T) {
 	case <-done:
 		// Succeeded without hanging
 	case <-time.After(1 * time.Second):
-		t.Fatal("CRITICAL: NewRingBuffer(-1) hung in infinite bitshift loop!")
+		t.Fatal("CRITICAL: New(-1) hung in infinite bitshift loop!")
 	}
 }

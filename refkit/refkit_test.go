@@ -160,7 +160,7 @@ func TestTag_Parsing_And_Getters(t *testing.T) {
 	t.Parallel()
 
 	field, _ := reflect.TypeFor[SampleModel]().FieldByName("Name")
-	tag := refkit.GetTag(field, "json")
+	tag := refkit.TagOf(field, "json")
 
 	assert.Equal(t, "name", tag.Name)
 	assert.True(t, tag.Has("omitempty"))
@@ -169,21 +169,21 @@ func TestTag_Parsing_And_Getters(t *testing.T) {
 	assert.False(t, tag.IsIgnored())
 
 	// Tag getters
-	assert.Equal(t, "anonymous", tag.Get("default"))
-	assert.Equal(t, "", tag.Get("missing"))
+	assert.Equal(t, "anonymous", tag.Value("default"))
+	assert.Equal(t, "", tag.Value("missing"))
 
-	minVal, ok := tag.GetInt("min")
+	minVal, ok := tag.Int("min")
 	assert.True(t, ok)
 	assert.Equal(t, 5, minVal)
 
-	_, ok = tag.GetInt("missing")
+	_, ok = tag.Int("missing")
 	assert.False(t, ok)
 
-	ratioVal, ok := tag.GetFloat("ratio")
+	ratioVal, ok := tag.Float("ratio")
 	assert.True(t, ok)
 	assert.Equal(t, 1.5, ratioVal)
 
-	_, ok = tag.GetFloat("missing")
+	_, ok = tag.Float("missing")
 	assert.False(t, ok)
 
 	// SplitOption
@@ -193,7 +193,7 @@ func TestTag_Parsing_And_Getters(t *testing.T) {
 
 	// Ignored field `json:"-"`
 	skipField, _ := reflect.TypeFor[SampleModel]().FieldByName("Skip")
-	skipTag := refkit.GetTag(skipField, "json")
+	skipTag := refkit.TagOf(skipField, "json")
 	assert.True(t, skipTag.IsIgnored())
 
 	// Empty tag
@@ -201,6 +201,6 @@ func TestTag_Parsing_And_Getters(t *testing.T) {
 	assert.True(t, emptyTag.IsEmpty())
 
 	// Nonexistent tag lookup
-	missingTag := refkit.GetTag(field, "xml")
+	missingTag := refkit.TagOf(field, "xml")
 	assert.True(t, missingTag.IsEmpty())
 }

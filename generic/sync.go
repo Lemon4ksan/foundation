@@ -13,19 +13,19 @@ import (
 	"sync/atomic"
 )
 
-// Safe encapsulates a value of type T and protects concurrent read and write access via [sync.RWMutex].
-type Safe[T any] struct {
+// Guarded encapsulates a value of type T and protects concurrent read and write access via [sync.RWMutex].
+type Guarded[T any] struct {
 	mu sync.RWMutex
 	v  T
 }
 
-// NewSafe constructs a new thread-safe [Safe] container initialized with initial.
-func NewSafe[T any](initial T) *Safe[T] {
-	return &Safe[T]{v: initial}
+// NewGuarded constructs a new thread-safe [Guarded] container initialized with initial.
+func NewGuarded[T any](initial T) *Guarded[T] {
+	return &Guarded[T]{v: initial}
 }
 
 // Get returns a copy of the current protected value under a shared read lock.
-func (s *Safe[T]) Get() T {
+func (s *Guarded[T]) Get() T {
 	s.mu.RLock()
 	val := s.v
 	s.mu.RUnlock()
@@ -34,14 +34,14 @@ func (s *Safe[T]) Get() T {
 }
 
 // Set replaces the protected value under an exclusive write lock.
-func (s *Safe[T]) Set(v T) {
+func (s *Guarded[T]) Set(v T) {
 	s.mu.Lock()
 	s.v = v
 	s.mu.Unlock()
 }
 
 // Swap atomically replaces the protected value and returns the previous value.
-func (s *Safe[T]) Swap(v T) T {
+func (s *Guarded[T]) Swap(v T) T {
 	s.mu.Lock()
 	old := s.v
 	s.v = v
@@ -51,7 +51,7 @@ func (s *Safe[T]) Swap(v T) T {
 }
 
 // Update atomically mutates the value via fn under an exclusive lock, resolving Read-Modify-Write races.
-func (s *Safe[T]) Update(fn func(current T) T) T {
+func (s *Guarded[T]) Update(fn func(current T) T) T {
 	s.mu.Lock()
 	s.v = fn(s.v)
 	res := s.v
@@ -61,21 +61,21 @@ func (s *Safe[T]) Update(fn func(current T) T) T {
 }
 
 // Mutate provides direct mutable pointer access to T inside an exclusive lock (ideal for maps, slices, or complex structs).
-func (s *Safe[T]) Mutate(fn func(val *T)) {
+func (s *Guarded[T]) Mutate(fn func(val *T)) {
 	s.mu.Lock()
 	fn(&s.v)
 	s.mu.Unlock()
 }
 
 // Read provides scoped read-only access to T inside a shared lock without escaping value references.
-func (s *Safe[T]) Read(fn func(val T)) {
+func (s *Guarded[T]) Read(fn func(val T)) {
 	s.mu.RLock()
 	fn(s.v)
 	s.mu.RUnlock()
 }
 
 // Mutex encapsulates a value of type T protected by an ultra-lightweight, non-reentrant [sync.Mutex].
-// Recommended over [Safe] when writes are frequent or when read/write contention does not justify RWMutex overhead.
+// Recommended over [Guarded] when writes are frequent or when read/write contention does not justify RWMutex overhead.
 type Mutex[T any] struct {
 	mu sync.Mutex
 	v  T

@@ -69,14 +69,14 @@ func (c *Cell[T]) MustBorrowMut() Mut[T] {
 // Get returns a shallow copy of the current inner value.
 func (c *Cell[T]) Get() T {
 	r := c.MustBorrow()
-	defer c.slot.ReleaseShared()
+	defer r.Release()
 	return *r.Get()
 }
 
 // Set replaces the inner value with a new one.
 func (c *Cell[T]) Set(val T) {
 	m := c.MustBorrowMut()
-	defer c.slot.ReleaseExclusive()
+	defer m.Release()
 	*m.Get() = val
 }
 

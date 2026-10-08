@@ -35,7 +35,7 @@ func TestPipeline_OrderPreservation(t *testing.T) {
 		return in * 10, nil
 	}
 
-	outputs, err := p.Process(context.Background(), inputs, mapper)
+	outputs, err := p.Transform(context.Background(), inputs, mapper)
 	require.NoError(t, err)
 	require.Len(t, outputs, 1000)
 
@@ -68,7 +68,7 @@ func TestPipeline_FailFast(t *testing.T) {
 		return in, nil
 	}
 
-	_, err := p.Process(context.Background(), inputs, mapper)
+	_, err := p.Transform(context.Background(), inputs, mapper)
 	assert.ErrorIs(t, err, errDummy)
 
 	// Due to FailFast with 1 worker, only 2 or 3 tasks should be processed before context cancel takes effect
@@ -93,7 +93,7 @@ func TestPipeline_NoFailFast(t *testing.T) {
 		return in, nil
 	}
 
-	_, err := p.Process(context.Background(), inputs, mapper)
+	_, err := p.Transform(context.Background(), inputs, mapper)
 	assert.Error(t, err)
 	// Since FailFast is false, it should run all and join errors
 	assert.Contains(t, err.Error(), "dummy error")
@@ -110,7 +110,7 @@ func TestPipeline_RateLimiting(t *testing.T) {
 	inputs := []int{1, 2, 3}
 	start := time.Now()
 
-	_, err := p.Process(context.Background(), inputs, func(ctx context.Context, in int) (int, error) {
+	_, err := p.Transform(context.Background(), inputs, func(ctx context.Context, in int) (int, error) {
 		return in, nil
 	})
 	require.NoError(t, err)
@@ -145,7 +145,7 @@ func TestPipeline_ContextCancelled_NoLeaks(t *testing.T) {
 		return in, nil
 	}
 
-	_, err := p.Process(ctx, inputs, mapper)
+	_, err := p.Transform(ctx, inputs, mapper)
 	assert.ErrorIs(t, err, context.Canceled)
 
 	// Wait for goroutines to clean up
@@ -269,7 +269,7 @@ func TestPipeline_EmptyAndDefaults(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	_, err = p.Process(ctx, []int{1}, func(c context.Context, in int) (int, error) {
+	_, err = p.Transform(ctx, []int{1}, func(c context.Context, in int) (int, error) {
 		return in, nil
 	})
 	assert.ErrorIs(t, err, context.Canceled)
@@ -290,7 +290,7 @@ func TestPipeline_RateLimiting_Cancelled(t *testing.T) {
 		cancel()
 	}()
 
-	_, err := p.Process(ctx, []int{1, 2}, func(c context.Context, in int) (int, error) {
+	_, err := p.Transform(ctx, []int{1, 2}, func(c context.Context, in int) (int, error) {
 		return in, nil
 	})
 	assert.ErrorIs(t, err, context.Canceled)
@@ -422,9 +422,9 @@ func TestPipeline_Helpers_EdgeCases(t *testing.T) {
 	err = ForEach(ctx, cfg, []int{}, func(_ context.Context, in int) error { return nil })
 	assert.NoError(t, err)
 
-	// Process nil mapper
+	// Transform nil mapper
 	p := New[int, int](cfg)
-	_, err = p.Process(ctx, []int{1}, nil)
+	_, err = p.Transform(ctx, []int{1}, nil)
 	assert.Error(t, err)
 
 	// Stream nil mapper
@@ -435,7 +435,7 @@ func TestPipeline_Helpers_EdgeCases(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func BenchmarkPipeline_Process(b *testing.B) {
+func BenchmarkPipeline_Transform(b *testing.B) {
 	cfg := Config{
 		Workers: 8,
 	}
@@ -454,7 +454,7 @@ func BenchmarkPipeline_Process(b *testing.B) {
 	b.ReportAllocs()
 
 	for i := 0; i < b.N; i++ {
-		_, _ = p.Process(context.Background(), inputs, mapper)
+		_, _ = p.Transform(context.Background(), inputs, mapper)
 	}
 }
 
@@ -468,7 +468,7 @@ func intSeq(count int) iter.Seq[int] {
 	}
 }
 
-func TestEmpirical_Pipeline_ProcessSeq_FullTraversal(t *testing.T) {
+func TestEmpirical_Pipeline_TransformSeq_FullTraversal(t *testing.T) {
 	ctx := context.Background()
 	cfg := Config{Workers: 4}
 
@@ -477,7 +477,7 @@ func TestEmpirical_Pipeline_ProcessSeq_FullTraversal(t *testing.T) {
 	}
 
 	received := 0
-	for out, err := range ProcessSeq(ctx, cfg, intSeq(50), mapper) {
+	for out, err := range TransformSeq(ctx, cfg, intSeq(50), mapper) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -490,7 +490,7 @@ func TestEmpirical_Pipeline_ProcessSeq_FullTraversal(t *testing.T) {
 	}
 }
 
-func TestEmpirical_Pipeline_ProcessSeq_EarlyTerminationAndNoLeak(t *testing.T) {
+func TestEmpirical_Pipeline_TransformSeq_EarlyTerminationAndNoLeak(t *testing.T) {
 	ctx := context.Background()
 	cfg := Config{Workers: 8}
 
@@ -509,7 +509,7 @@ func TestEmpirical_Pipeline_ProcessSeq_EarlyTerminationAndNoLeak(t *testing.T) {
 	// 1. Break after 0 iterations (first item returns false)
 	beforeG := runtime.NumGoroutine()
 	count := 0
-	for out, err := range ProcessSeq(ctx, cfg, intSeq(200), mapper) {
+	for out, err := range TransformSeq(ctx, cfg, intSeq(200), mapper) {
 		_ = out
 		_ = err
 		count++
@@ -529,7 +529,7 @@ func TestEmpirical_Pipeline_ProcessSeq_EarlyTerminationAndNoLeak(t *testing.T) {
 
 	// 2. Break after 5 items mid-iteration
 	count = 0
-	for out, err := range ProcessSeq(ctx, cfg, intSeq(200), mapper) {
+	for out, err := range TransformSeq(ctx, cfg, intSeq(200), mapper) {
 		_ = out
 		_ = err
 		count++
@@ -549,13 +549,13 @@ func TestEmpirical_Pipeline_ProcessSeq_EarlyTerminationAndNoLeak(t *testing.T) {
 	}
 }
 
-func TestEmpirical_Pipeline_ProcessSeq_NilMapperAndCancelledCtx(t *testing.T) {
+func TestEmpirical_Pipeline_TransformSeq_NilMapperAndCancelledCtx(t *testing.T) {
 	ctx := context.Background()
 	cfg := Config{Workers: 2}
 
 	// Nil mapper
 	var nilMapperYielded bool
-	for _, err := range ProcessSeq[int, int](ctx, cfg, intSeq(10), nil) {
+	for _, err := range TransformSeq[int, int](ctx, cfg, intSeq(10), nil) {
 		if err == nil {
 			t.Fatal("expected error for nil mapper")
 		}
@@ -573,11 +573,11 @@ func TestEmpirical_Pipeline_ProcessSeq_NilMapperAndCancelledCtx(t *testing.T) {
 	dummyMapper := func(ctx context.Context, in int) (int, error) {
 		return in, nil
 	}
-	for range ProcessSeq(cancelCtx, cfg, intSeq(10), dummyMapper) {
+	for range TransformSeq(cancelCtx, cfg, intSeq(10), dummyMapper) {
 	}
 }
 
-func TestEmpirical_Pipeline_ProcessSeq_PipelineMethod(t *testing.T) {
+func TestEmpirical_Pipeline_TransformSeq_PipelineMethod(t *testing.T) {
 	ctx := context.Background()
 	p := New[int, string](Config{Workers: 2})
 
@@ -589,7 +589,7 @@ func TestEmpirical_Pipeline_ProcessSeq_PipelineMethod(t *testing.T) {
 	}
 
 	items := 0
-	for out, err := range p.ProcessSeq(ctx, intSeq(5), mapper) {
+	for out, err := range p.TransformSeq(ctx, intSeq(5), mapper) {
 		_ = out
 		_ = err
 		items++
@@ -599,7 +599,7 @@ func TestEmpirical_Pipeline_ProcessSeq_PipelineMethod(t *testing.T) {
 	}
 }
 
-func BenchmarkProcessSeq(b *testing.B) {
+func BenchmarkTransformSeq(b *testing.B) {
 	ctx := context.Background()
 	cfg := Config{Workers: 4}
 	mapper := func(ctx context.Context, in int) (int, error) {
@@ -610,7 +610,7 @@ func BenchmarkProcessSeq(b *testing.B) {
 	b.ReportAllocs()
 
 	for b.Loop() {
-		for out, err := range ProcessSeq(ctx, cfg, intSeq(10), mapper) {
+		for out, err := range TransformSeq(ctx, cfg, intSeq(10), mapper) {
 			_ = out
 			_ = err
 		}

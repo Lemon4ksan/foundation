@@ -6,7 +6,7 @@
 //
 // The LZ77 stage of compression (finding repeated byte sequences) and the entropy
 // coding stage (encoding the compressed format) are traditionally tightly coupled.
-// This package provides a generic [MatchFinder] interface, an [Encoder] interface,
+// This package provides a generic [Finder] interface, an [Encoder] interface,
 // and a [Match] struct as an intermediate representation. This allows mixing and
 // matching different match-finders (e.g., hash-based, suffix trees) with different
 // encoders (e.g., deflate, snappy).

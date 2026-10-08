@@ -11,6 +11,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"unsafe"
 
 	"github.com/lemon4ksan/foundation/bufkit"
 	"github.com/lemon4ksan/foundation/testing/assert"
@@ -272,6 +273,197 @@ func TestChain_StreamingExtensions(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, int64(23), nRead)
 	assert.Equal(t, "streamed from io.Reader", string(c.Bytes()))
+}
+
+// ============================================================================
+// 2b. Regression Tests: Chain.Next Memory Safety & Chain.Peek Zero-Copy
+// ============================================================================
+
+func TestChain_Next_MemorySafety_CrossChunkBoundaryAndRecycle(t *testing.T) {
+	t.Parallel()
+
+	c := bufkit.NewChain()
+	defer c.Release()
+
+	// 1. Populate multiple chunks with distinct deterministic patterns
+	const totalBytes = bufkit.DefaultChunkSize * 3 // 3 full chunks = 12288 bytes
+	fullPayload := make([]byte, totalBytes)
+	for i := range fullPayload {
+		fullPayload[i] = byte((i*17 + 11) % 251)
+	}
+
+	nWritten, err := c.Write(fullPayload)
+	require.NoError(t, err)
+	assert.Equal(t, totalBytes, nWritten)
+
+	// 2. Advance close to chunk 0 boundary: leave 64 bytes in chunk 0
+	const offsetBeforeBoundary = bufkit.DefaultChunkSize - 64
+	discarded, err := c.Discard(offsetBeforeBoundary)
+	require.NoError(t, err)
+	assert.Equal(t, offsetBeforeBoundary, discarded)
+
+	// 3. Next across chunk 0 into chunk 1: 64 bytes from chunk 0, 64 bytes from chunk 1.
+	// This exhausts chunk 0, triggering its release to sync.Pool.
+	expectedSpan1 := make([]byte, 128)
+	copy(expectedSpan1, fullPayload[offsetBeforeBoundary:offsetBeforeBoundary+128])
+
+	heldSlice1 := c.Next(128)
+	require.Equal(t, 128, len(heldSlice1))
+	assert.Equal(t, expectedSpan1, heldSlice1)
+
+	// 4. Next remainder of chunk 1: leaves 0 bytes in chunk 1, exhausting it and triggering release.
+	const chunk1Remaining = bufkit.DefaultChunkSize - 64
+	expectedSpan2 := make([]byte, chunk1Remaining)
+	copy(expectedSpan2, fullPayload[offsetBeforeBoundary+128:offsetBeforeBoundary+128+chunk1Remaining])
+
+	heldSlice2 := c.Next(chunk1Remaining)
+	require.Equal(t, chunk1Remaining, len(heldSlice2))
+	assert.Equal(t, expectedSpan2, heldSlice2)
+
+	// 5. Aggressively churn sync.Pool by allocating new chains and overwriting pooled chunks
+	// with a dirty pattern (0xAA). If heldSlice1 or heldSlice2 point into pooled memory,
+	// their contents would be overwritten and corrupted.
+	for cycle := 0; cycle < 50; cycle++ {
+		churnChain := bufkit.NewChain()
+		dirty := bytes.Repeat([]byte{0xAA}, bufkit.DefaultChunkSize*2)
+		_, _ = churnChain.Write(dirty)
+		churnChain.Reset()
+		churnChain.Release()
+	}
+
+	// Also perform more reads and writes on the original chain c
+	_, _ = c.WriteString("more active chain data")
+	_ = c.Next(5)
+	c.Reset()
+	_, _ = c.Write(bytes.Repeat([]byte{0xBB}, bufkit.DefaultChunkSize))
+
+	// 6. Assert that held slices remain completely pristine and uncorrupted
+	assert.Equal(t, expectedSpan1, heldSlice1)
+	assert.Equal(t, expectedSpan2, heldSlice2)
+}
+
+func TestChain_Next_SingleChunkExhaustion_HoldingSlice(t *testing.T) {
+	t.Parallel()
+
+	c := bufkit.NewChain()
+	defer c.Release()
+
+	// Write 2 full chunks: chunk 0 is all 0x33, chunk 1 is all 0x44
+	chunk0 := bytes.Repeat([]byte{0x33}, bufkit.DefaultChunkSize)
+	chunk1 := bytes.Repeat([]byte{0x44}, bufkit.DefaultChunkSize)
+	_, _ = c.Write(chunk0)
+	_, _ = c.Write(chunk1)
+
+	// Next exactly 1 chunk: exhausts chunk 0 and advances to chunk 1.
+	// In the buggy implementation, this returned chunk 0 directly and released it to sync.Pool.
+	held := c.Next(bufkit.DefaultChunkSize)
+	require.Equal(t, bufkit.DefaultChunkSize, len(held))
+	assert.Equal(t, chunk0, held)
+
+	// Force reuse of the recycled chunk from sync.Pool
+	reuseChain := bufkit.NewChain()
+	defer reuseChain.Release()
+	dirty := bytes.Repeat([]byte{0x99}, bufkit.DefaultChunkSize)
+	_, _ = reuseChain.Write(dirty)
+
+	// Verify held slice still holds 0x33, unaffected by pool reuse
+	for i := range held {
+		if held[i] != 0x33 {
+			t.Fatalf("held slice corrupted at index %d: expected 0x33, got 0x%02x", i, held[i])
+		}
+	}
+}
+
+func TestChain_Next_DistinctAllocationAddress(t *testing.T) {
+	t.Parallel()
+
+	c := bufkit.NewChain()
+	defer c.Release()
+
+	_, _ = c.WriteString("distinct memory allocation test")
+
+	peeked, err := c.Peek(8)
+	require.NoError(t, err)
+
+	nextSlice := c.Next(8)
+	assert.Equal(t, string(peeked), string(nextSlice))
+
+	// nextSlice must be a freshly allocated buffer with a distinct memory address from the chunk
+	addrPeek := uintptr(unsafe.Pointer(unsafe.SliceData(peeked)))
+	addrNext := uintptr(unsafe.Pointer(unsafe.SliceData(nextSlice)))
+	assert.NotEqual(t, addrPeek, addrNext)
+}
+
+func TestChain_Peek_ZeroCopy(t *testing.T) {
+	t.Parallel()
+
+	c := bufkit.NewChain()
+	defer c.Release()
+
+	payload := []byte("preview_zero_copy_buffer")
+	_, err := c.Write(payload)
+	require.NoError(t, err)
+
+	// Peek within chunk
+	peeked, err := c.Peek(len(payload))
+	require.NoError(t, err)
+	assert.Equal(t, payload, peeked)
+	assert.Equal(t, len(payload), c.Len()) // Peek must not advance read cursor
+
+	// Verify zero-copy: peeked slice data points to the exact same memory as chunk 0
+	activeChunks := c.Chunks()
+	require.True(t, len(activeChunks) > 0)
+	assert.Equal(t, unsafe.SliceData(activeChunks[0]), unsafe.SliceData(peeked))
+
+	// In-place mutation through peeked slice affects the chunk directly (zero-copy proof)
+	peeked[0] = 'Z'
+	assert.Equal(t, byte('Z'), c.Chunks()[0][0])
+	peeked[0] = 'p' // restore
+
+	// Peek across multiple chunks falls back to contiguous copy
+	c.Reset()
+	part1 := bytes.Repeat([]byte{'A'}, bufkit.DefaultChunkSize)
+	part2 := bytes.Repeat([]byte{'B'}, 100)
+	_, _ = c.Write(part1)
+	_, _ = c.Write(part2)
+
+	peekCross, err := c.Peek(bufkit.DefaultChunkSize + 50)
+	require.NoError(t, err)
+	assert.Equal(t, bufkit.DefaultChunkSize+50, len(peekCross))
+	assert.Equal(t, byte('A'), peekCross[0])
+	assert.Equal(t, byte('B'), peekCross[bufkit.DefaultChunkSize])
+	assert.Equal(t, bufkit.DefaultChunkSize+100, c.Len()) // Len unchanged
+}
+
+func TestChain_Next_And_Peek_EdgeCases(t *testing.T) {
+	t.Parallel()
+
+	c := bufkit.NewChain()
+	defer c.Release()
+
+	// On empty chain
+	assert.Nil(t, c.Next(0))
+	assert.Nil(t, c.Next(-5))
+	assert.Nil(t, c.Next(10))
+
+	p0, err := c.Peek(0)
+	require.NoError(t, err)
+	assert.Nil(t, p0)
+
+	pNeg, err := c.Peek(-5)
+	require.NoError(t, err)
+	assert.Nil(t, pNeg)
+
+	pEmpty, err := c.Peek(10)
+	assert.ErrorIs(t, err, io.EOF)
+	assert.Nil(t, pEmpty)
+
+	// Next requesting more than available returns all remaining bytes
+	_, _ = c.WriteString("small")
+	assert.Equal(t, 5, c.Len())
+	remaining := c.Next(100)
+	assert.Equal(t, "small", string(remaining))
+	assert.Equal(t, 0, c.Len())
 }
 
 // ============================================================================

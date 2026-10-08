@@ -113,7 +113,7 @@ func TestBuffer_Adversarial_OperationsAfterReleaseAndNilReceiver(t *testing.T) {
 	buf.RewindRead()
 
 	// Nil receiver safety
-	var nilBuf *offheap.OffHeapBuffer
+	var nilBuf *offheap.Buffer
 	_, nilWErr := nilBuf.Write([]byte("abc"))
 	assert.True(t, errors.Is(nilWErr, offheap.ErrBufferClosed))
 
@@ -165,7 +165,7 @@ func TestBuffer_Adversarial_BoundaryRawReslicing(t *testing.T) {
 }
 
 func TestBuffer_Adversarial_SynchronizedConcurrentWrites(t *testing.T) {
-	// OffHeapBuffer documents that external synchronization is required.
+	// Buffer documents that external synchronization is required.
 	// We stress-test concurrent writers coordinating through a sync.Mutex.
 	const totalWriters = 32
 	const writesPerWorker = 50

@@ -52,23 +52,23 @@ func verifyMatches(t *testing.T, src []byte, matches []Match, name string) {
 
 // TestAllMatchFinders verifies all 10 MatchFinders against varied patterns.
 func TestAllMatchFinders(t *testing.T) {
-	finders := map[string]func() MatchFinder{
-		"M0":         func() MatchFinder { return &M0{} },
-		"M0_Lazy":    func() MatchFinder { return &M0{Lazy: true} },
-		"M4":         func() MatchFinder { return &M4{} },
-		"M4_Chained": func() MatchFinder { return &M4{ChainLength: 8, DistanceBitCost: 32} },
-		"ZFast":      func() MatchFinder { return &ZFast{} },
-		"ZDFast":     func() MatchFinder { return &ZDFast{} },
-		"ZM":         func() MatchFinder { return &ZM{} },
-		"Trio":       func() MatchFinder { return &Trio{} },
-		"Bargain1":   func() MatchFinder { return &Bargain1{} },
-		"Bargain1_S": func() MatchFinder { return &Bargain1{Skip: true} },
-		"Bargain2":   func() MatchFinder { return &Bargain2{} },
-		"Bargain2_S": func() MatchFinder { return &Bargain2{Skip: true} },
-		"Bargain3":   func() MatchFinder { return &Bargain3{} },
-		"Bargain3_S": func() MatchFinder { return &Bargain3{Skip: true} },
-		"Pathfinder": func() MatchFinder { return &Pathfinder{} },
-		"Path_Chain": func() MatchFinder { return &Pathfinder{ChainLength: 4} },
+	finders := map[string]func() Finder{
+		"M0":         func() Finder { return &M0{} },
+		"M0_Lazy":    func() Finder { return &M0{Lazy: true} },
+		"M4":         func() Finder { return &M4{} },
+		"M4_Chained": func() Finder { return &M4{ChainLength: 8, DistanceBitCost: 32} },
+		"ZFast":      func() Finder { return &ZFast{} },
+		"ZDFast":     func() Finder { return &ZDFast{} },
+		"ZM":         func() Finder { return &ZM{} },
+		"Trio":       func() Finder { return &Trio{} },
+		"Bargain1":   func() Finder { return &Bargain1{} },
+		"Bargain1_S": func() Finder { return &Bargain1{Skip: true} },
+		"Bargain2":   func() Finder { return &Bargain2{} },
+		"Bargain2_S": func() Finder { return &Bargain2{Skip: true} },
+		"Bargain3":   func() Finder { return &Bargain3{} },
+		"Bargain3_S": func() Finder { return &Bargain3{Skip: true} },
+		"Pathfinder": func() Finder { return &Pathfinder{} },
+		"Path_Chain": func() Finder { return &Pathfinder{ChainLength: 4} },
 	}
 
 	testCases := []struct {
@@ -100,16 +100,16 @@ func TestAllMatchFinders(t *testing.T) {
 
 // TestSlidingWindowHistory verifies sliding window and history trimming across blocks.
 func TestSlidingWindowHistory(t *testing.T) {
-	finders := map[string]func() MatchFinder{
-		"M4":         func() MatchFinder { return &M4{MaxDistance: 512} },
-		"ZFast":      func() MatchFinder { return &ZFast{MaxDistance: 512} },
-		"ZDFast":     func() MatchFinder { return &ZDFast{MaxDistance: 512} },
-		"ZM":         func() MatchFinder { return &ZM{MaxDistance: 512} },
-		"Trio":       func() MatchFinder { return &Trio{MaxDistance: 512} },
-		"Bargain1":   func() MatchFinder { return &Bargain1{MaxDistance: 512} },
-		"Bargain2":   func() MatchFinder { return &Bargain2{MaxDistance: 512} },
-		"Bargain3":   func() MatchFinder { return &Bargain3{MaxDistance: 512} },
-		"Pathfinder": func() MatchFinder { return &Pathfinder{MaxDistance: 512} },
+	finders := map[string]func() Finder{
+		"M4":         func() Finder { return &M4{MaxDistance: 512} },
+		"ZFast":      func() Finder { return &ZFast{MaxDistance: 512} },
+		"ZDFast":     func() Finder { return &ZDFast{MaxDistance: 512} },
+		"ZM":         func() Finder { return &ZM{MaxDistance: 512} },
+		"Trio":       func() Finder { return &Trio{MaxDistance: 512} },
+		"Bargain1":   func() Finder { return &Bargain1{MaxDistance: 512} },
+		"Bargain2":   func() Finder { return &Bargain2{MaxDistance: 512} },
+		"Bargain3":   func() Finder { return &Bargain3{MaxDistance: 512} },
+		"Pathfinder": func() Finder { return &Pathfinder{MaxDistance: 512} },
 	}
 
 	block := bytes.Repeat([]byte("0123456789abcdefghijklmnopqrstuvwxyz"), 16) // 576 bytes
@@ -154,9 +154,9 @@ func TestM0EdgeCases(t *testing.T) {
 	m.FindMatches(nil, make([]byte, 65537))
 }
 
-// TestNoMatchFinder verifies NoMatchFinder.
-func TestNoMatchFinder(t *testing.T) {
-	nm := NoMatchFinder{}
+// TestNoFinder verifies NoFinder.
+func TestNoFinder(t *testing.T) {
+	nm := NoFinder{}
 	nm.Reset()
 	src := []byte("hello world")
 	matches := nm.FindMatches(nil, src)
@@ -168,7 +168,7 @@ func TestNoMatchFinder(t *testing.T) {
 // TestAutoReset verifies that AutoReset calls Reset before each FindMatches call.
 func TestAutoReset(t *testing.T) {
 	base := &M4{MaxDistance: 1024}
-	ar := AutoReset{MatchFinder: base}
+	ar := AutoReset{Finder: base}
 	src := bytes.Repeat([]byte("test pattern data "), 10)
 	m1 := ar.FindMatches(nil, src)
 	m2 := ar.FindMatches(nil, src)
@@ -318,7 +318,7 @@ func TestOverflowAndEdgeBranches(t *testing.T) {
 		"ABCDEFGHIJKLMNOP" + "ABCDEFGHIJKLMNOP" + "0123456789abcdef" +
 		"0123456789abcdef" + "ABCDEFGHIJKLMNOP" + "0123456789abcdef" +
 		"abcdef0123456789abcdef0123456789abcdef0123456789")
-	for _, mf := range []MatchFinder{
+	for _, mf := range []Finder{
 		&ZFast{MaxDistance: 1024},
 		&ZDFast{MaxDistance: 1024},
 		&ZM{MaxDistance: 1024},
@@ -333,7 +333,7 @@ func TestOverflowAndEdgeBranches(t *testing.T) {
 	overlapData := []byte("abcdef123456abcdef123456bcdef1234567cdef12345678abcdef123456" +
 		"1234567890abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
 		"bcdefghijklmnopqrstuvwxyzcdefghijklmnopqrstuvwxyza")
-	for _, mf := range []MatchFinder{
+	for _, mf := range []Finder{
 		&M4{ChainLength: 16, MaxDistance: 1024},
 		&ZM{MaxDistance: 1024},
 		&Trio{MaxDistance: 1024},
@@ -359,7 +359,7 @@ func TestOverflowAndEdgeBranches(t *testing.T) {
 	m0.Reset()
 	var te TextEncoder
 	te.Reset()
-	var nm NoMatchFinder
+	var nm NoFinder
 	nm.Reset()
 }
 
@@ -367,7 +367,7 @@ func TestOverflowAndEdgeBranches(t *testing.T) {
 func TestMatchFinderAdvancedPatterns(t *testing.T) {
 	// Alternating patterns to trigger offset2 reuse
 	patternAB := bytes.Repeat([]byte("0123456789abcdef"+"ABCDEFGHIJKLMNO_"), 40)
-	for _, mf := range []MatchFinder{
+	for _, mf := range []Finder{
 		&ZFast{MaxDistance: 2048},
 		&ZDFast{MaxDistance: 2048},
 		&ZM{MaxDistance: 2048},
@@ -380,7 +380,7 @@ func TestMatchFinderAdvancedPatterns(t *testing.T) {
 
 	// Dense overlapping and chained patterns for M4 overlap cases
 	denseOverlap := bytes.Repeat([]byte("12345678123456782345678934567890abcdefgh45678901"), 30)
-	for _, mf := range []MatchFinder{
+	for _, mf := range []Finder{
 		&M4{ChainLength: 16, MaxDistance: 2048},
 		&M4{ChainLength: 8, MinLength: 4, MaxDistance: 512},
 		&Pathfinder{ChainLength: 8, MaxDistance: 512},
@@ -392,7 +392,7 @@ func TestMatchFinderAdvancedPatterns(t *testing.T) {
 
 	// Short match at s, long match at s+1
 	shortThenLong := []byte("abcd1234567890abcdefXXXXXX" + "abcdZZZZ" + "1234567890abcdef")
-	for _, mf := range []MatchFinder{
+	for _, mf := range []Finder{
 		&ZFast{MaxDistance: 1024},
 		&ZDFast{MaxDistance: 1024},
 	} {
@@ -520,7 +520,7 @@ func TestSpecificTriggersAndLazyM0(t *testing.T) {
 	zdfLook := []byte("PREFIX___Q123___MIDDLE___12345678___SUFFIX___")
 	zdfLook = append(zdfLook, bytes.Repeat([]byte("Y"), 60)...)
 	zdfLook = append(zdfLook, []byte("TARGET___Q12345678___TAIL")...)
-	for _, mf := range []MatchFinder{
+	for _, mf := range []Finder{
 		&ZDFast{MaxDistance: 2048},
 		&ZM{MaxDistance: 2048},
 	} {
@@ -547,7 +547,7 @@ func TestSpecificTriggersAndLazyM0(t *testing.T) {
 	cascade1.WriteString(refB[:2])
 	cascade1.WriteString(refC)
 	c1Data := cascade1.Bytes()
-	for _, mf := range []MatchFinder{
+	for _, mf := range []Finder{
 		&M4{MinLength: 4, MaxDistance: 4096},
 		&ZM{MaxDistance: 4096},
 	} {
@@ -572,7 +572,7 @@ func TestSpecificTriggersAndLazyM0(t *testing.T) {
 	cascade3.WriteString(refB[:20])
 	cascade3.WriteString(refC)
 	c3Data := cascade3.Bytes()
-	for _, mf := range []MatchFinder{
+	for _, mf := range []Finder{
 		&M4{MinLength: 4, ChainLength: 16, MaxDistance: 4096},
 		&ZM{MaxDistance: 4096},
 	} {
@@ -717,7 +717,7 @@ func TestZFastCandidateLookahead(t *testing.T) {
 	verifyMatches(t, b.Bytes(), m, "zfCandidate2Unique")
 }
 
-// TestTextEncoderTrailing exercises TextEncoder trailing literals and NoMatchFinder.
+// TestTextEncoderTrailing exercises TextEncoder trailing literals and NoFinder.
 func TestTextEncoderTrailing(t *testing.T) {
 	te := TextEncoder{}
 	te.Reset()
@@ -727,11 +727,11 @@ func TestTextEncoderTrailing(t *testing.T) {
 	if !bytes.Equal(enc, src) {
 		t.Fatalf("mismatch: got %q, want %q", enc, src)
 	}
-	nm := NoMatchFinder{}
+	nm := NoFinder{}
 	nm.Reset()
 	m := nm.FindMatches(nil, src)
 	if len(m) != 1 || m[0].Unmatched != len(src) {
-		t.Fatalf("unexpected matches from NoMatchFinder")
+		t.Fatalf("unexpected matches from NoFinder")
 	}
 }
 
@@ -752,7 +752,7 @@ func TestOffset2MatchDirect(t *testing.T) {
 	copy(buf[188:], tokenB)
 	copy(buf[204:], tokenC)
 
-	for _, mf := range []MatchFinder{
+	for _, mf := range []Finder{
 		&ZFast{MaxDistance: 4096},
 		&ZDFast{MaxDistance: 4096},
 	} {
@@ -773,7 +773,7 @@ func TestRepeatedOffsetSeparated(t *testing.T) {
 		buf.WriteString(tokA + p + tokB + "_")
 	}
 	data := buf.Bytes()
-	for _, mf := range []MatchFinder{
+	for _, mf := range []Finder{
 		&ZFast{MaxDistance: 4096},
 		&ZDFast{MaxDistance: 4096},
 		&ZM{MaxDistance: 4096},

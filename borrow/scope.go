@@ -11,7 +11,7 @@ import (
 var scopePool = sync.Pool{
 	New: func() any {
 		return &Scope{
-			slot: NewSlot(),
+			slot: NewBoundSlot(),
 			buf:  make([]byte, 0, 8192),
 		}
 	},
@@ -42,7 +42,7 @@ func (s *Scope) Release() {
 	if s == nil {
 		return
 	}
-	s.slot.Invalidate()
+	s.slot.ForceInvalidate()
 	s.buf = s.buf[:0]
 	scopePool.Put(s)
 }
@@ -55,7 +55,11 @@ func (s *Scope) Slot() *Slot {
 // AllocBytes allocates a zero-copy [Bytes] buffer of the requested size from the scope arena.
 func (s *Scope) AllocBytes(size int) Bytes {
 	if size <= 0 {
-		return Bytes{slot: s.slot, gen: s.slot.Generation()}
+		var gen uint32
+		if s.slot != nil {
+			gen = s.slot.Generation()
+		}
+		return Bytes{slot: s.slot, gen: gen, bound: true}
 	}
 
 	start := len(s.buf)

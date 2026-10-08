@@ -26,7 +26,7 @@ func getCachedProfile() UserProfile {
 	return UserProfile{ID: "1", Name: "Cached User"}
 }
 
-func ExampleCircuitBreaker() {
+func ExampleBreaker() {
 	cb := breaker.New[UserProfile](breaker.Config{
 		FailureThreshold: 0.5,              // Trip if 50% of calls fail
 		Cooldown:         10 * time.Second, // Test Half-Open after 10s
@@ -38,7 +38,7 @@ func ExampleCircuitBreaker() {
 		return fetchRemoteProfile(ctx)
 	})
 	if err != nil {
-		if errors.Is(err, breaker.ErrCircuitOpen) {
+		if errors.Is(err, breaker.ErrOpen) {
 			// Fast-path fallback
 			profile = getCachedProfile()
 			err = nil

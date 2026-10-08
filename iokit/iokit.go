@@ -55,8 +55,13 @@ func LimitToContentLength(r io.Reader, contentLen int64) io.Reader {
 // It avoids the heap allocation that io.LimitReader would incur.
 func copyWithLimit(w io.Writer, r io.ReadCloser, limit int64) (int64, error) {
 	bufPtr := copyBufPool.Get().(*[]byte)
+	if cap(*bufPtr) == 0 {
+		b := make([]byte, 32*1024)
+		bufPtr = &b
+	}
 
-	buf := *bufPtr
+	buf := (*bufPtr)[:cap(*bufPtr)]
+	*bufPtr = buf
 	defer func() {
 		if cap(*bufPtr) <= maxPoolBufferSize {
 			copyBufPool.Put(bufPtr)
@@ -65,7 +70,15 @@ func copyWithLimit(w io.Writer, r io.ReadCloser, limit int64) (int64, error) {
 
 	var total int64
 	for {
-		n, err := r.Read(buf)
+		toRead := int64(len(buf))
+		if remaining := (limit + 1) - total; remaining < toRead {
+			toRead = remaining
+		}
+		if toRead <= 0 {
+			return total, nil
+		}
+
+		n, err := r.Read(buf[:toRead])
 		if n > 0 {
 			wn, werr := w.Write(buf[:n])
 
@@ -104,13 +117,20 @@ func CopyZeroAlloc(w io.Writer, r io.Reader) (int64, error) {
 	}
 
 	bufPtr := copyBufPool.Get().(*[]byte)
+	if cap(*bufPtr) == 0 {
+		b := make([]byte, 32*1024)
+		bufPtr = &b
+	}
+
+	buf := (*bufPtr)[:cap(*bufPtr)]
+	*bufPtr = buf
 	defer func() {
 		if cap(*bufPtr) <= maxPoolBufferSize {
 			copyBufPool.Put(bufPtr)
 		}
 	}()
 
-	return io.CopyBuffer(w, r, *bufPtr)
+	return io.CopyBuffer(w, r, buf)
 }
 
 // UnwrapBody unwraps nested response body decorators down to the innermost [io.Closer].
@@ -210,22 +230,25 @@ func (e *ExplicitBufferedBody) BufferedPrefix() []byte {
 	return e.Prefix
 }
 
+// DefaultReplayableThreshold defines the default memory limit (64KB) before disk spooling for replayable bodies.
+const DefaultReplayableThreshold = 64 * 1024
+
 // ReplayableBody defines a stream that can be rewinded back to position 0 for repeated reads.
 type ReplayableBody interface {
 	io.ReadCloser
 	Reset()
 }
 
-// AsReplayable wraps rc into a [ReplayableBody] using active buffers or tee-buffered fallback.
-func AsReplayable(rc io.ReadCloser) ReplayableBody {
+// NewReplayableBody wraps rc into a [ReplayableBody] backed by [MultiReadBody].
+func NewReplayableBody(rc io.ReadCloser) (ReplayableBody, error) {
 	if rc == nil {
-		return nil
+		return nil, nil
 	}
 
 	curr := io.Closer(rc)
 	for {
 		if rb, ok := curr.(ReplayableBody); ok {
-			return rb
+			return rb, nil
 		}
 
 		u, ok := curr.(interface{ Unwrap() io.Closer })
@@ -236,13 +259,18 @@ func AsReplayable(rc io.ReadCloser) ReplayableBody {
 		curr = u.Unwrap()
 	}
 
-	buf := &bytes.Buffer{}
-
-	return &FallbackReplayableBody{
-		ReadCloser: rc,
-		buf:        buf,
-		reader:     io.TeeReader(rc, buf),
+	rcBody, err := NewMultiReadBody(rc, DefaultReplayableThreshold, false)
+	if err != nil {
+		return nil, err
 	}
+
+	return rcBody.(ReplayableBody), nil
+}
+
+// AsReplayable wraps rc into a [ReplayableBody] using active buffers or [MultiReadBody].
+func AsReplayable(rc io.ReadCloser) ReplayableBody {
+	rb, _ := NewReplayableBody(rc)
+	return rb
 }
 
 // ProgressReader invokes [ProgressFunc] callbacks as data is read from the stream.
@@ -416,7 +444,7 @@ type MultiReadBody struct {
 	reader  io.Reader
 	bytesRd bytes.Reader
 	data    []byte
-	offBuf  *offheap.OffHeapBuffer
+	offBuf  *offheap.Buffer
 	mu      sync.Mutex
 	closed  bool
 }
@@ -591,22 +619,6 @@ func (m *MultiReadBody) ReallyClose() {
 		_ = os.Remove(m.tmpFile.Name())
 		m.tmpFile = nil
 	}
-}
-
-// FallbackReplayableBody provides tee-buffered replayable stream reads.
-type FallbackReplayableBody struct {
-	io.ReadCloser
-	buf    *bytes.Buffer
-	reader io.Reader
-}
-
-func (f *FallbackReplayableBody) Read(p []byte) (int, error) {
-	return f.reader.Read(p)
-}
-
-// Reset reinitializes the reader to replay the buffer before the underlying ReadCloser.
-func (f *FallbackReplayableBody) Reset() {
-	f.reader = io.MultiReader(f.buf, f.ReadCloser)
 }
 
 // JitterReader applies artificial delay prior to initial stream reads.

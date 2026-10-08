@@ -26,28 +26,28 @@ func (t TextEncoder) Encode(dst, src []byte, matches []Match, lastBlock bool) []
 	return dst
 }
 
-// A NoMatchFinder implements MatchFinder, but doesn't find any matches.
+// A NoFinder implements Finder, but doesn't find any matches.
 // It can be used to implement the equivalent of the standard library flate package's
 // HuffmanOnly setting.
-type NoMatchFinder struct{}
+type NoFinder struct{}
 
-func (n NoMatchFinder) Reset() { return }
+func (n NoFinder) Reset() { return }
 
-func (n NoMatchFinder) FindMatches(dst []Match, src []byte) []Match {
+func (n NoFinder) FindMatches(dst []Match, src []byte) []Match {
 	return append(dst, Match{
 		Unmatched: len(src),
 	})
 }
 
-// AutoReset wraps a MatchFinder that can return references to data in previous
+// AutoReset wraps a Finder that can return references to data in previous
 // blocks, and calls Reset before each block. It is useful for (e.g.) using a
-// snappy Encoder with a MatchFinder designed for flate. (Snappy doesn't
+// snappy Encoder with a Finder designed for flate. (Snappy doesn't
 // support references between blocks.)
 type AutoReset struct {
-	MatchFinder
+	Finder
 }
 
 func (a AutoReset) FindMatches(dst []Match, src []byte) []Match {
 	a.Reset()
-	return a.MatchFinder.FindMatches(dst, src)
+	return a.Finder.FindMatches(dst, src)
 }

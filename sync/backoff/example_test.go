@@ -8,7 +8,7 @@ import (
 	"github.com/lemon4ksan/foundation/sync/backoff"
 )
 
-func ExampleExponentialBackoff() {
+func ExampleExponential() {
 	bo := backoff.NewExponential(100*time.Millisecond, 5*time.Second, 2.0).WithFullJitter()
 	ctx := context.Background()
 

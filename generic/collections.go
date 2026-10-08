@@ -46,14 +46,20 @@ func (s Set[T]) Has(item T) bool {
 }
 
 // Intersect returns a new set containing the intersection of two sets.
+// It iterates over the smaller set to achieve O(min(N, M)) time complexity.
 func (s Set[T]) Intersect(other Set[T]) Set[T] {
-	res := make(Set[T])
-	if s == nil || other == nil {
-		return res
+	if len(s) == 0 || len(other) == 0 {
+		return make(Set[T])
 	}
 
-	for k := range s {
-		if other.Has(k) {
+	smaller, larger := s, other
+	if len(smaller) > len(larger) {
+		smaller, larger = larger, smaller
+	}
+
+	res := make(Set[T], len(smaller))
+	for k := range smaller {
+		if larger.Has(k) {
 			res.Add(k)
 		}
 	}

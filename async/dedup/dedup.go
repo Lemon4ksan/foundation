@@ -79,11 +79,6 @@ func (group *Group[K, V]) KeysSeq() iter.Seq[K] {
 	}
 }
 
-// KeysSeq returns an iterator over in-flight keys in group.
-func KeysSeq[K comparable, V any](group *Group[K, V]) iter.Seq[K] {
-	return group.KeysSeq()
-}
-
 // InFlight returns the number of currently active in-flight deduplication calls.
 func (group *Group[K, V]) InFlight() int {
 	if group == nil {

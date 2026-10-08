@@ -10,12 +10,12 @@ import (
 	"github.com/lemon4ksan/foundation/text/diff"
 )
 
-func ExampleDiffReport() {
-	report := &diff.DiffReport{
+func ExampleReport() {
+	report := &diff.Report{
 		LocalTarget:           "local-api",
 		RemoteTarget:          "remote-openapi",
 		TotalEndpointsChecked: 1,
-		Drifts: []diff.DriftItem{
+		Drifts: []diff.Drift{
 			{
 				Severity: diff.SeverityGhost,
 				Kind:     diff.DriftMissingEndpoint,

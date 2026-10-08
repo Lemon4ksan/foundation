@@ -8,8 +8,8 @@ import (
 	"github.com/lemon4ksan/foundation/sync/limiter"
 )
 
-func ExampleAdaptiveLimiter() {
-	adLim := limiter.NewAdaptiveLimiter(10.0)
+func ExampleAdaptive() {
+	adLim := limiter.NewAdaptive(10.0)
 	ctx := context.Background()
 
 	// Acquire concurrency slot.
@@ -25,9 +25,9 @@ func ExampleAdaptiveLimiter() {
 	adLim.Release(time.Since(start))
 }
 
-func ExampleKeyedLimiter() {
+func ExampleKeyed() {
 	// 10 req/sec, burst 20, TTL 5 minutes of inactivity
-	kl := limiter.NewKeyedLimiter[string](rate.Limit(10), 20, 5*time.Minute)
+	kl := limiter.NewKeyed[string](rate.Limit(10), 20, 5*time.Minute)
 	defer kl.Close()
 
 	ctx := context.Background()

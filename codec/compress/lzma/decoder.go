@@ -15,6 +15,9 @@ import (
 // ErrCorruptStream indicates invalid or corrupt LZMA compressed payload.
 var ErrCorruptStream = errors.New("lzma: corrupt compressed stream")
 
+// ErrCorruptData indicates corrupted LZMA data stream.
+var ErrCorruptData = ErrCorruptStream
+
 const (
 	kOutBufSize = 64 * 1024
 )
@@ -758,6 +761,9 @@ func (d *DecoderCore) DecodeToSlice(rd *RangeDecoder, dest []byte, maxUnpack uin
 				rem -= 8
 			}
 			for rem > 0 {
+				if totalWritten >= maxLen {
+					return totalWritten, ErrCorruptData
+				}
 				*(*byte)(unsafe.Add(winPtr, winPos)) = b
 				*(*byte)(unsafe.Add(destPtr, totalWritten)) = b
 				winPos++
@@ -768,6 +774,9 @@ func (d *DecoderCore) DecodeToSlice(rd *RangeDecoder, dest []byte, maxUnpack uin
 
 		default:
 			for i := 0; i < length; i++ {
+				if totalWritten >= maxLen {
+					return totalWritten, ErrCorruptData
+				}
 				prevByte = *(*byte)(unsafe.Add(winPtr, ((winPos - dist - 1) & dictMask)))
 				*(*byte)(unsafe.Add(winPtr, winPos)) = prevByte
 				winPos = (winPos + 1) & dictMask

@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func TestKeyMutex_Basic(t *testing.T) {
+func TestMutex_Basic(t *testing.T) {
 	km := New[string]()
 
 	// Lock key "A"
@@ -35,7 +35,7 @@ func TestKeyMutex_Basic(t *testing.T) {
 	}
 }
 
-func TestKeyMutex_TryLock(t *testing.T) {
+func TestMutex_TryLock(t *testing.T) {
 	km := New[string]()
 
 	if !km.TryLock("A") {
@@ -55,7 +55,7 @@ func TestKeyMutex_TryLock(t *testing.T) {
 	km.Unlock("A")
 }
 
-func TestKeyMutex_ForceUnlock(t *testing.T) {
+func TestMutex_ForceUnlock(t *testing.T) {
 	km := New[string]()
 
 	// ForceUnlock of non-existent key should not panic or fail
@@ -76,7 +76,7 @@ func TestKeyMutex_ForceUnlock(t *testing.T) {
 	km.Unlock("A")
 }
 
-func TestKeyMutex_PanicUnlockNonExistent(t *testing.T) {
+func TestMutex_PanicUnlockNonExistent(t *testing.T) {
 	defer func() {
 		r := recover()
 		if r == nil {
@@ -88,9 +88,9 @@ func TestKeyMutex_PanicUnlockNonExistent(t *testing.T) {
 	km.Unlock("A")
 }
 
-func TestKeyMutex_ZeroValue(t *testing.T) {
-	// Test that we can use zero-value KeyMutex safely without panic on Lock and TryLock
-	var km KeyMutex[string]
+func TestMutex_ZeroValue(t *testing.T) {
+	// Test that we can use zero-value Mutex safely without panic on Lock and TryLock
+	var km Mutex[string]
 
 	if km.IsLocked("A") {
 		t.Fatal("expected A to not be locked")
@@ -101,9 +101,9 @@ func TestKeyMutex_ZeroValue(t *testing.T) {
 	}
 
 	// TryLock on zero-value
-	var km2 KeyMutex[string]
+	var km2 Mutex[string]
 	if !km2.TryLock("B") {
-		t.Fatal("expected TryLock on zero-value KeyMutex to succeed")
+		t.Fatal("expected TryLock on zero-value Mutex to succeed")
 	}
 
 	km2.Unlock("B")
@@ -116,7 +116,7 @@ func TestKeyMutex_ZeroValue(t *testing.T) {
 	km.Unlock("A")
 }
 
-func TestKeyMutex_ConcurrentDifferentKeys(t *testing.T) {
+func TestMutex_ConcurrentDifferentKeys(t *testing.T) {
 	km := New[int]()
 
 	var wg sync.WaitGroup
@@ -136,7 +136,7 @@ func TestKeyMutex_ConcurrentDifferentKeys(t *testing.T) {
 	wg.Wait()
 }
 
-func TestKeyMutex_ConcurrentSameKey(t *testing.T) {
+func TestMutex_ConcurrentSameKey(t *testing.T) {
 	km := New[string]()
 
 	var wg sync.WaitGroup
@@ -167,7 +167,7 @@ func TestKeyMutex_ConcurrentSameKey(t *testing.T) {
 	}
 }
 
-func TestKeyMutex_TryLockConcurrent(t *testing.T) {
+func TestMutex_TryLockConcurrent(t *testing.T) {
 	km := New[string]()
 
 	var wg sync.WaitGroup
@@ -239,7 +239,7 @@ func TestWithLockResult(t *testing.T) {
 	}
 }
 
-func TestKeyMutex_KeysSeq(t *testing.T) {
+func TestMutex_KeysSeq(t *testing.T) {
 	km := New[string]()
 
 	// Empty
@@ -272,7 +272,7 @@ func TestKeyMutex_KeysSeq(t *testing.T) {
 	km.Unlock("k2")
 }
 
-func BenchmarkKeyMutex_LockUnlock_Uncontended(b *testing.B) {
+func BenchmarkMutex_LockUnlock_Uncontended(b *testing.B) {
 	km := New[string]()
 	key := "benchmark-key"
 	b.ReportAllocs()
@@ -284,7 +284,7 @@ func BenchmarkKeyMutex_LockUnlock_Uncontended(b *testing.B) {
 	}
 }
 
-func BenchmarkKeyMutex_TryLockUnlock_Uncontended(b *testing.B) {
+func BenchmarkMutex_TryLockUnlock_Uncontended(b *testing.B) {
 	km := New[string]()
 	key := "benchmark-try-key"
 	b.ReportAllocs()
@@ -298,7 +298,7 @@ func BenchmarkKeyMutex_TryLockUnlock_Uncontended(b *testing.B) {
 	}
 }
 
-func BenchmarkKeyMutex_WithLock_Uncontended(b *testing.B) {
+func BenchmarkMutex_WithLock_Uncontended(b *testing.B) {
 	km := New[string]()
 	key := "benchmark-withlock-key"
 	b.ReportAllocs()
@@ -309,7 +309,7 @@ func BenchmarkKeyMutex_WithLock_Uncontended(b *testing.B) {
 	}
 }
 
-func BenchmarkKeyMutex_IsLocked(b *testing.B) {
+func BenchmarkMutex_IsLocked(b *testing.B) {
 	km := New[string]()
 	key := "benchmark-islocked-key"
 	km.Lock(key)

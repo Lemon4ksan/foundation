@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func TestRepro_KeyMutex_UnlockUnheldKey(t *testing.T) {
+func TestRepro_Mutex_UnlockUnheldKey(t *testing.T) {
 	km := New[string]()
 
 	km.Lock("key1")

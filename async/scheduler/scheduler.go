@@ -26,7 +26,7 @@ const (
 // Task represents a single schedulable unit of work.
 // Acquire instances using [Scheduler.AcquireTask] and release them with [Scheduler.ReleaseTask].
 type Task struct {
-	// ID is the unique identifier of the task.
+	// ID is the unique identifier of the task. Required for cancellation.
 	ID string
 	// Priority determines execution precedence when tasks are scheduled for the exact same time.
 	Priority Priority
@@ -35,10 +35,15 @@ type Task struct {
 	// Interval is the duration between execution cycles for periodic tasks.
 	// Set to <= 0 for one-off tasks.
 	Interval time.Duration
+	// FixedRate determines how the next run is calculated for periodic tasks.
+	// If true, NextRun is strictly calculated from the previous scheduled time (cron-like).
+	// If false, NextRun is calculated from the time of completion (fixed-delay).
+	FixedRate bool
 	// Execute is the context-aware function executed by the scheduler.
 	Execute func(ctx context.Context) error
 
-	index int
+	index    int
+	canceled bool // internal marker for O(1) lazy cancellation
 }
 
 // Debounce returns a thread-safe wrapped function that delays invoking fn until interval has elapsed.
@@ -53,11 +58,11 @@ func Debounce(interval time.Duration, fn func()) func() {
 		mu.Lock()
 		defer mu.Unlock()
 
-		if timer != nil {
-			timer.Stop()
+		if timer == nil {
+			timer = time.AfterFunc(interval, fn)
+		} else {
+			timer.Reset(interval) // Zero-allocation reset
 		}
-
-		timer = time.AfterFunc(interval, fn)
 	}
 }
 
@@ -99,16 +104,16 @@ func DebounceFn[T any](interval time.Duration, fn func(T)) func(T) {
 		defer mu.Unlock()
 
 		last = arg
-		if timer != nil {
-			timer.Stop()
+		if timer == nil {
+			timer = time.AfterFunc(interval, func() {
+				mu.Lock()
+				val := last
+				mu.Unlock()
+				fn(val)
+			})
+		} else {
+			timer.Reset(interval) // Zero-allocation reset
 		}
-
-		timer = time.AfterFunc(interval, func() {
-			mu.Lock()
-			val := last
-			mu.Unlock()
-			fn(val)
-		})
 	}
 }
 
@@ -141,22 +146,40 @@ func ThrottleFn[T any](interval time.Duration, fn func(T)) func(T) {
 // Create new instances of Scheduler using the [New] constructor function.
 // All scheduler operations are safe for concurrent use by multiple goroutines.
 type Scheduler struct {
-	mu       sync.Mutex
-	tasks    taskHeap
-	wakeChan chan struct{}
-	taskPool sync.Pool
+	mu        sync.Mutex
+	tasks     taskHeap
+	tasksByID map[string]*Task
+	wakeChan  chan struct{}
+	taskPool  sync.Pool
+
+	wg        sync.WaitGroup
+	workerSem chan struct{} // bounded concurrency semaphore
 }
 
 // New initializes and returns a new [Scheduler] instance.
 func New() *Scheduler {
 	s := &Scheduler{
-		wakeChan: make(chan struct{}, 1),
+		wakeChan:  make(chan struct{}, 1),
+		tasksByID: make(map[string]*Task),
 	}
 	s.taskPool.New = func() any {
 		return &Task{index: -1}
 	}
 
 	return s
+}
+
+// SetMaxConcurrency limits the maximum number of concurrent tasks executing at the same time.
+// By default (or if limit <= 0), the scheduler uses unbounded concurrency.
+func (s *Scheduler) SetMaxConcurrency(limit int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if limit > 0 {
+		s.workerSem = make(chan struct{}, limit)
+	} else {
+		s.workerSem = nil
+	}
 }
 
 // AcquireTask retrieves a clean, recycled [Task] instance from the internal pool.
@@ -179,6 +202,8 @@ func (s *Scheduler) ReleaseTask(t *Task) {
 	t.Execute = nil
 	t.Interval = 0
 	t.NextRun = time.Time{}
+	t.FixedRate = false
+	t.canceled = false
 	t.index = -1
 	s.taskPool.Put(t)
 }
@@ -198,15 +223,41 @@ func (s *Scheduler) Schedule(t *Task) {
 	}
 
 	s.mu.Lock()
+	if t.ID != "" {
+		// If a task with the same ID exists, mark the old one as canceled (lazy deletion)
+		if old, exists := s.tasksByID[t.ID]; exists {
+			old.canceled = true
+		}
+		s.tasksByID[t.ID] = t
+	}
+
 	heap.Push(&s.tasks, t)
 	s.mu.Unlock()
 
 	s.triggerWake()
 }
 
+// CancelTask prevents a scheduled task with the given ID from executing.
+// It uses O(1) lazy cancellation and is safe for concurrent use.
+func (s *Scheduler) CancelTask(id string) {
+	if id == "" {
+		return
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if t, exists := s.tasksByID[id]; exists {
+		t.canceled = true
+		delete(s.tasksByID, id)
+	}
+}
+
 // Start runs the main scheduler coordination loop.
 //
-// It blocks the calling goroutine until the provided context is cancelled.
+// It blocks the calling goroutine until the provided context is cancelled, at which point
+// it waits for all active, currently executing tasks to complete before returning.
+//
 // Tasks are executed asynchronously in dedicated background goroutines as soon
 // as their scheduled run times arrive. Start dynamically scales its sleep intervals
 // using internal timers to match changing task deadlines.
@@ -223,27 +274,23 @@ func (s *Scheduler) Start(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			s.mu.Unlock()
-
 			if timer != nil {
 				timer.Stop()
 			}
-
+			s.wg.Wait() // Graceful Shutdown: wait for running tasks to finish
 			return
-
 		default:
 		}
 
 		if len(s.tasks) == 0 {
 			s.mu.Unlock()
-
 			select {
 			case <-ctx.Done():
 				if timer != nil {
 					timer.Stop()
 				}
-
+				s.wg.Wait()
 				return
-
 			case <-s.wakeChan:
 				continue
 			}
@@ -268,34 +315,40 @@ func (s *Scheduler) Start(ctx context.Context) {
 				if timer != nil {
 					timer.Stop()
 				}
-
+				s.wg.Wait()
 				return
-
 			case <-timerChan:
 				continue
-
 			case <-s.wakeChan:
-				// If woken up by a newly scheduled high-priority task,
-				// stop and drain the active timer to prevent premature triggering.
 				if timer != nil && !timer.Stop() {
 					select {
 					case <-timer.C:
 					default:
 					}
 				}
-
 				continue
 			}
 		}
 
 		task := heap.Pop(&s.tasks).(*Task)
+		if task.ID != "" {
+			delete(s.tasksByID, task.ID)
+		}
+
+		// O(1) Lazy cancellation handling
+		if task.canceled {
+			s.mu.Unlock()
+			s.ReleaseTask(task)
+			continue
+		}
+
 		s.mu.Unlock()
 
+		s.wg.Add(1)
 		go s.runTask(ctx, task)
 	}
 }
 
-// triggerWake non-blockingly signals the active Start loop to wake up and reassess.
 func (s *Scheduler) triggerWake() {
 	select {
 	case s.wakeChan <- struct{}{}:
@@ -305,18 +358,18 @@ func (s *Scheduler) triggerWake() {
 
 // runTask executes the work payload of a task, safely recovering from panics.
 func (s *Scheduler) runTask(ctx context.Context, t *Task) {
+	defer s.wg.Done()
+
+	// Enforce bounded concurrency if configured
+	if s.workerSem != nil {
+		s.workerSem <- struct{}{}
+		defer func() { <-s.workerSem }()
+	}
+
 	defer func() {
 		// Prevent a single panicking task from crashing the scheduler runtime.
 		if r := recover(); r != nil {
-			if t.Interval > 0 {
-				s.mu.Lock()
-				t.NextRun = time.Now().Add(t.Interval)
-				heap.Push(&s.tasks, t)
-				s.mu.Unlock()
-				s.triggerWake()
-			} else {
-				s.ReleaseTask(t)
-			}
+			s.rescheduleOrRelease(t)
 		}
 	}()
 
@@ -324,11 +377,32 @@ func (s *Scheduler) runTask(ctx context.Context, t *Task) {
 		_ = t.Execute(ctx)
 	}
 
-	if t.Interval > 0 {
+	s.rescheduleOrRelease(t)
+}
+
+func (s *Scheduler) rescheduleOrRelease(t *Task) {
+	if t.Interval > 0 && !t.canceled {
 		s.mu.Lock()
-		t.NextRun = time.Now().Add(t.Interval)
+
+		if t.FixedRate {
+			// Drift-free: calculate strictly from the last scheduled time
+			t.NextRun = t.NextRun.Add(t.Interval)
+			// Catch up if falling significantly behind
+			if now := time.Now(); t.NextRun.Before(now) {
+				t.NextRun = now
+			}
+		} else {
+			// Fixed-delay: calculate from the actual completion time
+			t.NextRun = time.Now().Add(t.Interval)
+		}
+
+		if t.ID != "" {
+			s.tasksByID[t.ID] = t
+		}
+
 		heap.Push(&s.tasks, t)
 		s.mu.Unlock()
+
 		s.triggerWake()
 	} else {
 		s.ReleaseTask(t)

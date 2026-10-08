@@ -11,7 +11,7 @@ import (
 	"iter"
 	"sync"
 
-	"golang.org/x/time/rate"
+	"github.com/lemon4ksan/foundation/async/rate"
 )
 
 // Config defines the operational scaling, rate limiting,
@@ -62,7 +62,7 @@ func Map[In, Out any](
 
 	p := New[In, Out](cfg)
 
-	return p.Process(ctx, inputs, mapper)
+	return p.Transform(ctx, inputs, mapper)
 }
 
 // ForEach is a high-level helper utility that processes a slice of inputs concurrently
@@ -78,21 +78,21 @@ func ForEach[In any](
 	}
 
 	p := New[In, struct{}](cfg)
-	_, err := p.Process(ctx, inputs, func(c context.Context, in In) (struct{}, error) {
+	_, err := p.Transform(ctx, inputs, func(c context.Context, in In) (struct{}, error) {
 		return struct{}{}, fn(c, in)
 	})
 
 	return err
 }
 
-// ProcessSeq concurrently transforms elements from the input iterator using mapper
+// TransformSeq concurrently transforms elements from the input iterator using mapper
 // under bounded concurrency governed by cfg.Workers, yielding (Out, error) pairs.
 // If yield returns false or ctx is cancelled, workers are cancelled immediately
 // and iteration halts without leaking background goroutines.
 //
 // Concurrency Guarantees:
-// ProcessSeq is safe for concurrent invocation from multiple goroutines.
-func ProcessSeq[In, Out any](
+// TransformSeq is safe for concurrent invocation from multiple goroutines.
+func TransformSeq[In, Out any](
 	ctx context.Context,
 	cfg Config,
 	in iter.Seq[In],
@@ -161,15 +161,6 @@ func ProcessSeq[In, Out any](
 	}
 }
 
-// ProcessSeq concurrently transforms the input iterator using mapper under the pipeline's configuration.
-func (p *Pipeline[In, Out]) ProcessSeq(
-	ctx context.Context,
-	in iter.Seq[In],
-	mapper func(context.Context, In) (Out, error),
-) iter.Seq2[Out, error] {
-	return ProcessSeq(ctx, p.config, in, mapper)
-}
-
 // Pipeline coordinates concurrent data processing, rate limiting, and order preservation
 // across slice-based or channel-based data streams.
 //
@@ -198,12 +189,12 @@ func New[In, Out any](cfg Config) *Pipeline[In, Out] {
 	return p
 }
 
-// Process concurrently transforms the input slice using the provided mapper function.
+// Transform concurrently transforms the input slice using the provided mapper function.
 //
 // It preserves the original index order of the inputs in the returned output slice.
 // If FailFast is enabled, the first encountered error cancels all running workers and
 // is returned immediately. Otherwise, all encountered errors are aggregated using [errors.Join].
-func (p *Pipeline[In, Out]) Process(
+func (p *Pipeline[In, Out]) Transform(
 	ctx context.Context,
 	inputs []In,
 	mapper func(context.Context, In) (Out, error),
@@ -375,6 +366,15 @@ func (p *Pipeline[In, Out]) Process(
 	}
 
 	return outputs, nil
+}
+
+// TransformSeq concurrently transforms the input iterator using mapper under the pipeline's configuration.
+func (p *Pipeline[In, Out]) TransformSeq(
+	ctx context.Context,
+	in iter.Seq[In],
+	mapper func(context.Context, In) (Out, error),
+) iter.Seq2[Out, error] {
+	return TransformSeq(ctx, p.config, in, mapper)
 }
 
 // Stream processes items from the input channel concurrently and yields results to the output channel.

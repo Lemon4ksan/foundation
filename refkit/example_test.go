@@ -70,7 +70,7 @@ func ExampleSchemaCache() {
 
 	fmt.Printf("Type: %s, Fields: %d\n", schema.Type.Name(), len(schema.Fields))
 	for _, f := range schema.Fields {
-		fmt.Printf("Field: %s (tag: %s)\n", f.Field.Name, f.Tag.Get("route"))
+		fmt.Printf("Field: %s (tag: %s)\n", f.Field.Name, f.Tag.Value("route"))
 	}
 
 	// Output:
@@ -92,11 +92,11 @@ func ExampleImplements() {
 	// Implements io.Reader: false
 }
 
-func ExampleGetTag() {
+func ExampleTagOf() {
 	field, _ := reflect.TypeOf(User{}).FieldByName("Age")
 
-	tag := refkit.GetTag(field, "validate")
-	minAge, ok := tag.GetInt("min")
+	tag := refkit.TagOf(field, "validate")
+	minAge, ok := tag.Int("min")
 	fmt.Printf("Min age required: %d (found: %v)\n", minAge, ok)
 
 	// Output:

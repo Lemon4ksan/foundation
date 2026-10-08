@@ -6,7 +6,7 @@ This file covers the techniques that show up across many packages. Anything abou
 
 Some of the code is written for the CPU and not for the reader. Three habits recur:
 
-- **Padding against false sharing.** When several cores update neighbouring fields, they fight over one cache line and throughput collapses. Per-core structures such as `silicon/pool.PerPStorage` put a `cpu.CacheLinePad` between shards so each core owns its line.
+- **Padding against false sharing.** When several cores update neighbouring fields, they fight over one cache line and throughput collapses. Per-core structures such as `silicon/pool.PerCorePool` put a `cpu.CacheLinePad` between shards so each core owns its line.
 - **Masks instead of modulo.** Shard and ring indexes use `i & mask`, which means capacities are powers of two. Integer division is slow, and a mask costs one instruction.
 - **Bounds-check elimination.** Hot loops prove the slice length once before the loop (`_ = dst[n-1]`), so the compiler drops the per-element check. `silicon/simd/gfni.MultiplyGF2P8Vector` is an example.
 
@@ -26,11 +26,11 @@ A transition has to be atomic with respect to other transitions, yet readers sho
 
 ## Which primitive to pick
 
-### Pools: `sync.Pool` or `silicon/pool.PerPStorage`
+### Pools: `sync.Pool` or `silicon/pool.PerCorePool`
 
 Use `sync.Pool` for general-purpose reuse. It lets the GC drop idle objects, which is what you want when memory pressure matters more than latency.
 
-Use `PerPStorage` under heavy multi-core load (over roughly 100k operations a second), when CAS contention on a shared head is the problem, or when buffers should survive GC cycles (network buffers, scratch space).
+Use `PerCorePool` under heavy multi-core load (over roughly 100k operations a second), when CAS contention on a shared head is the problem, or when buffers should survive GC cycles (network buffers, scratch space).
 
 ### Lazy values: `sync.Once` or `sync/lazy.Lazy[T]`
 

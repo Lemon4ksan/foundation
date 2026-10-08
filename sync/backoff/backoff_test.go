@@ -12,7 +12,7 @@ import (
 	"github.com/lemon4ksan/foundation/testing/assert"
 )
 
-func TestExponentialBackoff_Deterministic(t *testing.T) {
+func TestExponential_Deterministic(t *testing.T) {
 	t.Parallel()
 
 	bo := backoff.NewExponential(100*time.Millisecond, 1*time.Second, 2.0)
@@ -26,7 +26,7 @@ func TestExponentialBackoff_Deterministic(t *testing.T) {
 	assert.Equal(t, 1000*time.Millisecond, bo.NextDelay(1000)) // overflow cap
 }
 
-func TestExponentialBackoff_DefaultsAndEdgeCases(t *testing.T) {
+func TestExponential_DefaultsAndEdgeCases(t *testing.T) {
 	t.Parallel()
 
 	// Testing zero/negative parameters for default fallback
@@ -41,7 +41,7 @@ func TestExponentialBackoff_DefaultsAndEdgeCases(t *testing.T) {
 	assert.Equal(t, 2.0, bo2.Factor)
 }
 
-func TestExponentialBackoff_FullJitter(t *testing.T) {
+func TestExponential_FullJitter(t *testing.T) {
 	t.Parallel()
 
 	bo := backoff.NewExponential(100*time.Millisecond, 1*time.Second, 2.0).WithFullJitter()
@@ -58,7 +58,7 @@ func TestExponentialBackoff_FullJitter(t *testing.T) {
 	assert.Equal(t, time.Duration(0), zeroBo.NextDelay(1))
 }
 
-func TestExponentialBackoff_EqualJitter(t *testing.T) {
+func TestExponential_EqualJitter(t *testing.T) {
 	t.Parallel()
 
 	bo := backoff.NewExponential(100*time.Millisecond, 1*time.Second, 2.0).WithEqualJitter()
@@ -75,7 +75,7 @@ func TestExponentialBackoff_EqualJitter(t *testing.T) {
 	assert.Equal(t, time.Duration(0), zeroBo.NextDelay(1))
 }
 
-func TestExponentialBackoff_DecorrelatedJitter(t *testing.T) {
+func TestExponential_DecorrelatedJitter(t *testing.T) {
 	t.Parallel()
 
 	bo := backoff.NewExponential(50*time.Millisecond, 500*time.Millisecond, 2.0).WithDecorrelatedJitter()
@@ -95,7 +95,7 @@ func TestExponentialBackoff_DecorrelatedJitter(t *testing.T) {
 	assert.Equal(t, 100*time.Millisecond, d)
 }
 
-func TestLinearBackoff(t *testing.T) {
+func TestLinear(t *testing.T) {
 	t.Parallel()
 
 	bo := backoff.NewLinear(100*time.Millisecond, 500*time.Millisecond, 100*time.Millisecond)
@@ -124,7 +124,7 @@ func TestLinearBackoff(t *testing.T) {
 	}
 }
 
-func TestConstantBackoff(t *testing.T) {
+func TestConstant(t *testing.T) {
 	t.Parallel()
 
 	bo := backoff.NewConstant(250 * time.Millisecond)
@@ -142,7 +142,7 @@ func TestConstantBackoff(t *testing.T) {
 	}
 }
 
-func BenchmarkExponentialBackoff_ZeroAlloc(b *testing.B) {
+func BenchmarkExponential_ZeroAlloc(b *testing.B) {
 	bo := backoff.NewExponential(100*time.Millisecond, 10*time.Second, 2.0).WithFullJitter()
 
 	b.ReportAllocs()

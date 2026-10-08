@@ -198,6 +198,15 @@ func (c *Chain) Read(p []byte) (int, error) {
 
 // Peek returns the next n unread bytes without advancing the read position.
 // If n bytes fit in the current active chunk, it returns a zero-copy slice directly into that chunk.
+//
+// Lifetime and Safety:
+// When Peek returns a zero-copy slice into an internal pooled chunk (when n fits within the current chunk),
+// that slice is only valid until the next read, discard, write, reset, or release operation on the Chain.
+// Subsequent operations may advance the read cursor past the chunk boundary and release the underlying
+// chunk back to sync.Pool, causing data races or silent data corruption if the caller continues to use the slice.
+// If the caller needs to retain the bytes across buffer modifications or indefinitely, use [Chain.Next]
+// instead, or make an explicit copy of the returned slice.
+//
 // Returns io.EOF if fewer than n bytes are available.
 func (c *Chain) Peek(n int) ([]byte, error) {
 	if n <= 0 {
@@ -291,36 +300,16 @@ func (c *Chain) Discard(n int) (int, error) {
 }
 
 // Next returns a slice containing the next n bytes from the buffer, advancing the read position.
-// If n fits within the current active chunk, it returns a zero-copy sub-slice directly.
+// Next always allocates a new byte slice and copies the data into it, ensuring the returned
+// slice is safe to retain indefinitely even after underlying chunks are recycled or released.
 // If fewer than n bytes are available, returns the remaining unread bytes.
+// If n <= 0 or the buffer is empty, Next returns nil.
 func (c *Chain) Next(n int) []byte {
 	if n <= 0 || c.length == 0 {
 		return nil
 	}
 
 	n = min(n, c.length)
-	var available int
-	if len(c.chunks) == 1 {
-		available = c.tailIdx - c.headIdx
-	} else {
-		available = DefaultChunkSize - c.headIdx
-	}
-
-	if n <= available {
-		res := c.chunks[0][c.headIdx : c.headIdx+n]
-		c.headIdx += n
-		c.length -= n
-		if len(c.chunks) > 1 && c.headIdx == DefaultChunkSize {
-			releaseChunk(c.chunks[0])
-			c.chunks = c.chunks[1:]
-			c.headIdx = 0
-		} else if len(c.chunks) == 1 && c.headIdx == c.tailIdx {
-			c.headIdx = 0
-			c.tailIdx = 0
-		}
-		return res
-	}
-
 	buf := make([]byte, n)
 	_, _ = c.Read(buf)
 	return buf

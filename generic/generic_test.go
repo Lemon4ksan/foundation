@@ -340,7 +340,7 @@ func TestBackoff(t *testing.T) {
 	}
 }
 
-func TestDataLoader(t *testing.T) {
+func TestBatchLoader(t *testing.T) {
 	var callCount int32
 
 	batchFn := func(ctx context.Context, keys []string) (map[string]int, error) {
@@ -360,7 +360,7 @@ func TestDataLoader(t *testing.T) {
 		return res, nil
 	}
 
-	dl := NewDataLoader[string, int](25*time.Millisecond, batchFn)
+	dl := NewBatchLoader[string, int](25*time.Millisecond, batchFn)
 
 	var wg sync.WaitGroup
 	wg.Add(3)
@@ -405,12 +405,12 @@ func TestDataLoader(t *testing.T) {
 		t.Errorf("expected bob = 3, got val %d, err %v", val2, err2)
 	}
 
-	if err3 == nil || err3.Error() != "foundation dataloader: key not found in batch results" {
+	if err3 == nil || err3.Error() != "foundation batchloader: key not found in batch results" {
 		t.Errorf("expected key not found error, got %v", err3)
 	}
 
 	// Trigger error from batch function
-	dl2 := NewDataLoader[string, int](25*time.Millisecond, batchFn)
+	dl2 := NewBatchLoader[string, int](25*time.Millisecond, batchFn)
 
 	wg.Add(2)
 
@@ -433,7 +433,7 @@ func TestDataLoader(t *testing.T) {
 	}
 
 	// Cancelled context on Load
-	dl3 := NewDataLoader[string, int](100*time.Millisecond, batchFn)
+	dl3 := NewBatchLoader[string, int](100*time.Millisecond, batchFn)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
@@ -443,7 +443,7 @@ func TestDataLoader(t *testing.T) {
 	}
 
 	// Test executeBatch on empty queue
-	dl4 := NewDataLoader[string, int](5*time.Millisecond, batchFn)
+	dl4 := NewBatchLoader[string, int](5*time.Millisecond, batchFn)
 	dl4.executeBatch() // should return immediately without panic/executing batchFn
 }
 

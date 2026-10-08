@@ -15,7 +15,7 @@ import (
 )
 
 type receiveFlowController struct {
-	mutex                spinlock.SpinLock
+	mutex                spinlock.Lock
 	bytesRead            protocol.ByteCount
 	highestReceived      protocol.ByteCount
 	receiveWindow        protocol.ByteCount

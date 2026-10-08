@@ -104,6 +104,21 @@ func TestUnzstd(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, original, viaDispatcher)
 
+	// Test empty src handling
+	emptyDecomp, err := compress.Unzstd(nil, nil)
+	require.NoError(t, err)
+	assert.Nil(t, emptyDecomp)
+
+	emptySliceDecomp, err := compress.Unzstd([]byte{}, nil)
+	require.NoError(t, err)
+	assert.Nil(t, emptySliceDecomp)
+
+	// Test buffer reuse with non-empty destination slice
+	nonEmptyDst := []byte("stale-initial-content-that-must-be-reset")
+	reusedDecomp, err := compress.Unzstd(compressed, nonEmptyDst)
+	require.NoError(t, err)
+	assert.Equal(t, original, reusedDecomp)
+
 	// Test streaming zstd reader
 	zr, err := compress.AcquireZstdReader(bytes.NewReader(compressed))
 	require.NoError(t, err)
@@ -157,7 +172,7 @@ func TestUnbrotli(t *testing.T) {
 	t.Parallel()
 
 	original := []byte("Brotli RFC 7932 decompression test payload in aoni internal/compress.")
-	compressed, _ := compress.CompressBrotli(original, nil)
+	compressed, _ := compress.Brotli(original, nil)
 
 	decompressed, err := compress.Unbrotli(compressed, nil)
 	require.NoError(t, err)
@@ -208,7 +223,7 @@ func TestNewReader_AllEncodings(t *testing.T) {
 
 	raw := []byte("Streaming decompression test across all RFC standard algorithms in aoni.")
 
-	brData, _ := compress.CompressBrotli(raw, nil)
+	brData, _ := compress.Brotli(raw, nil)
 	tests := []struct {
 		encoding   string
 		compressed []byte
@@ -259,7 +274,7 @@ func BenchmarkUnzstd(b *testing.B) {
 
 func BenchmarkUnbrotli(b *testing.B) {
 	payload := []byte(strings.Repeat("Brotli benchmark payload for internal/compress decoder. ", 50))
-	compressed, _ := compress.CompressBrotli(payload, nil)
+	compressed, _ := compress.Brotli(payload, nil)
 	dst := make([]byte, 0, len(payload))
 
 	b.ReportAllocs()
@@ -322,7 +337,7 @@ func TestDecompressScoped_AllEncodings(t *testing.T) {
 
 	raw := []byte("Zero allocation scoped decompression test across all RFC standard algorithms in aoni.")
 
-	brData, _ := compress.CompressBrotli(raw, nil)
+	brData, _ := compress.Brotli(raw, nil)
 	tests := []struct {
 		encoding   string
 		compressed []byte
@@ -498,7 +513,7 @@ func BenchmarkGzip(b *testing.B) {
 	b.ReportAllocs()
 
 	for b.Loop() {
-		_, _ = compress.CompressGzip(payload, dst)
+		_, _ = compress.Gzip(payload, dst)
 	}
 }
 
@@ -509,7 +524,7 @@ func BenchmarkDeflate(b *testing.B) {
 	b.ReportAllocs()
 
 	for b.Loop() {
-		_, _ = compress.CompressDeflate(payload, dst)
+		_, _ = compress.Deflate(payload, dst)
 	}
 }
 
@@ -517,7 +532,7 @@ func TestZstdRoundTrip(t *testing.T) {
 	t.Parallel()
 
 	payload := []byte("Testing RFC 8878 Zstandard compression and decompression in Seal.")
-	compressed, err := compress.CompressZstd(payload, nil)
+	compressed, err := compress.Zstd(payload, nil)
 	require.NoError(t, err)
 	require.NotEmpty(t, compressed)
 
@@ -562,7 +577,7 @@ func BenchmarkBrotli(b *testing.B) {
 	b.ReportAllocs()
 
 	for b.Loop() {
-		_, _ = compress.CompressBrotli(payload, dst)
+		_, _ = compress.Brotli(payload, dst)
 	}
 }
 
@@ -601,10 +616,10 @@ func TestLZ4BlockRoundTrip(t *testing.T) {
 	t.Parallel()
 
 	payload := []byte(strings.Repeat("Raw un-framed LZ4 block test for micro-frame seeking. ", 100))
-	maxBound := compress.CompressLZ4BlockBound(len(payload))
+	maxBound := compress.LZ4BlockBound(len(payload))
 	dst := make([]byte, maxBound)
 
-	n, err := compress.CompressLZ4Block(payload, dst)
+	n, err := compress.LZ4Block(payload, dst)
 	require.NoError(t, err)
 	require.True(t, n > 0 && n < len(payload))
 

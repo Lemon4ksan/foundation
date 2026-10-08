@@ -35,7 +35,7 @@ func SubscribeTo[E any](ctx context.Context, bus *Bus, handler func(E), bufSize 
 	}
 
 	subCtx, cancelFn := context.WithCancel(ctx)
-	sub := SubscribeTyped[E](bus, bufSize...)
+	sub := bus.SubscribeTyped[E](bufSize...)
 
 	var once sync.Once
 
@@ -95,7 +95,7 @@ func SubscribeSeq[E any](ctx context.Context, bus *Bus, bufSize ...int) iter.Seq
 		return func(yield func(E) bool) {}
 	}
 
-	sub := SubscribeTyped[E](bus, bufSize...)
+	sub := bus.SubscribeTyped[E](bufSize...)
 	stop := context.AfterFunc(ctx, sub.Unsubscribe)
 
 	return func(yield func(E) bool) {

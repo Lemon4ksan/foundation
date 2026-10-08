@@ -549,7 +549,7 @@ func TestStress_BoundaryExtremes(t *testing.T) {
 	require.Equal(t, 0, d1.Find(0))
 
 	// Nil receiver checks
-	var dNil *DisjointSet
+	var dNil *Set
 	require.Equal(t, 0, dNil.Len())
 	require.Equal(t, 0, dNil.Count())
 	dNil.Reset() // Must not panic

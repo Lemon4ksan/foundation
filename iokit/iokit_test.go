@@ -140,6 +140,111 @@ func TestAsReplayable_Operations(t *testing.T) {
 		b2, err := io.ReadAll(rep)
 		require.NoError(t, err)
 		assert.Equal(t, "hello world", string(b2))
+
+		rep.Reset()
+
+		b3, err := io.ReadAll(rep)
+		require.NoError(t, err)
+		assert.Equal(t, "hello world", string(b3))
+	})
+
+	t.Run("partial_read_and_multiple_replays", func(t *testing.T) {
+		t.Parallel()
+
+		payload := "the quick brown fox jumps over the lazy dog"
+		inner := io.NopCloser(strings.NewReader(payload))
+		rep := AsReplayable(inner)
+		require.NotNil(t, rep)
+
+		// Partial read 1: read first 10 bytes
+		buf1 := make([]byte, 10)
+		n, err := io.ReadFull(rep, buf1)
+		require.NoError(t, err)
+		assert.Equal(t, 10, n)
+		assert.Equal(t, "the quick ", string(buf1))
+
+		// Reset and read full
+		rep.Reset()
+		full1, err := io.ReadAll(rep)
+		require.NoError(t, err)
+		assert.Equal(t, payload, string(full1))
+
+		// Replay 2: full stream again
+		rep.Reset()
+		full2, err := io.ReadAll(rep)
+		require.NoError(t, err)
+		assert.Equal(t, payload, string(full2))
+
+		// Partial read 2: read first 5 bytes
+		rep.Reset()
+		buf2 := make([]byte, 5)
+		n, err = io.ReadFull(rep, buf2)
+		require.NoError(t, err)
+		assert.Equal(t, 5, n)
+		assert.Equal(t, "the q", string(buf2))
+
+		// Reset and replay 3: full stream again
+		rep.Reset()
+		full3, err := io.ReadAll(rep)
+		require.NoError(t, err)
+		assert.Equal(t, payload, string(full3))
+	})
+
+	t.Run("new_replayable_body_constructor", func(t *testing.T) {
+		t.Parallel()
+
+		repNil, err := NewReplayableBody(nil)
+		require.NoError(t, err)
+		assert.Nil(t, repNil)
+
+		inner := io.NopCloser(strings.NewReader("constructor test stream"))
+		rep, err := NewReplayableBody(inner)
+		require.NoError(t, err)
+		require.NotNil(t, rep)
+
+		b1, err := io.ReadAll(rep)
+		require.NoError(t, err)
+		assert.Equal(t, "constructor test stream", string(b1))
+
+		rep.Reset()
+
+		b2, err := io.ReadAll(rep)
+		require.NoError(t, err)
+		assert.Equal(t, "constructor test stream", string(b2))
+	})
+
+	t.Run("disk_spill_multiple_replays", func(t *testing.T) {
+		t.Parallel()
+
+		// Payload larger than DefaultReplayableThreshold (64KB), e.g. 128KB
+		payload := strings.Repeat("0123456789abcdef", 8192) // 128KB
+		inner := io.NopCloser(strings.NewReader(payload))
+		rep, err := NewReplayableBody(inner)
+		require.NoError(t, err)
+		require.NotNil(t, rep)
+
+		// Partial read 256 bytes
+		prefix := make([]byte, 256)
+		n, err := io.ReadFull(rep, prefix)
+		require.NoError(t, err)
+		assert.Equal(t, 256, n)
+		assert.Equal(t, payload[:256], string(prefix))
+
+		// Reset and replay full stream 1
+		rep.Reset()
+		full1, err := io.ReadAll(rep)
+		require.NoError(t, err)
+		assert.Equal(t, payload, string(full1))
+
+		// Reset and replay full stream 2
+		rep.Reset()
+		full2, err := io.ReadAll(rep)
+		require.NoError(t, err)
+		assert.Equal(t, payload, string(full2))
+
+		if reallyCloser, ok := rep.(interface{ ReallyClose() }); ok {
+			reallyCloser.ReallyClose()
+		}
 	})
 
 	t.Run("unwrap_already_replayable", func(t *testing.T) {
@@ -605,4 +710,44 @@ func TestJitterReader_And_CopyZeroAlloc(t *testing.T) {
 	out, err := io.ReadAll(stripped)
 	require.NoError(t, err)
 	assert.Equal(t, "xy", string(out))
+}
+
+func TestCopyBufPool_ZeroLengthSlice(t *testing.T) {
+	// Not t.Parallel() to avoid racing with other tests accessing copyBufPool
+
+	// 1. Artificially put a zero-length slice into copyBufPool
+	zeroSlice := make([]byte, 32*1024)[:0]
+	copyBufPool.Put(&zeroSlice)
+
+	data := bytes.Repeat([]byte("X"), 5000)
+	src := io.NopCloser(bytes.NewReader(data))
+	var dst bytes.Buffer
+
+	n, err := copyWithLimit(&dst, src, 10000)
+	require.NoError(t, err)
+	assert.Equal(t, int64(5000), n)
+	assert.Equal(t, data, dst.Bytes())
+
+	// 2. Test CopyZeroAlloc with a zero-length slice in the pool
+	zeroSlice2 := make([]byte, 32*1024)[:0]
+	copyBufPool.Put(&zeroSlice2)
+
+	data2 := bytes.Repeat([]byte("Y"), 4000)
+	type plainReader struct{ io.Reader }
+	type plainWriter struct{ io.Writer }
+	var dst2 bytes.Buffer
+	n2, err := CopyZeroAlloc(&plainWriter{Writer: &dst2}, &plainReader{Reader: bytes.NewReader(data2)})
+	require.NoError(t, err)
+	assert.Equal(t, int64(4000), n2)
+	assert.Equal(t, data2, dst2.Bytes())
+
+	// 3. Test with cap=0 slice
+	zeroCapSlice := make([]byte, 0)
+	copyBufPool.Put(&zeroCapSlice)
+
+	var dst3 bytes.Buffer
+	n3, err := copyWithLimit(&dst3, io.NopCloser(bytes.NewReader(data)), 10000)
+	require.NoError(t, err)
+	assert.Equal(t, int64(5000), n3)
+	assert.Equal(t, data, dst3.Bytes())
 }

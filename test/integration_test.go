@@ -60,7 +60,7 @@ func (d *DownstreamMock) Call(ctx context.Context) (string, error) {
 
 // OrderProcessedEvent is sent over the event.
 type OrderProcessedEvent struct {
-	event.BaseEvent
+	event.Envelope
 	OrderID uint64
 	Result  string
 	Err     error
@@ -72,7 +72,7 @@ type OrderProcessedEvent struct {
 // 2. pool.Pool (worker scaling + task queue)
 // 3. sync/semaphore (dynamic resource gating)
 // 4. sync/breaker (circuit breaker isolation)
-// 5. task.Manager (correlation tracking)
+// 5. task.Tracker (correlation tracking)
 // 6. dedup.Group (request deduplication)
 //
 // The goal is to aggressively trigger race conditions, deadlocks, and context cancellation leakages.
@@ -104,8 +104,8 @@ func TestScenario_PipelineDeadlockAndResilience(t *testing.T) {
 		MinRequests:      5,
 	})
 
-	jobManager := task.NewManager[uint64, string](2000)
-	defer jobManager.Close()
+	jobTracker := task.NewTracker[uint64, string](2000)
+	defer jobTracker.Close()
 
 	dedupGroup := &dedup.Group[uint64, string]{}
 
@@ -188,7 +188,7 @@ func TestScenario_PipelineDeadlockAndResilience(t *testing.T) {
 			// Add a correlation tracking job in Job Manager.
 			jobID := uint64(reqIdx)
 
-			err := jobManager.Add(jobID, nil, task.WithContext[string](reqCtx))
+			err := jobTracker.Add(jobID, nil, task.WithContext[string](reqCtx))
 			if err != nil {
 				eventBus.Publish(OrderProcessedEvent{OrderID: id, Err: err})
 				return
@@ -211,19 +211,19 @@ func TestScenario_PipelineDeadlockAndResilience(t *testing.T) {
 				})
 
 				// Resolve the job back to the client thread.
-				jobManager.ResolveContext(poolCtx, jobID, res, err)
+				jobTracker.Resolve(poolCtx, jobID, res, err)
 
 				return struct{}{}, nil
 			})
 			if err != nil {
 				// Worker pool queue is full or pool closed.
-				jobManager.Remove(jobID)
+				jobTracker.Remove(t.Context(), jobID)
 				eventBus.Publish(OrderProcessedEvent{OrderID: id, Err: err})
 				return
 			}
 
 			// Client awaits response from job manager.
-			res, err := jobManager.WaitFor(reqCtx, jobID)
+			res, err := jobTracker.WaitFor(reqCtx, jobID)
 			eventBus.Publish(OrderProcessedEvent{OrderID: id, Result: res, Err: err})
 		}(orderID, i)
 	}
@@ -268,8 +268,8 @@ func TestScenario_PipelineDeadlockAndResilience(t *testing.T) {
 // 1. Memory leaks in sync/limiter.KeyedLimiter (ensuring unused limiters get swept up).
 // 2. Deadlocks & state corruption in sync/keylock.KeyMutex (ensuring refcount behaves).
 func TestScenario_KeyedLimiterAndKeyLockStress(t *testing.T) {
-	// Create a KeyedLimiter with 10ms TTL and rate of 100 requests/sec.
-	keyLimiter := limiter.NewKeyedLimiter[string](rate.Limit(100), 2, 10*time.Millisecond)
+	// Create a Keyed with 10ms TTL and rate of 100 requests/sec.
+	keyLimiter := limiter.NewKeyed[string](rate.Limit(100), 2, 10*time.Millisecond)
 	defer keyLimiter.Close()
 
 	keyMutex := keylock.New[string]()
