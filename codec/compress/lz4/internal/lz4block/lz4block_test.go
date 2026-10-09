@@ -305,8 +305,6 @@ func TestDecodeWithDict(t *testing.T) {
 		}
 	}
 }
-
-// Merged from match_copy_test.go
 // These tests directly exercise the match-copy paths in decodeBlock with
 // hand-assembled LZ4 blocks, so they fail loudly if a specific (offset,
 // matchlen) combination regresses. They were written after an arm64

@@ -175,9 +175,6 @@ func BenchmarkRingBufferWrapped(b *testing.B) {
 		val = r.PopFront()
 	}
 }
-
-// Merged from ringbuffer_challenge_test.go
-
 // TestChallenge_GCLeakVerification proves that popped elements or cleared elements
 // do not remain referenced in the backing slice, preventing memory leaks.
 func TestChallenge_GCLeakVerification(t *testing.T) {

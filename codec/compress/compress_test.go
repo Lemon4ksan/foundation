@@ -633,8 +633,6 @@ func TestLZ4BlockRoundTrip(t *testing.T) {
 	assert.Equal(t, payload, decomp)
 }
 
-// Merged from compress_challenge_test.go
-
 // TestRefactoredCompression_ZstdBoundaries tests RFC 8878 Zstandard single-segment frame headers
 // and raw block chunking across all boundary thresholds (1-byte FCS, 2-byte FCS, 4-byte FCS, and 128KB block boundaries).
 func TestRefactoredCompression_ZstdBoundaries(t *testing.T) {

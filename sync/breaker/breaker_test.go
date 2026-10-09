@@ -9,7 +9,6 @@ import (
 	"errors"
 	"testing"
 	"time"
-
 )
 
 func TestBreaker_BasicFlow(t *testing.T) {
@@ -291,8 +290,6 @@ func TestBreaker_Defaults(t *testing.T) {
 	}
 }
 
-// Merged from doc_test.go
-
 func TestBreakerAllocations(t *testing.T) {
 	cb := New[int](Config{
 		MinRequests: 10000,
@@ -318,4 +315,3 @@ func TestBreakerAllocations(t *testing.T) {
 		t.Errorf("expected 0 amortized allocations, got %v", allocs)
 	}
 }
-

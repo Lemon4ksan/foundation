@@ -803,9 +803,6 @@ func TestStress_ContendedConcurrentTorture(t *testing.T) {
 	wg.Wait()
 	require.GreaterOrEqual(t, d.Count(), 1)
 }
-
-// Merged from boundary_stress_test.go
-
 // -----------------------------------------------------------------------------
 // Challenge 1: 1,000,000 Element Universe Stress Test
 // -----------------------------------------------------------------------------
@@ -1360,9 +1357,6 @@ func TestStress_BoundaryExtremes(t *testing.T) {
 		dNil.Size(0)
 	})
 }
-
-// Merged from disjointset_bench_test.go
-
 func BenchmarkSet_Find_DirectRoot(b *testing.B) {
 	d := New(1024)
 	b.ReportAllocs()
@@ -1544,9 +1538,6 @@ func BenchmarkSet_Kruskal_Workload(b *testing.B) {
 		}
 	}
 }
-
-// Merged from disjointset_challenge_test.go
-
 // -----------------------------------------------------------------------------
 // Independent Reference Graph Connected-Components Oracle (BFS & DFS)
 // -----------------------------------------------------------------------------

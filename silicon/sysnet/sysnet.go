@@ -5,6 +5,7 @@
 package sysnet
 
 import (
+	"errors"
 	"net"
 	"syscall"
 )
@@ -100,7 +101,7 @@ func (c *BatchUDPConn) WriteVector(buffers [][]byte) (int64, error) {
 						}
 					}
 					if sysErr != nil {
-						if sysErr == syscall.EAGAIN || sysErr == syscall.EWOULDBLOCK {
+						if errors.Is(sysErr, syscall.EAGAIN) || errors.Is(sysErr, syscall.EWOULDBLOCK) {
 							return false
 						}
 						return true
@@ -165,7 +166,7 @@ func (c *BatchUDPConn) WriteVectorTo(buffers [][]byte, addr net.Addr) (int64, er
 						}
 					}
 					if sysErr != nil {
-						if sysErr == syscall.EAGAIN || sysErr == syscall.EWOULDBLOCK {
+						if errors.Is(sysErr, syscall.EAGAIN) || errors.Is(sysErr, syscall.EWOULDBLOCK) {
 							return false
 						}
 						return true

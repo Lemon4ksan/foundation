@@ -210,9 +210,6 @@ func TestRFC9460_ParamKeyParsing(t *testing.T) {
 	_, err := svcb.ParseParamKey("unknown-non-key-name")
 	assert.ErrorIs(t, err, svcb.ErrMalformedParam)
 }
-
-// Merged from svcb_fuzz_test.go
-
 func FuzzSVCBWireParse(f *testing.F) {
 	// Priority 1, TargetName "." (0x00), Param alpn="h2,h3"
 	f.Add([]byte("\x00\x01\x00\x00\x01\x00\x06\x02h2\x02h3"))

@@ -140,9 +140,6 @@ func TestRIO_BufferRegistration(t *testing.T) {
 		reg.Deregister()
 	}
 }
-
-// Merged from sysnet_bench_test.go
-
 func BenchmarkTuneSocketConn_Nil(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()

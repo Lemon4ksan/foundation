@@ -232,9 +232,6 @@ func TestStreamAEAD_TamperDetection(t *testing.T) {
 		t.Fatal("expected read failure on corrupt ciphertext")
 	}
 }
-
-// Merged from stream_adversarial_test.go
-
 func newTestCipher(t *testing.T) cipher.AEAD {
 	t.Helper()
 	key := make([]byte, aead.KeySize)

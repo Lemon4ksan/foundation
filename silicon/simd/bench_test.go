@@ -6,8 +6,6 @@ import (
 	"github.com/lemon4ksan/foundation/testing/assert"
 )
 
-// Merged from doc_test.go
-
 func TestSWAR_Direct(t *testing.T) {
 	val := uint64(0b10101010)
 	mask := uint64(0b11110000)

@@ -95,8 +95,6 @@ func TestLZ4_CompressionLevels(t *testing.T) {
 	}
 }
 
-// Merged from doc_test.go
-
 func TestCompressBlockAllocs(t *testing.T) {
 	data := bytes.Repeat([]byte("hello lz4 compression! "), 10)
 	dst := make([]byte, lz4.CompressBlockBound(len(data)))

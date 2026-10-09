@@ -340,8 +340,6 @@ func TestScope_Allocation_And_LexicalLifetime(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// Merged from regression_test.go
-
 // TestRegression_Bug1_GhostBorrowChecker_ExclusiveVsSharedConflict verifies that Box
 // properly enforces Aliasing XOR Mutability at runtime via Slot borrow counters.
 func TestRegression_Bug1_GhostBorrowChecker_ExclusiveVsSharedConflict(t *testing.T) {
@@ -639,8 +637,6 @@ func TestRegression_Concurrency_ScopeParallelPool(t *testing.T) {
 
 	wg.Wait()
 }
-
-// Merged from slot_bench_test.go
 
 func BenchmarkSlot_SharedAcquireRelease(b *testing.B) {
 	slot := borrow.NewSlot()

@@ -37,9 +37,6 @@ func BenchmarkPacketNumberLengthForHeader(b *testing.B) {
 
 	_ = total
 }
-
-// Merged from pktnum_stress_test.go
-
 func TestQUIC_DecodePacketNumber_RFC9000AppendixA(t *testing.T) {
 	t.Parallel()
 

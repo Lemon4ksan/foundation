@@ -1447,9 +1447,6 @@ func TestCountSimplePrevTableEdge(t *testing.T) {
 		t.Fatalf("expected reuse=false when symbol >= len(prevTable)")
 	}
 }
-
-// Merged from adversarial_test.go
-
 // TestAdversarialHuff0RandomBitstreams feeds arbitrary random bytes to decoders.
 func TestAdversarialHuff0RandomBitstreams(t *testing.T) {
 	lengths := []int{0, 1, 2, 3, 4, 7, 8, 15, 16, 31, 32, 63, 64, 128, 256, 512, 1024, 2048}
@@ -1566,9 +1563,6 @@ func TestAdversarialHuff0StreamTruncation(t *testing.T) {
 		}()
 	}
 }
-
-// Merged from huff0_bench_test.go
-
 func BenchmarkHuff0Compress1X(b *testing.B) {
 	data := bytes.Repeat([]byte("Huffman coding benchmarks with zero allocations! 1234567890"), 30)
 	var s Scratch

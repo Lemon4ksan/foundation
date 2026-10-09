@@ -678,8 +678,6 @@ func TestBuildCTableErrors(t *testing.T) {
 	_ = s2.buildCTable()
 }
 
-// Merged from adversarial_test.go
-
 // TestAdversarialFSERandomBitstreams tests that feeding random bitstreams never panics.
 func TestAdversarialFSERandomBitstreams(t *testing.T) {
 	lengths := []int{0, 1, 2, 3, 4, 7, 8, 15, 16, 31, 32, 63, 64, 127, 128, 255, 256, 512, 1024, 4096}
@@ -755,9 +753,6 @@ func TestAdversarialFSEStreamTruncation(t *testing.T) {
 		}()
 	}
 }
-
-// Merged from fse_bench_test.go
-
 func BenchmarkFSECompress(b *testing.B) {
 	data := bytes.Repeat([]byte("ABRACADABRA_ALAKAZAM_SIMSALABIM_FSE_COMPRESS"), 100)
 	var s Scratch

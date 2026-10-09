@@ -63,9 +63,6 @@ func BenchmarkBase64EncodeURL_SHA256(b *testing.B) {
 		_ = base64.Base64EncodeURL(sum[:], dst)
 	}
 }
-
-// Merged from base64_adversarial_test.go
-
 func TestBase64EncodeURL_Adversarial_PanicContract(t *testing.T) {
 	t.Parallel()
 

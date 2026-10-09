@@ -713,9 +713,6 @@ func TestConcurrentSynchronizedWriters(t *testing.T) {
 
 	wg.Wait()
 }
-
-// Merged from bitset_bench_test.go
-
 func BenchmarkBitSet_Test(b *testing.B) {
 	bs := New(1024)
 	bs.Set(512)
@@ -925,9 +922,6 @@ func BenchmarkBitSet_SetAll_ClearAll(b *testing.B) {
 		b1.ClearAll()
 	}
 }
-
-// Merged from bitset_challenge_test.go
-
 // refBitSet is a simple, unambiguous mathematical reference implementation
 // using a boolean slice and math/big.Int to verify Set behavior.
 type refBitSet struct {
@@ -1641,9 +1635,6 @@ func TestChallenge_FullTruthTableSmall(t *testing.T) {
 		}
 	}
 }
-
-// Merged from boundary_stress_test.go
-
 // Reference oracle using a simple bool slice to verify Set behavior bit-by-bit.
 type oracleBitSet struct {
 	bits []bool

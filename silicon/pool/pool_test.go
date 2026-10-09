@@ -119,9 +119,6 @@ func TestPerCorePool(t *testing.T) {
 
 	wg.Wait()
 }
-
-// Merged from arena_repro_test.go
-
 func TestRepro_RequestArena_IntegerOverflowGuard(t *testing.T) {
 	t.Parallel()
 
@@ -147,9 +144,6 @@ func TestRepro_RequestArena_IntegerOverflowGuard(t *testing.T) {
 
 	_ = arena.Alloc(math.MaxInt - 1)
 }
-
-// Merged from concurrency_stress_test.go
-
 type trackedItem struct {
 	id    uint64
 	inUse atomic.Bool
@@ -439,9 +433,6 @@ func TestPerCorePool_RandomizedFuzzing(t *testing.T) {
 
 	wg.Wait()
 }
-
-// Merged from pool_bench_test.go
-
 func BenchmarkPerCorePool_GetPut_Sequential(b *testing.B) {
 	storage := pool.NewPerCorePool(func() *[64]byte {
 		var buf [64]byte

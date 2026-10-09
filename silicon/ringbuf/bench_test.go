@@ -10,8 +10,6 @@ import (
 	"github.com/lemon4ksan/foundation/testing/require"
 )
 
-// Merged from doc_test.go
-
 // TestChallenge_GCLeakVerification proves that popped elements in Buffer[T]
 // are swapped to nil immediately, preventing memory leaks of unreferenced objects.
 func TestChallenge_GCLeakVerification(t *testing.T) {
@@ -180,9 +178,6 @@ func TestChallenge_DrainEarlyExit(t *testing.T) {
 	require.Equal(t, 40, *p4)
 	require.Nil(t, buf.Pop())
 }
-
-// Merged from ringbuf_repro_test.go
-
 func TestRepro_New_NegativeCapacityHangs(t *testing.T) {
 	done := make(chan struct{})
 

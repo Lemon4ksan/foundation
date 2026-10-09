@@ -84,8 +84,6 @@ func TestGSOError(t *testing.T) {
 	require.False(t, isGSOError(nil))
 	require.False(t, isGSOError(errors.New("test")))
 }
-
-// Merged from quic_linux_test.go
 func init() {
 	major, minor := kernelVersion()
 	fmt.Printf("Kernel Version: %d.%d\n\n", major, minor)

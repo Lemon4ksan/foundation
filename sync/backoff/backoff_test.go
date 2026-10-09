@@ -154,9 +154,6 @@ func BenchmarkExponential_ZeroAlloc(b *testing.B) {
 		_ = bo.NextDelay((i % 10) + 1)
 	}
 }
-
-// Merged from backoff_challenge_test.go
-
 // TestBackoff_StatelessConcurrentSafety tests that Linear and Constant backoff policies
 // are safely callable concurrently from multiple goroutines without data races.
 func TestBackoff_StatelessConcurrentSafety(t *testing.T) {
@@ -244,8 +241,6 @@ func TestBackoff_Linear_LargeAttemptOverflow(t *testing.T) {
 		}
 	}
 }
-
-// Merged from doc_test.go
 
 func TestExponential_Allocations(t *testing.T) {
 	bo := backoff.NewExponential(100*time.Millisecond, 5*time.Second, 2.0).WithFullJitter()

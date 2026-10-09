@@ -9,7 +9,6 @@ import (
 	"io"
 	"os"
 	"testing"
-
 )
 
 func TestBCJ_Roundtrip(t *testing.T) {
@@ -120,8 +119,6 @@ func BenchmarkFilterX86(b *testing.B) {
 	}
 }
 
-// Merged from doc_test.go
-
 func TestFilter_Allocs(t *testing.T) {
 	data := []byte{0xE8, 0x05, 0x00, 0x00, 0x00}
 	allocs := testing.AllocsPerRun(10, func() {
@@ -131,4 +128,3 @@ func TestFilter_Allocs(t *testing.T) {
 		t.Errorf("Filter allocated %v times, want 0", allocs)
 	}
 }
-

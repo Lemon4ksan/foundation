@@ -1340,8 +1340,6 @@ func TestBadTransformer(t *testing.T) {
 	}
 }
 
-// Merged from doc_test.go
-
 func ExampleRemoveFunc() {
 	input := []byte(`tschüß; до свидания`)
 

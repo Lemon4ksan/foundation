@@ -495,9 +495,6 @@ func BenchmarkHash64_AVX2(b *testing.B) {
 		_ = simd.Hash64Vector(data, 0x12345678)
 	}
 }
-
-// Merged from simd_fuzz_test.go
-
 // FuzzIndexByteSWAR asserts 100% equivalence between 64-bit SWAR vector scanning and stdlib bytes.IndexByte.
 func FuzzIndexByteSWAR(f *testing.F) {
 	f.Add([]byte("HTTP/1.1 200 OK\r\n"), byte('\r'))

@@ -84,9 +84,6 @@ func TestGomockController(t *testing.T) {
 func TestGomockInOrder(t *testing.T) {
 	gomock.InOrder()
 }
-
-// Merged from gomock_adversarial_test.go
-
 type threadSafeGomockReporter struct {
 	mu     sync.Mutex
 	errors []string

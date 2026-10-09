@@ -8,8 +8,6 @@ import (
 	"testing"
 )
 
-// Merged from doc_test.go
-
 // TestAdversarialXXHashContract validates the complete hash.Hash64 contract.
 func TestAdversarialXXHashContract(t *testing.T) {
 	var h hash.Hash64 = New()

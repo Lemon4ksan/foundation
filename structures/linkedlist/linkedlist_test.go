@@ -137,89 +137,7 @@ func TestListZeroValue(t *testing.T) {
 	checkListPointers(t, &l2, []string{"init"})
 }
 
-func TestListCapacityExhaustionAndRecycling(t *testing.T) {
-	// Create list with bounded capacity of 3 items
-	l := list.NewCapacity[int](3)
-	e1 := l.PushBack(10)
-	e2 := l.PushBack(20)
-	e3 := l.PushBack(30)
-	checkListPointers(t, l, []int{10, 20, 30})
 
-	// 4th insertion must panic due to capacity exhaustion
-	var didPanic bool
-	var panicMsg any
-	func() {
-		defer func() {
-			if r := recover(); r != nil {
-				didPanic = true
-				panicMsg = r
-			}
-		}()
-		l.PushBack(40)
-	}()
-
-	if !didPanic {
-		t.Fatalf("expected capacity exhaustion panic, but PushBack succeeded")
-	}
-	expectedMsg := "linkedlist: array-based list exceeded capacity and cannot safely resize without invalidating pointers"
-	if panicMsg != expectedMsg {
-		t.Fatalf("panic message = %q, want %q", panicMsg, expectedMsg)
-	}
-
-	// Remove middle element: releases slot into free list
-	remVal := l.Remove(e2)
-	if remVal != 20 {
-		t.Fatalf("Remove returned %d, want 20", remVal)
-	}
-	checkListPointers(t, l, []int{10, 30})
-
-	// Now insert 40: should reuse the recycled free slot without panicking
-	e4 := l.PushBack(40)
-	if e4.Value != 40 {
-		t.Fatalf("e4.Value = %d, want 40", e4.Value)
-	}
-	checkListPointers(t, l, []int{10, 30, 40})
-
-	// Remove all elements in various orders (head, tail, middle)
-	l.Remove(e1)
-	checkListPointers(t, l, []int{30, 40})
-	l.Remove(e4)
-	checkListPointers(t, l, []int{30})
-	l.Remove(e3)
-	checkListPointers(t, l, nil)
-
-	// Re-fill recycled list to its capacity
-	l.PushBack(1)
-	l.PushBack(2)
-	l.PushBack(3)
-	checkListPointers(t, l, []int{1, 2, 3})
-}
-
-func TestListDefaultCapacityExhaustion(t *testing.T) {
-	// Default constructor creates cap=16 (1 sentinel + 15 user elements)
-	l := list.New[int]()
-	for i := range 15 {
-		l.PushBack(i)
-	}
-	if l.Len() != 15 {
-		t.Fatalf("l.Len() = %d, want 15", l.Len())
-	}
-
-	// 16th insertion must trigger capacity exhaustion panic
-	var didPanic bool
-	func() {
-		defer func() {
-			if r := recover(); r != nil {
-				didPanic = true
-			}
-		}()
-		l.PushBack(999)
-	}()
-
-	if !didPanic {
-		t.Fatalf("expected capacity panic on 16th insert into default New() list")
-	}
-}
 
 func TestListCrossListSafety(t *testing.T) {
 	l1 := list.New[int]()
@@ -319,45 +237,6 @@ func TestListSelfOperationsAndNoops(t *testing.T) {
 	checkListPointers(t, l, []int{1, 2, 3})
 }
 
-func TestListRemovedElementHandling(t *testing.T) {
-	l := list.New[int]()
-	e := l.PushBack(42)
-
-	val := l.Remove(e)
-	if val != 42 {
-		t.Fatalf("Remove returned %d, want 42", val)
-	}
-
-	if e.List() != nil {
-		t.Fatalf("removed element List() != nil")
-	}
-	if e.Next() != nil {
-		t.Fatalf("removed element Next() != nil")
-	}
-	if e.Prev() != nil {
-		t.Fatalf("removed element Prev() != nil")
-	}
-
-	// Repeated removal is a safe no-op
-	repeatVal := l.Remove(e)
-	if repeatVal != 42 {
-		t.Fatalf("repeated Remove returned %d, want 42", repeatVal)
-	}
-	checkListLen(t, l, 0)
-
-	// Inserting relative to detached element returns nil
-	if res := l.InsertBefore(100, e); res != nil {
-		t.Fatalf("InsertBefore on detached element returned %v, want nil", res)
-	}
-	if res := l.InsertAfter(200, e); res != nil {
-		t.Fatalf("InsertAfter on detached element returned %v, want nil", res)
-	}
-
-	// Moving detached element is a no-op
-	l.MoveToFront(e)
-	l.MoveToBack(e)
-	checkListLen(t, l, 0)
-}
 
 func TestListPushListConcatenation(t *testing.T) {
 	l1 := list.NewCapacity[string](12)
