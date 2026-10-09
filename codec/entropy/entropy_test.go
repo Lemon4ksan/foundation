@@ -7,7 +7,6 @@ package entropy
 import (
 	"crypto/rand"
 	"testing"
-
 )
 
 func TestShannonEntropy(t *testing.T) {
@@ -34,8 +33,6 @@ func TestShannonEntropy(t *testing.T) {
 	}
 }
 
-// Merged from doc_test.go
-
 func TestAllocsPerRun_ShannonEntropy(t *testing.T) {
 	sample := make([]byte, 1024)
 	for i := range sample {
@@ -50,4 +47,3 @@ func TestAllocsPerRun_ShannonEntropy(t *testing.T) {
 		t.Errorf("ShannonEntropy allocated %f times per run, want 0", allocs)
 	}
 }
-

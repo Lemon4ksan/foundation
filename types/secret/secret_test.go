@@ -42,8 +42,6 @@ func TestSecret_Masking(t *testing.T) {
 	assert.Equal(t, "new-secret", unmarshaled.Value())
 }
 
-// Merged from doc_test.go
-
 func TestSecret_Allocations(t *testing.T) {
 	s := secret.New("my-super-secret-key")
 	allocs := testing.AllocsPerRun(100, func() {

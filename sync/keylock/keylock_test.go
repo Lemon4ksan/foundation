@@ -322,9 +322,6 @@ func BenchmarkMutex_IsLocked(b *testing.B) {
 		_ = km.IsLocked(key)
 	}
 }
-
-// Merged from keylock_repro_test.go
-
 func TestRepro_Mutex_UnlockUnheldKey(t *testing.T) {
 	km := New[string]()
 

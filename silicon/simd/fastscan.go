@@ -45,45 +45,6 @@ var (
 	lflfBytes     = []byte("\n\n")
 )
 
-// IsCompleteFast performs an early boundary check for HTTP/1.x headers.
-//
-// Ported from hyper's is_complete_fast:
-// When reading chunked / fragmented packets from a TCP stream, this function
-// avoids scanning the entire buffer from index 0 on each read iteration.
-// Instead, it starts scanning from max(0, prevLen - 3) to find the "\r\n\r\n" or "\n\n" terminator.
-func IsCompleteFast(buf []byte, prevLen int) bool {
-	start := max(prevLen-3, 0)
-	if start >= len(buf) {
-		return false
-	}
-
-	tail := buf[start:]
-	n := len(tail)
-	if n < 2 {
-		return false
-	}
-
-	_ = tail[n-1]
-
-	for i := range n {
-		switch tail[i] {
-		case '\r':
-			if i+3 < n && *(*uint32)(unsafe.Pointer(&tail[i])) == CRLFCRLFUint32 {
-				return true
-			}
-		case '\n':
-			if i+1 < n && tail[i+1] == '\n' {
-				return true
-			}
-			if i+2 < n && tail[i+1] == '\r' && tail[i+2] == '\n' {
-				return true
-			}
-		}
-	}
-
-	return false
-}
-
 // IndexCRLFCRLF searches for the position immediately after "\r\n\r\n" in buf.
 // Returns the index of the first body byte, or -1 if headers are incomplete.
 func IndexCRLFCRLF(buf []byte) int {

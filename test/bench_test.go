@@ -14,8 +14,6 @@ import (
 	"unicode"
 )
 
-// Merged from doc_test.go
-
 // ViolationCategory categorizes acceptance verification findings.
 type ViolationCategory string
 

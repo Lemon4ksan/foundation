@@ -7,8 +7,6 @@ import (
 	"testing"
 )
 
-// Merged from doc_test.go
-
 func TestRDTSC_MonotonicProgression(t *testing.T) {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()

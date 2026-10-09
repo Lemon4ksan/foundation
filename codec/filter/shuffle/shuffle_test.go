@@ -76,9 +76,6 @@ func TestShuffle_FP32Clustering(t *testing.T) {
 		t.Fatalf("unshuffled data did not match original")
 	}
 }
-
-// Merged from alloc_test.go
-
 func TestShuffle_Allocs(t *testing.T) {
 	src := make([]byte, 1024)
 	dst := make([]byte, 1024)

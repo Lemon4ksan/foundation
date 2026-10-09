@@ -259,8 +259,6 @@ func TestFiles(t *testing.T) { enctest.TestFile(t, Windows1252) }
 
 func BenchmarkEncoding(b *testing.B) { enctest.Benchmark(b, Windows1252) }
 
-// Merged from doc_test.go
-
 // FuzzCharmapDecode verifies SWAR 64-bit ASCII vector chunking and non-UTF8 single-byte decoding against arbitrary byte streams.
 func FuzzCharmapDecode(f *testing.F) {
 	f.Add([]byte("Hello, World! 1234567890\r\n"), 0)

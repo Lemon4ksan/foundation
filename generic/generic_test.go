@@ -18,7 +18,6 @@ import (
 	"testing"
 	"time"
 
-	
 	"github.com/lemon4ksan/foundation/testing/assert"
 	"github.com/lemon4ksan/foundation/testing/require"
 )
@@ -908,9 +907,6 @@ func TestFindAndFindOptional(t *testing.T) {
 		t.Fatal("expected None for nil predicate")
 	}
 }
-
-// Merged from batchloader_challenge_test.go
-
 // TestAdversarial_BatchLoader_MassiveKeyDeduplication_Stress verifies that BatchLoader
 // deduplicates batch keys and unblocks all waiters under heavy concurrency.
 func TestAdversarial_BatchLoader_MassiveKeyDeduplication_Stress(t *testing.T) {
@@ -1140,9 +1136,6 @@ func TestAdversarial_BatchLoader_IntermittentPanic_Recovery(t *testing.T) {
 		}
 	}
 }
-
-// Merged from cache_stress_test.go
-
 // 1. Stress Test: Highly concurrent readers, writers, removers, and clearers under race detector
 func TestCache_AdversarialConcurrentStress(t *testing.T) {
 	c := NewCacheWithJanitor[string, int](5 * time.Millisecond)
@@ -1540,9 +1533,6 @@ func BenchmarkCache_Concurrent90Read10Write(b *testing.B) {
 		}
 	})
 }
-
-// Merged from guarded_challenge_test.go
-
 // TestAdversarial_Guarded_ExtremeContention_RMW verifies that Guarded protects
 // concurrent read/write and Read-Modify-Write invariants under high contention.
 func TestAdversarial_Guarded_ExtremeContention_RMW(t *testing.T) {
@@ -1691,9 +1681,6 @@ func TestAdversarial_Guarded_SwapAtomicity(t *testing.T) {
 		t.Fatalf("detected %d duplicate old values returned by Swap (broken atomicity!)", duplicates.Load())
 	}
 }
-
-// Merged from monads_adversarial_test.go
-
 type AdversarialChild struct {
 	Tag  Optional[string] `json:"tag,omitzero"`
 	Code Optional[int]    `json:"code,omitzero"`
@@ -2204,8 +2191,6 @@ func TestOptional_Adversarial_DirectIsZeroMatrix(t *testing.T) {
 	assert.True(t, None[map[string]int]().IsZero())
 	assert.True(t, None[*int]().IsZero())
 }
-
-// Merged from doc_test.go
 
 func TestGeneric_Allocations(t *testing.T) {
 	items := []string{"a", "b", "c", "d"}

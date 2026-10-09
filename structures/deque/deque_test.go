@@ -930,9 +930,6 @@ func popOneDeque(t *testing.T, d *Deque[*trackedNode]) {
 	_, ok := d.PopFront()
 	require.True(t, ok)
 }
-
-// Merged from boundary_stress_test.go
-
 // -----------------------------------------------------------------------------
 // Challenge 1: Buffer Growth and Unwrapping Across All Circular Head Positions
 // -----------------------------------------------------------------------------
@@ -1616,9 +1613,6 @@ func TestStress_HeavyProducerConsumerPipeline(t *testing.T) {
 	expectedSum := int64(totalItems) * int64(totalItems+1) / 2
 	require.Equal(t, expectedSum, consumedSum.Load())
 }
-
-// Merged from deque_bench_test.go
-
 func BenchmarkDeque_PushPopFront_WithinCap(b *testing.B) {
 	d := NewWithCapacity[int](1024)
 	b.ReportAllocs()
@@ -1837,9 +1831,6 @@ func BenchmarkDeque_Wrapped_FIFO(b *testing.B) {
 		v++
 	}
 }
-
-// Merged from deque_challenge_test.go
-
 // -----------------------------------------------------------------------------
 // Independent Reference Slice Oracle Model
 // -----------------------------------------------------------------------------

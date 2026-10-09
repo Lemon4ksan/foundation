@@ -9,7 +9,6 @@ import (
 	"sync"
 	"testing"
 	"time"
-
 )
 
 func TestSemaphore_Basic(t *testing.T) {
@@ -199,8 +198,6 @@ func BenchmarkSemaphore_Resize(b *testing.B) {
 	}
 }
 
-// Merged from doc_test.go
-
 func TestSemaphore_Allocations(t *testing.T) {
 	sem := New(1)
 	ctx := context.Background()
@@ -214,4 +211,3 @@ func TestSemaphore_Allocations(t *testing.T) {
 		t.Logf("Semaphore hotpath allocates %v per op", allocs)
 	}
 }
-

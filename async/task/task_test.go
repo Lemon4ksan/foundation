@@ -655,8 +655,6 @@ func TestTracker_CancelAll(t *testing.T) {
 	assert.Equal(t, int32(3), cancelledCount.Load())
 }
 
-// Merged from tracker_challenge_test.go
-
 // TestAdversarial_Tracker_ConcurrentResolveCancelRemove tests aggressive concurrent
 // operations on Tracker under the race detector.
 func TestAdversarial_Tracker_ConcurrentResolveCancelRemove(t *testing.T) {

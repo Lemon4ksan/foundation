@@ -274,9 +274,6 @@ func BenchmarkRadixTree_LongestPrefix_ZeroAlloc(b *testing.B) {
 		}
 	}
 }
-
-// Merged from trie_fuzz_test.go
-
 func FuzzRadixTree(f *testing.F) {
 	f.Add("/api/v1/users", "/api/v1/users/123", 100)
 	f.Add("apple", "applesauce", 1)

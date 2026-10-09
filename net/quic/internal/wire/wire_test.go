@@ -89,9 +89,6 @@ func BenchmarkParseStreamFrame_Classic(b *testing.B) {
 		}
 	}
 }
-
-// Merged from test_helpers_test.go
-
 func encodeVarInt(i uint64) []byte {
 	return varint.Append(nil, i)
 }
@@ -115,8 +112,6 @@ func setupLogTest(t *testing.T, buf *bytes.Buffer) utils.Logger {
 
 	return logger
 }
-
-// Merged from transport_parameter_test.go
 
 func getRandomValueUpTo(max uint64) uint64 {
 	maxVals := []uint64{math.MaxUint8 / 4, math.MaxUint16 / 4, math.MaxUint32 / 4, math.MaxUint64 / 4}

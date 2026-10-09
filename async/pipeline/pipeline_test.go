@@ -619,8 +619,6 @@ func BenchmarkTransformSeq(b *testing.B) {
 	}
 }
 
-// Merged from pipeline_challenge_test.go
-
 // TestAdversarial_Pipeline_InternalRateLimiter_Throughput verifies that the internal
 // async/rate limiter correctly bounds throughput and operates safely under concurrent Transform calls.
 func TestAdversarial_Pipeline_InternalRateLimiter_Throughput(t *testing.T) {

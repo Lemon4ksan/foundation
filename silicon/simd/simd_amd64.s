@@ -95,23 +95,44 @@ found_two:
 	MOVQ AX, ret+32(FP)
 	RET
 
+// func maskCRLFAVX2(b []byte)
+TEXT ·maskCRLFAVX2(SB), NOSPLIT, $0-24
+	MOVQ b_base+0(FP), AX
+	MOVQ b_len+8(FP), BX
+	JMP mask_entry
+
 // func applyFastMaskAVX2(b []byte, mask uint32)
 TEXT ·applyFastMaskAVX2(SB), NOSPLIT, $0-28
 	MOVQ b_base+0(FP), AX
 	MOVQ b_len+8(FP), BX
-	MOVL mask+24(FP), CX
 
+mask_entry:
 	CMPQ BX, $32
 	JL mask_fallback
 
-	// Broadcast 4-byte mask across 256-bit YMM0 vector register
+	// Broadcast byte constants across 256-bit YMM registers:
+	// Y0: '\r' (0x0D)
+	// Y1: '\n' (0x0A)
+	// Y2: ' '  (0x20)
+	MOVL $0x0D, CX
 	MOVD CX, X0
-	VPBROADCASTD X0, Y0
+	VPBROADCASTB X0, Y0
+
+	MOVL $0x0A, CX
+	MOVD CX, X1
+	VPBROADCASTB X1, Y1
+
+	MOVL $0x20, CX
+	MOVD CX, X2
+	VPBROADCASTB X2, Y2
 
 mask_loop32:
-	VMOVDQU (AX), Y1
-	VPXOR Y0, Y1, Y2
-	VMOVDQU Y2, (AX)
+	VMOVDQU (AX), Y3
+	VPCMPEQB Y0, Y3, Y4
+	VPCMPEQB Y1, Y3, Y5
+	VPOR Y4, Y5, Y4
+	VPBLENDVB Y4, Y2, Y3, Y3
+	VMOVDQU Y3, (AX)
 
 	ADDQ $32, AX
 	SUBQ $32, BX

@@ -602,8 +602,6 @@ func TestKeyed_Len(t *testing.T) {
 	}
 }
 
-// Merged from doc_test.go
-
 func TestAdaptive_Allocations(t *testing.T) {
 	adLim := NewAdaptive(10.0)
 	ctx := context.Background()
@@ -618,4 +616,3 @@ func TestAdaptive_Allocations(t *testing.T) {
 		t.Logf("Adaptive allocates %v per op", allocs)
 	}
 }
-

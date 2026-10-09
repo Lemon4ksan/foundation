@@ -13,8 +13,6 @@ import (
 	"github.com/lemon4ksan/foundation/sync/keylock"
 )
 
-// Merged from doc_test.go
-
 // TestKeyLock_HeavySameKeyContention tests 64 goroutines contending on the same key
 // modifying an unbuffered non-thread-safe slice.
 func TestKeyLock_HeavySameKeyContention(t *testing.T) {
@@ -211,9 +209,6 @@ func TestKeyLock_ZeroValue(t *testing.T) {
 		t.Fatal("expected alpha to be unlocked")
 	}
 }
-
-// Merged from keylock_empirical_stress_test.go
-
 // TestEmpirical_KeyLock_MutualExclusionAndLeak verifies that under heavy
 // concurrent contention across shared and distinct keys, mutual exclusion
 // is strictly maintained and all internal entries are reclaimed without memory leaks.
@@ -366,9 +361,6 @@ func TestEmpirical_KeyLock_SameKeyHeavyContention(t *testing.T) {
 		t.Fatalf("expected 0 active keys, got %d", len(km.Keys()))
 	}
 }
-
-// Merged from keylock_generic_adversarial_test.go
-
 func TestEmpirical_Keylock_WithLockResult_MutualExclusion(t *testing.T) {
 	km := keylock.New[string]()
 	const key = "shared-key"

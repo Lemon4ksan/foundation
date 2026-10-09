@@ -266,9 +266,6 @@ func TestRepertoireError(t *testing.T) {
 		t.Fatalf("unexpected ErrASCIIReplacement.Error(): %q", internal.ErrASCIIReplacement.Error())
 	}
 }
-
-// Merged from adversarial_test.go
-
 // TestAdversarialBoundaryRunes tests handling of extreme unicode and boundary runes.
 func TestAdversarialBoundaryRunes(t *testing.T) {
 	boundaryRunes := []rune{

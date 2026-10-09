@@ -81,9 +81,6 @@ func TestGzipWriterLevels(t *testing.T) {
 	_, err := gzip.NewWriterLevel(&bytes.Buffer{}, 99)
 	assert.Error(t, err)
 }
-
-// Merged from crc32_stress_test.go
-
 func TestCRC32_DifferentialAgainstStdlib(t *testing.T) {
 	t.Parallel()
 

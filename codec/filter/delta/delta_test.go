@@ -9,7 +9,6 @@ import (
 	"io"
 	"math/rand"
 	"testing"
-
 )
 
 func TestDelta_Roundtrip(t *testing.T) {
@@ -83,8 +82,6 @@ func TestDelta_Streaming(t *testing.T) {
 	}
 }
 
-// Merged from doc_test.go
-
 func TestFilter_Allocs(t *testing.T) {
 	filter, _ := NewFilter(2)
 	data := make([]byte, 1024)
@@ -97,4 +94,3 @@ func TestFilter_Allocs(t *testing.T) {
 		t.Errorf("Encode/Decode allocated %v times, want 0", allocs)
 	}
 }
-

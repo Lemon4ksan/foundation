@@ -198,9 +198,6 @@ func TestLargeInputExceedingAsmBlock(t *testing.T) {
 		t.Fatalf("streaming large sum mismatch")
 	}
 }
-
-// Merged from alloc_test.go
-
 func TestAllocsPerRun_Sum64(t *testing.T) {
 	sample := make([]byte, 1024)
 	allocs := testing.AllocsPerRun(100, func() {
@@ -211,9 +208,6 @@ func TestAllocsPerRun_Sum64(t *testing.T) {
 		t.Errorf("Sum64 allocated %f times per run, want 0", allocs)
 	}
 }
-
-// Merged from xxhash_bench_test.go
-
 func BenchmarkSum64_16B(b *testing.B) {
 	data := make([]byte, 16)
 	b.ReportAllocs()

@@ -12,7 +12,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
-
 )
 
 func TestValue_Basic(t *testing.T) {
@@ -207,9 +206,6 @@ func BenchmarkValue_Get_Parallel(b *testing.B) {
 		}
 	})
 }
-
-// Merged from lazy_adversarial_test.go
-
 type stressPayload struct {
 	id       int64
 	data     [256]byte
@@ -432,8 +428,6 @@ func TestValue_FastPathZeroAlloc(t *testing.T) {
 	}
 }
 
-// Merged from doc_test.go
-
 type complexData struct {
 	id     int
 	values []string
@@ -652,4 +646,3 @@ func assertPanics(t *testing.T, fn func()) {
 	}()
 	fn()
 }
-

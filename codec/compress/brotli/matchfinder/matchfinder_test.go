@@ -802,8 +802,6 @@ func TestPathfinderEdgeBranches(t *testing.T) {
 	verifyMatches(t, b.Bytes(), m, "pathfinder edge")
 }
 
-// Merged from adversarial_test.go
-
 // verifyMatchesCumulative verifies that matches correctly reconstruct data when streaming across chunks.
 func verifyMatchesCumulative(t *testing.T, cumulative []byte, chunkStart int, chunk []byte, matches []Match, name string) {
 	t.Helper()
@@ -1334,8 +1332,6 @@ func TestAdversarialAllFindersPrePopulatedDst(t *testing.T) {
 		})
 	}
 }
-
-// Merged from matchfinder_bench_test.go
 
 func BenchmarkM0(b *testing.B) {
 	data := bytes.Repeat([]byte("The quick brown fox jumps over the lazy dog. 1234567890"), 50)

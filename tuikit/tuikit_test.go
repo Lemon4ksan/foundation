@@ -124,9 +124,6 @@ func TestTUI_App(t *testing.T) {
 		t.Errorf("usage should not contain ASCII table divider lines: %q", usage)
 	}
 }
-
-// Merged from tuikit_command_adversarial_test.go
-
 type safeBuffer struct {
 	mu  sync.Mutex
 	buf strings.Builder
@@ -377,9 +374,6 @@ func TestAdversarial_App_ConcurrentRoutingAndFallbacks(t *testing.T) {
 
 	wg.Wait()
 }
-
-// Merged from tuikit_iterator_adversarial_test.go
-
 func TestEmpirical_Tuikit_LinesSeq_EarlyTermination(t *testing.T) {
 	text := "first line\r\nsecond line\nthird line\r\nfourth line\nfifth line"
 

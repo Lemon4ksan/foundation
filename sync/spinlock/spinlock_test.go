@@ -10,7 +10,6 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
-
 )
 
 func TestLock_Basic(t *testing.T) {
@@ -172,8 +171,6 @@ func BenchmarkMutex_Parallel(b *testing.B) {
 	})
 }
 
-// Merged from doc_test.go
-
 // TestSpinlock_HeavyContention_MutualExclusion verifies that Lock guarantees strict
 // mutual exclusion under extreme multi-core contention across hundreds of goroutines.
 func TestSpinlock_HeavyContention_MutualExclusion(t *testing.T) {
@@ -305,4 +302,3 @@ func TestSpinlock_MixedLockAndTryLock(t *testing.T) {
 
 	wg.Wait()
 }
-

@@ -8,8 +8,6 @@ import (
 	"sync"
 	"testing"
 	"time"
-
-	
 )
 
 func TestCoarseClock(t *testing.T) {
@@ -91,8 +89,6 @@ func BenchmarkStdTimeFormat_RFC1123(b *testing.B) {
 		_ = tm.Format(time.RFC1123)
 	}
 }
-
-// Merged from doc_test.go
 
 func TestEmpirical_Timekit_RangeSeq_EarlyTermination(t *testing.T) {
 	start := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
