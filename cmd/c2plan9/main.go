@@ -30,6 +30,7 @@ func run() error {
 		extraFlags = flag.String("flags", "", "Extra flags to pass to Clang (comma or space separated)")
 		targetArch = flag.String("arch", "", "Target architecture: amd64 (default) or arm64")
 		useWSL     = flag.Bool("wsl", false, "Compile via Clang inside WSL")
+		retType    = flag.String("ret", "", "Return type: float32, float64, m128, m256, int, int32, or void")
 	)
 
 	flag.Parse()
@@ -84,8 +85,29 @@ func run() error {
 		return fmt.Errorf("object parsing failed: %w", err)
 	}
 
+	paramCount := 6
+	if *targetArch == "arm64" {
+		paramCount = 8
+	}
+
+	sigsMap := make(map[string]FuncSignature)
+	if *retType != "" {
+		rt := ReturnType(*retType)
+		hasRet := rt.Kind() != RetNone
+		for _, sym := range obj.Symbols {
+			if !sym.IsLocal {
+				sigsMap[sym.Name] = FuncSignature{
+					Name:       sym.Name,
+					ParamCount: paramCount,
+					HasReturn:  hasRet,
+					ReturnType: rt,
+				}
+			}
+		}
+	}
+
 	fmt.Printf("[c2plan9] Disassembling %d symbol(s) into Plan 9 %s assembly...\n", len(obj.Symbols), *targetArch)
-	asmBytes, err := EmitPlan9Assembly(*pkgName, obj.Symbols, nil, obj.ROData, obj.Relocations, *targetArch)
+	asmBytes, err := EmitPlan9Assembly(*pkgName, obj.Symbols, sigsMap, obj.ROData, obj.Relocations, *targetArch)
 	if err != nil {
 		return fmt.Errorf("assembly generation failed: %w", err)
 	}
@@ -96,18 +118,18 @@ func run() error {
 	fmt.Printf("[c2plan9] Successfully emitted %s (%d bytes)\n", *oFile, len(asmBytes))
 
 	if *stubFile != "" {
-		paramCount := 6
-		if *targetArch == "arm64" {
-			paramCount = 8
-		}
 		var sigs []FuncSignature
 		for _, sym := range obj.Symbols {
 			if !sym.IsLocal {
-				sigs = append(sigs, FuncSignature{
-					Name:       sym.Name,
-					ParamCount: paramCount,
-					HasReturn:  true,
-				})
+				if sig, ok := sigsMap[sym.Name]; ok {
+					sigs = append(sigs, sig)
+				} else {
+					sigs = append(sigs, FuncSignature{
+						Name:       sym.Name,
+						ParamCount: paramCount,
+						HasReturn:  true,
+					})
+				}
 			}
 		}
 		stubBytes := EmitGoStub(*pkgName, sigs, *targetArch)

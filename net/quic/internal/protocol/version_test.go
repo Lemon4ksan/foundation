@@ -103,7 +103,7 @@ func isReservedVersion(v Version) bool { return v&0x0f0f0f0f == 0x0a0a0a0a }
 
 func TestVersionGreasing(t *testing.T) {
 	// adding to an empty slice
-	greased := GetGreasedVersions([]Version{})
+	greased := GreasedVersions([]Version{})
 	require.Len(t, greased, 1)
 	require.True(t, isReservedVersion(greased[0]))
 
@@ -111,7 +111,7 @@ func TestVersionGreasing(t *testing.T) {
 	// allowing for a small number of duplicates
 	var versions []Version
 	for range 25 {
-		versions = GetGreasedVersions(versions)
+		versions = GreasedVersions(versions)
 	}
 
 	slices.Sort(versions)
@@ -135,7 +135,7 @@ func TestVersionGreasing(t *testing.T) {
 
 	var greasedVersionFirst, greasedVersionLast, greasedVersionMiddle int
 	for range 100 {
-		greased := GetGreasedVersions(supported)
+		greased := GreasedVersions(supported)
 		require.Len(t, greased, 4)
 
 		var j int

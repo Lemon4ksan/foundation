@@ -46,7 +46,7 @@ func ComposeVersionNegotiation(
 	destConnID, srcConnID protocol.ArbitraryLenConnectionID,
 	versions []protocol.Version,
 ) []byte {
-	greasedVersions := protocol.GetGreasedVersions(versions)
+	greasedVersions := protocol.GreasedVersions(versions)
 	expectedLen := 1 /* type byte */ + 4 /* version field */ + 1 /* dest connection ID length field */ + destConnID.Len() + 1 /* src connection ID length field */ + srcConnID.Len() + len(
 		greasedVersions,
 	)*4

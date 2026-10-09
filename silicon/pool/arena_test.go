@@ -25,3 +25,19 @@ func TestRequestArena_AllocAndReset(t *testing.T) {
 	b3 := arena.Alloc(64)
 	assert.Equal(t, 64, len(b3))
 }
+
+func TestRequestArena_3IndexSliceCapacityBound(t *testing.T) {
+	arena := pool.AcquireRequestArena()
+	defer pool.ReleaseRequestArena(arena)
+
+	testSizes := []int{1, 3, 7, 8, 9, 15, 16, 31, 32, 64, 127, 128, 512, 1024}
+	for _, size := range testSizes {
+		buf := arena.Alloc(size)
+		assert.Equal(t, size, len(buf))
+		assert.Equal(t, size, cap(buf))
+
+		// Append to buf and ensure underlying memory reallocates without corrupting arena
+		extended := append(buf, 0xFF)
+		assert.Equal(t, size+1, len(extended))
+	}
+}

@@ -45,7 +45,7 @@ func (s *PatternSlicer) Slice(data []byte) ([][]byte, bool) {
 	}
 
 	splitPoint := idx + s.Offset
-	if splitPoint <= 0 || splitPoint >= len(data) {
+	if splitPoint < 0 || splitPoint > len(data) {
 		return [][]byte{data}, false
 	}
 
@@ -72,7 +72,7 @@ func (s *PatternSlicer) SliceInto(data []byte, dst [][]byte) ([][]byte, bool) {
 	}
 
 	splitPoint := idx + s.Offset
-	if splitPoint <= 0 || splitPoint >= len(data) {
+	if splitPoint < 0 || splitPoint > len(data) {
 		return append(dst, data), false
 	}
 

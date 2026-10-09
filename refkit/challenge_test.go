@@ -515,6 +515,14 @@ func TestChallenge_VisibleFields_PooledWalker_ZeroAllocUnderLoad(t *testing.T) {
 			}
 		}
 	})
-	assert.Equal(t, float64(0), depth3Allocs, "DeepRoot (depth <= 3) VisibleFields must achieve 0 allocs/op")
+	if isRaceEnabled {
+		assert.True(
+			t,
+			depth3Allocs <= 2,
+			"DeepRoot VisibleFields under -race must be <= 2 allocs/op",
+		)
+	} else {
+		assert.Equal(t, float64(0), depth3Allocs, "DeepRoot (depth <= 3) VisibleFields must achieve 0 allocs/op")
+	}
 	_ = count
 }

@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Lemon4ksan All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
+
 package gfni
 
 // MultiplyGF2P8 multiplies two 8-bit field elements a and b in the Galois Field GF(2^8)

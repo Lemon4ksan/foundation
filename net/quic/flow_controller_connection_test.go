@@ -25,9 +25,9 @@ func TestConnectionFlowControlWindowUpdate(t *testing.T) {
 		utils.DefaultLogger,
 	)
 	require.False(t, fc.AddBytesRead(1))
-	require.Zero(t, fc.GetWindowUpdate(monotime.Now()))
+	require.Zero(t, fc.WindowUpdate(monotime.Now()))
 	require.True(t, fc.AddBytesRead(99))
-	require.Equal(t, protocol.ByteCount(200), fc.GetWindowUpdate(monotime.Now()))
+	require.Equal(t, protocol.ByteCount(200), fc.WindowUpdate(monotime.Now()))
 }
 
 func TestConnectionWindowAutoTuningNotAllowed(t *testing.T) {
@@ -51,7 +51,7 @@ func TestConnectionWindowAutoTuningNotAllowed(t *testing.T) {
 	require.NoError(t, fc.IncrementHighestReceived(100, now))
 	fc.AddBytesRead(90)
 	require.Equal(t, protocol.InvalidByteCount, callbackCalledWith)
-	require.Equal(t, protocol.ByteCount(90+100), fc.GetWindowUpdate(now.Add(time.Millisecond)))
+	require.Equal(t, protocol.ByteCount(90+100), fc.WindowUpdate(now.Add(time.Millisecond)))
 	require.Equal(t, protocol.ByteCount(150-100), callbackCalledWith)
 }
 

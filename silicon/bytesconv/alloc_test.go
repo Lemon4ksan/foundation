@@ -25,3 +25,42 @@ func TestAllocations_ScanTokensBytes(t *testing.T) {
 		t.Errorf("expected 0 allocations, got %v", allocs)
 	}
 }
+
+func TestAllocations_ContainsFoldASCII(t *testing.T) {
+	src := []byte("Content-Type: text/html; charset=UTF-8")
+	target := "charset=utf-8"
+
+	allocs := testing.AllocsPerRun(100, func() {
+		_ = bytesconv.ContainsFoldASCII(src, target)
+	})
+
+	if allocs > 0 {
+		t.Errorf("expected 0 allocations, got %v", allocs)
+	}
+}
+
+func TestAllocations_FastHash64(t *testing.T) {
+	data := []byte("zero-allocation hashing over unaligned payload")
+
+	allocs := testing.AllocsPerRun(100, func() {
+		_ = bytesconv.FastHash64(data[1:])
+	})
+
+	if allocs > 0 {
+		t.Errorf("expected 0 allocations, got %v", allocs)
+	}
+}
+
+func TestAllocations_PatternSlicer_SliceInto(t *testing.T) {
+	slicer := bytesconv.NewPatternSlicer([]byte(":"), 1)
+	data := []byte("Host: localhost")
+	dst := make([][]byte, 2)
+
+	allocs := testing.AllocsPerRun(100, func() {
+		_, _ = slicer.SliceInto(data, dst)
+	})
+
+	if allocs > 0 {
+		t.Errorf("expected 0 allocations, got %v", allocs)
+	}
+}

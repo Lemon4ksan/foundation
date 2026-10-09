@@ -11,6 +11,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"unsafe"
 )
 
 // SecureBytes reads n cryptographically secure random bytes from the operating system's CSPRNG.
@@ -70,12 +71,7 @@ func ConstantTimeCompare(a, b []byte) bool {
 // ConstantTimeEqual returns true if strings a and b have equal length and contents,
 // executed in constant time to mitigate timing attacks with zero heap allocations.
 func ConstantTimeEqual(a, b string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	var v byte
-	for i := 0; i < len(a); i++ {
-		v |= a[i] ^ b[i]
-	}
-	return subtle.ConstantTimeByteEq(v, 0) == 1
+	aBytes := unsafe.Slice(unsafe.StringData(a), len(a))
+	bBytes := unsafe.Slice(unsafe.StringData(b), len(b))
+	return subtle.ConstantTimeCompare(aBytes, bBytes) == 1
 }

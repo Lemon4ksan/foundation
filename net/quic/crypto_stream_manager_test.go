@@ -36,7 +36,7 @@ func testCryptoStreamManager(t *testing.T, encLevel protocol.EncryptionLevel) {
 
 	var data []byte
 	for {
-		b := csm.GetCryptoData(encLevel)
+		b := csm.CryptoData(encLevel)
 		if len(b) == 0 {
 			break
 		}
@@ -73,7 +73,7 @@ func testCryptoStreamManagerDropEncryptionLevel(t *testing.T, encLevel protocol.
 	require.NoError(t, csm.HandleCryptoFrame(&wire.CryptoFrame{Data: []byte("foo")}, encLevel))
 	require.ErrorContains(t, csm.Drop(encLevel), "encryption level changed, but crypto stream has more data to read")
 
-	require.Equal(t, []byte("foo"), csm.GetCryptoData(encLevel))
+	require.Equal(t, []byte("foo"), csm.CryptoData(encLevel))
 	require.NoError(t, csm.Drop(encLevel))
 }
 
@@ -89,6 +89,6 @@ func TestCryptoStreamManagerPostHandshake(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t,
 		&wire.CryptoFrame{Data: []byte("foobar")},
-		csm.GetPostHandshakeData(protocol.ByteCount(10)),
+		csm.PostHandshakeData(protocol.ByteCount(10)),
 	)
 }

@@ -33,7 +33,7 @@ func TestMTUDiscovererTiming(t *testing.T) {
 	require.True(t, d.ShouldSendProbe(now))
 
 	// only a single outstanding probe packet is permitted
-	ping, _ := d.GetPing(now)
+	ping, _ := d.Ping(now)
 	require.False(t, d.ShouldSendProbe(now))
 	now = now.Add(5 * rtt)
 	require.False(t, d.ShouldSendProbe(now))
@@ -48,7 +48,7 @@ func TestMTUDiscovererAckAndLoss(t *testing.T) {
 	rttStats.UpdateRTT(rtt, 0)
 	d := newMTUDiscoverer(rttStats, 1000, 2000)
 	now := monotime.Now()
-	ping, size := d.GetPing(now)
+	ping, size := d.Ping(now)
 	require.Equal(t, protocol.ByteCount(1500), size)
 	// the MTU is reduced if the frame is lost
 	ping.Handler.OnLost(ping.Frame)
@@ -56,7 +56,7 @@ func TestMTUDiscovererAckAndLoss(t *testing.T) {
 
 	now = now.Add(5 * rtt)
 	require.True(t, d.ShouldSendProbe(now))
-	ping, size = d.GetPing(now)
+	ping, size = d.Ping(now)
 	require.Equal(t, protocol.ByteCount(1250), size)
 	ping.Handler.OnAcked(ping.Frame)
 	require.Equal(t, protocol.ByteCount(1250), d.CurrentSize()) // the MTU is increased
@@ -65,7 +65,7 @@ func TestMTUDiscovererAckAndLoss(t *testing.T) {
 	// This protects against regular (non-MTU-related) packet loss.
 	now = now.Add(5 * rtt)
 	require.True(t, d.ShouldSendProbe(now))
-	ping, size = d.GetPing(now)
+	ping, size = d.Ping(now)
 	require.Greater(t, size, protocol.ByteCount(1500))
 	ping.Handler.OnAcked(ping.Frame)
 	require.Equal(t, size, d.CurrentSize())
@@ -77,7 +77,7 @@ func TestMTUDiscovererAckAndLoss(t *testing.T) {
 
 	now = now.Add(5 * rtt)
 	for d.ShouldSendProbe(now) {
-		ping, size = d.GetPing(now)
+		ping, size = d.Ping(now)
 		require.Greater(t, size, oldSize)
 		oldSize = size
 
@@ -124,7 +124,7 @@ func testMTUDiscovererMTUDiscovery(t *testing.T) {
 	for d.ShouldSendProbe(now) {
 		require.Less(t, len(probes), 25, fmt.Sprintf("too many iterations: %v", probes))
 
-		ping, size := d.GetPing(now)
+		ping, size := d.Ping(now)
 
 		probes = append(probes, size)
 		if size <= realMTU {
@@ -179,7 +179,7 @@ func testMTUDiscovererWithRandomLoss(t *testing.T) {
 	for d.ShouldSendProbe(now) {
 		require.Less(t, len(probes), 32, fmt.Sprintf("too many iterations: %v", probes))
 
-		ping, size := d.GetPing(now)
+		ping, size := d.Ping(now)
 		probes = append(probes, size)
 		packetFits := size <= realMTU
 
@@ -234,14 +234,14 @@ func testMTUDiscovererReset(t *testing.T, ackLastProbe bool) {
 	d := newMTUDiscoverer(rttStats, startMTU, maxMTU)
 	d.Start(now)
 
-	ping, _ := d.GetPing(now.Add(5 * rtt))
+	ping, _ := d.Ping(now.Add(5 * rtt))
 	ping.Handler.OnAcked(ping.Frame)
 	require.Greater(t, d.CurrentSize(), startMTU)
 
 	now = now.Add(5 * rtt)
 
 	// send another probe packet, but neither acknowledge nor lose it before resetting
-	ping, _ = d.GetPing(now.Add(5 * rtt))
+	ping, _ = d.Ping(now.Add(5 * rtt))
 	now = now.Add(2 * rtt) // advance the timer by an arbitrary amount
 
 	const (

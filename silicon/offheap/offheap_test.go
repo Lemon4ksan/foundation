@@ -7,6 +7,7 @@ package offheap_test
 import (
 	"io"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"unsafe"
 
@@ -272,6 +273,125 @@ func TestAllocStruct_AlignmentCorrectness(t *testing.T) {
 		}
 	})
 	require.NoError(t, err)
+}
+
+func TestAlloc_OddByteFollowedByStruct_AtomicSafety(t *testing.T) {
+	type byteTag struct {
+		Tag uint8
+	}
+
+	type atomicCounter struct {
+		Count atomic.Int64
+		Sum   atomic.Uint64
+	}
+
+	err := offheap.Scope(64*1024, func(a *offheap.Arena) {
+		// Test multiple unaligned offset combinations (1, 3, 5, 7 bytes)
+		for _, unalignedBytes := range []int{1, 3, 5, 7} {
+			// Allocate unaligned odd bytes
+			tag := a.Alloc(unalignedBytes)
+			require.NotNil(t, tag)
+			slice := unsafe.Slice((*byte)(tag), unalignedBytes)
+			slice[0] = 0x55
+
+			// Allocate 8-byte aligned struct
+			counter := offheap.AllocStruct[atomicCounter](a)
+			require.NotNil(t, counter)
+
+			// Strict 8-byte alignment verification
+			ptrVal := uintptr(unsafe.Pointer(counter))
+			assert.Equal(t, uintptr(0), ptrVal%8, "atomic struct must be 8-byte aligned")
+
+			// Atomic operations must not panic with unaligned access
+			counter.Count.Store(100)
+			counter.Count.Add(50)
+			assert.Equal(t, int64(150), counter.Count.Load())
+
+			counter.Sum.Store(200)
+			counter.Sum.Add(25)
+			assert.Equal(t, uint64(225), counter.Sum.Load())
+
+			// Tag memory should remain uncorrupted
+			assert.Equal(t, byte(0x55), slice[0])
+		}
+	})
+	require.NoError(t, err)
+}
+
+func TestAllocAligned_VariousAlignments(t *testing.T) {
+	err := offheap.Scope(64*1024, func(a *offheap.Arena) {
+		alignments := []int{1, 2, 4, 8, 16, 32, 64}
+
+		for _, align := range alignments {
+			// Unalign the offset by allocating 1 odd byte
+			odd := a.AllocAligned(1, 1)
+			require.NotNil(t, odd)
+
+			// Allocate aligned to target boundary
+			ptr := a.AllocAligned(32, align)
+			require.NotNil(t, ptr)
+
+			assert.Equal(t, uintptr(0), uintptr(ptr)%uintptr(align),
+				"pointer must satisfy specified alignment")
+		}
+
+		// Invalid cases
+		assert.Nil(t, a.AllocAligned(0, 8))
+		assert.Nil(t, a.AllocAligned(-5, 8))
+		// Large allocation exceeding size
+		assert.Nil(t, a.AllocAligned(100*1024, 8))
+	})
+	require.NoError(t, err)
+}
+
+func TestAllocStruct_ConcurrentAtomicSafety_Race(t *testing.T) {
+	type atomicStruct struct {
+		A atomic.Int64
+		B atomic.Uint64
+	}
+
+	const goroutines = 8
+	const iterations = 500
+
+	pool := offheap.NewArenaPool(64 * 1024)
+
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+
+	for g := 0; g < goroutines; g++ {
+		go func(gid int) {
+			defer wg.Done()
+
+			for i := 0; i < iterations; i++ {
+				arena := pool.Acquire()
+
+				// Allocate 1 byte to purposefully unalign offset
+				p1 := arena.Alloc(1)
+				if p1 != nil {
+					*(*byte)(p1) = byte(gid)
+				}
+
+				// Allocate 8-byte aligned struct
+				s := offheap.AllocStruct[atomicStruct](arena)
+				if s != nil {
+					if uintptr(unsafe.Pointer(s))%8 != 0 {
+						panic("unaligned atomicStruct pointer!")
+					}
+					s.A.Store(int64(i))
+					s.A.Add(1)
+					s.B.Store(uint64(gid))
+					s.B.Add(10)
+					if s.A.Load() != int64(i+1) || s.B.Load() != uint64(gid+10) {
+						panic("corrupted atomic value")
+					}
+				}
+
+				pool.Release(arena)
+			}
+		}(g)
+	}
+
+	wg.Wait()
 }
 
 func TestAllocStruct_AlignmentOverflow_NoCorruption(t *testing.T) {

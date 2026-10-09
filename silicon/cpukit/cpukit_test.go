@@ -5,6 +5,8 @@
 package cpukit_test
 
 import (
+	"runtime"
+	"sync"
 	"testing"
 
 	"github.com/lemon4ksan/foundation/silicon/cpukit"
@@ -21,7 +23,57 @@ func TestCPUKitProbes(t *testing.T) {
 	_ = cpukit.HasAVX512()
 	_ = cpukit.HasNEON()
 	_ = cpukit.HasAESNI()
+	_ = cpukit.HasGFNI()
 
 	cls := cpukit.CacheLineSize()
 	assert.GreaterOrEqual(t, cls, 32)
+}
+
+func TestHasGFNI_ExecutionSafety(t *testing.T) {
+	t.Parallel()
+
+	// Calling HasGFNI on any host architecture must execute safely
+	// without crashing, raising SIGILL, or panicking.
+	val := cpukit.HasGFNI()
+
+	if runtime.GOARCH != "amd64" {
+		assert.False(t, val, "non-x86 platforms must safely return false for GFNI")
+	}
+
+	// Verify idempotency over multiple calls
+	for range 100 {
+		assert.Equal(t, val, cpukit.HasGFNI())
+	}
+}
+
+func TestHasGFNI_ZeroAllocations(t *testing.T) {
+	allocs := testing.AllocsPerRun(100, func() {
+		_ = cpukit.HasGFNI()
+	})
+	assert.Equal(t, float64(0), allocs, "HasGFNI must be zero-allocation")
+}
+
+func TestHasGFNI_ConcurrentExecution(t *testing.T) {
+	t.Parallel()
+
+	expected := cpukit.HasGFNI()
+	const workers = 32
+	const loops = 1000
+
+	var wg sync.WaitGroup
+	wg.Add(workers)
+
+	for range workers {
+		go func() {
+			defer wg.Done()
+			for range loops {
+				res := cpukit.HasGFNI()
+				if res != expected {
+					t.Errorf("concurrent HasGFNI returned %v, expected %v", res, expected)
+				}
+			}
+		}()
+	}
+
+	wg.Wait()
 }

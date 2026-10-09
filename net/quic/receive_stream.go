@@ -664,7 +664,7 @@ func (s *ReceiveStream) getControlFrame(now monotime.Time) (_ ackhandler.Frame, 
 	return ackhandler.Frame{
 		Frame: &wire.MaxStreamDataFrame{
 			StreamID:          s.streamID,
-			MaximumStreamData: s.flowController.GetWindowUpdate(now),
+			MaximumStreamData: s.flowController.WindowUpdate(now),
 		},
 	}, true, false
 }

@@ -23,19 +23,19 @@ func TestStressVarint_AllBoundariesRoundTrip(t *testing.T) {
 	}
 
 	for _, v := range boundaries {
-		enc := varint.EncodeVarint(v)
+		enc := varint.Encode(v)
 		var buf [8]byte
-		n := varint.EncodeVarintSlice(v, buf[:])
+		n := varint.EncodeSlice(v, buf[:])
 		if !bytes.Equal(enc, buf[:n]) {
-			t.Fatalf("v=%d: EncodeVarint and EncodeVarintSlice diverge", v)
+			t.Fatalf("v=%d: Encode and EncodeSlice diverge", v)
 		}
 
-		dec, readLen, err := varint.DecodeVarint(enc)
+		dec, readLen, err := varint.Decode(enc)
 		if err != nil {
-			t.Fatalf("v=%d: DecodeVarint failed: %v", v, err)
+			t.Fatalf("v=%d: Decode failed: %v", v, err)
 		}
 		if dec != v {
-			t.Fatalf("v=%d: DecodeVarint returned %d", v, dec)
+			t.Fatalf("v=%d: Decode returned %d", v, dec)
 		}
 		if readLen != len(enc) {
 			t.Fatalf("v=%d: readLen=%d != len(enc)=%d", v, readLen, len(enc))
@@ -55,12 +55,12 @@ func TestStressVarint_OverflowExhaustive(t *testing.T) {
 	}
 
 	for _, v := range overflows {
-		assertPanic(t, "EncodeVarint", func() {
-			_ = varint.EncodeVarint(v)
+		assertPanic(t, "Encode", func() {
+			_ = varint.Encode(v)
 		})
 		var buf [8]byte
-		assertPanic(t, "EncodeVarintSlice", func() {
-			_ = varint.EncodeVarintSlice(v, buf[:])
+		assertPanic(t, "EncodeSlice", func() {
+			_ = varint.EncodeSlice(v, buf[:])
 		})
 	}
 }
@@ -72,7 +72,7 @@ func TestStressVarint_IteratorsEarlyBreakAndTruncation(t *testing.T) {
 
 	var stream []byte
 	for _, v := range values {
-		stream = append(stream, varint.EncodeVarint(v)...)
+		stream = append(stream, varint.Encode(v)...)
 	}
 
 	// 1. Break at every possible step for DecodeSeq
@@ -135,8 +135,8 @@ func TestStressVarint_Parallel(t *testing.T) {
 			var buf [8]byte
 			for i := range iters {
 				val := uint64((id*1000 + i) % 100000)
-				n := varint.EncodeVarintSlice(val, buf[:])
-				dec, rLen, err := varint.DecodeVarint(buf[:n])
+				n := varint.EncodeSlice(val, buf[:])
+				dec, rLen, err := varint.Decode(buf[:n])
 				if err != nil || dec != val || rLen != n {
 					t.Errorf("parallel failed for id %d i %d", id, i)
 					return

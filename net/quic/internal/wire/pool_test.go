@@ -11,12 +11,12 @@ import (
 )
 
 func TestGetAndPutStreamFrames(t *testing.T) {
-	f := GetStreamFrame()
+	f := NewStreamFrame()
 	putStreamFrame(f)
 }
 
 func TestPanicOnPuttingStreamFrameWithWrongCapacity(t *testing.T) {
-	f := GetStreamFrame()
+	f := NewStreamFrame()
 	f.Data = []byte("foobar")
 	require.Panics(t, func() { putStreamFrame(f) })
 }

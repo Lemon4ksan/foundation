@@ -13,7 +13,7 @@
 // deterministic memory lifecycle control. This package allocates contiguous memory pages
 // directly via OS virtual memory APIs without registering pointers in the Go runtime heap.
 //
-// Types allocated with [AllocStruct] MUST be Plain Old Data (POD) structures.
+// Types allocated with [AllocStruct] or [Arena.AllocAligned] MUST be Plain Old Data (POD) structures.
 // They MUST NOT contain Go heap pointers, strings, maps, channels, or slice headers.
 // The Go GC does NOT scan off-heap physical pages. Any Go heap object referenced from
 // off-heap memory will appear unreachable to the GC and be collected, causing use-after-free.

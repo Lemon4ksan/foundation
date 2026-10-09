@@ -44,8 +44,8 @@ var (
 	retryNonceV2 = [12]byte{0xd8, 0x69, 0x69, 0xbc, 0x2d, 0x7c, 0x6d, 0x99, 0x90, 0xef, 0xb0, 0x4a}
 )
 
-// GetRetryIntegrityTag calculates the integrity tag on a Retry packet
-func GetRetryIntegrityTag(retry []byte, origDestConnID protocol.ConnectionID, version protocol.Version) *[16]byte {
+// RetryIntegrityTag calculates the integrity tag on a Retry packet
+func RetryIntegrityTag(retry []byte, origDestConnID protocol.ConnectionID, version protocol.Version) *[16]byte {
 	retryMutex.Lock()
 	defer retryMutex.Unlock()
 	defer retryBuf.Reset()

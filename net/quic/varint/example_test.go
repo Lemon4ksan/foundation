@@ -10,12 +10,12 @@ import (
 	"github.com/lemon4ksan/foundation/net/quic/varint"
 )
 
-func ExampleEncodeVarintSlice() {
+func ExampleEncodeSlice() {
 	buf := make([]byte, 16)
 
 	// Encode values into byte buffer with 0 heap allocations
-	n1 := varint.EncodeVarintSlice(25, buf)
-	n2 := varint.EncodeVarintSlice(15000, buf[n1:])
+	n1 := varint.EncodeSlice(25, buf)
+	n2 := varint.EncodeSlice(15000, buf[n1:])
 
 	fmt.Printf("Encoded 2 varints in %d bytes\n", n1+n2)
 

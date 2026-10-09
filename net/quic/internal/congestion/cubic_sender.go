@@ -149,7 +149,7 @@ func (c *cubicSender) OnPacketSent(
 }
 
 func (c *cubicSender) CanSend(bytesInFlight protocol.ByteCount) bool {
-	return bytesInFlight < c.GetCongestionWindow()
+	return bytesInFlight < c.CongestionWindow()
 }
 
 func (c *cubicSender) InRecovery() bool {
@@ -158,10 +158,10 @@ func (c *cubicSender) InRecovery() bool {
 }
 
 func (c *cubicSender) InSlowStart() bool {
-	return c.GetCongestionWindow() < c.slowStartThreshold
+	return c.CongestionWindow() < c.slowStartThreshold
 }
 
-func (c *cubicSender) GetCongestionWindow() protocol.ByteCount {
+func (c *cubicSender) CongestionWindow() protocol.ByteCount {
 	return c.congestionWindow
 }
 
@@ -170,7 +170,7 @@ func (c *cubicSender) MaybeExitSlowStart() {
 		c.hybridSlowStart.ShouldExitSlowStart(
 			c.rttStats.LatestRTT(),
 			c.rttStats.MinRTT(),
-			c.GetCongestionWindow()/c.maxDatagramSize,
+			c.CongestionWindow()/c.maxDatagramSize,
 		) {
 		// exit slow start
 		c.slowStartThreshold = c.congestionWindow
@@ -269,7 +269,7 @@ func (c *cubicSender) maybeIncreaseCwnd(
 }
 
 func (c *cubicSender) isCwndLimited(bytesInFlight protocol.ByteCount) bool {
-	congestionWindow := c.GetCongestionWindow()
+	congestionWindow := c.CongestionWindow()
 	if bytesInFlight >= congestionWindow {
 		return true
 	}
@@ -288,7 +288,7 @@ func (c *cubicSender) BandwidthEstimate() Bandwidth {
 		srtt = protocol.TimerGranularity
 	}
 
-	return BandwidthFromDelta(c.GetCongestionWindow(), srtt)
+	return BandwidthFromDelta(c.CongestionWindow(), srtt)
 }
 
 // OnRetransmissionTimeout is called on an retransmission timeout

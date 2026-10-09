@@ -277,7 +277,15 @@ func TestVisibleFields_ZeroAlloc(t *testing.T) {
 			count++
 		}
 	})
-	assert.Equal(t, float64(0), allocsEmb, "embedded struct VisibleFields must achieve 0 allocs/op")
+	if isRaceEnabled {
+		assert.True(
+			t,
+			allocsEmb <= 2,
+			"embedded struct VisibleFields under -race must be <= 2 allocs/op",
+		)
+	} else {
+		assert.Equal(t, float64(0), allocsEmb, "embedded struct VisibleFields must achieve 0 allocs/op")
+	}
 	_ = count
 }
 

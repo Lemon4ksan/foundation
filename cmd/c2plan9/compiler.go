@@ -52,33 +52,24 @@ func Compile(opts CompileOptions) (string, error) {
 	if useWSL {
 		wslSrc := toWSLPath(opts.SourceFile)
 		wslOut := toWSLPath(out)
+		target := ClangTarget(opts.TargetArch)
 		wslArgs := make([]string, 0, 18+len(opts.ExtraFlags))
+		wslArgs = append(wslArgs,
+			"clang", "-c", wslSrc, "-o", wslOut,
+			"-O3",
+			"-ffreestanding",
+			"-fno-asynchronous-unwind-tables",
+			"-fno-exceptions",
+			"-fno-rtti",
+			"-fno-stack-protector",
+			"-fomit-frame-pointer",
+			"-fno-jump-tables",
+			"-target", target,
+		)
 		if opts.TargetArch == "arm64" {
-			wslArgs = append(wslArgs,
-				"clang", "-c", wslSrc, "-o", wslOut,
-				"-O3",
-				"-ffreestanding",
-				"-fno-asynchronous-unwind-tables",
-				"-fno-exceptions",
-				"-fno-rtti",
-				"-fno-stack-protector",
-				"-fomit-frame-pointer",
-				"-fno-jump-tables",
-				"-target", "aarch64-linux-gnu",
-				"-march=armv8-a+simd+crypto",
-			)
+			wslArgs = append(wslArgs, "-march=armv8-a+simd+crypto")
 		} else {
 			wslArgs = append(wslArgs,
-				"clang", "-c", wslSrc, "-o", wslOut,
-				"-O3",
-				"-ffreestanding",
-				"-fno-asynchronous-unwind-tables",
-				"-fno-exceptions",
-				"-fno-rtti",
-				"-fno-stack-protector",
-				"-fomit-frame-pointer",
-				"-fno-jump-tables",
-				"-target", "x86_64-pc-linux-gnu",
 				"-mno-red-zone",
 				"-mavx2",
 				"-mpclmul",
@@ -132,6 +123,7 @@ func ClangTarget(arch string) string {
 // BuildClangArgs constructs command line arguments for Clang given options,
 // enforcing an ELF target on all platforms for consistent relocation generation.
 func BuildClangArgs(opts CompileOptions, out string) []string {
+	target := ClangTarget(opts.TargetArch)
 	args := []string{
 		"-c",
 		opts.SourceFile,
@@ -144,12 +136,12 @@ func BuildClangArgs(opts CompileOptions, out string) []string {
 		"-fno-stack-protector",
 		"-fomit-frame-pointer",
 		"-fno-jump-tables",
+		"-target", target,
 	}
 
 	switch opts.TargetArch {
 	case "", "amd64":
 		args = append(args,
-			"-target", "x86_64-pc-linux-gnu",
 			"-mno-red-zone",
 			"-mavx2",
 			"-mpclmul",
@@ -157,7 +149,6 @@ func BuildClangArgs(opts CompileOptions, out string) []string {
 		)
 	case "arm64":
 		args = append(args,
-			"-target", "aarch64-linux-gnu",
 			"-march=armv8-a+simd+crypto",
 		)
 	}
@@ -165,4 +156,3 @@ func BuildClangArgs(opts CompileOptions, out string) []string {
 	args = append(args, opts.ExtraFlags...)
 	return args
 }
-

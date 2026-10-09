@@ -7,7 +7,8 @@
 // Querying system time via time.Now on millions of operations incurs operating system
 // vDSO and syscall overhead. Cached timestamp tickers update timestamps in background
 // goroutines, reducing timestamp reads to a single atomic load for high-concurrency
-// loops where microsecond precision is sufficient.
+// loops where microsecond precision is sufficient. Hardware cycle counting via
+// RDTSC uses serialized pipeline execution with calibrated fixed-point conversion.
 //
 // # Compared to the standard library
 //

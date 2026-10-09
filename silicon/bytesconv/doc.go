@@ -3,7 +3,7 @@
 // license that can be found in the LICENSE file.
 
 // Package bytesconv provides zero-allocation unsafe string-to-byte conversions,
-// high-speed scanners, and slice splitters for performance-critical hot paths.
+// high-speed scanners, slice splitters, case-folded searches, and hashing utilities for performance-critical hot paths.
 //
 // To guarantee string immutability, the Go runtime allocates a new heap copy on
 // every string(b) or []byte(s) conversion. While safe, this behavior produces

@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Lemon4ksan All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
+
 package clock
 
 import (
@@ -34,11 +35,13 @@ func init() {
 }
 
 func calibrateRDTSC() {
+	start := time.Now()
 	startTSC := rdtsc()
-	startTime := time.Now()
-	time.Sleep(5 * time.Millisecond)
+	for time.Since(start) < 100*time.Millisecond {
+		// spin-wait for exact wall-clock boundary
+	}
 	endTSC := rdtsc()
-	elapsedNanos := time.Since(startTime).Nanoseconds()
+	elapsedNanos := time.Since(start).Nanoseconds()
 
 	if elapsedNanos > 0 && endTSC > startTSC {
 		ticks := endTSC - startTSC

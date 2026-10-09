@@ -10,6 +10,9 @@
 // multiple CPU cores, channel lock contention causes severe cache-line bouncing
 // and scheduler latency. Lock-free ring buffers with cache-line padding eliminate
 // lock contention and false sharing, maximizing L1/L2 cache locality.
+// SPSC ring buffers implement local cursor caching (cached tail on producer,
+// cached head on consumer) to eliminate cache-line bouncing between producer
+// and consumer cores until capacity boundaries are reached.
 //
 // The primary entry points are [New] for MPMC [Buffer] and [NewSPSCRingBuffer] for [SPSCRingBuffer].
 //

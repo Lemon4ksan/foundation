@@ -52,7 +52,7 @@ func Scope(size int, fn func(arena *Arena)) error {
 	return nil
 }
 
-// Alloc allocates n bytes inside the arena via a single 1-cycle pointer bump.
+// Alloc allocates n bytes inside the arena via a single pointer bump with default 8-byte alignment.
 //
 //go:nosplit
 //go:inline
@@ -61,17 +61,52 @@ func (a *Arena) Alloc(n int) unsafe.Pointer {
 		return nil
 	}
 
-	if n > int(a.size-a.offset) {
+	alignedOffset := (a.offset + 7) &^ 7
+	if alignedOffset < a.offset || alignedOffset > a.size ||
+		n > int(a.size-alignedOffset) || alignedOffset+int32(n) > a.size {
 		return nil
 	}
 
-	alignedSize := (int32(n) + 7) &^ 7
-	if a.offset+alignedSize > a.size {
+	ptr := unsafe.Add(a.page, alignedOffset)
+	a.offset = alignedOffset + int32(n)
+
+	return ptr
+}
+
+// AllocAligned allocates size bytes inside the arena aligned to the specified byte boundary.
+// It executes zero heap allocations when arena capacity suffices.
+//
+//go:nosplit
+//go:inline
+func (a *Arena) AllocAligned(size, align int) unsafe.Pointer {
+	if a == nil || a.page == nil || size <= 0 {
 		return nil
 	}
 
-	ptr := unsafe.Add(a.page, a.offset)
-	a.offset += alignedSize
+	if align <= 1 {
+		align = 1
+	}
+
+	var alignedOffset int32
+	if align&(align-1) == 0 {
+		mask := int32(align - 1)
+		alignedOffset = (a.offset + mask) &^ mask
+	} else {
+		rem := int(a.offset) % align
+		if rem != 0 {
+			alignedOffset = a.offset + int32(align-rem)
+		} else {
+			alignedOffset = a.offset
+		}
+	}
+
+	if alignedOffset < a.offset || alignedOffset > a.size ||
+		size > int(a.size-alignedOffset) || alignedOffset+int32(size) > a.size {
+		return nil
+	}
+
+	ptr := unsafe.Add(a.page, alignedOffset)
+	a.offset = alignedOffset + int32(size)
 
 	return ptr
 }
@@ -138,21 +173,7 @@ func AllocStruct[T any](a *Arena) *T {
 	}
 
 	align := int(unsafe.Alignof(zero))
-	if align > 1 {
-		rem := int(a.offset) % align
-		if rem != 0 {
-			padding := int32(align - rem)
-			// Validate that alignment padding itself fits before modifying the offset.
-			// Without this check, a near-full arena would silently set a.offset > a.size.
-			if a.offset+padding > a.size {
-				return fallbackAllocStruct[T]()
-			}
-
-			a.offset += padding
-		}
-	}
-
-	ptr := a.Alloc(size)
+	ptr := a.AllocAligned(size, align)
 	if ptr == nil {
 		return fallbackAllocStruct[T]()
 	}

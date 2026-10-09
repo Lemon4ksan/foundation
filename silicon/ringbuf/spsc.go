@@ -15,16 +15,21 @@ import (
 //
 // Memory Architecture & Hardware Alignment:
 //   - Zero CAS (CompareAndSwap) Operations: Eliminates atomic CAS loop contention.
-//   - Cache Line Padding: Producer cursor (head) and Consumer cursor (tail) are separated
-//     by 64-byte cpu.CacheLinePad boundaries to prevent False Sharing across CPU cores.
+//   - Local Cursor Caching: Producer caches consumer tail (cachedTail) and consumer
+//     caches producer head (cachedHead) to eliminate cache-line bouncing across CPU cores
+//     until buffer boundaries (full/empty) require cursor refreshes.
+//   - Cache Line Padding: Producer state (head, cachedTail) and Consumer state (tail, cachedHead)
+//     are separated by 64-byte cpu.CacheLinePad boundaries to prevent False Sharing across CPU cores.
 //   - Bitwise Masking: Buffer capacity is rounded up to the nearest power of two,
 //     enabling 1-cycle bitwise AND (& mask) indexing instead of costly division (% cap).
 type SPSCRingBuffer[T any] struct {
-	_    cpu.CacheLinePad
-	head atomic.Uint64 // Written ONLY by Producer thread
-	_    cpu.CacheLinePad
-	tail atomic.Uint64 // Written ONLY by Consumer thread
-	_    cpu.CacheLinePad
+	_          cpu.CacheLinePad
+	head       atomic.Uint64 // Written ONLY by Producer thread
+	cachedTail uint64        // Local to Producer thread; refreshed from tail only when queue appears full
+	_          cpu.CacheLinePad
+	tail       atomic.Uint64 // Written ONLY by Consumer thread
+	cachedHead uint64        // Local to Consumer thread; refreshed from head only when queue appears empty
+	_          cpu.CacheLinePad
 
 	mask   uint64
 	buffer []atomic.Pointer[T]
@@ -54,10 +59,12 @@ func NewSPSCRingBuffer[T any](capacity int) *SPSCRingBuffer[T] {
 // Returns false if the buffer is full.
 func (s *SPSCRingBuffer[T]) Push(item *T) bool {
 	head := s.head.Load()
-	tail := s.tail.Load()
 
-	if head-tail > s.mask {
-		return false // Buffer is full
+	if head-s.cachedTail > s.mask {
+		s.cachedTail = s.tail.Load()
+		if head-s.cachedTail > s.mask {
+			return false // Buffer is full
+		}
 	}
 
 	idx := head & s.mask
@@ -74,10 +81,12 @@ func (s *SPSCRingBuffer[T]) Push(item *T) bool {
 // Returns nil if the buffer is empty.
 func (s *SPSCRingBuffer[T]) Pop() *T {
 	tail := s.tail.Load()
-	head := s.head.Load()
 
-	if tail == head {
-		return nil // Buffer is empty
+	if s.cachedHead <= tail {
+		s.cachedHead = s.head.Load()
+		if s.cachedHead <= tail {
+			return nil // Buffer is empty
+		}
 	}
 
 	idx := tail & s.mask

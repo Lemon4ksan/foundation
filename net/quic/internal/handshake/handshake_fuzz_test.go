@@ -421,12 +421,12 @@ func fuzzRunHandshake(
 	_ = client.ConnectionState()
 	_ = server.ConnectionState()
 
-	sealer, err := client.Get1RTTSealer()
+	sealer, err := client.OneRTTSealer()
 	if err != nil {
 		t.Fatal("expected to get a 1-RTT sealer")
 	}
 
-	opener, err := server.Get1RTTOpener()
+	opener, err := server.OneRTTOpener()
 	if err != nil {
 		t.Fatal("expected to get a 1-RTT opener")
 	}
@@ -445,7 +445,7 @@ func fuzzRunHandshake(
 	}
 
 	if sendSessionTicket && !serverConf.SessionTicketsDisabled {
-		ticket, err := server.GetSessionTicket()
+		ticket, err := server.SessionTicket()
 		if err != nil {
 			t.Fatalf("error getting session ticket: %s", err)
 		}

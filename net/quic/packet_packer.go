@@ -133,10 +133,10 @@ type packetNumberManager interface {
 }
 
 type sealingManager interface {
-	GetInitialSealer() (handshake.LongHeaderSealer, error)
-	GetHandshakeSealer() (handshake.LongHeaderSealer, error)
-	Get0RTTSealer() (handshake.LongHeaderSealer, error)
-	Get1RTTSealer() (handshake.ShortHeaderSealer, error)
+	InitialSealer() (handshake.LongHeaderSealer, error)
+	HandshakeSealer() (handshake.LongHeaderSealer, error)
+	ZeroRTTSealer() (handshake.LongHeaderSealer, error)
+	OneRTTSealer() (handshake.ShortHeaderSealer, error)
 }
 
 type frameSource interface {
@@ -151,7 +151,7 @@ type frameSource interface {
 }
 
 type ackFrameSource interface {
-	GetAckFrame(_ protocol.EncryptionLevel, now monotime.Time, onlyIfQueued bool) *wire.AckFrame
+	AckFrame(_ protocol.EncryptionLevel, now monotime.Time, onlyIfQueued bool) *wire.AckFrame
 }
 
 type packetPacker struct {
@@ -294,15 +294,15 @@ func (p *packetPacker) packConnectionClose(
 
 		switch encLevel {
 		case protocol.EncryptionInitial:
-			sealer, err = p.cryptoSetup.GetInitialSealer()
+			sealer, err = p.cryptoSetup.InitialSealer()
 		case protocol.EncryptionHandshake:
-			sealer, err = p.cryptoSetup.GetHandshakeSealer()
+			sealer, err = p.cryptoSetup.HandshakeSealer()
 		case protocol.Encryption0RTT:
-			sealer, err = p.cryptoSetup.Get0RTTSealer()
+			sealer, err = p.cryptoSetup.ZeroRTTSealer()
 		case protocol.Encryption1RTT:
 			var s handshake.ShortHeaderSealer
 
-			s, err = p.cryptoSetup.Get1RTTSealer()
+			s, err = p.cryptoSetup.OneRTTSealer()
 			if err == nil {
 				keyPhase = s.KeyPhase()
 			}
@@ -406,7 +406,7 @@ func (p *packetPacker) longHeaderPacketLength(
 		paddingLen = 4 - pnLen - pl.length
 	}
 
-	return hdr.GetLength(v) + pl.length + paddingLen
+	return hdr.Length(v) + pl.length + paddingLen
 }
 
 // shortHeaderPacketLength calculates the length of a serialized short header packet.
@@ -458,7 +458,7 @@ func (p *packetPacker) PackCoalescedPacket(
 		oneRTTPacketNumberLen                                           protocol.PacketNumberLen
 	)
 	// Try packing an Initial packet.
-	initialSealer, err := p.cryptoSetup.GetInitialSealer()
+	initialSealer, err := p.cryptoSetup.InitialSealer()
 	if err != nil && !errors.Is(err, handshake.ErrKeysDropped) {
 		return nil, err
 	}
@@ -489,7 +489,7 @@ func (p *packetPacker) PackCoalescedPacket(
 	if (onlyAck && size == 0) || (!onlyAck && size < maxSize-protocol.MinCoalescedPacketSize) {
 		var err error
 
-		handshakeSealer, err = p.cryptoSetup.GetHandshakeSealer()
+		handshakeSealer, err = p.cryptoSetup.HandshakeSealer()
 		if err != nil && !errors.Is(err, handshake.ErrKeysDropped) &&
 			!errors.Is(err, handshake.ErrKeysNotYetAvailable) {
 			return nil, err
@@ -528,7 +528,7 @@ func (p *packetPacker) PackCoalescedPacket(
 	if (onlyAck && size == 0) || (!onlyAck && size < maxSize-protocol.MinCoalescedPacketSize) {
 		var err error
 
-		oneRTTSealer, err = p.cryptoSetup.Get1RTTSealer()
+		oneRTTSealer, err = p.cryptoSetup.OneRTTSealer()
 		if err != nil && !errors.Is(err, handshake.ErrKeysDropped) &&
 			!errors.Is(err, handshake.ErrKeysNotYetAvailable) {
 			return nil, err
@@ -557,7 +557,7 @@ func (p *packetPacker) PackCoalescedPacket(
 		if err != nil && p.perspective == protocol.PerspectiveClient && !onlyAck {
 			var err0RTT error
 
-			zeroRTTSealer, err0RTT = p.cryptoSetup.Get0RTTSealer()
+			zeroRTTSealer, err0RTT = p.cryptoSetup.ZeroRTTSealer()
 			if err0RTT != nil && !errors.Is(err0RTT, handshake.ErrKeysDropped) &&
 				!errors.Is(err0RTT, handshake.ErrKeysNotYetAvailable) {
 				return nil, err0RTT
@@ -695,7 +695,7 @@ func (p *packetPacker) appendPacket(
 	now monotime.Time,
 	v protocol.Version,
 ) (shortHeaderPacket, error) {
-	sealer, err := p.cryptoSetup.Get1RTTSealer()
+	sealer, err := p.cryptoSetup.OneRTTSealer()
 	if err != nil {
 		return shortHeaderPacket{}, err
 	}
@@ -723,9 +723,9 @@ func (p *packetPacker) maybeGetCryptoPacket(
 	v protocol.Version,
 ) (*wire.ExtendedHeader, payload) {
 	if onlyAck {
-		if ack := p.acks.GetAckFrame(encLevel, now, true); ack != nil {
+		if ack := p.acks.AckFrame(encLevel, now, true); ack != nil {
 			hdr := p.getLongHeader(encLevel, v)
-			maxPacketSize -= hdr.GetLength(v)
+			maxPacketSize -= hdr.Length(v)
 			ack.Truncate(maxPacketSize, v)
 
 			return hdr, payload{ack: ack, length: ack.Length(v)}
@@ -752,7 +752,7 @@ func (p *packetPacker) maybeGetCryptoPacket(
 	handler := p.retransmissionQueue.AckHandler(encLevel)
 	hasRetransmission := p.retransmissionQueue.HasData(encLevel)
 
-	ack := p.acks.GetAckFrame(encLevel, now, !hasRetransmission && !hasCryptoData())
+	ack := p.acks.AckFrame(encLevel, now, !hasRetransmission && !hasCryptoData())
 
 	var pl payload
 	if !hasCryptoData() && !hasRetransmission && ack == nil {
@@ -767,7 +767,7 @@ func (p *packetPacker) maybeGetCryptoPacket(
 	}
 
 	hdr := p.getLongHeader(encLevel, v)
-	maxPacketSize -= hdr.GetLength(v)
+	maxPacketSize -= hdr.Length(v)
 
 	if ack != nil {
 		ack.Truncate(maxPacketSize, v)
@@ -778,7 +778,7 @@ func (p *packetPacker) maybeGetCryptoPacket(
 
 	if hasRetransmission {
 		for {
-			frame := p.retransmissionQueue.GetFrame(encLevel, maxPacketSize, v)
+			frame := p.retransmissionQueue.Frame(encLevel, maxPacketSize, v)
 			if frame == nil {
 				break
 			}
@@ -820,7 +820,7 @@ func (p *packetPacker) maybeGetAppDataPacketFor0RTT(
 	}
 
 	hdr := p.getLongHeader(protocol.Encryption0RTT, v)
-	maxPayloadSize := maxSize - hdr.GetLength(v) - protocol.ByteCount(sealer.Overhead())
+	maxPayloadSize := maxSize - hdr.Length(v) - protocol.ByteCount(sealer.Overhead())
 
 	return hdr, p.maybeGetAppDataPacket(maxPayloadSize, false, false, now, v)
 }
@@ -873,7 +873,7 @@ func (p *packetPacker) composeNextPacket(
 	v protocol.Version,
 ) payload {
 	if onlyAck {
-		if ack := p.acks.GetAckFrame(protocol.Encryption1RTT, now, true); ack != nil {
+		if ack := p.acks.AckFrame(protocol.Encryption1RTT, now, true); ack != nil {
 			ack.Truncate(maxPayloadSize, v)
 			return payload{ack: ack, length: ack.Length(v)}
 		}
@@ -886,7 +886,7 @@ func (p *packetPacker) composeNextPacket(
 
 	var pl payload
 	if ackAllowed {
-		if ack := p.acks.GetAckFrame(protocol.Encryption1RTT, now, !hasRetransmission && !hasData); ack != nil {
+		if ack := p.acks.AckFrame(protocol.Encryption1RTT, now, !hasRetransmission && !hasData); ack != nil {
 			ack.Truncate(maxPayloadSize, v)
 			pl.ack = ack
 			pl.length += ack.Length(v)
@@ -923,7 +923,7 @@ func (p *packetPacker) composeNextPacket(
 				break
 			}
 
-			f := p.retransmissionQueue.GetFrame(protocol.Encryption1RTT, remainingLen, v)
+			f := p.retransmissionQueue.Frame(protocol.Encryption1RTT, remainingLen, v)
 			if f == nil {
 				break
 			}
@@ -985,7 +985,7 @@ func (p *packetPacker) PackPTOProbePacket(
 	case protocol.EncryptionInitial:
 		var err error
 
-		sealer, err = p.cryptoSetup.GetInitialSealer()
+		sealer, err = p.cryptoSetup.InitialSealer()
 		if err != nil {
 			return nil, err
 		}
@@ -993,7 +993,7 @@ func (p *packetPacker) PackPTOProbePacket(
 	case protocol.EncryptionHandshake:
 		var err error
 
-		sealer, err = p.cryptoSetup.GetHandshakeSealer()
+		sealer, err = p.cryptoSetup.HandshakeSealer()
 		if err != nil {
 			return nil, err
 		}
@@ -1039,7 +1039,7 @@ func (p *packetPacker) packPTOProbePacket1RTT(
 	now monotime.Time,
 	v protocol.Version,
 ) (*coalescedPacket, error) {
-	s, err := p.cryptoSetup.Get1RTTSealer()
+	s, err := p.cryptoSetup.OneRTTSealer()
 	if err != nil {
 		return nil, err
 	}
@@ -1084,7 +1084,7 @@ func (p *packetPacker) PackMTUProbePacket(
 	}
 	buffer := getPacketBuffer()
 
-	s, err := p.cryptoSetup.Get1RTTSealer()
+	s, err := p.cryptoSetup.OneRTTSealer()
 	if err != nil {
 		return shortHeaderPacket{}, nil, err
 	}
@@ -1106,7 +1106,7 @@ func (p *packetPacker) PackPathProbePacket(
 	pn, pnLen := p.pnManager.PeekPacketNumber(protocol.Encryption1RTT)
 	buf := getPacketBuffer()
 
-	s, err := p.cryptoSetup.Get1RTTSealer()
+	s, err := p.cryptoSetup.OneRTTSealer()
 	if err != nil {
 		return shortHeaderPacket{}, nil, err
 	}
@@ -1191,7 +1191,7 @@ func (p *packetPacker) appendLongHeaderPacket(
 	}
 
 	paddingLen += padding
-	header.Length = pnLen + protocol.ByteCount(sealer.Overhead()) + pl.length + paddingLen
+	header.Header.Length = pnLen + protocol.ByteCount(sealer.Overhead()) + pl.length + paddingLen
 
 	startLen := len(buffer.Data)
 	raw := buffer.Data[startLen:]

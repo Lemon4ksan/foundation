@@ -19,7 +19,7 @@ var streamFramePool = sync.Pool{
 	},
 }
 
-func GetStreamFrame() *StreamFrame {
+func NewStreamFrame() *StreamFrame {
 	return streamFramePool.Get().(*StreamFrame)
 }
 

@@ -84,7 +84,7 @@ func (q *retransmissionQueue) HasData(encLevel protocol.EncryptionLevel) bool {
 	return false
 }
 
-func (q *retransmissionQueue) GetFrame(
+func (q *retransmissionQueue) Frame(
 	encLevel protocol.EncryptionLevel,
 	maxLen protocol.ByteCount,
 	v protocol.Version,

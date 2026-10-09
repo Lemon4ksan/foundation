@@ -14,8 +14,8 @@ import (
 
 func TestRetryIntegrityTagCalculation(t *testing.T) {
 	connID := protocol.ParseConnectionID([]byte{1, 2, 3, 4})
-	fooTag := GetRetryIntegrityTag([]byte("foo"), connID, protocol.Version1)
-	barTag := GetRetryIntegrityTag([]byte("bar"), connID, protocol.Version1)
+	fooTag := RetryIntegrityTag([]byte("foo"), connID, protocol.Version1)
+	barTag := RetryIntegrityTag([]byte("bar"), connID, protocol.Version1)
 
 	require.NotNil(t, fooTag)
 	require.NotNil(t, barTag)
@@ -25,8 +25,8 @@ func TestRetryIntegrityTagCalculation(t *testing.T) {
 func TestRetryIntegrityTagWithDifferentConnectionIDs(t *testing.T) {
 	connID1 := protocol.ParseConnectionID([]byte{1, 2, 3, 4})
 	connID2 := protocol.ParseConnectionID([]byte{4, 3, 2, 1})
-	t1 := GetRetryIntegrityTag([]byte("foobar"), connID1, protocol.Version1)
-	t2 := GetRetryIntegrityTag([]byte("foobar"), connID2, protocol.Version1)
+	t1 := RetryIntegrityTag([]byte("foobar"), connID1, protocol.Version1)
+	t2 := RetryIntegrityTag([]byte("foobar"), connID2, protocol.Version1)
 	require.NotEqual(t, *t1, *t2)
 }
 
@@ -53,7 +53,7 @@ func TestRetryIntegrityTagWithTestVectors(t *testing.T) {
 			v := binary.BigEndian.Uint32(tt.data[1:5])
 			require.Equal(t, tt.version, protocol.Version(v))
 			connID := protocol.ParseConnectionID(splitHexString(t, "0x8394c8f03e515708"))
-			tag := GetRetryIntegrityTag(tt.data[:len(tt.data)-16], connID, tt.version)
+			tag := RetryIntegrityTag(tt.data[:len(tt.data)-16], connID, tt.version)
 			require.Equal(t, tt.data[len(tt.data)-16:], tag[:])
 		})
 	}

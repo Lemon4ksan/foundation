@@ -141,6 +141,50 @@ func TestSPSCRingBuffer_ConcurrentProducerConsumer(t *testing.T) {
 	}
 }
 
+func TestSPSCRingBuffer_LocalCacheCoherency(t *testing.T) {
+	t.Parallel()
+
+	buf := ringbuf.NewSPSCRingBuffer[int](8)
+
+	// Step 1: Fill the buffer completely (8 items).
+	// Under local caching, producer never loads consumer's tail until buffer is full.
+	for i := 1; i <= 8; i++ {
+		val := i
+		require.True(t, buf.Push(&val))
+	}
+
+	// Step 2: 9th push must fail (full buffer)
+	overflow := 99
+	require.False(t, buf.Push(&overflow))
+
+	// Step 3: Consumer pops 4 items.
+	for i := 1; i <= 4; i++ {
+		p := buf.Pop()
+		require.NotNil(t, p)
+		assert.Equal(t, i, *p)
+	}
+
+	// Step 4: Producer can now push 4 more items (9..12) as it re-checks tail on full detection.
+	for i := 9; i <= 12; i++ {
+		val := i
+		require.True(t, buf.Push(&val))
+	}
+
+	// Step 5: Producer should now see buffer full again.
+	require.False(t, buf.Push(&overflow))
+
+	// Step 6: Consumer pops remaining 8 items (5..12).
+	for i := 5; i <= 12; i++ {
+		p := buf.Pop()
+		require.NotNil(t, p)
+		assert.Equal(t, i, *p)
+	}
+
+	// Step 7: Queue must now be empty.
+	assert.True(t, buf.IsEmpty())
+	assert.Nil(t, buf.Pop())
+}
+
 func BenchmarkSPSCRingBuffer_PushPop(b *testing.B) {
 	buf := ringbuf.NewSPSCRingBuffer[int](1024)
 	val := 42
@@ -152,4 +196,91 @@ func BenchmarkSPSCRingBuffer_PushPop(b *testing.B) {
 		buf.Push(&val)
 		_ = buf.Pop()
 	}
+}
+
+func BenchmarkSPSCRingBuffer_Concurrent(b *testing.B) {
+	buf := ringbuf.NewSPSCRingBuffer[int](1024)
+	val := 42
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+		for i := 0; i < b.N; i++ {
+			for !buf.Push(&val) {
+			}
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		for i := 0; i < b.N; i++ {
+			for buf.Pop() == nil {
+			}
+		}
+	}()
+
+	wg.Wait()
+}
+
+func BenchmarkSPSCRingBuffer_Concurrent_Cap64(b *testing.B) {
+	buf := ringbuf.NewSPSCRingBuffer[int](64)
+	val := 42
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+		for i := 0; i < b.N; i++ {
+			for !buf.Push(&val) {
+			}
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		for i := 0; i < b.N; i++ {
+			for buf.Pop() == nil {
+			}
+		}
+	}()
+
+	wg.Wait()
+}
+
+func BenchmarkSPSCRingBuffer_Concurrent_Cap65536(b *testing.B) {
+	buf := ringbuf.NewSPSCRingBuffer[int](65536)
+	val := 42
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+		for i := 0; i < b.N; i++ {
+			for !buf.Push(&val) {
+			}
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		for i := 0; i < b.N; i++ {
+			for buf.Pop() == nil {
+			}
+		}
+	}()
+
+	wg.Wait()
 }

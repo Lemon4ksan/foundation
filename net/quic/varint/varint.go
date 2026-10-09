@@ -29,8 +29,8 @@ var (
 	ErrInvalidTag = errors.New("quic/varint: invalid varint tag")
 )
 
-// EncodeVarintSlice encodes v into b using QUIC variable-length integer encoding (RFC 9000 Section 16).
-func EncodeVarintSlice(v uint64, b []byte) int {
+// EncodeSlice encodes v into b using QUIC variable-length integer encoding (RFC 9000 Section 16).
+func EncodeSlice(v uint64, b []byte) int {
 	switch {
 	case v < 1<<6:
 		b[0] = byte(v)
@@ -49,8 +49,8 @@ func EncodeVarintSlice(v uint64, b []byte) int {
 	}
 }
 
-// EncodeVarint encodes val as a QUIC-style variable length integer.
-func EncodeVarint(val uint64) []byte {
+// Encode encodes val as a QUIC-style variable length integer.
+func Encode(val uint64) []byte {
 	switch {
 	case val <= 63:
 		return []byte{byte(val)}
@@ -75,8 +75,8 @@ func EncodeVarint(val uint64) []byte {
 	}
 }
 
-// DecodeVarint decodes a QUIC-style variable length integer from payload.
-func DecodeVarint(payload []byte) (val uint64, readLen int, err error) {
+// Decode decodes a QUIC-style variable length integer from payload.
+func Decode(payload []byte) (val uint64, readLen int, err error) {
 	if len(payload) == 0 {
 		return 0, 0, ErrTruncated
 	}
@@ -118,7 +118,7 @@ func DecodeVarint(payload []byte) (val uint64, readLen int, err error) {
 func DecodeSeq(payload []byte) iter.Seq2[uint64, int] {
 	return func(yield func(uint64, int) bool) {
 		for len(payload) > 0 {
-			val, n, err := DecodeVarint(payload)
+			val, n, err := Decode(payload)
 			if err != nil {
 				return
 			}
@@ -135,7 +135,7 @@ func DecodeSeq(payload []byte) iter.Seq2[uint64, int] {
 func Values(payload []byte) iter.Seq[uint64] {
 	return func(yield func(uint64) bool) {
 		for len(payload) > 0 {
-			val, n, err := DecodeVarint(payload)
+			val, n, err := Decode(payload)
 			if err != nil {
 				return
 			}

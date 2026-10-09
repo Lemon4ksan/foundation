@@ -287,11 +287,11 @@ func (h *connIDManager) SetHandshakeComplete() {
 	h.handshakeComplete = true
 }
 
-// GetConnIDForPath retrieves a connection ID for a new path (i.e. not the active one).
+// ConnIDForPath retrieves a connection ID for a new path (i.e. not the active one).
 // Once a connection ID is allocated for a path, it cannot be used for a different path.
 // When called with the same pathID, it will return the same connection ID,
 // unless the peer requested that this connection ID be retired.
-func (h *connIDManager) GetConnIDForPath(id pathID) (protocol.ConnectionID, bool) {
+func (h *connIDManager) ConnIDForPath(id pathID) (protocol.ConnectionID, bool) {
 	h.assertNotClosed()
 	// if we're using zero-length connection IDs, we don't need to change the connection ID
 	if h.activeConnectionID.Len() == 0 {

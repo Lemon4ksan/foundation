@@ -7,9 +7,15 @@ package pool
 import (
 	"runtime"
 	"sync/atomic"
+	_ "unsafe"
 
 	"golang.org/x/sys/cpu"
 )
+
+// fastrand returns a lock-free pseudo-random 32-bit integer provided by the Go runtime.
+//
+//go:linkname fastrand runtime.fastrand
+func fastrand() uint32
 
 const shardCapacity = 32
 
@@ -25,7 +31,6 @@ type bufferShard[T any] struct {
 type PerCorePool[T any] struct {
 	shards  []bufferShard[T]
 	mask    uint64
-	cursor  atomic.Uint64
 	factory func() T
 }
 
@@ -63,7 +68,7 @@ func NewPerCorePool[T any](factory func() T) *PerCorePool[T] {
 // Get retrieves an item from a local CPU shard, falling back to scanning other shards before allocating.
 func (p *PerCorePool[T]) Get() T {
 	numShards := uint64(len(p.shards))
-	startIdx := p.cursor.Add(1) & p.mask
+	startIdx := uint64(fastrand()) & p.mask
 
 	for i := range numShards {
 		idx := (startIdx + i) & p.mask
@@ -104,7 +109,7 @@ func (p *PerCorePool[T]) Get() T {
 // Put recycles an item back into a local CPU shard, placing it in the first non-full shard.
 func (p *PerCorePool[T]) Put(item T) {
 	numShards := uint64(len(p.shards))
-	startIdx := p.cursor.Add(1) & p.mask
+	startIdx := uint64(fastrand()) & p.mask
 
 	for i := range numShards {
 		idx := (startIdx + i) & p.mask

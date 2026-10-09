@@ -347,3 +347,20 @@ func BenchmarkMultiplyGF2P8Vector_1KB(b *testing.B) {
 		gfni.MultiplyGF2P8Vector(dst, src, scalar)
 	}
 }
+
+func TestGFNIFallback_OperatesWithoutHardwareSupport(t *testing.T) {
+	t.Parallel()
+
+	// Verify that the software fallback operates safely without issuing
+	// hardware instructions or triggering SIGILL on any host.
+	src := []byte{0x00, 0x01, 0x02, 0x57, 0x83, 0xff}
+	dst := make([]byte, len(src))
+	scalar := byte(0x13)
+
+	gfni.MultiplyGF2P8Vector(dst, src, scalar)
+
+	for i, v := range src {
+		expected := gfni.MultiplyGF2P8(v, scalar)
+		require.Equal(t, expected, dst[i])
+	}
+}

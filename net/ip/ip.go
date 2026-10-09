@@ -85,23 +85,23 @@ func extractIP(addr net.Addr) net.IP {
 	}
 }
 
-// SourceIPRotator maintains a pool of local IP addresses and cycles through them for socket binding.
-// The pool slice is stored in an [atomic.Pointer] using Copy-On-Write semantics, making [SourceIPRotator.Next]
-// and [SourceIPRotator.NextForFamily] completely lock-free under parallel execution.
-type SourceIPRotator struct {
+// SourceRotator maintains a pool of local IP addresses and cycles through them for socket binding.
+// The pool slice is stored in an [atomic.Pointer] using Copy-On-Write semantics, making [SourceRotator.Next]
+// and [SourceRotator.NextForFamily] completely lock-free under parallel execution.
+type SourceRotator struct {
 	ips atomic.Pointer[[]net.IP]
 	idx atomic.Uint64
 	mu  sync.Mutex // serializes UpdatePool
 }
 
-// NewSourceIPRotator instantiates a [SourceIPRotator] with parsed local network addresses.
-func NewSourceIPRotator(addrs []string) (*SourceIPRotator, error) {
+// NewSourceRotator instantiates a [SourceRotator] with parsed local network addresses.
+func NewSourceRotator(addrs []string) (*SourceRotator, error) {
 	ips, err := parseIPs(addrs)
 	if err != nil {
 		return nil, err
 	}
 
-	r := &SourceIPRotator{}
+	r := &SourceRotator{}
 	r.ips.Store(&ips)
 
 	return r, nil
@@ -109,7 +109,7 @@ func NewSourceIPRotator(addrs []string) (*SourceIPRotator, error) {
 
 // Next returns the next local IP address using round-robin rotation.
 // Lock-free and contention-free under parallel execution.
-func (r *SourceIPRotator) Next() net.IP {
+func (r *SourceRotator) Next() net.IP {
 	ipsPtr := r.ips.Load()
 	if ipsPtr == nil {
 		return nil
@@ -128,7 +128,7 @@ func (r *SourceIPRotator) Next() net.IP {
 }
 
 // NextOK returns the next local IP address and true, or nil and false if the pool is empty.
-func (r *SourceIPRotator) NextOK() (net.IP, bool) {
+func (r *SourceRotator) NextOK() (net.IP, bool) {
 	ip := r.Next()
 	if ip == nil {
 		return nil, false
@@ -139,7 +139,7 @@ func (r *SourceIPRotator) NextOK() (net.IP, bool) {
 
 // NextForFamily selects the next local IP matching the specified address family (IPv4 if isIPv4 is true, IPv6 otherwise).
 // Lock-free and contention-free under parallel execution.
-func (r *SourceIPRotator) NextForFamily(isIPv4 bool) net.IP {
+func (r *SourceRotator) NextForFamily(isIPv4 bool) net.IP {
 	ipsPtr := r.ips.Load()
 	if ipsPtr == nil {
 		return nil
@@ -166,7 +166,7 @@ func (r *SourceIPRotator) NextForFamily(isIPv4 bool) net.IP {
 }
 
 // UpdatePool dynamically replaces active IP pool addresses and resets rotation state to zero.
-func (r *SourceIPRotator) UpdatePool(addrs []string) error {
+func (r *SourceRotator) UpdatePool(addrs []string) error {
 	ips, err := parseIPs(addrs)
 	if err != nil {
 		return err
@@ -182,7 +182,7 @@ func (r *SourceIPRotator) UpdatePool(addrs []string) error {
 }
 
 // Size returns the count of IP addresses currently registered in the pool.
-func (r *SourceIPRotator) Size() int {
+func (r *SourceRotator) Size() int {
 	ipsPtr := r.ips.Load()
 	if ipsPtr == nil {
 		return 0
@@ -192,7 +192,7 @@ func (r *SourceIPRotator) Size() int {
 }
 
 // IPs returns a copy of all IP addresses in the current pool.
-func (r *SourceIPRotator) IPs() []net.IP {
+func (r *SourceRotator) IPs() []net.IP {
 	ipsPtr := r.ips.Load()
 	if ipsPtr == nil {
 		return nil
@@ -224,23 +224,23 @@ func parseIPs(addrs []string) ([]net.IP, error) {
 	return ips, nil
 }
 
-// IPv6SubnetRotator generates cryptographically random or fast pseudo-random IPv6 addresses from a CIDR subnet prefix.
-type IPv6SubnetRotator struct {
+// SubnetRotator generates cryptographically random or fast pseudo-random IPv6 addresses from a CIDR subnet prefix.
+type SubnetRotator struct {
 	prefix netip.Prefix
 }
 
-// NewIPv6SubnetRotator instantiates an [IPv6SubnetRotator] for the target CIDR prefix.
-func NewIPv6SubnetRotator(cidr string) (*IPv6SubnetRotator, error) {
+// NewSubnetRotator instantiates a [SubnetRotator] for the target CIDR prefix.
+func NewSubnetRotator(cidr string) (*SubnetRotator, error) {
 	prefix, err := netip.ParsePrefix(cidr)
 	if err != nil || !prefix.Addr().Is6() {
 		return nil, ErrInvalidCIDR
 	}
 
-	return &IPv6SubnetRotator{prefix: prefix}, nil
+	return &SubnetRotator{prefix: prefix}, nil
 }
 
 // Next generates a new cryptographically random IPv6 address inside the configured prefix range.
-func (r *IPv6SubnetRotator) Next() net.IP {
+func (r *SubnetRotator) Next() net.IP {
 	bits := r.prefix.Bits()
 	addrBytes := r.prefix.Addr().As16()
 
@@ -268,7 +268,7 @@ func (r *IPv6SubnetRotator) Next() net.IP {
 }
 
 // NextFast generates a new high-throughput pseudo-random IPv6 address using math/rand/v2 (lock-free).
-func (r *IPv6SubnetRotator) NextFast() net.IP {
+func (r *SubnetRotator) NextFast() net.IP {
 	bits := r.prefix.Bits()
 	addrBytes := r.prefix.Addr().As16()
 

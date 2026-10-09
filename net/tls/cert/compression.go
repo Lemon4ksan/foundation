@@ -30,18 +30,10 @@ const (
 	CertCompressionReserved CompressionAlgorithm = 0
 	// CertCompressionZlib specifies the zlib certificate compression algorithm (RFC 8879 §7.3 & RFC 1950).
 	CertCompressionZlib CompressionAlgorithm = 1
-	// CompressionZlib is an alias for [CertCompressionZlib].
-	CompressionZlib = CertCompressionZlib
-
 	// CertCompressionBrotli specifies the Brotli certificate compression algorithm (RFC 8879 §7.3 & RFC 7932).
 	CertCompressionBrotli CompressionAlgorithm = 2
-	// CompressionBrotli is an alias for [CertCompressionBrotli].
-	CompressionBrotli = CertCompressionBrotli
-
 	// CertCompressionZstd specifies the Zstandard certificate compression algorithm (RFC 8879 §7.3 & RFC 8478).
 	CertCompressionZstd CompressionAlgorithm = 3
-	// CompressionZstd is an alias for [CertCompressionZstd].
-	CompressionZstd = CertCompressionZstd
 )
 
 // String returns the standard name of the certificate compression algorithm (RFC 8879 §7.3).

@@ -1,18 +1,20 @@
 // Copyright (c) 2026 Lemon4ksan All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
+
 package ringbuf
 
 import (
 	"iter"
 	"sync/atomic"
+	"unsafe"
 
 	"golang.org/x/sys/cpu"
 )
 
 type cell[T any] struct {
 	sequence atomic.Uint64
-	data     atomic.Pointer[T]
+	data     unsafe.Pointer
 }
 
 // Buffer is a lock-free power-of-two capacity MPMC queue.
@@ -65,7 +67,7 @@ func (r *Buffer[T]) Push(item *T) bool {
 		switch {
 		case dif == 0:
 			if r.enqueuePos.CompareAndSwap(pos, pos+1) {
-				c.data.Store(item)
+				atomic.StorePointer(&c.data, unsafe.Pointer(item))
 				c.sequence.Store(pos + 1)
 
 				return true
@@ -91,10 +93,11 @@ func (r *Buffer[T]) Pop() *T {
 		switch {
 		case dif == 0:
 			if r.dequeuePos.CompareAndSwap(pos, pos+1) {
-				item := c.data.Swap(nil)
+				ptr := atomic.LoadPointer(&c.data)
+				atomic.StorePointer(&c.data, nil)
 				c.sequence.Store(pos + r.mask + 1)
 
-				return item
+				return (*T)(ptr)
 			}
 
 		case dif < 0:
@@ -103,18 +106,6 @@ func (r *Buffer[T]) Pop() *T {
 			pos = r.dequeuePos.Load()
 		}
 	}
-}
-
-// Len returns approximate current element count.
-func (r *Buffer[T]) Len() int {
-	head := r.enqueuePos.Load()
-	tail := r.dequeuePos.Load()
-
-	if head < tail {
-		return 0
-	}
-
-	return int(head - tail)
 }
 
 // Drain pops and yields all buffered items in FIFO order until the buffer is empty.

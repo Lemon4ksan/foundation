@@ -53,6 +53,54 @@ func BenchmarkPerCorePool_GetPut_Parallel(b *testing.B) {
 	})
 }
 
+func BenchmarkPerCorePool_HighConcurrency_Contention(b *testing.B) {
+	storage := pool.NewPerCorePool(func() *[64]byte {
+		var buf [64]byte
+		return &buf
+	})
+
+	for range 256 {
+		storage.Put(&[64]byte{})
+	}
+
+	b.SetParallelism(64)
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			obj := storage.Get()
+			if obj != nil {
+				storage.Put(obj)
+			}
+		}
+	})
+}
+
+func BenchmarkPerCorePool_Contention_Burst128(b *testing.B) {
+	storage := pool.NewPerCorePool(func() *[64]byte {
+		var buf [64]byte
+		return &buf
+	})
+
+	for range 256 {
+		storage.Put(&[64]byte{})
+	}
+
+	b.SetParallelism(128)
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			obj := storage.Get()
+			if obj != nil {
+				storage.Put(obj)
+			}
+		}
+	})
+}
+
 func BenchmarkRequestArena_AllocReset(b *testing.B) {
 	arena := pool.AcquireRequestArena()
 	defer pool.ReleaseRequestArena(arena)

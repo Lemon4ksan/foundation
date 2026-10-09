@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Lemon4ksan All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
+
 package randkit
 
 import (
@@ -318,7 +319,8 @@ func (r *RNG) Perm(n int) []int {
 	}
 
 	m := make([]int, n)
-	for i := range m {
+	m[0] = 0
+	for i := 1; i < n; i++ {
 		j := int(r.Uint32n(uint32(i + 1)))
 		m[i] = m[j]
 		m[j] = i

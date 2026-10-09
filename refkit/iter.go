@@ -7,6 +7,7 @@ package refkit
 import (
 	"iter"
 	"reflect"
+	"slices"
 	"sync"
 )
 
@@ -16,14 +17,14 @@ var (
 )
 
 func init() {
-	for i := 0; i < 16; i++ {
-		for j := 0; j < 16; j++ {
+	for i := range 16 {
+		for j := range 16 {
 			staticIndex2[i][j] = []int{i, j}
 		}
 	}
-	for i := 0; i < 8; i++ {
-		for j := 0; j < 8; j++ {
-			for k := 0; k < 8; k++ {
+	for i := range 8 {
+		for j := range 8 {
+			for k := range 8 {
 				staticIndex3[i][j][k] = []int{i, j, k}
 			}
 		}
@@ -51,43 +52,28 @@ func newWalker() *visibleWalker {
 	}
 }
 
-var walkerCache struct {
-	mu      sync.Mutex
-	walkers []*visibleWalker
+var walkerPool = sync.Pool{
+	New: func() any {
+		return newWalker()
+	},
 }
 
 func getWalker() *visibleWalker {
-	walkerCache.mu.Lock()
-	n := len(walkerCache.walkers)
-	if n > 0 {
-		w := walkerCache.walkers[n-1]
-		walkerCache.walkers = walkerCache.walkers[:n-1]
-		walkerCache.mu.Unlock()
-		return w
-	}
-	walkerCache.mu.Unlock()
-	return newWalker()
+	return walkerPool.Get().(*visibleWalker)
 }
 
 func putWalker(w *visibleWalker) {
+	clear(w.fields)
+	clear(w.visiting)
 	w.entries = w.entries[:0]
 	w.visiting = w.visiting[:0]
 	w.fields = w.fields[:0]
 	w.index = w.index[:0]
-	walkerCache.mu.Lock()
-	if len(walkerCache.walkers) < 32 {
-		walkerCache.walkers = append(walkerCache.walkers, w)
-	}
-	walkerCache.mu.Unlock()
+	walkerPool.Put(w)
 }
 
 func (w *visibleWalker) isVisiting(t reflect.Type) bool {
-	for _, v := range w.visiting {
-		if v == t {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(w.visiting, t)
 }
 
 func (w *visibleWalker) findEntry(name string) (int, int, bool) {
@@ -105,7 +91,7 @@ func (w *visibleWalker) walk(t reflect.Type) {
 	}
 	w.visiting = append(w.visiting, t)
 	num := t.NumField()
-	for i := 0; i < num; i++ {
+	for i := range num {
 		f := t.Field(i)
 		w.index = append(w.index, i)
 		add := true
@@ -150,6 +136,7 @@ func (w *visibleWalker) walk(t reflect.Type) {
 		}
 		w.index = w.index[:len(w.index)-1]
 	}
+	w.visiting[len(w.visiting)-1] = nil
 	w.visiting = w.visiting[:len(w.visiting)-1]
 }
 
@@ -175,7 +162,7 @@ func VisibleFields(t reflect.Type) iter.Seq[reflect.StructField] {
 
 		hasAnonymous := false
 		n := target.NumField()
-		for i := 0; i < n; i++ {
+		for i := range n {
 			if target.Field(i).Anonymous {
 				hasAnonymous = true
 				break

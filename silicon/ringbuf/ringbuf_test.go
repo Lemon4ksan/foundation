@@ -6,6 +6,7 @@ package ringbuf_test
 
 import (
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/lemon4ksan/foundation/silicon/ringbuf"
@@ -54,7 +55,7 @@ func TestRingBuffer_Drain(t *testing.T) {
 		drained = append(drained, *ptr)
 	}
 	assert.Equal(t, []int{3, 4, 5}, drained)
-	assert.Equal(t, 0, rb.Len())
+	assert.Nil(t, rb.Pop())
 }
 
 func TestRingBufferConcurrent(t *testing.T) {
@@ -81,7 +82,14 @@ func TestRingBufferConcurrent(t *testing.T) {
 	}
 
 	wg.Wait()
-	assert.Equal(t, numProducers*itemsPerProducer, rb.Len())
+
+	count := 0
+	for ptr := range rb.Drain() {
+		count++
+		_ = ptr
+	}
+	assert.Equal(t, numProducers*itemsPerProducer, count)
+	assert.Nil(t, rb.Pop())
 }
 
 func TestRingBufferConcurrentProduceConsume(t *testing.T) {
@@ -91,8 +99,7 @@ func TestRingBufferConcurrentProduceConsume(t *testing.T) {
 
 	numProducers := 8
 	itemsPerProducer := 1000
-
-	doneProducing := make(chan struct{})
+	totalItems := int64(numProducers * itemsPerProducer)
 
 	for i := range numProducers {
 		producerWg.Add(1)
@@ -109,33 +116,26 @@ func TestRingBufferConcurrentProduceConsume(t *testing.T) {
 		}(i)
 	}
 
-	go func() {
-		producerWg.Wait()
-		close(doneProducing)
-	}()
-
 	var consumeWg sync.WaitGroup
+	var consumed atomic.Int64
 
 	for range 4 {
 		consumeWg.Go(func() {
-			for {
+			for consumed.Load() < totalItems {
 				item := rb.Pop()
 				if item != nil {
 					_ = *item
-				} else {
-					select {
-					case <-doneProducing:
-						if rb.Len() == 0 {
-							return
-						}
-					default:
-					}
+					consumed.Add(1)
 				}
 			}
 		})
 	}
 
+	producerWg.Wait()
 	consumeWg.Wait()
+
+	assert.Equal(t, totalItems, consumed.Load())
+	assert.Nil(t, rb.Pop())
 }
 
 func TestRingBuffer_EdgeCases(t *testing.T) {

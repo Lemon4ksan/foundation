@@ -57,10 +57,7 @@ func (b *Set) ensureWords(needed int) {
 		clear(b.words[oldLen:needed])
 		return
 	}
-	newCap := cap(b.words) * 2
-	if newCap < needed {
-		newCap = needed
-	}
+	newCap := max(cap(b.words)*2, needed)
 	newWords := make([]uint64, needed, newCap)
 	copy(newWords, b.words)
 	b.words = newWords
@@ -109,10 +106,10 @@ func FromBytes(b []byte, nbits int) *Set {
 	}
 	bs := New(nbits)
 	nBytes := min(len(b), (nbits+7)/8)
-	for i := 0; i < nBytes; i++ {
+	for i, byteVal := range b[:nBytes] {
 		wIdx := i >> 3
 		bOffset := (i & 7) * 8
-		bs.words[wIdx] |= uint64(b[i]) << bOffset
+		bs.words[wIdx] |= uint64(byteVal) << bOffset
 	}
 	bs.cleanTrailing()
 	return bs
@@ -146,7 +143,7 @@ func (b *Set) Count() int {
 	}
 	cnt := 0
 	n := numWords(b.length)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		cnt += bits.OnesCount64(b.words[i])
 	}
 	return cnt
@@ -158,7 +155,7 @@ func (b *Set) Any() bool {
 		return false
 	}
 	n := numWords(b.length)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		if b.words[i] != 0 {
 			return true
 		}
@@ -178,7 +175,7 @@ func (b *Set) AllSet() bool {
 		return true
 	}
 	fullWords := b.length >> wordShift
-	for i := 0; i < fullWords; i++ {
+	for i := range fullWords {
 		if b.words[i] != ^uint64(0) {
 			return false
 		}
@@ -286,7 +283,7 @@ func (b *Set) SetAll() *Set {
 		return b
 	}
 	n := numWords(b.length)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		b.words[i] = ^uint64(0)
 	}
 	b.cleanTrailing()
@@ -308,7 +305,7 @@ func (b *Set) Not() *Set {
 		return b
 	}
 	n := numWords(b.length)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		b.words[i] = ^b.words[i]
 	}
 	b.cleanTrailing()
@@ -419,7 +416,7 @@ func (b *Set) And(other *Set) *Set {
 		return b
 	}
 	common := min(numWords(b.length), numWords(other.length))
-	for i := 0; i < common; i++ {
+	for i := range common {
 		b.words[i] &= other.words[i]
 	}
 	n := numWords(b.length)
@@ -444,7 +441,7 @@ func (b *Set) Or(other *Set) *Set {
 		b.length = other.length
 	}
 	common := min(numWords(b.length), numWords(other.length))
-	for i := 0; i < common; i++ {
+	for i := range common {
 		b.words[i] |= other.words[i]
 	}
 	b.cleanTrailing()
@@ -468,7 +465,7 @@ func (b *Set) Xor(other *Set) *Set {
 		b.length = other.length
 	}
 	common := min(numWords(b.length), numWords(other.length))
-	for i := 0; i < common; i++ {
+	for i := range common {
 		b.words[i] ^= other.words[i]
 	}
 	b.cleanTrailing()
@@ -487,7 +484,7 @@ func (b *Set) AndNot(other *Set) *Set {
 		return b.ClearAll()
 	}
 	common := min(numWords(b.length), numWords(other.length))
-	for i := 0; i < common; i++ {
+	for i := range common {
 		b.words[i] &^= other.words[i]
 	}
 	b.cleanTrailing()
@@ -502,7 +499,7 @@ func (b *Set) Bits() iter.Seq[int] {
 			return
 		}
 		n := numWords(b.length)
-		for i := 0; i < n; i++ {
+		for i := range n {
 			w := b.words[i]
 			base := i << wordShift
 			for w != 0 {

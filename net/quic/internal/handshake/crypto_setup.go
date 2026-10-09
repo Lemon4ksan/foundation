@@ -383,10 +383,10 @@ func (h *cryptoSetup) getDataForSessionTicket() []byte {
 	}).Marshal()
 }
 
-// GetSessionTicket generates a new session ticket.
+// SessionTicket generates a new session ticket.
 // Due to limitations in crypto/tls, it's only possible to generate a single session ticket per connection.
 // It is only valid for the server.
-func (h *cryptoSetup) GetSessionTicket() ([]byte, error) {
+func (h *cryptoSetup) SessionTicket() ([]byte, error) {
 	if err := h.conn.SendSessionTicket(tls.QUICSessionTicketOptions{
 		EarlyData: h.allow0RTT,
 		Extra:     [][]byte{addSessionStateExtraPrefix(h.getDataForSessionTicket())},
@@ -605,7 +605,7 @@ func (h *cryptoSetup) SetHandshakeConfirmed() {
 	}
 }
 
-func (h *cryptoSetup) GetInitialSealer() (LongHeaderSealer, error) {
+func (h *cryptoSetup) InitialSealer() (LongHeaderSealer, error) {
 	if h.initialSealer == nil {
 		return nil, ErrKeysDropped
 	}
@@ -613,7 +613,7 @@ func (h *cryptoSetup) GetInitialSealer() (LongHeaderSealer, error) {
 	return h.initialSealer, nil
 }
 
-func (h *cryptoSetup) Get0RTTSealer() (LongHeaderSealer, error) {
+func (h *cryptoSetup) ZeroRTTSealer() (LongHeaderSealer, error) {
 	if h.zeroRTTSealer == nil {
 		return nil, ErrKeysDropped
 	}
@@ -621,7 +621,7 @@ func (h *cryptoSetup) Get0RTTSealer() (LongHeaderSealer, error) {
 	return h.zeroRTTSealer, nil
 }
 
-func (h *cryptoSetup) GetHandshakeSealer() (LongHeaderSealer, error) {
+func (h *cryptoSetup) HandshakeSealer() (LongHeaderSealer, error) {
 	if h.handshakeSealer == nil {
 		if h.initialSealer == nil {
 			return nil, ErrKeysDropped
@@ -633,7 +633,7 @@ func (h *cryptoSetup) GetHandshakeSealer() (LongHeaderSealer, error) {
 	return h.handshakeSealer, nil
 }
 
-func (h *cryptoSetup) Get1RTTSealer() (ShortHeaderSealer, error) {
+func (h *cryptoSetup) OneRTTSealer() (ShortHeaderSealer, error) {
 	if !h.has1RTTSealer {
 		return nil, ErrKeysNotYetAvailable
 	}
@@ -641,7 +641,7 @@ func (h *cryptoSetup) Get1RTTSealer() (ShortHeaderSealer, error) {
 	return h.aead, nil
 }
 
-func (h *cryptoSetup) GetInitialOpener() (LongHeaderOpener, error) {
+func (h *cryptoSetup) InitialOpener() (LongHeaderOpener, error) {
 	if h.initialOpener == nil {
 		return nil, ErrKeysDropped
 	}
@@ -649,7 +649,7 @@ func (h *cryptoSetup) GetInitialOpener() (LongHeaderOpener, error) {
 	return h.initialOpener, nil
 }
 
-func (h *cryptoSetup) Get0RTTOpener() (LongHeaderOpener, error) {
+func (h *cryptoSetup) ZeroRTTOpener() (LongHeaderOpener, error) {
 	if h.zeroRTTOpener == nil {
 		if h.initialOpener != nil {
 			return nil, ErrKeysNotYetAvailable
@@ -662,7 +662,7 @@ func (h *cryptoSetup) Get0RTTOpener() (LongHeaderOpener, error) {
 	return h.zeroRTTOpener, nil
 }
 
-func (h *cryptoSetup) GetHandshakeOpener() (LongHeaderOpener, error) {
+func (h *cryptoSetup) HandshakeOpener() (LongHeaderOpener, error) {
 	if h.handshakeOpener == nil {
 		if h.initialOpener != nil {
 			return nil, ErrKeysNotYetAvailable
@@ -675,7 +675,7 @@ func (h *cryptoSetup) GetHandshakeOpener() (LongHeaderOpener, error) {
 	return h.handshakeOpener, nil
 }
 
-func (h *cryptoSetup) Get1RTTOpener() (ShortHeaderOpener, error) {
+func (h *cryptoSetup) OneRTTOpener() (ShortHeaderOpener, error) {
 	if h.zeroRTTOpener != nil && time.Since(h.handshakeCompleteTime) > 3*h.rttStats.PTO(true) {
 		h.zeroRTTOpener = nil
 		h.logger.Debugf("Dropping 0-RTT keys.")

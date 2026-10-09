@@ -128,7 +128,7 @@ type CryptoSetup interface {
 	StartHandshake(context.Context) error
 	io.Closer
 	ChangeConnectionID(protocol.ConnectionID)
-	GetSessionTicket() ([]byte, error)
+	SessionTicket() ([]byte, error)
 
 	HandleMessage([]byte, protocol.EncryptionLevel) error
 	NextEvent() Event
@@ -138,13 +138,13 @@ type CryptoSetup interface {
 	SetHandshakeConfirmed()
 	ConnectionState() ConnectionState
 
-	GetInitialOpener() (LongHeaderOpener, error)
-	GetHandshakeOpener() (LongHeaderOpener, error)
-	Get0RTTOpener() (LongHeaderOpener, error)
-	Get1RTTOpener() (ShortHeaderOpener, error)
+	InitialOpener() (LongHeaderOpener, error)
+	HandshakeOpener() (LongHeaderOpener, error)
+	ZeroRTTOpener() (LongHeaderOpener, error)
+	OneRTTOpener() (ShortHeaderOpener, error)
 
-	GetInitialSealer() (LongHeaderSealer, error)
-	GetHandshakeSealer() (LongHeaderSealer, error)
-	Get0RTTSealer() (LongHeaderSealer, error)
-	Get1RTTSealer() (ShortHeaderSealer, error)
+	InitialSealer() (LongHeaderSealer, error)
+	HandshakeSealer() (LongHeaderSealer, error)
+	ZeroRTTSealer() (LongHeaderSealer, error)
+	OneRTTSealer() (ShortHeaderSealer, error)
 }

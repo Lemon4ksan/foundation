@@ -68,8 +68,8 @@ func (s *baseCryptoStream) HandleCryptoFrame(f *wire.CryptoFrame) error {
 	return s.queue.Push(f.Data, f.Offset, nil)
 }
 
-// GetCryptoData retrieves data that was received in CRYPTO frames
-func (s *baseCryptoStream) GetCryptoData() []byte {
+// CryptoData retrieves data that was received in CRYPTO frames
+func (s *baseCryptoStream) CryptoData() []byte {
 	_, data, _ := s.queue.Pop()
 	return data
 }

@@ -5,6 +5,8 @@
 package bytesconv
 
 import (
+	"bytes"
+	"encoding/binary"
 	"slices"
 	"unsafe"
 )
@@ -166,33 +168,85 @@ func TrimQuotes(b []byte) []byte {
 	return b
 }
 
+// primeRK is the prime base used in the Rabin-Karp algorithm.
+const primeRK = 16777619
+
+// hashStrFold returns the hash and primeRK^len(s) for Rabin-Karp case-insensitive search.
+func hashStrFold(s string) (uint32, uint32) {
+	_ = toLowerTable[255]
+	var hash uint32
+	for i := range len(s) {
+		hash = hash*primeRK + uint32(toLowerTable[s[i]])
+	}
+	var pow, sq uint32 = 1, primeRK
+	for i := len(s); i > 0; i >>= 1 {
+		if i&1 != 0 {
+			pow *= sq
+		}
+		sq *= sq
+	}
+	return hash, pow
+}
+
+func matchFold(src []byte, target string) bool {
+	_ = toLowerTable[255]
+	for j := range len(target) {
+		if toLowerTable[src[j]] != toLowerTable[target[j]] {
+			return false
+		}
+	}
+	return true
+}
+
 // ContainsFoldASCII reports whether ASCII substring target is present in src case-insensitively with zero heap allocations.
+// It uses SIMD-accelerated byte lookup for short patterns and case-folded Rabin-Karp rolling hashing for O(N) worst-case search.
 //
 //go:inline
 func ContainsFoldASCII(src []byte, target string) bool {
 	n := len(src)
-
 	m := len(target)
 	if m == 0 {
 		return true
 	}
-
 	if n < m {
 		return false
+	}
+	if n == m {
+		return EqualFoldASCII(B2S(src), target)
 	}
 
 	_ = toLowerTable[255]
 
-	for i := 0; i <= n-m; i++ {
-		match := true
-		for j := range m {
-			if toLowerTable[src[i+j]] != toLowerTable[target[j]] {
-				match = false
-				break
-			}
+	if m == 1 {
+		c := toLowerTable[target[0]]
+		if c >= 'a' && c <= 'z' {
+			return bytes.IndexByte(src, c) != -1 || bytes.IndexByte(src, c-32) != -1
 		}
+		return bytes.IndexByte(src, c) != -1
+	}
 
-		if match {
+	c0 := toLowerTable[target[0]]
+	if c0 >= 'a' && c0 <= 'z' {
+		if bytes.IndexByte(src, c0) == -1 && bytes.IndexByte(src, c0-32) == -1 {
+			return false
+		}
+	} else if bytes.IndexByte(src, c0) == -1 {
+		return false
+	}
+
+	hashTarget, pow := hashStrFold(target)
+
+	var h uint32
+	for i := range m {
+		h = h*primeRK + uint32(toLowerTable[src[i]])
+	}
+	if h == hashTarget && matchFold(src[:m], target) {
+		return true
+	}
+
+	for i := m; i < n; i++ {
+		h = h*primeRK + uint32(toLowerTable[src[i]]) - uint32(toLowerTable[src[i-m]])*pow
+		if h == hashTarget && matchFold(src[i-m+1:i+1], target) {
 			return true
 		}
 	}
@@ -239,7 +293,7 @@ func FastHash64(b []byte) uint64 {
 	i := 0
 
 	for i+8 <= n {
-		word := *(*uint64)(unsafe.Pointer(&b[i]))
+		word := binary.LittleEndian.Uint64(b[i:])
 		h = (h ^ word) * 1099511628211
 		i += 8
 	}

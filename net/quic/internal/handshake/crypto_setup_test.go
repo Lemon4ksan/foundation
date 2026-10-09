@@ -166,7 +166,7 @@ func handshake(
 				}
 			case EventHandshakeComplete:
 				serverHandshakeComplete = true
-				ticket, err := server.GetSessionTicket()
+				ticket, err := server.SessionTicket()
 				require.NoError(t, err)
 
 				if ticket != nil {

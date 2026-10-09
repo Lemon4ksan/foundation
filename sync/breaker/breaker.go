@@ -13,7 +13,7 @@ import (
 
 // ErrOpen is returned immediately when [Breaker.Do] is invoked
 // while the circuit breaker is in the StateOpen or blocked StateHalfOpen state.
-var ErrOpen = errors.New("circuit breaker is open")
+var ErrOpen = errors.New("breaker: circuit breaker is open")
 
 // State represents the operational state of a [Breaker].
 type State int

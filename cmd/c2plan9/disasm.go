@@ -7,6 +7,7 @@ package main
 import (
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 
 	"golang.org/x/arch/x86/x86asm"
@@ -47,7 +48,7 @@ func DisassembleAMD64(code []byte, baseOffset uint64, relocs []Relocation) (Disa
 			continue
 		}
 
-		if offset+3 <= n && code[offset] == 0xC5 && code[offset+1] == 0xF8 && code[offset+2] == 0x77 {
+		if isVZeroUpper(code, offset) {
 			inst.Len = 3
 		}
 
@@ -94,7 +95,7 @@ func DisassembleAMD64(code []byte, baseOffset uint64, relocs []Relocation) (Disa
 		}
 
 		// Fix x86asm decoder bug: VZEROUPPER (C5 F8 77) has no ModR/M byte (length is always 3)
-		if offset+3 <= n && code[offset] == 0xC5 && code[offset+1] == 0xF8 && code[offset+2] == 0x77 {
+		if isVZeroUpper(code, offset) {
 			inst.Len = 3
 		}
 
@@ -262,10 +263,27 @@ func DisassembleAMD64(code []byte, baseOffset uint64, relocs []Relocation) (Disa
 		// If stack alignment is present, ensure frame size accounts for alignment padding.
 		if inst.Op == x86asm.AND && (strings.HasPrefix(text, "ANDQ $-") || strings.HasPrefix(text, "ANDL $-")) &&
 			strings.HasSuffix(text, ", SP") {
-			if frameSize < 32 {
-				frameSize = 32
+			align := uint64(32)
+			numStr := strings.TrimSuffix(strings.TrimPrefix(strings.TrimPrefix(text, "ANDQ $-"), "ANDL $-"), ", SP")
+			if val, err := strconv.ParseUint(numStr, 10, 64); err == nil && val > 0 {
+				align = val
+			} else if len(inst.Args) >= 2 {
+				if imm, ok := inst.Args[1].(x86asm.Imm); ok {
+					if imm < 0 {
+						align = uint64(-imm)
+					} else if int32(imm) < 0 {
+						align = uint64(-int64(int32(imm)))
+					}
+				}
+			}
+			if align < 16 {
+				align = 16
+			}
+			mask := align - 1
+			if frameSize < align {
+				frameSize = align
 			} else {
-				frameSize = (frameSize + 31) &^ 31
+				frameSize = (frameSize + mask) &^ mask
 			}
 		}
 
@@ -329,16 +347,17 @@ func cleanPlan9Syntax(s string) string {
 	}
 
 	// Standardize stack alignment instructions to decimal imm (e.g. ANDQ $-0x20, SP -> ANDQ $-32, SP)
-	if strings.HasPrefix(s, "ANDQ $-0x") && strings.HasSuffix(s, ", SP") {
-		switch s {
-		case "ANDQ $-0x10, SP":
-			s = "ANDQ $-16, SP"
-		case "ANDQ $-0x20, SP":
-			s = "ANDQ $-32, SP"
-		case "ANDQ $-0x40, SP":
-			s = "ANDQ $-64, SP"
-		case "ANDQ $-0x80, SP":
-			s = "ANDQ $-128, SP"
+	if (strings.HasPrefix(s, "ANDQ $-0x") || strings.HasPrefix(s, "ANDL $-0x")) && strings.HasSuffix(s, ", SP") {
+		var op, hexStr string
+		if strings.HasPrefix(s, "ANDQ $-0x") {
+			op = "ANDQ"
+			hexStr = strings.TrimSuffix(strings.TrimPrefix(s, "ANDQ $-0x"), ", SP")
+		} else {
+			op = "ANDL"
+			hexStr = strings.TrimSuffix(strings.TrimPrefix(s, "ANDL $-0x"), ", SP")
+		}
+		if val, err := strconv.ParseUint(hexStr, 16, 64); err == nil {
+			s = fmt.Sprintf("%s $-%d, SP", op, val)
 		}
 	}
 
@@ -609,4 +628,13 @@ func replaceIPWithROData(text string, addend int64) string {
 		return op + strings.Join(args, ",")
 	}
 	return text
+}
+
+var vzeroupperSeq = []byte{0xC5, 0xF8, 0x77}
+
+func isVZeroUpper(code []byte, offset int) bool {
+	if offset+3 <= len(code) {
+		return slices.Equal(code[offset:offset+3], vzeroupperSeq)
+	}
+	return false
 }

@@ -29,21 +29,21 @@ func testRetransmissionQueueFrames(t *testing.T, encLevel protocol.EncryptionLev
 	q := newRetransmissionQueue()
 
 	require.False(t, q.HasData(encLevel))
-	require.Nil(t, q.GetFrame(encLevel, protocol.MaxByteCount, protocol.Version1))
+	require.Nil(t, q.Frame(encLevel, protocol.MaxByteCount, protocol.Version1))
 
 	ah := q.AckHandler(encLevel)
 	require.NotNil(t, ah)
 	ah.OnLost(&wire.PingFrame{})
 	require.True(t, q.HasData(encLevel))
-	require.Equal(t, &wire.PingFrame{}, q.GetFrame(encLevel, protocol.MaxByteCount, protocol.Version1))
+	require.Equal(t, &wire.PingFrame{}, q.Frame(encLevel, protocol.MaxByteCount, protocol.Version1))
 	require.False(t, q.HasData(encLevel))
-	require.Nil(t, q.GetFrame(encLevel, protocol.MaxByteCount, protocol.Version1))
+	require.Nil(t, q.Frame(encLevel, protocol.MaxByteCount, protocol.Version1))
 
 	f := &wire.PathChallengeFrame{Data: [8]byte{1, 2, 3, 4, 5, 6, 7, 8}}
 	ah.OnLost(f)
 	require.True(t, q.HasData(encLevel))
-	require.Nil(t, q.GetFrame(encLevel, f.Length(protocol.Version1)-1, protocol.Version1))
-	require.Equal(t, f, q.GetFrame(encLevel, f.Length(protocol.Version1), protocol.Version1))
+	require.Nil(t, q.Frame(encLevel, f.Length(protocol.Version1)-1, protocol.Version1))
+	require.Equal(t, f, q.Frame(encLevel, f.Length(protocol.Version1), protocol.Version1))
 	require.False(t, q.HasData(encLevel))
 
 	if encLevel == protocol.Encryption1RTT {
@@ -84,10 +84,10 @@ func testRetransmissionQueueCryptoFrames(t *testing.T, encLevel protocol.Encrypt
 	require.Equal(
 		t,
 		&wire.CryptoFrame{Data: []byte("foobar")},
-		q.GetFrame(encLevel, protocol.MaxByteCount, protocol.Version1),
+		q.Frame(encLevel, protocol.MaxByteCount, protocol.Version1),
 	)
 	require.False(t, q.HasData(encLevel))
-	require.Nil(t, q.GetFrame(encLevel, protocol.MaxByteCount, protocol.Version1))
+	require.Nil(t, q.Frame(encLevel, protocol.MaxByteCount, protocol.Version1))
 
 	f := &wire.CryptoFrame{Offset: 100, Data: []byte("foobar")}
 	ah.OnLost(f)
@@ -95,14 +95,14 @@ func testRetransmissionQueueCryptoFrames(t *testing.T, encLevel protocol.Encrypt
 	require.True(t, q.HasData(encLevel))
 	require.False(t, q.HasData(otherEncLevel))
 	// the CRYPTO frame wouldn't fit, not even if it was split
-	require.IsType(t, &wire.PingFrame{}, q.GetFrame(encLevel, 2, protocol.Version1))
+	require.IsType(t, &wire.PingFrame{}, q.Frame(encLevel, 2, protocol.Version1))
 
-	f1 := q.GetFrame(encLevel, f.Length(protocol.Version1)-3, protocol.Version1)
+	f1 := q.Frame(encLevel, f.Length(protocol.Version1)-3, protocol.Version1)
 	require.NotNil(t, f1)
 	require.IsType(t, &wire.CryptoFrame{}, f1)
 	require.Equal(t, &wire.CryptoFrame{Offset: 100, Data: []byte("foo")}, f1)
 
-	f2 := q.GetFrame(encLevel, protocol.MaxByteCount, protocol.Version1)
+	f2 := q.Frame(encLevel, protocol.MaxByteCount, protocol.Version1)
 	require.NotNil(t, f2)
 	require.IsType(t, &wire.CryptoFrame{}, f2)
 	require.Equal(t, &wire.CryptoFrame{Offset: 103, Data: []byte("bar")}, f2)
@@ -131,7 +131,7 @@ func testRetransmissionQueueDropEncLevel(t *testing.T, encLevel protocol.Encrypt
 	require.True(t, q.HasData(encLevel))
 	q.DropPackets(encLevel)
 	require.False(t, q.HasData(encLevel))
-	require.Nil(t, q.GetFrame(encLevel, protocol.MaxByteCount, protocol.Version1))
+	require.Nil(t, q.Frame(encLevel, protocol.MaxByteCount, protocol.Version1))
 
 	// losing more frame is a no-op
 	ah.OnLost(&wire.CryptoFrame{Data: []byte("foobar")})

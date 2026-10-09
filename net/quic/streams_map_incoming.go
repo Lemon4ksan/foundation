@@ -130,7 +130,7 @@ func (m *incomingStreamsMap[T]) AcceptStream(ctx context.Context) (T, error) {
 	return entry.stream, nil
 }
 
-func (m *incomingStreamsMap[T]) GetOrOpenStream(id protocol.StreamID) (T, error) {
+func (m *incomingStreamsMap[T]) OrOpenStream(id protocol.StreamID) (T, error) {
 	// LOCK-FREE FAST PATH
 	if entry, ok := m.streams.get(id); ok {
 		if !entry.shouldDelete {
