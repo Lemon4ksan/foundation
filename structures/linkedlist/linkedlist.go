@@ -73,7 +73,13 @@ func New[T any]() *List[T] { return new(List[T]).Init() }
 
 // NewCapacity returns an initialized list with preallocated capacity.
 func NewCapacity[T any](capacity int) *List[T] {
+	chunksCount := (capacity + 1 + chunkSize - 1) / chunkSize
+	chunks := make([]*listChunk[T], chunksCount)
+	for i := range chunks {
+		chunks[i] = new(listChunk[T])
+	}
 	l := &List[T]{
+		chunks: chunks,
 		allocs: 1,
 	}
 	l.root = 0
@@ -121,13 +127,15 @@ func (l *List[T]) alloc() int {
 	if l.free != -1 {
 		idx := l.free
 		l.free = l.elem(idx).next
-		return idx
+		l.allocs++
+	return idx
 	}
 	idx := l.allocs
-	if idx >= len(l.chunks) {
-		panic("linkedlist: array-based list exceeded capacity and cannot safely resize without invalidating pointers")
+	if idx/chunkSize >= len(l.chunks) {
+		l.chunks = append(l.chunks, new(listChunk[T]))
 	}
 
+	l.allocs++
 	return idx
 }
 
