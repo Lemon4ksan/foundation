@@ -6,8 +6,18 @@ package simd_test
 
 import (
 	"bytes"
+	"encoding/json"
+	"fmt"
+	"go/parser"
+	"go/token"
+	"math/rand/v2"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 	"unsafe"
 
 	"github.com/lemon4ksan/foundation/silicon/bytesconv"
@@ -744,4 +754,364 @@ func BenchmarkIndexByteSWAR_Unaligned(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		_ = simd.IndexByteSWAR(data, 'Z')
 	}
+}
+
+func maskCRLFScalarOracle(b []byte) {
+	for i := range b {
+		if b[i] == '\r' || b[i] == '\n' {
+			b[i] = ' '
+		}
+	}
+}
+
+func TestChallenge_MaskCRLF_DifferentialFuzzing_Concurrent(t *testing.T) {
+	t.Parallel()
+
+	// Phase 1: Exhaustive deterministic edge cases and canary overflow validation
+	for length := 0; length <= 130; length++ {
+		patterns := [][]byte{
+			make([]byte, length),               // All zeros
+			bytes.Repeat([]byte{0xFF}, length), // All 0xFF
+			bytes.Repeat([]byte{'\r'}, length), // All CR
+			bytes.Repeat([]byte{'\n'}, length), // All LF
+			make([]byte, length),               // Alternating CRLF
+			make([]byte, length),               // ASCII text
+			make([]byte, length),               // Adjacent chars
+		}
+
+		for i := 0; i < length; i++ {
+			if i%2 == 0 {
+				patterns[4][i] = '\r'
+			} else {
+				patterns[4][i] = '\n'
+			}
+			patterns[5][i] = byte('A' + (i % 26))
+			adjacentList := []byte{0x09, 0x0B, 0x0C, 0x0E, 0x20, 0x2A, 0x2D}
+			patterns[6][i] = adjacentList[i%len(adjacentList)]
+		}
+
+		for pIdx, baseData := range patterns {
+			const canaryPad = 64
+			rawTest := make([]byte, length+canaryPad)
+			rawRef := make([]byte, length+canaryPad)
+			copy(rawTest, baseData)
+			copy(rawRef, baseData)
+
+			const canaryByte = byte(0xDE)
+			for c := length; c < len(rawTest); c++ {
+				rawTest[c] = canaryByte
+				rawRef[c] = canaryByte
+			}
+
+			testSlice := rawTest[:length]
+			refSlice := rawRef[:length]
+
+			simd.MaskCRLF(testSlice)
+			maskCRLFScalarOracle(refSlice)
+
+			assert.Equal(t, refSlice, testSlice, fmt.Sprintf("pattern %d length %d mismatch", pIdx, length))
+
+			// Verify canaries were untouched
+			for c := length; c < len(rawTest); c++ {
+				if rawTest[c] != canaryByte {
+					t.Fatalf("buffer overrun! canary at index %d modified to 0x%02X (len=%d)", c, rawTest[c], length)
+				}
+			}
+		}
+	}
+
+	// Phase 2: High concurrency differential fuzzing under -race
+	const numGoroutines = 64
+	const itersPerGoroutine = 500
+
+	var wg sync.WaitGroup
+	wg.Add(numGoroutines)
+
+	for g := 0; g < numGoroutines; g++ {
+		go func(gID int) {
+			defer wg.Done()
+
+			r := rand.New(rand.NewPCG(uint64(gID+1), uint64(time.Now().UnixNano())))
+			for it := 0; it < itersPerGoroutine; it++ {
+				length := r.IntN(2049)
+
+				probChoice := r.IntN(4)
+				var crlfProb float64
+				switch probChoice {
+				case 0:
+					crlfProb = 0.0
+				case 1:
+					crlfProb = 0.05
+				case 2:
+					crlfProb = 0.50
+				case 3:
+					crlfProb = 1.0
+				}
+
+				const canaryPad = 32
+				rawTest := make([]byte, length+canaryPad)
+				rawRef := make([]byte, length+canaryPad)
+
+				for i := 0; i < length; i++ {
+					var b byte
+					if r.Float64() < crlfProb {
+						if r.IntN(2) == 0 {
+							b = '\r'
+						} else {
+							b = '\n'
+						}
+					} else {
+						b = byte(r.IntN(256))
+						if b == '\r' || b == '\n' {
+							b = 'x'
+						}
+					}
+					rawTest[i] = b
+					rawRef[i] = b
+				}
+
+				const canaryByte = byte(0xFE)
+				for c := length; c < len(rawTest); c++ {
+					rawTest[c] = canaryByte
+					rawRef[c] = canaryByte
+				}
+
+				testSlice := rawTest[:length]
+				refSlice := rawRef[:length]
+
+				simd.MaskCRLF(testSlice)
+				maskCRLFScalarOracle(refSlice)
+
+				if !bytes.Equal(refSlice, testSlice) {
+					t.Errorf("g=%d it=%d len=%d mismatch: got %v, expected %v", gID, it, length, testSlice, refSlice)
+					return
+				}
+
+				for c := length; c < len(rawTest); c++ {
+					if rawTest[c] != canaryByte {
+						t.Errorf("g=%d it=%d canary overwrite at %d: got 0x%02X", gID, it, c, rawTest[c])
+						return
+					}
+				}
+			}
+		}(g)
+	}
+
+	wg.Wait()
+}
+
+func TestChallenge_Architecture_SiliconSimdIsolation(t *testing.T) {
+	t.Parallel()
+
+	// 1. Verify via 'go list -json github.com/lemon4ksan/foundation/silicon/simd/...'
+	cmd := exec.Command("go", "list", "-json", "github.com/lemon4ksan/foundation/silicon/simd/...")
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("go list failed: %v", err)
+	}
+
+	type pkgMeta struct {
+		ImportPath string   `json:"ImportPath"`
+		Imports    []string `json:"Imports"`
+		Deps       []string `json:"Deps"`
+	}
+
+	dec := json.NewDecoder(bytes.NewReader(out))
+	const foundationPrefix = "github.com/lemon4ksan/foundation"
+
+	for dec.More() {
+		var p pkgMeta
+		if err := dec.Decode(&p); err != nil {
+			t.Fatalf("decode failed: %v", err)
+		}
+
+		for _, imp := range p.Imports {
+			if strings.HasPrefix(imp, foundationPrefix) {
+				t.Errorf(
+					"[ADR-0002 VIOLATION] Package %s imports foundation package %s. Layer 0 silicon must import zero foundation packages.",
+					p.ImportPath,
+					imp,
+				)
+			}
+		}
+
+		for _, dep := range p.Deps {
+			if strings.HasPrefix(dep, foundationPrefix) {
+				rel := strings.TrimPrefix(dep, foundationPrefix+"/")
+				parts := strings.Split(rel, "/")
+				if parts[0] != "silicon" {
+					t.Errorf(
+						"[ADR-0002 VIOLATION] Package %s transitively depends on higher-layer package %s.",
+						p.ImportPath,
+						dep,
+					)
+				}
+			}
+		}
+	}
+
+	// 2. Direct AST parsing of all .go files in silicon/simd directory
+	files, err := filepath.Glob("*.go")
+	if err != nil {
+		t.Fatalf("glob failed: %v", err)
+	}
+
+	fset := token.NewFileSet()
+	for _, file := range files {
+		node, err := parser.ParseFile(fset, file, nil, parser.ImportsOnly)
+		if err != nil {
+			t.Fatalf("parse file %s failed: %v", file, err)
+		}
+
+		if strings.HasSuffix(file, "_test.go") {
+			continue
+		}
+
+		for _, imp := range node.Imports {
+			pathVal := strings.Trim(imp.Path.Value, `"`)
+			if strings.HasPrefix(pathVal, foundationPrefix) {
+				t.Errorf("[ADR-0002 VIOLATION] Implementation file %s contains import %q.", file, pathVal)
+			}
+		}
+	}
+
+	// 3. Verify canonical doc.go existence
+	docStat, err := os.Stat("doc.go")
+	if err != nil || docStat.IsDir() {
+		t.Errorf("[ADR-0008 VIOLATION] silicon/simd is missing canonical doc.go")
+	}
+}
+
+func TestChallenge_IndexByteSWAR_UnalignedMemorySafety(t *testing.T) {
+	t.Parallel()
+
+	const bufferSize = 2048
+	baseBuffer := make([]byte, bufferSize)
+	for i := range baseBuffer {
+		baseBuffer[i] = 0xAA
+	}
+
+	lengthsToTest := []int{
+		0, 1, 2, 3, 4, 5, 6, 7,
+		8, 9, 10, 11, 14, 15,
+		16, 17, 23, 24, 25, 31,
+		32, 33, 47, 48, 63, 64,
+		65, 127, 128, 129, 255, 256, 512, 1024,
+	}
+
+	for offset := 0; offset < 64; offset++ {
+		for _, length := range lengthsToTest {
+			if offset+length > bufferSize {
+				continue
+			}
+
+			// Sub-slice strictly bounded with 3-index slicing: cap == len
+			sub := baseBuffer[offset : offset+length : offset+length]
+
+			// Case 1: Target absent
+			const missingTarget = byte(0x55)
+			got := simd.IndexByteSWAR(sub, missingTarget)
+			assert.Equal(t, -1, got, fmt.Sprintf("offset=%d len=%d expected -1", offset, length))
+
+			got2 := simd.IndexByteTwoSWAR(sub, 0x11, 0x22)
+			assert.Equal(t, -1, got2, fmt.Sprintf("offset=%d len=%d expected -1 for two", offset, length))
+
+			if length == 0 {
+				continue
+			}
+
+			// Case 2: Target at position 0
+			sub[0] = 0x55
+			assert.Equal(t, 0, simd.IndexByteSWAR(sub, 0x55))
+			sub[0] = 0xAA
+
+			// Case 3: Target at position length - 1
+			sub[length-1] = 0x55
+			assert.Equal(t, length-1, simd.IndexByteSWAR(sub, 0x55))
+			sub[length-1] = 0xAA
+
+			// Case 4: Target at position length / 2
+			mid := length / 2
+			sub[mid] = 0x55
+			assert.Equal(t, mid, simd.IndexByteSWAR(sub, 0x55))
+			sub[mid] = 0xAA
+
+			// Case 5: Target duplicated (first occurrence must be returned)
+			if length >= 8 {
+				sub[1] = 0x55
+				sub[5] = 0x55
+				assert.Equal(t, 1, simd.IndexByteSWAR(sub, 0x55), "should return earlier occurrence in chunk")
+				sub[1] = 0xAA
+				sub[5] = 0xAA
+
+				if length >= 16 {
+					sub[3] = 0x55
+					sub[11] = 0x55
+					assert.Equal(t, 3, simd.IndexByteSWAR(sub, 0x55), "should return earlier occurrence across chunks")
+					sub[3] = 0xAA
+					sub[11] = 0xAA
+				}
+			}
+
+			// Case 6: IndexByteTwoSWAR with t1 and t2
+			if length >= 2 {
+				sub[0] = 0x11
+				sub[length-1] = 0x22
+				assert.Equal(t, 0, simd.IndexByteTwoSWAR(sub, 0x11, 0x22))
+				assert.Equal(t, 0, simd.IndexByteTwoSWAR(sub, 0x22, 0x11))
+				sub[0] = 0xAA
+				sub[length-1] = 0xAA
+
+				sub[0] = 0x22
+				sub[length-1] = 0x11
+				assert.Equal(t, 0, simd.IndexByteTwoSWAR(sub, 0x11, 0x22))
+				sub[0] = 0xAA
+				sub[length-1] = 0xAA
+			}
+		}
+	}
+
+	// Phase 2: Concurrent unaligned stress under -race
+	const numGoroutines = 32
+	const iters = 200
+	var wg sync.WaitGroup
+	wg.Add(numGoroutines)
+
+	for g := 0; g < numGoroutines; g++ {
+		go func(gID int) {
+			defer wg.Done()
+			r := rand.New(rand.NewPCG(uint64(gID+100), uint64(time.Now().UnixNano())))
+
+			buf := make([]byte, 2048)
+			for it := 0; it < iters; it++ {
+				for i := range buf {
+					buf[i] = byte(r.IntN(256))
+				}
+
+				offset := r.IntN(64)
+				length := r.IntN(1024)
+				sub := buf[offset : offset+length : offset+length]
+
+				target := byte(r.IntN(256))
+				expected := bytes.IndexByte(sub, target)
+				actual := simd.IndexByteSWAR(sub, target)
+
+				if actual != expected {
+					t.Errorf(
+						"g=%d it=%d offset=%d len=%d target=0x%02X got %d expected %d",
+						gID,
+						it,
+						offset,
+						length,
+						target,
+						actual,
+						expected,
+					)
+					return
+				}
+			}
+		}(g)
+	}
+
+	wg.Wait()
 }

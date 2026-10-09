@@ -128,7 +128,7 @@ func (l *List[T]) alloc() int {
 		idx := l.free
 		l.free = l.elem(idx).next
 		l.allocs++
-	return idx
+		return idx
 	}
 	idx := l.allocs
 	if idx/chunkSize >= len(l.chunks) {

@@ -38,7 +38,7 @@ func ScanByteVector(data []byte, target byte) int {
 func IndexCRLFCRLFVector(data []byte) int {
 	n := len(data)
 	if n < 4 {
-		return -1
+		return IndexCRLFCRLF(data)
 	}
 
 	if n >= 32 && hasAVX2 {
@@ -50,8 +50,8 @@ func IndexCRLFCRLFVector(data []byte) int {
 		if idx >= 0 && idx <= n {
 			return idx
 		}
-		return -1
 	}
 
-	return IndexDoubleCRLF(data)
+	return IndexCRLFCRLF(data)
 }
+
