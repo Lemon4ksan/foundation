@@ -112,6 +112,7 @@ func TestStruct_UnmarshalBE_MarshalBE(t *testing.T) {
 	assert.Equal(t, orig.Size, decoded.Size)
 	assert.Equal(t, orig.Tag, decoded.Tag)
 }
+
 type AdversarialRecord struct {
 	ID       uint32
 	Flag     uint8
@@ -488,6 +489,7 @@ func TestReader_Adversarial_ZeroAlloc(t *testing.T) {
 	})
 	assert.Equal(t, float64(0), allocsU64, "Reader.U64BESeq must be 0 allocs/op")
 }
+
 func TestReader_Chunks(t *testing.T) {
 	t.Parallel()
 

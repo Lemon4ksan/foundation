@@ -65,6 +65,7 @@ func TestAllocations_PatternSlicer_SliceInto(t *testing.T) {
 		t.Errorf("expected 0 allocations, got %v", allocs)
 	}
 }
+
 func FuzzEqualFoldASCII(f *testing.F) {
 	f.Add("Content-Type", "content-type")
 	f.Add("Authorization", "AUTHORIZATION")

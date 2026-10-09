@@ -63,6 +63,7 @@ func BenchmarkBase64EncodeURL_SHA256(b *testing.B) {
 		_ = base64.Base64EncodeURL(sum[:], dst)
 	}
 }
+
 func TestBase64EncodeURL_Adversarial_PanicContract(t *testing.T) {
 	t.Parallel()
 

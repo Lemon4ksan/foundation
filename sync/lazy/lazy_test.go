@@ -206,6 +206,7 @@ func BenchmarkValue_Get_Parallel(b *testing.B) {
 		}
 	})
 }
+
 type stressPayload struct {
 	id       int64
 	data     [256]byte

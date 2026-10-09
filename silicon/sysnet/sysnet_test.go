@@ -140,6 +140,7 @@ func TestRIO_BufferRegistration(t *testing.T) {
 		reg.Deregister()
 	}
 }
+
 func BenchmarkTuneSocketConn_Nil(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()

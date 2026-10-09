@@ -89,6 +89,7 @@ func BenchmarkParseStreamFrame_Classic(b *testing.B) {
 		}
 	}
 }
+
 func encodeVarInt(i uint64) []byte {
 	return varint.Append(nil, i)
 }

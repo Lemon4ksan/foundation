@@ -102,6 +102,7 @@ func TestEndian_BigEndian_All(t *testing.T) {
 	endian.StoreBE16(buf, 0xCAFE)
 	assert.Equal(t, uint16(0xCAFE), endian.LoadBE16(buf, 0))
 }
+
 func BenchmarkLoad64LE(b *testing.B) {
 	buf := make([]byte, 16)
 	endian.Store64(buf, 0, 0x1122334455667788)

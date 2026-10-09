@@ -629,6 +629,7 @@ func TestOffHeap_RemainingEdgeCases(t *testing.T) {
 	assert.Equal(t, 0, slab.Len())
 	slab.Release() // double release safety
 }
+
 func TestBuffer_Adversarial_ZeroAndNegativeCapacity(t *testing.T) {
 	// Zero capacity should default to 64KB
 	bufZero, err := offheap.NewBuffer(0)
@@ -824,6 +825,7 @@ func TestBuffer_Adversarial_SynchronizedConcurrentWrites(t *testing.T) {
 	}
 	assert.Equal(t, expectedTotal, totalRead)
 }
+
 // TestChallenge_FinalizerReclaim ensures unreleased buffers are cleaned up by GC finalizers.
 func TestChallenge_FinalizerReclaim(t *testing.T) {
 	for range 100 {
@@ -864,6 +866,7 @@ func TestChallenge_BufferZeroAllocHotPath(t *testing.T) {
 
 	require.Equal(t, float64(0), allocs, "hot path operations must have 0 heap allocations")
 }
+
 // FuzzArenaAlloc tests single-cycle pointer bump allocation and boundary limits against arbitrary allocation patterns.
 func FuzzArenaAlloc(f *testing.F) {
 	f.Add(64*1024, 128, 5)

@@ -286,6 +286,7 @@ func TestExtractECHFromHTTPSResponse(t *testing.T) {
 		assert.ErrorIs(t, err, wire.ErrTruncatedDNSMessage)
 	})
 }
+
 func FuzzDNSWireMessage(f *testing.F) {
 	// Sample DNS query for example.com IN A
 	f.Add(

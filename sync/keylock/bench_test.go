@@ -209,6 +209,7 @@ func TestKeyLock_ZeroValue(t *testing.T) {
 		t.Fatal("expected alpha to be unlocked")
 	}
 }
+
 // TestEmpirical_KeyLock_MutualExclusionAndLeak verifies that under heavy
 // concurrent contention across shared and distinct keys, mutual exclusion
 // is strictly maintained and all internal entries are reclaimed without memory leaks.
@@ -361,6 +362,7 @@ func TestEmpirical_KeyLock_SameKeyHeavyContention(t *testing.T) {
 		t.Fatalf("expected 0 active keys, got %d", len(km.Keys()))
 	}
 }
+
 func TestEmpirical_Keylock_WithLockResult_MutualExclusion(t *testing.T) {
 	km := keylock.New[string]()
 	const key = "shared-key"

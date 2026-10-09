@@ -477,6 +477,7 @@ func TestUnmarshal_InvalidUTF8Replacement(t *testing.T) {
 		}
 	}
 }
+
 func TestJSONIter_Allocs(t *testing.T) {
 	data := []byte(`{"id": 1, "name": "foo", "active": true}`)
 
@@ -491,6 +492,7 @@ func TestJSONIter_Allocs(t *testing.T) {
 		t.Errorf("ObjectEntries allocated %v times, want 0", allocs)
 	}
 }
+
 func TestObjectEntries_Adversarial_EarlyExit(t *testing.T) {
 	t.Parallel()
 
@@ -913,6 +915,7 @@ func TestJSONIter_Adversarial_ZeroAlloc(t *testing.T) {
 	})
 	assert.Equal(t, float64(0), allocsArr, "ArrayElements must be 0 allocs/op")
 }
+
 type FuzzPayload struct {
 	ID      int64             `json:"id"`
 	Name    string            `json:"name"`

@@ -37,6 +37,7 @@ func BenchmarkPacketNumberLengthForHeader(b *testing.B) {
 
 	_ = total
 }
+
 func TestQUIC_DecodePacketNumber_RFC9000AppendixA(t *testing.T) {
 	t.Parallel()
 

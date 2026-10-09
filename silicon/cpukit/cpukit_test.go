@@ -77,6 +77,7 @@ func TestHasGFNI_ConcurrentExecution(t *testing.T) {
 
 	wg.Wait()
 }
+
 func BenchmarkHasAVX2(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()

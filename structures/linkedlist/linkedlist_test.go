@@ -137,8 +137,6 @@ func TestListZeroValue(t *testing.T) {
 	checkListPointers(t, &l2, []string{"init"})
 }
 
-
-
 func TestListCrossListSafety(t *testing.T) {
 	l1 := list.New[int]()
 	l2 := list.New[int]()
@@ -236,7 +234,6 @@ func TestListSelfOperationsAndNoops(t *testing.T) {
 	l.MoveAfter(b, a)
 	checkListPointers(t, l, []int{1, 2, 3})
 }
-
 
 func TestListPushListConcatenation(t *testing.T) {
 	l1 := list.NewCapacity[string](12)

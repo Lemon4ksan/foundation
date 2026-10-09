@@ -214,6 +214,7 @@ func TestTag_Parsing_And_Getters(t *testing.T) {
 	missingTag := refkit.TagOf(field, "xml")
 	assert.True(t, missingTag.IsEmpty())
 }
+
 // Types for unexported & cross-type testing
 type unexportedFieldsStruct struct {
 	rawBytes []byte
@@ -704,6 +705,7 @@ func TestAdversarial_ZeroAlloc_AllPrimitives(t *testing.T) {
 	})
 	assert.Equal(t, float64(0), allocsBytes, "AsBytes must be 0 allocs/op")
 }
+
 // TestTag_ConcurrencyStress tests concurrent read-access across multiple goroutines
 // calling Tag methods (Value, Int, Float, Has, SplitOption) simultaneously with -race.
 func TestTag_ConcurrencyStress(t *testing.T) {
@@ -982,6 +984,7 @@ func TestTagOf_ReflectTagLookup(t *testing.T) {
 	tag4 := refkit.TagOf(sf)
 	assert.True(t, tag4.IsEmpty())
 }
+
 // Level 3 nested embedding
 type Deep3A struct {
 	LeafA1 int
@@ -1490,6 +1493,7 @@ func TestChallenge_VisibleFields_PooledWalker_ZeroAllocUnderLoad(t *testing.T) {
 	}
 	_ = count
 }
+
 type EscapedTagModel struct {
 	A string `custom:"val\"" other:"next"`
 	B string `                            foo:"val\"quote" bar:"123"`
@@ -1568,6 +1572,7 @@ func TestRegression_HighConcurrencyWalkerPool(t *testing.T) {
 
 	wg.Wait()
 }
+
 // TestParseTag_AdversarialInputs verifies that ParseTag handles arbitrary
 // malicious, malformed, and pathological strings without panicking.
 func TestParseTag_AdversarialInputs(t *testing.T) {
