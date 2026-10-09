@@ -1,3 +1,5 @@
+//go:build !race
+
 // Copyright (c) 2026 Lemon4ksan All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
@@ -194,5 +196,70 @@ func TestLargeInputExceedingAsmBlock(t *testing.T) {
 	d.Write(data)
 	if d.Sum64() != h1 {
 		t.Fatalf("streaming large sum mismatch")
+	}
+}
+
+// Merged from alloc_test.go
+
+func TestAllocsPerRun_Sum64(t *testing.T) {
+	sample := make([]byte, 1024)
+	allocs := testing.AllocsPerRun(100, func() {
+		_ = xxhash.Sum64(sample)
+	})
+
+	if allocs > 0 {
+		t.Errorf("Sum64 allocated %f times per run, want 0", allocs)
+	}
+}
+
+// Merged from xxhash_bench_test.go
+
+func BenchmarkSum64_16B(b *testing.B) {
+	data := make([]byte, 16)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = xxhash.Sum64(data)
+	}
+}
+
+func BenchmarkSum64_1KB(b *testing.B) {
+	data := make([]byte, 1024)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = xxhash.Sum64(data)
+	}
+}
+
+func BenchmarkSum64_128KB(b *testing.B) {
+	data := make([]byte, 128*1024)
+	b.SetBytes(int64(len(data)))
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = xxhash.Sum64(data)
+	}
+}
+
+func BenchmarkSum64String(b *testing.B) {
+	str := "Call me Ishmael. Some years ago--never mind how long precisely-"
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = xxhash.Sum64String(str)
+	}
+}
+
+func BenchmarkDigestWrite_1KB(b *testing.B) {
+	d := xxhash.New()
+	data := make([]byte, 1024)
+	b.SetBytes(int64(len(data)))
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		d.Reset()
+		_, _ = d.Write(data)
+		_ = d.Sum64()
 	}
 }

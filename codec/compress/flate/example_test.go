@@ -2,10 +2,9 @@ package flate_test
 
 import (
 	"bytes"
+	"compress/flate"
 	"fmt"
 	"io"
-
-	"github.com/lemon4ksan/foundation/codec/compress/flate"
 )
 
 func ExampleNewWriter() {

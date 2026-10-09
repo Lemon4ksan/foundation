@@ -6,6 +6,7 @@ package huff0
 
 import (
 	"bytes"
+	"crypto/rand"
 	"errors"
 	"io"
 	"strings"
@@ -1444,5 +1445,214 @@ func TestCountSimplePrevTableEdge(t *testing.T) {
 	max, reuse := s.countSimple(data)
 	if max <= 0 || reuse {
 		t.Fatalf("expected reuse=false when symbol >= len(prevTable)")
+	}
+}
+
+// Merged from adversarial_test.go
+
+// TestAdversarialHuff0RandomBitstreams feeds arbitrary random bytes to decoders.
+func TestAdversarialHuff0RandomBitstreams(t *testing.T) {
+	lengths := []int{0, 1, 2, 3, 4, 7, 8, 15, 16, 31, 32, 63, 64, 128, 256, 512, 1024, 2048}
+	s := &Scratch{MaxSymbolValue: 255}
+
+	for _, sz := range lengths {
+		for range 10 {
+			b := make([]byte, sz)
+			_, _ = rand.Read(b)
+
+			// ReadTable must not panic on corrupt/random data
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						t.Fatalf("ReadTable panicked on random size %d: %v", sz, r)
+					}
+				}()
+				_, _, _ = ReadTable(b, s)
+			}()
+
+			// Decompress1X must not panic
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						t.Fatalf("Decompress1X panicked on random size %d: %v", sz, r)
+					}
+				}()
+				_, _ = s.Decompress1X(b)
+			}()
+
+			// Decompress4X must not panic
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						t.Fatalf("Decompress4X panicked on random size %d: %v", sz, r)
+					}
+				}()
+				_, _ = s.Decompress4X(b, sz*4)
+			}()
+		}
+	}
+}
+
+// TestAdversarialHuff0CorruptHeaders tests crafted malformed headers.
+func TestAdversarialHuff0CorruptHeaders(t *testing.T) {
+	headers := []struct {
+		name string
+		data []byte
+	}{
+		{"Empty", []byte{}},
+		{"Truncated1", []byte{0x00}},
+		{"Truncated2", []byte{0x00, 0x01}},
+		{"Truncated3", []byte{0x00, 0x01, 0x02}},
+		{"AllZeroes8", make([]byte, 8)},
+		{"AllOnes8", bytes.Repeat([]byte{0xFF}, 8)},
+		{"WeightZero", []byte{0x02, 0x00, 0x00}},
+		{"LargeWeight", []byte{0x02, 0xFF, 0x11}},
+	}
+
+	s := &Scratch{MaxSymbolValue: 255}
+	for _, tc := range headers {
+		t.Run(tc.name, func(t *testing.T) {
+			defer func() {
+				if r := recover(); r != nil {
+					t.Fatalf("ReadTable panicked on %s: %v", tc.name, r)
+				}
+			}()
+			_, _, _ = ReadTable(tc.data, s)
+		})
+	}
+}
+
+// TestAdversarialHuff0StreamTruncation compresses data and truncates at every byte boundary.
+func TestAdversarialHuff0StreamTruncation(t *testing.T) {
+	src := bytes.Repeat([]byte("The quick brown fox jumps over the lazy dog. 1234567890"), 20)
+
+	// 1X compression truncation test
+	s1 := &Scratch{MaxSymbolValue: 255}
+	c1, _, err := Compress1X(src, s1)
+	if err != nil {
+		t.Fatalf("Compress1X failed: %v", err)
+	}
+
+	for i := range c1 {
+		truncated := c1[:i]
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					t.Fatalf("Decompress1X panicked on truncated byte %d / %d: %v", i, len(c1), r)
+				}
+			}()
+			sDec := &Scratch{MaxSymbolValue: 255}
+			_, _ = sDec.Decompress1X(truncated)
+		}()
+	}
+
+	// 4X compression truncation test
+	s4 := &Scratch{MaxSymbolValue: 255}
+	c4, _, err := Compress4X(src, s4)
+	if err != nil {
+		t.Fatalf("Compress4X failed: %v", err)
+	}
+
+	for i := range c4 {
+		truncated := c4[:i]
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					t.Fatalf("Decompress4X panicked on truncated byte %d / %d: %v", i, len(c4), r)
+				}
+			}()
+			sDec := &Scratch{MaxSymbolValue: 255}
+			_, _ = sDec.Decompress4X(truncated, len(src))
+		}()
+	}
+}
+
+// Merged from huff0_bench_test.go
+
+func BenchmarkHuff0Compress1X(b *testing.B) {
+	data := bytes.Repeat([]byte("Huffman coding benchmarks with zero allocations! 1234567890"), 30)
+	var s Scratch
+	_, _, err := Compress1X(data, &s)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	b.SetBytes(int64(len(data)))
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _, _ = Compress1X(data, &s)
+	}
+}
+
+func BenchmarkHuff0Decompress1X(b *testing.B) {
+	data := bytes.Repeat([]byte("Huffman coding benchmarks with zero allocations! 1234567890"), 30)
+	var s Scratch
+	comp, _, err := Compress1X(data, &s)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	var decScratch Scratch
+	s2, remain, err := ReadTable(comp, &decScratch)
+	if err != nil {
+		b.Fatal(err)
+	}
+	s2.MaxDecodedSize = len(data)
+	// Warm up
+	_, err = s2.Decompress1X(remain)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	b.SetBytes(int64(len(data)))
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = s2.Decompress1X(remain)
+	}
+}
+
+func BenchmarkHuff0Compress4X(b *testing.B) {
+	data := bytes.Repeat([]byte("Huffman coding 4X stream benchmarks with zero allocations! 1234567890"), 30)
+	var s Scratch
+	_, _, err := Compress4X(data, &s)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	b.SetBytes(int64(len(data)))
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _, _ = Compress4X(data, &s)
+	}
+}
+
+func BenchmarkHuff0Decompress4X(b *testing.B) {
+	data := bytes.Repeat([]byte("Huffman coding 4X stream benchmarks with zero allocations! 1234567890"), 30)
+	var s Scratch
+	comp, _, err := Compress4X(data, &s)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	var decScratch Scratch
+	s2, remain, err := ReadTable(comp, &decScratch)
+	if err != nil {
+		b.Fatal(err)
+	}
+	s2.MaxDecodedSize = len(data)
+	// Warm up
+	_, err = s2.Decompress4X(remain, len(data))
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	b.SetBytes(int64(len(data)))
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = s2.Decompress4X(remain, len(data))
 	}
 }

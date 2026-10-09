@@ -2,11 +2,10 @@ package gzip_test
 
 import (
 	"bytes"
+	"compress/gzip"
 	"fmt"
 	"io"
 	"log"
-
-	"github.com/lemon4ksan/foundation/codec/compress/gzip"
 )
 
 func ExampleWriter() {

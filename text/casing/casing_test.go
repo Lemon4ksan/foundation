@@ -37,3 +37,33 @@ func TestCasingConversions(t *testing.T) {
 	assert.Equal(t, "TIMEOUT_SECONDS", casing.ToScreamingSnake("timeoutSeconds"))
 	assert.Equal(t, "HTTP_SERVER_URL", casing.ToScreamingSnake("httpServerURL"))
 }
+
+// Merged from casing_fuzz_test.go
+
+func FuzzCasingConversions(f *testing.F) {
+	f.Add("HTTPServerURL")
+	f.Add("user_id")
+	f.Add("camelCaseWord")
+	f.Add("SCREAMING_SNAKE_CASE")
+	f.Add("kebab-case-string")
+	f.Add("")
+
+	f.Fuzz(func(t *testing.T, s string) {
+		_ = casing.ToSnake(s)
+		_ = casing.ToCamel(s)
+		_ = casing.ToPascal(s)
+		_ = casing.ToKebab(s)
+		_ = casing.ToScreamingSnake(s)
+	})
+}
+
+// Merged from doc_test.go
+
+func TestAllocations_ToSnake(t *testing.T) {
+	allocs := testing.AllocsPerRun(100, func() {
+		_ = casing.ToSnake("PascalCaseExample")
+	})
+	if allocs > 0 {
+		t.Logf("ToSnake allocated %v times", allocs)
+	}
+}

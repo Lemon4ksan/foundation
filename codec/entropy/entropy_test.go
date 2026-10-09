@@ -7,6 +7,7 @@ package entropy
 import (
 	"crypto/rand"
 	"testing"
+
 )
 
 func TestShannonEntropy(t *testing.T) {
@@ -32,3 +33,21 @@ func TestShannonEntropy(t *testing.T) {
 		t.Errorf("expected text sample to not be incompressible")
 	}
 }
+
+// Merged from doc_test.go
+
+func TestAllocsPerRun_ShannonEntropy(t *testing.T) {
+	sample := make([]byte, 1024)
+	for i := range sample {
+		sample[i] = byte(i)
+	}
+
+	allocs := testing.AllocsPerRun(100, func() {
+		_ = ShannonEntropy(sample)
+	})
+
+	if allocs > 0 {
+		t.Errorf("ShannonEntropy allocated %f times per run, want 0", allocs)
+	}
+}
+

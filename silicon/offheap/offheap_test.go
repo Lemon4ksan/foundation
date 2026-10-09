@@ -5,10 +5,14 @@
 package offheap_test
 
 import (
+	"bytes"
+	"errors"
 	"io"
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 	"unsafe"
 
 	"github.com/lemon4ksan/foundation/silicon/offheap"
@@ -624,4 +628,484 @@ func TestOffHeap_RemainingEdgeCases(t *testing.T) {
 	slab.Release()
 	assert.Equal(t, 0, slab.Len())
 	slab.Release() // double release safety
+}
+
+// Merged from buffer_adversarial_test.go
+
+func TestBuffer_Adversarial_ZeroAndNegativeCapacity(t *testing.T) {
+	// Zero capacity should default to 64KB
+	bufZero, err := offheap.NewBuffer(0)
+	require.NoError(t, err)
+	require.NotNil(t, bufZero)
+	assert.Equal(t, 64*1024, bufZero.Cap())
+	assert.Equal(t, 0, bufZero.Len())
+	bufZero.Release()
+
+	// Negative capacity should default to 64KB
+	bufNeg, err := offheap.NewBuffer(-1024)
+	require.NoError(t, err)
+	require.NotNil(t, bufNeg)
+	assert.Equal(t, 64*1024, bufNeg.Cap())
+	bufNeg.Release()
+
+	// Exact 1-byte buffer boundary
+	buf1, err := offheap.NewBuffer(1)
+	require.NoError(t, err)
+	defer buf1.Release()
+
+	assert.Equal(t, 1, buf1.Cap())
+	n, err := buf1.Write([]byte{0x42})
+	assert.NoError(t, err)
+	assert.Equal(t, 1, n)
+	assert.Equal(t, 1, buf1.Len())
+
+	// Overflowing by 1 byte
+	n2, err2 := buf1.Write([]byte{0x43})
+	assert.True(t, errors.Is(err2, offheap.ErrBufferFull))
+	assert.Equal(t, 0, n2)
+	assert.Equal(t, 1, buf1.Len())
+}
+
+func TestBuffer_Adversarial_HugeAllocations(t *testing.T) {
+	// 16MB allocation directly from kernel
+	const hugeSize = 16 * 1024 * 1024
+	buf, err := offheap.NewBuffer(hugeSize)
+	require.NoError(t, err)
+	require.NotNil(t, buf)
+	defer buf.Release()
+
+	assert.Equal(t, hugeSize, buf.Cap())
+
+	// Fill first and last chunk
+	payload := bytes.Repeat([]byte{0xAB}, 64*1024)
+	n, err := buf.Write(payload)
+	assert.NoError(t, err)
+	assert.Equal(t, len(payload), n)
+
+	// Reslice to full 16MB via RawBytes
+	raw := buf.RawBytes(hugeSize)
+	require.NotNil(t, raw)
+	assert.Equal(t, hugeSize, len(raw))
+
+	// Touch beginning, middle, and end
+	raw[0] = 0x11
+	raw[hugeSize/2] = 0x22
+	raw[hugeSize-1] = 0x33
+
+	assert.Equal(t, byte(0x11), raw[0])
+	assert.Equal(t, byte(0x22), raw[hugeSize/2])
+	assert.Equal(t, byte(0x33), raw[hugeSize-1])
+}
+
+func TestBuffer_Adversarial_OperationsAfterReleaseAndNilReceiver(t *testing.T) {
+	buf, err := offheap.NewBuffer(1024)
+	require.NoError(t, err)
+	_, _ = buf.WriteString("temporary data")
+
+	// Release buffer
+	buf.Release()
+
+	// Double Release should be an idempotent no-op
+	buf.Release()
+
+	// All mutating and reading methods must safely return ErrBufferClosed or nil
+	_, wErr := buf.Write([]byte("more"))
+	assert.True(t, errors.Is(wErr, offheap.ErrBufferClosed))
+
+	_, sErr := buf.WriteString("more string")
+	assert.True(t, errors.Is(sErr, offheap.ErrBufferClosed))
+
+	dst := make([]byte, 10)
+	_, rErr := buf.Read(dst)
+	assert.True(t, errors.Is(rErr, offheap.ErrBufferClosed))
+
+	assert.Nil(t, buf.Bytes())
+	assert.Nil(t, buf.RawBytes(100))
+	assert.Equal(t, 0, buf.Len())
+	assert.Equal(t, 0, buf.Cap())
+
+	// Reset and RewindRead on released buffer should not panic
+	buf.Reset()
+	buf.RewindRead()
+
+	// Nil receiver safety
+	var nilBuf *offheap.Buffer
+	_, nilWErr := nilBuf.Write([]byte("abc"))
+	assert.True(t, errors.Is(nilWErr, offheap.ErrBufferClosed))
+
+	_, nilSErr := nilBuf.WriteString("abc")
+	assert.True(t, errors.Is(nilSErr, offheap.ErrBufferClosed))
+
+	_, nilRErr := nilBuf.Read(dst)
+	assert.True(t, errors.Is(nilRErr, offheap.ErrBufferClosed))
+
+	assert.Nil(t, nilBuf.Bytes())
+	assert.Nil(t, nilBuf.RawBytes(10))
+	assert.Equal(t, 0, nilBuf.Len())
+	assert.Equal(t, 0, nilBuf.Cap())
+	nilBuf.Reset()
+	nilBuf.RewindRead()
+	nilBuf.Release()
+}
+
+func TestBuffer_Adversarial_BoundaryRawReslicing(t *testing.T) {
+	const capSize = 4096
+	buf, err := offheap.NewBuffer(capSize)
+	require.NoError(t, err)
+	defer buf.Release()
+
+	// Zero or negative length
+	assert.Nil(t, buf.RawBytes(0))
+	assert.Nil(t, buf.RawBytes(-1))
+	assert.Nil(t, buf.RawBytes(-100))
+
+	// Exactly capSize
+	full := buf.RawBytes(capSize)
+	require.NotNil(t, full)
+	assert.Equal(t, capSize, len(full))
+	assert.Equal(t, capSize, buf.Len())
+
+	// Exceeding capacity by 1 byte
+	assert.Nil(t, buf.RawBytes(capSize+1))
+	// Len() should remain unchanged after rejected reslice
+	assert.Equal(t, capSize, buf.Len())
+
+	// Extreme length
+	assert.Nil(t, buf.RawBytes(1<<30))
+
+	// Reslice to smaller
+	half := buf.RawBytes(capSize / 2)
+	require.NotNil(t, half)
+	assert.Equal(t, capSize/2, len(half))
+	assert.Equal(t, capSize/2, buf.Len())
+}
+
+func TestBuffer_Adversarial_SynchronizedConcurrentWrites(t *testing.T) {
+	// Buffer documents that external synchronization is required.
+	// We stress-test concurrent writers coordinating through a sync.Mutex.
+	const totalWriters = 32
+	const writesPerWorker = 50
+	const chunkSize = 64
+
+	buf, err := offheap.NewBuffer(totalWriters * writesPerWorker * chunkSize)
+	require.NoError(t, err)
+	defer buf.Release()
+
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+
+	for w := range totalWriters {
+		wg.Add(1)
+		go func(workerID int) {
+			defer wg.Done()
+			payload := bytes.Repeat([]byte{byte(workerID)}, chunkSize)
+			for range writesPerWorker {
+				mu.Lock()
+				n, wErr := buf.Write(payload)
+				mu.Unlock()
+				assert.NoError(t, wErr)
+				assert.Equal(t, chunkSize, n)
+			}
+		}(w)
+	}
+
+	wg.Wait()
+
+	expectedTotal := totalWriters * writesPerWorker * chunkSize
+	assert.Equal(t, expectedTotal, buf.Len())
+
+	// Validate sequential reading through io.Reader
+	readDst := make([]byte, 256)
+	totalRead := 0
+	for {
+		n, rErr := buf.Read(readDst)
+		totalRead += n
+		if errors.Is(rErr, io.EOF) {
+			break
+		}
+		assert.NoError(t, rErr)
+	}
+	assert.Equal(t, expectedTotal, totalRead)
+}
+
+// Merged from buffer_finalizer_challenge_test.go
+
+// TestChallenge_FinalizerReclaim ensures unreleased buffers are cleaned up by GC finalizers.
+func TestChallenge_FinalizerReclaim(t *testing.T) {
+	for range 100 {
+		buf, err := offheap.NewBuffer(4096)
+		require.NoError(t, err)
+		_, _ = buf.WriteString("temporary data that should be reclaimed")
+		_ = buf // dropped without Release()
+	}
+
+	// Trigger GC to run finalizers
+	for range 3 {
+		runtime.GC()
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	// Allocate another buffer to verify OS paging remains healthy
+	bufAfter, err := offheap.NewBuffer(4096)
+	require.NoError(t, err)
+	defer bufAfter.Release()
+	require.Equal(t, 4096, bufAfter.Cap())
+}
+
+// TestChallenge_BufferZeroAllocHotPath verifies that Write, Read, Reset hot paths do not allocate heap memory.
+func TestChallenge_BufferZeroAllocHotPath(t *testing.T) {
+	buf, err := offheap.NewBuffer(1024)
+	require.NoError(t, err)
+	defer buf.Release()
+
+	payload := []byte("0123456789abcdef")
+	readBuf := make([]byte, len(payload))
+
+	allocs := testing.AllocsPerRun(100, func() {
+		buf.Reset()
+		_, _ = buf.Write(payload)
+		buf.RewindRead()
+		_, _ = buf.Read(readBuf)
+	})
+
+	require.Equal(t, float64(0), allocs, "hot path operations must have 0 heap allocations")
+}
+
+// Merged from offheap_fuzz_test.go
+
+// FuzzArenaAlloc tests single-cycle pointer bump allocation and boundary limits against arbitrary allocation patterns.
+func FuzzArenaAlloc(f *testing.F) {
+	f.Add(64*1024, 128, 5)
+	f.Add(4096, 4096, 1)
+	f.Add(1024, 2048, 2)
+	f.Add(0, -1, 0)
+	f.Add(1024*1024, 65536, 10)
+
+	f.Fuzz(func(t *testing.T, arenaSize, allocSize, numAllocs int) {
+		if arenaSize <= 0 || arenaSize > 16*1024*1024 {
+			return
+		}
+		if numAllocs < 0 || numAllocs > 100 {
+			return
+		}
+
+		arena, err := offheap.NewArena(arenaSize)
+		if err != nil {
+			return
+		}
+		defer arena.Release()
+
+		for range numAllocs {
+			ptr := arena.Alloc(allocSize)
+			if allocSize <= 0 {
+				if ptr != nil {
+					t.Fatalf("expected nil for non-positive alloc size %d", allocSize)
+				}
+				continue
+			}
+
+			if ptr != nil {
+				// Verify memory is writable
+				slice := unsafe.Slice((*byte)(ptr), allocSize)
+				slice[0] = 0xAA
+				slice[len(slice)-1] = 0xBB
+			}
+		}
+
+		arena.Reset()
+	})
+}
+
+// FuzzBufferWriteAndRead verifies off-heap buffer expansion, byte streaming, and string parsing.
+func FuzzBufferWriteAndRead(f *testing.F) {
+	f.Add([]byte("hello world"), []byte("second write chunk"))
+	f.Add([]byte(""), []byte(""))
+	f.Add(bytes.Repeat([]byte{0xFF}, 1024), []byte{0x00, 0x01})
+
+	f.Fuzz(func(t *testing.T, chunkA, chunkB []byte) {
+		if len(chunkA) > 1024*1024 || len(chunkB) > 1024*1024 {
+			return
+		}
+
+		totalLen := len(chunkA) + len(chunkB)
+		if totalLen == 0 {
+			totalLen = 16
+		}
+
+		_ = offheap.Scope(totalLen*2+1024, func(a *offheap.Arena) {
+			buf := a.AllocBuffer(totalLen)
+			if buf == nil {
+				return
+			}
+
+			nA, errA := buf.Write(chunkA)
+			if errA != nil || nA != len(chunkA) {
+				t.Fatalf("write chunkA failed: %v", errA)
+			}
+
+			nB, errB := buf.Write(chunkB)
+			if errB != nil || nB != len(chunkB) {
+				t.Fatalf("write chunkB failed: %v", errB)
+			}
+
+			expected := append(chunkA, chunkB...)
+			if !bytes.Equal(buf.Bytes(), expected) {
+				t.Fatalf("buffer mismatch: got %d bytes, expected %d", buf.Len(), len(expected))
+			}
+
+			if string(buf.Bytes()) != string(expected) {
+				t.Fatalf("buffer string mismatch")
+			}
+		})
+	})
+}
+
+// FuzzSlabPoolAlloc tests lock-free slab chunk slicing and boundaries.
+func FuzzSlabPoolAlloc(f *testing.F) {
+	f.Add(256, 10)
+	f.Add(512, 100)
+	f.Add(64, 0)
+	f.Add(1024, 2)
+
+	type PODSlot struct {
+		ID   uint64
+		Data [64]byte
+	}
+
+	f.Fuzz(func(t *testing.T, slotCount, allocCount int) {
+		if slotCount <= 0 || slotCount > 4096 {
+			return
+		}
+		if allocCount < 0 || allocCount > 128 {
+			return
+		}
+
+		slab, err := offheap.NewSlabAllocator[PODSlot](slotCount)
+		if err != nil {
+			return
+		}
+		defer slab.Release()
+
+		allocated := make([]*PODSlot, 0, allocCount)
+		for i := range allocCount {
+			ptr := slab.Alloc()
+			if ptr != nil {
+				ptr.ID = uint64(i + 1)
+				allocated = append(allocated, ptr)
+			}
+		}
+
+		for _, ptr := range allocated {
+			_ = slab.Free(ptr)
+		}
+	})
+}
+
+// FuzzOffHeapBuffer tests direct OS kernel-backed OffHeapBuffer creation,
+// writing, reading, seeking, reslicing, string parsing, and boundary safety.
+func FuzzOffHeapBuffer(f *testing.F) {
+	f.Add(4096, []byte("foundation offheap payload"), "string chunk")
+	f.Add(0, []byte(""), "")
+	f.Add(65536, bytes.Repeat([]byte{0x42}, 1024), "secondary text")
+	f.Add(128, []byte("\x00\x01\x02\x03\xff"), "unicode: 🚀 世界")
+
+	f.Fuzz(func(t *testing.T, capSize int, chunk []byte, strChunk string) {
+		// Test capacity clamping/validation
+		if capSize > 4*1024*1024 {
+			return
+		}
+		if len(chunk) > 1024*1024 || len(strChunk) > 1024*1024 {
+			return
+		}
+
+		buf, err := offheap.NewBuffer(capSize)
+		if err != nil {
+			return
+		}
+		defer buf.Release()
+
+		// Initial capacity should be >= requested (or default 64KB if capSize <= 0)
+		if buf.Cap() <= 0 {
+			t.Fatalf("expected positive capacity, got %d", buf.Cap())
+		}
+		if buf.Len() != 0 {
+			t.Fatalf("expected 0 initial length, got %d", buf.Len())
+		}
+
+		// Write bytes
+		nWritten, writeErr := buf.Write(chunk)
+		if writeErr != nil {
+			if !errors.Is(writeErr, offheap.ErrBufferFull) {
+				t.Fatalf("unexpected write error: %v", writeErr)
+			}
+		} else if nWritten != len(chunk) {
+			t.Fatalf("short write without error: wrote %d, want %d", nWritten, len(chunk))
+		}
+
+		// Write string
+		nStrWritten, strErr := buf.WriteString(strChunk)
+		if strErr != nil {
+			if !errors.Is(strErr, offheap.ErrBufferFull) {
+				t.Fatalf("unexpected write string error: %v", strErr)
+			}
+		} else if nStrWritten != len(strChunk) {
+			t.Fatalf("short write string without error: wrote %d, want %d", nStrWritten, len(strChunk))
+		}
+
+		// Validate Bytes() view
+		activeBytes := buf.Bytes()
+		if len(activeBytes) != buf.Len() {
+			t.Fatalf("Bytes() length mismatch: got %d, want %d", len(activeBytes), buf.Len())
+		}
+
+		// Read back via Read (io.Reader)
+		if buf.Len() > 0 {
+			readBuf := make([]byte, buf.Len())
+			nRead, readErr := buf.Read(readBuf)
+			if readErr != nil && !errors.Is(readErr, io.EOF) {
+				t.Fatalf("read failed: %v", readErr)
+			}
+			if !bytes.Equal(readBuf[:nRead], activeBytes[:nRead]) {
+				t.Fatalf("read content mismatch")
+			}
+
+			// Subsequent read should return EOF
+			dummy := make([]byte, 1)
+			_, eofErr := buf.Read(dummy)
+			if !errors.Is(eofErr, io.EOF) {
+				t.Fatalf("expected io.EOF on fully read buffer, got %v", eofErr)
+			}
+
+			// RewindRead and verify we can read again
+			buf.RewindRead()
+			nRewound, _ := buf.Read(readBuf)
+			if nRewound != nRead {
+				t.Fatalf("rewound read length mismatch: got %d, want %d", nRewound, nRead)
+			}
+		}
+
+		// Test RawBytes
+		_ = buf.RawBytes(buf.Cap() / 2)
+		_ = buf.RawBytes(buf.Cap() + 1) // should return nil
+
+		// Test Reset
+		buf.Reset()
+		if buf.Len() != 0 {
+			t.Fatalf("expected 0 length after Reset, got %d", buf.Len())
+		}
+
+		// Test operations after Release
+		buf.Release()
+		_, postReleaseWrite := buf.Write([]byte("test"))
+		if !errors.Is(postReleaseWrite, offheap.ErrBufferClosed) {
+			t.Fatalf("expected ErrBufferClosed after release, got %v", postReleaseWrite)
+		}
+		_, postReleaseRead := buf.Read(make([]byte, 10))
+		if !errors.Is(postReleaseRead, offheap.ErrBufferClosed) {
+			t.Fatalf("expected ErrBufferClosed after release, got %v", postReleaseRead)
+		}
+		if buf.Bytes() != nil {
+			t.Fatalf("expected nil Bytes() after release")
+		}
+	})
 }

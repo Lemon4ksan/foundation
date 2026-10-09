@@ -40,8 +40,8 @@ func NormalizeArgs(args []string) []string {
 
 	result := make([]string, 0, len(args))
 
+	var arg strings.Builder
 	for i := 0; i < len(args); i++ {
-		var arg strings.Builder
 		arg.WriteString(args[i])
 		for i+1 < len(args) && isOrphanedSuffix(args[i+1]) {
 			arg.WriteString(args[i+1])
@@ -49,6 +49,7 @@ func NormalizeArgs(args []string) []string {
 		}
 
 		result = append(result, arg.String())
+		arg.Reset()
 	}
 
 	return result

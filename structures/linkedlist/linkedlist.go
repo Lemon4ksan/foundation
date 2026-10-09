@@ -40,7 +40,8 @@ func (e *Element[T]) List() *List[T] {
 // List represents a doubly linked list.
 // The zero value for List is an empty list ready to use.
 type List[T any] struct {
-	elements []Element[T]
+	chunks []*[256]Element[T]
+	allocs int
 	root     int // sentinel list element index
 	free     int // head of free list
 	len      int // current list length excluding sentinel
@@ -48,13 +49,14 @@ type List[T any] struct {
 
 // Init initializes or clears list l.
 func (l *List[T]) Init() *List[T] {
-	if cap(l.elements) == 0 {
-		l.elements = make([]Element[T], 1, 16)
+	if len(l.chunks) == 0 {
+		l.chunks = append(l.chunks, new([256]Element[T]))
+		l.allocs = 1
 	} else {
-		l.elements = l.elements[:1]
+		l.allocs = 1
 	}
 	l.root = 0
-	l.elements[0] = Element[T]{
+	l.elem(0) = Element[T]{
 		next: 0,
 		prev: 0,
 		idx:  0,
@@ -72,10 +74,10 @@ func New[T any]() *List[T] { return new(List[T]).Init() }
 // NewCapacity returns an initialized list with preallocated capacity.
 func NewCapacity[T any](capacity int) *List[T] {
 	l := &List[T]{
-		elements: make([]Element[T], 1, capacity+1),
+		elements: nil // Chunked lists don't need capacity preallocation,
 	}
 	l.root = 0
-	l.elements[0] = Element[T]{
+	l.elem(0) = Element[T]{
 		next: 0,
 		prev: 0,
 		idx:  0,
@@ -96,7 +98,7 @@ func (l *List[T]) Front() *Element[T] {
 		return nil
 	}
 
-	return &l.elements[l.elements[l.root].next]
+	return &l.elem(l.elements[l.root).next]
 }
 
 // Back returns the last element of list l or nil if the list is empty.
@@ -105,12 +107,12 @@ func (l *List[T]) Back() *Element[T] {
 		return nil
 	}
 
-	return &l.elements[l.elements[l.root].prev]
+	return &l.elem(l.elements[l.root).prev]
 }
 
 // lazyInit lazily initializes a zero List value.
 func (l *List[T]) lazyInit() {
-	if len(l.elements) == 0 {
+	if l.allocs == 0 {
 		l.Init()
 	}
 }
@@ -118,11 +120,11 @@ func (l *List[T]) lazyInit() {
 func (l *List[T]) alloc() int {
 	if l.free != -1 {
 		idx := l.free
-		l.free = l.elements[idx].next
+		l.free = l.elem(idx).next
 		return idx
 	}
-	idx := len(l.elements)
-	if idx >= cap(l.elements) {
+	idx := l.allocs
+	if idx >= len(l.chunks) {
 		panic("linkedlist: array-based list exceeded capacity and cannot safely resize without invalidating pointers")
 	}
 	l.elements = append(l.elements, Element[T]{})
@@ -132,19 +134,19 @@ func (l *List[T]) alloc() int {
 // insert inserts a new element after at, increments l.len, and returns e.
 func (l *List[T]) insertValue(v T, at int) *Element[T] {
 	idx := l.alloc()
-	e := &l.elements[idx]
+	e := &l.elem(idx)
 	e.Value = v
 	e.idx = idx
 	e.list = l
 
-	atElem := &l.elements[at]
+	atElem := &l.elem(at)
 	nextIdx := atElem.next
 
 	e.prev = at
 	e.next = nextIdx
 
 	atElem.next = idx
-	l.elements[nextIdx].prev = idx
+	l.elem(nextIdx).prev = idx
 
 	l.len++
 	return e
@@ -156,13 +158,15 @@ func (l *List[T]) remove(e *Element[T]) {
 	prevIdx := e.prev
 	nextIdx := e.next
 
-	l.elements[prevIdx].next = nextIdx
-	l.elements[nextIdx].prev = prevIdx
+	l.elem(prevIdx).next = nextIdx
+	l.elem(nextIdx).prev = prevIdx
 
 	// add to free list
-	l.elements[idx].next = l.free
-	l.elements[idx].prev = -1
-	l.elements[idx].list = nil
+	l.elem(idx).next = l.free
+	l.elem(idx).prev = -1
+	l.elem(idx).list = nil
+	var zero T
+	l.elem(idx).Value = zero
 	l.free = idx
 
 	l.len--
@@ -178,17 +182,17 @@ func (l *List[T]) move(e *Element[T], at int) {
 	prevIdx := e.prev
 	nextIdx := e.next
 
-	l.elements[prevIdx].next = nextIdx
-	l.elements[nextIdx].prev = prevIdx
+	l.elem(prevIdx).next = nextIdx
+	l.elem(nextIdx).prev = prevIdx
 
-	atElem := &l.elements[at]
+	atElem := &l.elem(at)
 	atNextIdx := atElem.next
 
-	l.elements[idx].prev = at
-	l.elements[idx].next = atNextIdx
+	l.elem(idx).prev = at
+	l.elem(idx).next = atNextIdx
 
 	atElem.next = idx
-	l.elements[atNextIdx].prev = idx
+	l.elem(atNextIdx).prev = idx
 
 	e.prev = at
 	e.next = atNextIdx
@@ -215,7 +219,7 @@ func (l *List[T]) PushFront(v T) *Element[T] {
 // PushBack inserts a new element e with value v at the back of list l and returns e.
 func (l *List[T]) PushBack(v T) *Element[T] {
 	l.lazyInit()
-	return l.insertValue(v, l.elements[l.root].prev)
+	return l.insertValue(v, l.elem(l.root).prev)
 }
 
 // InsertBefore inserts a new element e with value v immediately before mark and returns e.
@@ -236,7 +240,7 @@ func (l *List[T]) InsertAfter(v T, mark *Element[T]) *Element[T] {
 
 // MoveToFront moves element e to the front of list l.
 func (l *List[T]) MoveToFront(e *Element[T]) {
-	if e.list != l || l.elements[l.root].next == e.idx {
+	if e.list != l || l.elem(l.root).next == e.idx {
 		return
 	}
 	l.move(e, l.root)
@@ -244,10 +248,10 @@ func (l *List[T]) MoveToFront(e *Element[T]) {
 
 // MoveToBack moves element e to the back of list l.
 func (l *List[T]) MoveToBack(e *Element[T]) {
-	if e.list != l || l.elements[l.root].prev == e.idx {
+	if e.list != l || l.elem(l.root).prev == e.idx {
 		return
 	}
-	l.move(e, l.elements[l.root].prev)
+	l.move(e, l.elem(l.root).prev)
 }
 
 // MoveBefore moves element e to its new position before mark.
@@ -270,7 +274,7 @@ func (l *List[T]) MoveAfter(e, mark *Element[T]) {
 func (l *List[T]) PushBackList(other *List[T]) {
 	l.lazyInit()
 	for i, e := other.Len(), other.Front(); i > 0; i, e = i-1, e.Next() {
-		l.insertValue(e.Value, l.elements[l.root].prev)
+		l.insertValue(e.Value, l.elem(l.root).prev)
 	}
 }
 
@@ -316,3 +320,4 @@ func (l *List[T]) Backward() iter.Seq[T] {
 		}
 	}
 }
+

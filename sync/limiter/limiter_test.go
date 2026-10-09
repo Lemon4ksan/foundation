@@ -601,3 +601,21 @@ func TestKeyed_Len(t *testing.T) {
 		t.Errorf("expected 2, got %d", kl.Len())
 	}
 }
+
+// Merged from doc_test.go
+
+func TestAdaptive_Allocations(t *testing.T) {
+	adLim := NewAdaptive(10.0)
+	ctx := context.Background()
+
+	allocs := testing.AllocsPerRun(1000, func() {
+		_ = adLim.Acquire(ctx)
+		adLim.Release(time.Millisecond)
+	})
+
+	if allocs > 0 {
+		// Log the allocations to know what it is.
+		t.Logf("Adaptive allocates %v per op", allocs)
+	}
+}
+

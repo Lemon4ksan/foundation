@@ -2,6 +2,7 @@ package socks_test
 
 import (
 	"fmt"
+
 	"github.com/lemon4ksan/foundation/net/proxy/socks"
 )
 

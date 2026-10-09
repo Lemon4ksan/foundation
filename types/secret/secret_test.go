@@ -41,3 +41,15 @@ func TestSecret_Masking(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "new-secret", unmarshaled.Value())
 }
+
+// Merged from doc_test.go
+
+func TestSecret_Allocations(t *testing.T) {
+	s := secret.New("my-super-secret-key")
+	allocs := testing.AllocsPerRun(100, func() {
+		_ = s.Value()
+	})
+	if allocs > 0 {
+		t.Errorf("expected 0 allocations, got %v", allocs)
+	}
+}

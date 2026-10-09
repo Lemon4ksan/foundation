@@ -1,14 +1,12 @@
-// Copyright (c) 2016 the quic-go authors. All rights reserved.
-// Copyright (c) 2026 Lemon4ksan All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
-
 //go:build linux
+
+// Copyright (c) 2016 the quic-go authors. All rights reserved.
 
 package quic
 
 import (
 	"errors"
+	"fmt"
 	"net"
 	"os"
 	"testing"
@@ -85,4 +83,10 @@ func TestGSOError(t *testing.T) {
 	require.True(t, isGSOError(errGSO))
 	require.False(t, isGSOError(nil))
 	require.False(t, isGSOError(errors.New("test")))
+}
+
+// Merged from quic_linux_test.go
+func init() {
+	major, minor := kernelVersion()
+	fmt.Printf("Kernel Version: %d.%d\n\n", major, minor)
 }

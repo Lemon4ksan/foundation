@@ -4,7 +4,10 @@
 
 package sysnet
 
-import "net"
+import (
+	"net"
+	"syscall"
+)
 
 // TuneSocketConn applies low-latency OS syscall flags (TCP_NODELAY and socket buffer tuning) to a [net.Conn].
 func TuneSocketConn(conn net.Conn) {
@@ -42,25 +45,6 @@ func WriteVectorBuffers(conn net.Conn, buffers [][]byte) (int64, error) {
 		return 0, nil
 	}
 
-	if sysConn, ok := conn.(SyscallConnector); ok {
-		raw, err := sysConn.SyscallConn()
-		if err == nil {
-			var (
-				written int64
-				sysErr  error
-			)
-
-			errCtrl := raw.Write(func(fd uintptr) bool {
-				written, sysErr = writeVectorBuffersFD(fd, buffers)
-
-				return true
-			})
-			if errCtrl == nil && sysErr == nil {
-				return written, nil
-			}
-		}
-	}
-
 	netBufs := make(net.Buffers, len(buffers))
 	copy(netBufs, buffers)
 
@@ -95,17 +79,37 @@ func (c *BatchUDPConn) WriteVector(buffers [][]byte) (int64, error) {
 		raw, err := sysConn.SyscallConn()
 		if err == nil {
 			var (
-				written int64
-				sysErr  error
+				totalWritten int64
+				sysErr       error
 			)
 
 			errCtrl := raw.Write(func(fd uintptr) bool {
-				written, sysErr = writeVectorBuffersFD(fd, buffers)
-
+				for len(buffers) > 0 {
+					var written int64
+					written, sysErr = writeVectorBuffersFD(fd, buffers)
+					if written > 0 {
+						totalWritten += written
+						for len(buffers) > 0 && written > 0 {
+							if int64(len(buffers[0])) <= written {
+								written -= int64(len(buffers[0]))
+								buffers = buffers[1:]
+							} else {
+								buffers[0] = buffers[0][written:]
+								written = 0
+							}
+						}
+					}
+					if sysErr != nil {
+						if sysErr == syscall.EAGAIN || sysErr == syscall.EWOULDBLOCK {
+							return false
+						}
+						return true
+					}
+				}
 				return true
 			})
 			if errCtrl == nil && sysErr == nil {
-				return written, nil
+				return totalWritten, nil
 			}
 		}
 	}
@@ -140,17 +144,37 @@ func (c *BatchUDPConn) WriteVectorTo(buffers [][]byte, addr net.Addr) (int64, er
 		raw, err := sysConn.SyscallConn()
 		if err == nil {
 			var (
-				written int64
-				sysErr  error
+				totalWritten int64
+				sysErr       error
 			)
 
 			errCtrl := raw.Write(func(fd uintptr) bool {
-				written, sysErr = writeVectorBuffersFD(fd, buffers)
-
+				for len(buffers) > 0 {
+					var written int64
+					written, sysErr = writeVectorBuffersFD(fd, buffers)
+					if written > 0 {
+						totalWritten += written
+						for len(buffers) > 0 && written > 0 {
+							if int64(len(buffers[0])) <= written {
+								written -= int64(len(buffers[0]))
+								buffers = buffers[1:]
+							} else {
+								buffers[0] = buffers[0][written:]
+								written = 0
+							}
+						}
+					}
+					if sysErr != nil {
+						if sysErr == syscall.EAGAIN || sysErr == syscall.EWOULDBLOCK {
+							return false
+						}
+						return true
+					}
+				}
 				return true
 			})
 			if errCtrl == nil && sysErr == nil {
-				return written, nil
+				return totalWritten, nil
 			}
 		}
 	}

@@ -202,4 +202,3 @@ func TestLZMA2_CorruptedPayload(t *testing.T) {
 		}
 	}
 }
-
