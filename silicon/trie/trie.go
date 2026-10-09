@@ -337,6 +337,14 @@ func (t *RadixTree[V]) deleteNode(curr *node[V], search string) (V, bool) {
 
 		curr.value = zero
 
+		if curr != t.root && len(curr.edges) == 1 {
+			child := curr.edges[0].node
+			curr.prefix += child.prefix
+			curr.edges = child.edges
+			curr.value = child.value
+			curr.hasValue = child.hasValue
+		}
+
 		return old, true
 	}
 
@@ -360,13 +368,15 @@ func (t *RadixTree[V]) deleteNode(curr *node[V], search string) (V, bool) {
 	// Edge compression: if child has no value and no edges, remove it
 	if !next.hasValue && len(next.edges) == 0 {
 		curr.edges = slices.Delete(curr.edges, idx, idx+1)
-	} else if !next.hasValue && len(next.edges) == 1 {
-		// Merge child edge with single grandchild
-		grandChild := next.edges[0].node
-		next.prefix += grandChild.prefix
-		next.edges = grandChild.edges
-		next.value = grandChild.value
-		next.hasValue = grandChild.hasValue
+	}
+
+	// Merge current node if it has no value and only 1 child
+	if curr != t.root && !curr.hasValue && len(curr.edges) == 1 {
+		child := curr.edges[0].node
+		curr.prefix += child.prefix
+		curr.edges = child.edges
+		curr.value = child.value
+		curr.hasValue = child.hasValue
 	}
 
 	return val, true

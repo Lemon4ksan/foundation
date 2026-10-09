@@ -97,9 +97,7 @@ found_two:
 
 // func maskCRLFAVX2(b []byte)
 TEXT ·maskCRLFAVX2(SB), NOSPLIT, $0-24
-	MOVQ b_base+0(FP), AX
-	MOVQ b_len+8(FP), BX
-	JMP mask_entry
+	JMP ·applyFastMaskAVX2(SB)
 
 // func applyFastMaskAVX2(b []byte, mask uint32)
 TEXT ·applyFastMaskAVX2(SB), NOSPLIT, $0-28

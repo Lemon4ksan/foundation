@@ -6,6 +6,7 @@ package simd
 
 import (
 	"bytes"
+	"encoding/binary"
 	"math/bits"
 	"unicode/utf8"
 	"unsafe"
@@ -31,7 +32,7 @@ func IndexByteSWAR(b []byte, target byte) int {
 
 	// Process 8-byte uint64 chunks
 	for i+8 <= n {
-		word := *(*uint64)(unsafe.Pointer(&b[i]))
+		word := binary.LittleEndian.Uint64(b[i:])
 		xor := word ^ targetWord
 
 		// Zero byte detection mask algorithm
@@ -69,7 +70,7 @@ func IndexByteTwoSWAR(b []byte, target1, target2 byte) int {
 	i := 0
 
 	for i+8 <= n {
-		word := *(*uint64)(unsafe.Pointer(&b[i]))
+		word := binary.LittleEndian.Uint64(b[i:])
 
 		xor1 := word ^ w1
 		hasZero1 := (xor1 - RepeatByte0x01) &^ xor1 & RepeatByte0x80
