@@ -203,6 +203,7 @@ func BenchmarkCompare_IDNA_ToASCII(b *testing.B) {
 		}
 	}
 }
+
 // DownstreamMock represents a simulated flaky downstream service.
 type DownstreamMock struct {
 	shouldFail   atomic.Bool

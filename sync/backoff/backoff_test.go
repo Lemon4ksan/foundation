@@ -154,6 +154,7 @@ func BenchmarkExponential_ZeroAlloc(b *testing.B) {
 		_ = bo.NextDelay((i % 10) + 1)
 	}
 }
+
 // TestBackoff_StatelessConcurrentSafety tests that Linear and Constant backoff policies
 // are safely callable concurrently from multiple goroutines without data races.
 func TestBackoff_StatelessConcurrentSafety(t *testing.T) {

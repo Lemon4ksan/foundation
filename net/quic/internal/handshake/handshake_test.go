@@ -470,6 +470,7 @@ func fuzzRunHandshake(
 		server.HandleMessage(data, msgEncLevel) //nolint:errcheck
 	}
 }
+
 func splitHexString(t *testing.T, s string) (slice []byte) {
 	t.Helper()
 
@@ -503,6 +504,7 @@ func init() {
 		cipherSuites = append(cipherSuites, getCipherSuite(tls.TLS_CHACHA20_POLY1305_SHA256))
 	}
 }
+
 func TestRetryIntegrityTagCalculation(t *testing.T) {
 	connID := protocol.ParseConnectionID([]byte{1, 2, 3, 4})
 	fooTag := RetryIntegrityTag([]byte("foo"), connID, protocol.Version1)

@@ -1433,7 +1433,11 @@ func (m *MockAckFrameSource) EXPECT() *MockAckFrameSourceMockRecorder {
 }
 
 // AckFrame mocks base method.
-func (m *MockAckFrameSource) AckFrame(arg0 protocol.EncryptionLevel, now monotime.Time, onlyIfQueued bool) *wire.AckFrame {
+func (m *MockAckFrameSource) AckFrame(
+	arg0 protocol.EncryptionLevel,
+	now monotime.Time,
+	onlyIfQueued bool,
+) *wire.AckFrame {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AckFrame", arg0, now, onlyIfQueued)
 	ret0, _ := ret[0].(*wire.AckFrame)
@@ -1443,7 +1447,14 @@ func (m *MockAckFrameSource) AckFrame(arg0 protocol.EncryptionLevel, now monotim
 // AckFrame indicates an expected call of AckFrame.
 func (mr *MockAckFrameSourceMockRecorder) AckFrame(arg0, now, onlyIfQueued any) *MockAckFrameSourceAckFrameCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AckFrame", reflect.TypeOf((*MockAckFrameSource)(nil).AckFrame), arg0, now, onlyIfQueued)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"AckFrame",
+		reflect.TypeOf((*MockAckFrameSource)(nil).AckFrame),
+		arg0,
+		now,
+		onlyIfQueued,
+	)
 	return &MockAckFrameSourceAckFrameCall{Call: call}
 }
 
@@ -1459,13 +1470,17 @@ func (c *MockAckFrameSourceAckFrameCall) Return(arg0 *wire.AckFrame) *MockAckFra
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockAckFrameSourceAckFrameCall) Do(f func(protocol.EncryptionLevel, monotime.Time, bool) *wire.AckFrame) *MockAckFrameSourceAckFrameCall {
+func (c *MockAckFrameSourceAckFrameCall) Do(
+	f func(protocol.EncryptionLevel, monotime.Time, bool) *wire.AckFrame,
+) *MockAckFrameSourceAckFrameCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockAckFrameSourceAckFrameCall) DoAndReturn(f func(protocol.EncryptionLevel, monotime.Time, bool) *wire.AckFrame) *MockAckFrameSourceAckFrameCall {
+func (c *MockAckFrameSourceAckFrameCall) DoAndReturn(
+	f func(protocol.EncryptionLevel, monotime.Time, bool) *wire.AckFrame,
+) *MockAckFrameSourceAckFrameCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -1515,7 +1530,13 @@ func (m *MockConnRunner) Add(arg0 protocol.ConnectionID, arg1 packetHandler) boo
 // Add indicates an expected call of Add.
 func (mr *MockConnRunnerMockRecorder) Add(arg0, arg1 any) *MockConnRunnerAddCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Add", reflect.TypeOf((*MockConnRunner)(nil).Add), arg0, arg1)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"Add",
+		reflect.TypeOf((*MockConnRunner)(nil).Add),
+		arg0,
+		arg1,
+	)
 	return &MockConnRunnerAddCall{Call: call}
 }
 
@@ -1551,7 +1572,13 @@ func (m *MockConnRunner) AddResetToken(arg0 protocol.StatelessResetToken, arg1 p
 // AddResetToken indicates an expected call of AddResetToken.
 func (mr *MockConnRunnerMockRecorder) AddResetToken(arg0, arg1 any) *MockConnRunnerAddResetTokenCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddResetToken", reflect.TypeOf((*MockConnRunner)(nil).AddResetToken), arg0, arg1)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"AddResetToken",
+		reflect.TypeOf((*MockConnRunner)(nil).AddResetToken),
+		arg0,
+		arg1,
+	)
 	return &MockConnRunnerAddResetTokenCall{Call: call}
 }
 
@@ -1567,13 +1594,17 @@ func (c *MockConnRunnerAddResetTokenCall) Return() *MockConnRunnerAddResetTokenC
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockConnRunnerAddResetTokenCall) Do(f func(protocol.StatelessResetToken, packetHandler)) *MockConnRunnerAddResetTokenCall {
+func (c *MockConnRunnerAddResetTokenCall) Do(
+	f func(protocol.StatelessResetToken, packetHandler),
+) *MockConnRunnerAddResetTokenCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockConnRunnerAddResetTokenCall) DoAndReturn(f func(protocol.StatelessResetToken, packetHandler)) *MockConnRunnerAddResetTokenCall {
+func (c *MockConnRunnerAddResetTokenCall) DoAndReturn(
+	f func(protocol.StatelessResetToken, packetHandler),
+) *MockConnRunnerAddResetTokenCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -1587,7 +1618,12 @@ func (m *MockConnRunner) Remove(arg0 protocol.ConnectionID) {
 // Remove indicates an expected call of Remove.
 func (mr *MockConnRunnerMockRecorder) Remove(arg0 any) *MockConnRunnerRemoveCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Remove", reflect.TypeOf((*MockConnRunner)(nil).Remove), arg0)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"Remove",
+		reflect.TypeOf((*MockConnRunner)(nil).Remove),
+		arg0,
+	)
 	return &MockConnRunnerRemoveCall{Call: call}
 }
 
@@ -1623,7 +1659,12 @@ func (m *MockConnRunner) RemoveResetToken(arg0 protocol.StatelessResetToken) {
 // RemoveResetToken indicates an expected call of RemoveResetToken.
 func (mr *MockConnRunnerMockRecorder) RemoveResetToken(arg0 any) *MockConnRunnerRemoveResetTokenCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveResetToken", reflect.TypeOf((*MockConnRunner)(nil).RemoveResetToken), arg0)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"RemoveResetToken",
+		reflect.TypeOf((*MockConnRunner)(nil).RemoveResetToken),
+		arg0,
+	)
 	return &MockConnRunnerRemoveResetTokenCall{Call: call}
 }
 
@@ -1639,13 +1680,17 @@ func (c *MockConnRunnerRemoveResetTokenCall) Return() *MockConnRunnerRemoveReset
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockConnRunnerRemoveResetTokenCall) Do(f func(protocol.StatelessResetToken)) *MockConnRunnerRemoveResetTokenCall {
+func (c *MockConnRunnerRemoveResetTokenCall) Do(
+	f func(protocol.StatelessResetToken),
+) *MockConnRunnerRemoveResetTokenCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockConnRunnerRemoveResetTokenCall) DoAndReturn(f func(protocol.StatelessResetToken)) *MockConnRunnerRemoveResetTokenCall {
+func (c *MockConnRunnerRemoveResetTokenCall) DoAndReturn(
+	f func(protocol.StatelessResetToken),
+) *MockConnRunnerRemoveResetTokenCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -1659,7 +1704,14 @@ func (m *MockConnRunner) ReplaceWithClosed(arg0 []protocol.ConnectionID, arg1 []
 // ReplaceWithClosed indicates an expected call of ReplaceWithClosed.
 func (mr *MockConnRunnerMockRecorder) ReplaceWithClosed(arg0, arg1, arg2 any) *MockConnRunnerReplaceWithClosedCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplaceWithClosed", reflect.TypeOf((*MockConnRunner)(nil).ReplaceWithClosed), arg0, arg1, arg2)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"ReplaceWithClosed",
+		reflect.TypeOf((*MockConnRunner)(nil).ReplaceWithClosed),
+		arg0,
+		arg1,
+		arg2,
+	)
 	return &MockConnRunnerReplaceWithClosedCall{Call: call}
 }
 
@@ -1675,16 +1727,21 @@ func (c *MockConnRunnerReplaceWithClosedCall) Return() *MockConnRunnerReplaceWit
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockConnRunnerReplaceWithClosedCall) Do(f func([]protocol.ConnectionID, []byte, time.Duration)) *MockConnRunnerReplaceWithClosedCall {
+func (c *MockConnRunnerReplaceWithClosedCall) Do(
+	f func([]protocol.ConnectionID, []byte, time.Duration),
+) *MockConnRunnerReplaceWithClosedCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockConnRunnerReplaceWithClosedCall) DoAndReturn(f func([]protocol.ConnectionID, []byte, time.Duration)) *MockConnRunnerReplaceWithClosedCall {
+func (c *MockConnRunnerReplaceWithClosedCall) DoAndReturn(
+	f func([]protocol.ConnectionID, []byte, time.Duration),
+) *MockConnRunnerReplaceWithClosedCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
+
 // Code generated by MockGen. DO NOT EDIT.
 // Source: github.com/lemon4ksan/sein/internal/quic/internal/handshake (interfaces: CryptoSetup)
 //
@@ -1728,7 +1785,12 @@ func (m *MockCryptoSetup) ChangeConnectionID(arg0 protocol.ConnectionID) {
 // ChangeConnectionID indicates an expected call of ChangeConnectionID.
 func (mr *MockCryptoSetupMockRecorder) ChangeConnectionID(arg0 any) *MockCryptoSetupChangeConnectionIDCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChangeConnectionID", reflect.TypeOf((*MockCryptoSetup)(nil).ChangeConnectionID), arg0)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"ChangeConnectionID",
+		reflect.TypeOf((*MockCryptoSetup)(nil).ChangeConnectionID),
+		arg0,
+	)
 	return &MockCryptoSetupChangeConnectionIDCall{Call: call}
 }
 
@@ -1744,13 +1806,17 @@ func (c *MockCryptoSetupChangeConnectionIDCall) Return() *MockCryptoSetupChangeC
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockCryptoSetupChangeConnectionIDCall) Do(f func(protocol.ConnectionID)) *MockCryptoSetupChangeConnectionIDCall {
+func (c *MockCryptoSetupChangeConnectionIDCall) Do(
+	f func(protocol.ConnectionID),
+) *MockCryptoSetupChangeConnectionIDCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockCryptoSetupChangeConnectionIDCall) DoAndReturn(f func(protocol.ConnectionID)) *MockCryptoSetupChangeConnectionIDCall {
+func (c *MockCryptoSetupChangeConnectionIDCall) DoAndReturn(
+	f func(protocol.ConnectionID),
+) *MockCryptoSetupChangeConnectionIDCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -1804,7 +1870,11 @@ func (m *MockCryptoSetup) ConnectionState() handshake.ConnectionState {
 // ConnectionState indicates an expected call of ConnectionState.
 func (mr *MockCryptoSetupMockRecorder) ConnectionState() *MockCryptoSetupConnectionStateCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConnectionState", reflect.TypeOf((*MockCryptoSetup)(nil).ConnectionState))
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"ConnectionState",
+		reflect.TypeOf((*MockCryptoSetup)(nil).ConnectionState),
+	)
 	return &MockCryptoSetupConnectionStateCall{Call: call}
 }
 
@@ -1814,19 +1884,25 @@ type MockCryptoSetupConnectionStateCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockCryptoSetupConnectionStateCall) Return(arg0 handshake.ConnectionState) *MockCryptoSetupConnectionStateCall {
+func (c *MockCryptoSetupConnectionStateCall) Return(
+	arg0 handshake.ConnectionState,
+) *MockCryptoSetupConnectionStateCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockCryptoSetupConnectionStateCall) Do(f func() handshake.ConnectionState) *MockCryptoSetupConnectionStateCall {
+func (c *MockCryptoSetupConnectionStateCall) Do(
+	f func() handshake.ConnectionState,
+) *MockCryptoSetupConnectionStateCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockCryptoSetupConnectionStateCall) DoAndReturn(f func() handshake.ConnectionState) *MockCryptoSetupConnectionStateCall {
+func (c *MockCryptoSetupConnectionStateCall) DoAndReturn(
+	f func() handshake.ConnectionState,
+) *MockCryptoSetupConnectionStateCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -1840,7 +1916,11 @@ func (m *MockCryptoSetup) DiscardInitialKeys() {
 // DiscardInitialKeys indicates an expected call of DiscardInitialKeys.
 func (mr *MockCryptoSetupMockRecorder) DiscardInitialKeys() *MockCryptoSetupDiscardInitialKeysCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DiscardInitialKeys", reflect.TypeOf((*MockCryptoSetup)(nil).DiscardInitialKeys))
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"DiscardInitialKeys",
+		reflect.TypeOf((*MockCryptoSetup)(nil).DiscardInitialKeys),
+	)
 	return &MockCryptoSetupDiscardInitialKeysCall{Call: call}
 }
 
@@ -1879,7 +1959,11 @@ func (m *MockCryptoSetup) ZeroRTTOpener() (handshake.LongHeaderOpener, error) {
 // ZeroRTTOpener indicates an expected call of ZeroRTTOpener.
 func (mr *MockCryptoSetupMockRecorder) ZeroRTTOpener() *MockCryptoSetupZeroRTTOpenerCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ZeroRTTOpener", reflect.TypeOf((*MockCryptoSetup)(nil).ZeroRTTOpener))
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"ZeroRTTOpener",
+		reflect.TypeOf((*MockCryptoSetup)(nil).ZeroRTTOpener),
+	)
 	return &MockCryptoSetupZeroRTTOpenerCall{Call: call}
 }
 
@@ -1889,19 +1973,26 @@ type MockCryptoSetupZeroRTTOpenerCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockCryptoSetupZeroRTTOpenerCall) Return(arg0 handshake.LongHeaderOpener, arg1 error) *MockCryptoSetupZeroRTTOpenerCall {
+func (c *MockCryptoSetupZeroRTTOpenerCall) Return(
+	arg0 handshake.LongHeaderOpener,
+	arg1 error,
+) *MockCryptoSetupZeroRTTOpenerCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockCryptoSetupZeroRTTOpenerCall) Do(f func() (handshake.LongHeaderOpener, error)) *MockCryptoSetupZeroRTTOpenerCall {
+func (c *MockCryptoSetupZeroRTTOpenerCall) Do(
+	f func() (handshake.LongHeaderOpener, error),
+) *MockCryptoSetupZeroRTTOpenerCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockCryptoSetupZeroRTTOpenerCall) DoAndReturn(f func() (handshake.LongHeaderOpener, error)) *MockCryptoSetupZeroRTTOpenerCall {
+func (c *MockCryptoSetupZeroRTTOpenerCall) DoAndReturn(
+	f func() (handshake.LongHeaderOpener, error),
+) *MockCryptoSetupZeroRTTOpenerCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -1918,7 +2009,11 @@ func (m *MockCryptoSetup) ZeroRTTSealer() (handshake.LongHeaderSealer, error) {
 // ZeroRTTSealer indicates an expected call of ZeroRTTSealer.
 func (mr *MockCryptoSetupMockRecorder) ZeroRTTSealer() *MockCryptoSetupZeroRTTSealerCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ZeroRTTSealer", reflect.TypeOf((*MockCryptoSetup)(nil).ZeroRTTSealer))
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"ZeroRTTSealer",
+		reflect.TypeOf((*MockCryptoSetup)(nil).ZeroRTTSealer),
+	)
 	return &MockCryptoSetupZeroRTTSealerCall{Call: call}
 }
 
@@ -1928,19 +2023,26 @@ type MockCryptoSetupZeroRTTSealerCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockCryptoSetupZeroRTTSealerCall) Return(arg0 handshake.LongHeaderSealer, arg1 error) *MockCryptoSetupZeroRTTSealerCall {
+func (c *MockCryptoSetupZeroRTTSealerCall) Return(
+	arg0 handshake.LongHeaderSealer,
+	arg1 error,
+) *MockCryptoSetupZeroRTTSealerCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockCryptoSetupZeroRTTSealerCall) Do(f func() (handshake.LongHeaderSealer, error)) *MockCryptoSetupZeroRTTSealerCall {
+func (c *MockCryptoSetupZeroRTTSealerCall) Do(
+	f func() (handshake.LongHeaderSealer, error),
+) *MockCryptoSetupZeroRTTSealerCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockCryptoSetupZeroRTTSealerCall) DoAndReturn(f func() (handshake.LongHeaderSealer, error)) *MockCryptoSetupZeroRTTSealerCall {
+func (c *MockCryptoSetupZeroRTTSealerCall) DoAndReturn(
+	f func() (handshake.LongHeaderSealer, error),
+) *MockCryptoSetupZeroRTTSealerCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -1957,7 +2059,11 @@ func (m *MockCryptoSetup) OneRTTOpener() (handshake.ShortHeaderOpener, error) {
 // OneRTTOpener indicates an expected call of OneRTTOpener.
 func (mr *MockCryptoSetupMockRecorder) OneRTTOpener() *MockCryptoSetupOneRTTOpenerCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OneRTTOpener", reflect.TypeOf((*MockCryptoSetup)(nil).OneRTTOpener))
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"OneRTTOpener",
+		reflect.TypeOf((*MockCryptoSetup)(nil).OneRTTOpener),
+	)
 	return &MockCryptoSetupOneRTTOpenerCall{Call: call}
 }
 
@@ -1967,19 +2073,26 @@ type MockCryptoSetupOneRTTOpenerCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockCryptoSetupOneRTTOpenerCall) Return(arg0 handshake.ShortHeaderOpener, arg1 error) *MockCryptoSetupOneRTTOpenerCall {
+func (c *MockCryptoSetupOneRTTOpenerCall) Return(
+	arg0 handshake.ShortHeaderOpener,
+	arg1 error,
+) *MockCryptoSetupOneRTTOpenerCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockCryptoSetupOneRTTOpenerCall) Do(f func() (handshake.ShortHeaderOpener, error)) *MockCryptoSetupOneRTTOpenerCall {
+func (c *MockCryptoSetupOneRTTOpenerCall) Do(
+	f func() (handshake.ShortHeaderOpener, error),
+) *MockCryptoSetupOneRTTOpenerCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockCryptoSetupOneRTTOpenerCall) DoAndReturn(f func() (handshake.ShortHeaderOpener, error)) *MockCryptoSetupOneRTTOpenerCall {
+func (c *MockCryptoSetupOneRTTOpenerCall) DoAndReturn(
+	f func() (handshake.ShortHeaderOpener, error),
+) *MockCryptoSetupOneRTTOpenerCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -1996,7 +2109,11 @@ func (m *MockCryptoSetup) OneRTTSealer() (handshake.ShortHeaderSealer, error) {
 // OneRTTSealer indicates an expected call of OneRTTSealer.
 func (mr *MockCryptoSetupMockRecorder) OneRTTSealer() *MockCryptoSetupOneRTTSealerCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OneRTTSealer", reflect.TypeOf((*MockCryptoSetup)(nil).OneRTTSealer))
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"OneRTTSealer",
+		reflect.TypeOf((*MockCryptoSetup)(nil).OneRTTSealer),
+	)
 	return &MockCryptoSetupOneRTTSealerCall{Call: call}
 }
 
@@ -2006,19 +2123,26 @@ type MockCryptoSetupOneRTTSealerCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockCryptoSetupOneRTTSealerCall) Return(arg0 handshake.ShortHeaderSealer, arg1 error) *MockCryptoSetupOneRTTSealerCall {
+func (c *MockCryptoSetupOneRTTSealerCall) Return(
+	arg0 handshake.ShortHeaderSealer,
+	arg1 error,
+) *MockCryptoSetupOneRTTSealerCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockCryptoSetupOneRTTSealerCall) Do(f func() (handshake.ShortHeaderSealer, error)) *MockCryptoSetupOneRTTSealerCall {
+func (c *MockCryptoSetupOneRTTSealerCall) Do(
+	f func() (handshake.ShortHeaderSealer, error),
+) *MockCryptoSetupOneRTTSealerCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockCryptoSetupOneRTTSealerCall) DoAndReturn(f func() (handshake.ShortHeaderSealer, error)) *MockCryptoSetupOneRTTSealerCall {
+func (c *MockCryptoSetupOneRTTSealerCall) DoAndReturn(
+	f func() (handshake.ShortHeaderSealer, error),
+) *MockCryptoSetupOneRTTSealerCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -2035,7 +2159,11 @@ func (m *MockCryptoSetup) HandshakeOpener() (handshake.LongHeaderOpener, error) 
 // HandshakeOpener indicates an expected call of HandshakeOpener.
 func (mr *MockCryptoSetupMockRecorder) HandshakeOpener() *MockCryptoSetupHandshakeOpenerCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HandshakeOpener", reflect.TypeOf((*MockCryptoSetup)(nil).HandshakeOpener))
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"HandshakeOpener",
+		reflect.TypeOf((*MockCryptoSetup)(nil).HandshakeOpener),
+	)
 	return &MockCryptoSetupHandshakeOpenerCall{Call: call}
 }
 
@@ -2045,19 +2173,26 @@ type MockCryptoSetupHandshakeOpenerCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockCryptoSetupHandshakeOpenerCall) Return(arg0 handshake.LongHeaderOpener, arg1 error) *MockCryptoSetupHandshakeOpenerCall {
+func (c *MockCryptoSetupHandshakeOpenerCall) Return(
+	arg0 handshake.LongHeaderOpener,
+	arg1 error,
+) *MockCryptoSetupHandshakeOpenerCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockCryptoSetupHandshakeOpenerCall) Do(f func() (handshake.LongHeaderOpener, error)) *MockCryptoSetupHandshakeOpenerCall {
+func (c *MockCryptoSetupHandshakeOpenerCall) Do(
+	f func() (handshake.LongHeaderOpener, error),
+) *MockCryptoSetupHandshakeOpenerCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockCryptoSetupHandshakeOpenerCall) DoAndReturn(f func() (handshake.LongHeaderOpener, error)) *MockCryptoSetupHandshakeOpenerCall {
+func (c *MockCryptoSetupHandshakeOpenerCall) DoAndReturn(
+	f func() (handshake.LongHeaderOpener, error),
+) *MockCryptoSetupHandshakeOpenerCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -2074,7 +2209,11 @@ func (m *MockCryptoSetup) HandshakeSealer() (handshake.LongHeaderSealer, error) 
 // HandshakeSealer indicates an expected call of HandshakeSealer.
 func (mr *MockCryptoSetupMockRecorder) HandshakeSealer() *MockCryptoSetupHandshakeSealerCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HandshakeSealer", reflect.TypeOf((*MockCryptoSetup)(nil).HandshakeSealer))
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"HandshakeSealer",
+		reflect.TypeOf((*MockCryptoSetup)(nil).HandshakeSealer),
+	)
 	return &MockCryptoSetupHandshakeSealerCall{Call: call}
 }
 
@@ -2084,19 +2223,26 @@ type MockCryptoSetupHandshakeSealerCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockCryptoSetupHandshakeSealerCall) Return(arg0 handshake.LongHeaderSealer, arg1 error) *MockCryptoSetupHandshakeSealerCall {
+func (c *MockCryptoSetupHandshakeSealerCall) Return(
+	arg0 handshake.LongHeaderSealer,
+	arg1 error,
+) *MockCryptoSetupHandshakeSealerCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockCryptoSetupHandshakeSealerCall) Do(f func() (handshake.LongHeaderSealer, error)) *MockCryptoSetupHandshakeSealerCall {
+func (c *MockCryptoSetupHandshakeSealerCall) Do(
+	f func() (handshake.LongHeaderSealer, error),
+) *MockCryptoSetupHandshakeSealerCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockCryptoSetupHandshakeSealerCall) DoAndReturn(f func() (handshake.LongHeaderSealer, error)) *MockCryptoSetupHandshakeSealerCall {
+func (c *MockCryptoSetupHandshakeSealerCall) DoAndReturn(
+	f func() (handshake.LongHeaderSealer, error),
+) *MockCryptoSetupHandshakeSealerCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -2113,7 +2259,11 @@ func (m *MockCryptoSetup) InitialOpener() (handshake.LongHeaderOpener, error) {
 // InitialOpener indicates an expected call of InitialOpener.
 func (mr *MockCryptoSetupMockRecorder) InitialOpener() *MockCryptoSetupInitialOpenerCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InitialOpener", reflect.TypeOf((*MockCryptoSetup)(nil).InitialOpener))
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"InitialOpener",
+		reflect.TypeOf((*MockCryptoSetup)(nil).InitialOpener),
+	)
 	return &MockCryptoSetupInitialOpenerCall{Call: call}
 }
 
@@ -2123,19 +2273,26 @@ type MockCryptoSetupInitialOpenerCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockCryptoSetupInitialOpenerCall) Return(arg0 handshake.LongHeaderOpener, arg1 error) *MockCryptoSetupInitialOpenerCall {
+func (c *MockCryptoSetupInitialOpenerCall) Return(
+	arg0 handshake.LongHeaderOpener,
+	arg1 error,
+) *MockCryptoSetupInitialOpenerCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockCryptoSetupInitialOpenerCall) Do(f func() (handshake.LongHeaderOpener, error)) *MockCryptoSetupInitialOpenerCall {
+func (c *MockCryptoSetupInitialOpenerCall) Do(
+	f func() (handshake.LongHeaderOpener, error),
+) *MockCryptoSetupInitialOpenerCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockCryptoSetupInitialOpenerCall) DoAndReturn(f func() (handshake.LongHeaderOpener, error)) *MockCryptoSetupInitialOpenerCall {
+func (c *MockCryptoSetupInitialOpenerCall) DoAndReturn(
+	f func() (handshake.LongHeaderOpener, error),
+) *MockCryptoSetupInitialOpenerCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -2152,7 +2309,11 @@ func (m *MockCryptoSetup) InitialSealer() (handshake.LongHeaderSealer, error) {
 // InitialSealer indicates an expected call of InitialSealer.
 func (mr *MockCryptoSetupMockRecorder) InitialSealer() *MockCryptoSetupInitialSealerCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InitialSealer", reflect.TypeOf((*MockCryptoSetup)(nil).InitialSealer))
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"InitialSealer",
+		reflect.TypeOf((*MockCryptoSetup)(nil).InitialSealer),
+	)
 	return &MockCryptoSetupInitialSealerCall{Call: call}
 }
 
@@ -2162,19 +2323,26 @@ type MockCryptoSetupInitialSealerCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockCryptoSetupInitialSealerCall) Return(arg0 handshake.LongHeaderSealer, arg1 error) *MockCryptoSetupInitialSealerCall {
+func (c *MockCryptoSetupInitialSealerCall) Return(
+	arg0 handshake.LongHeaderSealer,
+	arg1 error,
+) *MockCryptoSetupInitialSealerCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockCryptoSetupInitialSealerCall) Do(f func() (handshake.LongHeaderSealer, error)) *MockCryptoSetupInitialSealerCall {
+func (c *MockCryptoSetupInitialSealerCall) Do(
+	f func() (handshake.LongHeaderSealer, error),
+) *MockCryptoSetupInitialSealerCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockCryptoSetupInitialSealerCall) DoAndReturn(f func() (handshake.LongHeaderSealer, error)) *MockCryptoSetupInitialSealerCall {
+func (c *MockCryptoSetupInitialSealerCall) DoAndReturn(
+	f func() (handshake.LongHeaderSealer, error),
+) *MockCryptoSetupInitialSealerCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -2191,7 +2359,11 @@ func (m *MockCryptoSetup) SessionTicket() ([]byte, error) {
 // SessionTicket indicates an expected call of SessionTicket.
 func (mr *MockCryptoSetupMockRecorder) SessionTicket() *MockCryptoSetupSessionTicketCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SessionTicket", reflect.TypeOf((*MockCryptoSetup)(nil).SessionTicket))
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"SessionTicket",
+		reflect.TypeOf((*MockCryptoSetup)(nil).SessionTicket),
+	)
 	return &MockCryptoSetupSessionTicketCall{Call: call}
 }
 
@@ -2229,7 +2401,13 @@ func (m *MockCryptoSetup) HandleMessage(arg0 []byte, arg1 protocol.EncryptionLev
 // HandleMessage indicates an expected call of HandleMessage.
 func (mr *MockCryptoSetupMockRecorder) HandleMessage(arg0, arg1 any) *MockCryptoSetupHandleMessageCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HandleMessage", reflect.TypeOf((*MockCryptoSetup)(nil).HandleMessage), arg0, arg1)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"HandleMessage",
+		reflect.TypeOf((*MockCryptoSetup)(nil).HandleMessage),
+		arg0,
+		arg1,
+	)
 	return &MockCryptoSetupHandleMessageCall{Call: call}
 }
 
@@ -2245,13 +2423,17 @@ func (c *MockCryptoSetupHandleMessageCall) Return(arg0 error) *MockCryptoSetupHa
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockCryptoSetupHandleMessageCall) Do(f func([]byte, protocol.EncryptionLevel) error) *MockCryptoSetupHandleMessageCall {
+func (c *MockCryptoSetupHandleMessageCall) Do(
+	f func([]byte, protocol.EncryptionLevel) error,
+) *MockCryptoSetupHandleMessageCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockCryptoSetupHandleMessageCall) DoAndReturn(f func([]byte, protocol.EncryptionLevel) error) *MockCryptoSetupHandleMessageCall {
+func (c *MockCryptoSetupHandleMessageCall) DoAndReturn(
+	f func([]byte, protocol.EncryptionLevel) error,
+) *MockCryptoSetupHandleMessageCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -2267,7 +2449,11 @@ func (m *MockCryptoSetup) NextEvent() handshake.Event {
 // NextEvent indicates an expected call of NextEvent.
 func (mr *MockCryptoSetupMockRecorder) NextEvent() *MockCryptoSetupNextEventCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NextEvent", reflect.TypeOf((*MockCryptoSetup)(nil).NextEvent))
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"NextEvent",
+		reflect.TypeOf((*MockCryptoSetup)(nil).NextEvent),
+	)
 	return &MockCryptoSetupNextEventCall{Call: call}
 }
 
@@ -2303,7 +2489,11 @@ func (m *MockCryptoSetup) SetHandshakeConfirmed() {
 // SetHandshakeConfirmed indicates an expected call of SetHandshakeConfirmed.
 func (mr *MockCryptoSetupMockRecorder) SetHandshakeConfirmed() *MockCryptoSetupSetHandshakeConfirmedCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetHandshakeConfirmed", reflect.TypeOf((*MockCryptoSetup)(nil).SetHandshakeConfirmed))
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"SetHandshakeConfirmed",
+		reflect.TypeOf((*MockCryptoSetup)(nil).SetHandshakeConfirmed),
+	)
 	return &MockCryptoSetupSetHandshakeConfirmedCall{Call: call}
 }
 
@@ -2341,7 +2531,12 @@ func (m *MockCryptoSetup) SetLargest1RTTAcked(arg0 protocol.PacketNumber) error 
 // SetLargest1RTTAcked indicates an expected call of SetLargest1RTTAcked.
 func (mr *MockCryptoSetupMockRecorder) SetLargest1RTTAcked(arg0 any) *MockCryptoSetupSetLargest1RTTAckedCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetLargest1RTTAcked", reflect.TypeOf((*MockCryptoSetup)(nil).SetLargest1RTTAcked), arg0)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"SetLargest1RTTAcked",
+		reflect.TypeOf((*MockCryptoSetup)(nil).SetLargest1RTTAcked),
+		arg0,
+	)
 	return &MockCryptoSetupSetLargest1RTTAckedCall{Call: call}
 }
 
@@ -2357,13 +2552,17 @@ func (c *MockCryptoSetupSetLargest1RTTAckedCall) Return(arg0 error) *MockCryptoS
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockCryptoSetupSetLargest1RTTAckedCall) Do(f func(protocol.PacketNumber) error) *MockCryptoSetupSetLargest1RTTAckedCall {
+func (c *MockCryptoSetupSetLargest1RTTAckedCall) Do(
+	f func(protocol.PacketNumber) error,
+) *MockCryptoSetupSetLargest1RTTAckedCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockCryptoSetupSetLargest1RTTAckedCall) DoAndReturn(f func(protocol.PacketNumber) error) *MockCryptoSetupSetLargest1RTTAckedCall {
+func (c *MockCryptoSetupSetLargest1RTTAckedCall) DoAndReturn(
+	f func(protocol.PacketNumber) error,
+) *MockCryptoSetupSetLargest1RTTAckedCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -2379,7 +2578,12 @@ func (m *MockCryptoSetup) StartHandshake(arg0 context.Context) error {
 // StartHandshake indicates an expected call of StartHandshake.
 func (mr *MockCryptoSetupMockRecorder) StartHandshake(arg0 any) *MockCryptoSetupStartHandshakeCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartHandshake", reflect.TypeOf((*MockCryptoSetup)(nil).StartHandshake), arg0)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"StartHandshake",
+		reflect.TypeOf((*MockCryptoSetup)(nil).StartHandshake),
+		arg0,
+	)
 	return &MockCryptoSetupStartHandshakeCall{Call: call}
 }
 
@@ -2401,10 +2605,13 @@ func (c *MockCryptoSetupStartHandshakeCall) Do(f func(context.Context) error) *M
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockCryptoSetupStartHandshakeCall) DoAndReturn(f func(context.Context) error) *MockCryptoSetupStartHandshakeCall {
+func (c *MockCryptoSetupStartHandshakeCall) DoAndReturn(
+	f func(context.Context) error,
+) *MockCryptoSetupStartHandshakeCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
+
 // Code generated by MockGen. DO NOT EDIT.
 // Source: github.com/lemon4ksan/sein/internal/quic (interfaces: FrameSource)
 //
@@ -2440,7 +2647,13 @@ func (m *MockFrameSource) EXPECT() *MockFrameSourceMockRecorder {
 }
 
 // Append mocks base method.
-func (m *MockFrameSource) Append(arg0 []ackhandler.Frame, arg1 []ackhandler.StreamFrame, arg2 protocol.ByteCount, arg3 monotime.Time, arg4 protocol.Version) ([]ackhandler.Frame, []ackhandler.StreamFrame, protocol.ByteCount) {
+func (m *MockFrameSource) Append(
+	arg0 []ackhandler.Frame,
+	arg1 []ackhandler.StreamFrame,
+	arg2 protocol.ByteCount,
+	arg3 monotime.Time,
+	arg4 protocol.Version,
+) ([]ackhandler.Frame, []ackhandler.StreamFrame, protocol.ByteCount) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Append", arg0, arg1, arg2, arg3, arg4)
 	ret0, _ := ret[0].([]ackhandler.Frame)
@@ -2452,7 +2665,16 @@ func (m *MockFrameSource) Append(arg0 []ackhandler.Frame, arg1 []ackhandler.Stre
 // Append indicates an expected call of Append.
 func (mr *MockFrameSourceMockRecorder) Append(arg0, arg1, arg2, arg3, arg4 any) *MockFrameSourceAppendCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Append", reflect.TypeOf((*MockFrameSource)(nil).Append), arg0, arg1, arg2, arg3, arg4)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"Append",
+		reflect.TypeOf((*MockFrameSource)(nil).Append),
+		arg0,
+		arg1,
+		arg2,
+		arg3,
+		arg4,
+	)
 	return &MockFrameSourceAppendCall{Call: call}
 }
 
@@ -2462,19 +2684,27 @@ type MockFrameSourceAppendCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockFrameSourceAppendCall) Return(arg0 []ackhandler.Frame, arg1 []ackhandler.StreamFrame, arg2 protocol.ByteCount) *MockFrameSourceAppendCall {
+func (c *MockFrameSourceAppendCall) Return(
+	arg0 []ackhandler.Frame,
+	arg1 []ackhandler.StreamFrame,
+	arg2 protocol.ByteCount,
+) *MockFrameSourceAppendCall {
 	c.Call = c.Call.Return(arg0, arg1, arg2)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockFrameSourceAppendCall) Do(f func([]ackhandler.Frame, []ackhandler.StreamFrame, protocol.ByteCount, monotime.Time, protocol.Version) ([]ackhandler.Frame, []ackhandler.StreamFrame, protocol.ByteCount)) *MockFrameSourceAppendCall {
+func (c *MockFrameSourceAppendCall) Do(
+	f func([]ackhandler.Frame, []ackhandler.StreamFrame, protocol.ByteCount, monotime.Time, protocol.Version) ([]ackhandler.Frame, []ackhandler.StreamFrame, protocol.ByteCount),
+) *MockFrameSourceAppendCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockFrameSourceAppendCall) DoAndReturn(f func([]ackhandler.Frame, []ackhandler.StreamFrame, protocol.ByteCount, monotime.Time, protocol.Version) ([]ackhandler.Frame, []ackhandler.StreamFrame, protocol.ByteCount)) *MockFrameSourceAppendCall {
+func (c *MockFrameSourceAppendCall) DoAndReturn(
+	f func([]ackhandler.Frame, []ackhandler.StreamFrame, protocol.ByteCount, monotime.Time, protocol.Version) ([]ackhandler.Frame, []ackhandler.StreamFrame, protocol.ByteCount),
+) *MockFrameSourceAppendCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -2516,6 +2746,7 @@ func (c *MockFrameSourceHasDataCall) DoAndReturn(f func() bool) *MockFrameSource
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
+
 // Code generated by MockGen. DO NOT EDIT.
 // Source: github.com/lemon4ksan/sein/internal/quic/internal/handshake (interfaces: LongHeaderOpener)
 //
@@ -2551,7 +2782,10 @@ func (m *MockLongHeaderOpener) EXPECT() *MockLongHeaderOpenerMockRecorder {
 }
 
 // DecodePacketNumber mocks base method.
-func (m *MockLongHeaderOpener) DecodePacketNumber(wirePN protocol.PacketNumber, wirePNLen protocol.PacketNumberLen) protocol.PacketNumber {
+func (m *MockLongHeaderOpener) DecodePacketNumber(
+	wirePN protocol.PacketNumber,
+	wirePNLen protocol.PacketNumberLen,
+) protocol.PacketNumber {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DecodePacketNumber", wirePN, wirePNLen)
 	ret0, _ := ret[0].(protocol.PacketNumber)
@@ -2559,9 +2793,17 @@ func (m *MockLongHeaderOpener) DecodePacketNumber(wirePN protocol.PacketNumber, 
 }
 
 // DecodePacketNumber indicates an expected call of DecodePacketNumber.
-func (mr *MockLongHeaderOpenerMockRecorder) DecodePacketNumber(wirePN, wirePNLen any) *MockLongHeaderOpenerDecodePacketNumberCall {
+func (mr *MockLongHeaderOpenerMockRecorder) DecodePacketNumber(
+	wirePN, wirePNLen any,
+) *MockLongHeaderOpenerDecodePacketNumberCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DecodePacketNumber", reflect.TypeOf((*MockLongHeaderOpener)(nil).DecodePacketNumber), wirePN, wirePNLen)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"DecodePacketNumber",
+		reflect.TypeOf((*MockLongHeaderOpener)(nil).DecodePacketNumber),
+		wirePN,
+		wirePNLen,
+	)
 	return &MockLongHeaderOpenerDecodePacketNumberCall{Call: call}
 }
 
@@ -2571,19 +2813,25 @@ type MockLongHeaderOpenerDecodePacketNumberCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockLongHeaderOpenerDecodePacketNumberCall) Return(arg0 protocol.PacketNumber) *MockLongHeaderOpenerDecodePacketNumberCall {
+func (c *MockLongHeaderOpenerDecodePacketNumberCall) Return(
+	arg0 protocol.PacketNumber,
+) *MockLongHeaderOpenerDecodePacketNumberCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockLongHeaderOpenerDecodePacketNumberCall) Do(f func(protocol.PacketNumber, protocol.PacketNumberLen) protocol.PacketNumber) *MockLongHeaderOpenerDecodePacketNumberCall {
+func (c *MockLongHeaderOpenerDecodePacketNumberCall) Do(
+	f func(protocol.PacketNumber, protocol.PacketNumberLen) protocol.PacketNumber,
+) *MockLongHeaderOpenerDecodePacketNumberCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockLongHeaderOpenerDecodePacketNumberCall) DoAndReturn(f func(protocol.PacketNumber, protocol.PacketNumberLen) protocol.PacketNumber) *MockLongHeaderOpenerDecodePacketNumberCall {
+func (c *MockLongHeaderOpenerDecodePacketNumberCall) DoAndReturn(
+	f func(protocol.PacketNumber, protocol.PacketNumberLen) protocol.PacketNumber,
+) *MockLongHeaderOpenerDecodePacketNumberCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -2595,9 +2843,18 @@ func (m *MockLongHeaderOpener) DecryptHeader(sample []byte, firstByte *byte, pnB
 }
 
 // DecryptHeader indicates an expected call of DecryptHeader.
-func (mr *MockLongHeaderOpenerMockRecorder) DecryptHeader(sample, firstByte, pnBytes any) *MockLongHeaderOpenerDecryptHeaderCall {
+func (mr *MockLongHeaderOpenerMockRecorder) DecryptHeader(
+	sample, firstByte, pnBytes any,
+) *MockLongHeaderOpenerDecryptHeaderCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DecryptHeader", reflect.TypeOf((*MockLongHeaderOpener)(nil).DecryptHeader), sample, firstByte, pnBytes)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"DecryptHeader",
+		reflect.TypeOf((*MockLongHeaderOpener)(nil).DecryptHeader),
+		sample,
+		firstByte,
+		pnBytes,
+	)
 	return &MockLongHeaderOpenerDecryptHeaderCall{Call: call}
 }
 
@@ -2613,13 +2870,17 @@ func (c *MockLongHeaderOpenerDecryptHeaderCall) Return() *MockLongHeaderOpenerDe
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockLongHeaderOpenerDecryptHeaderCall) Do(f func([]byte, *byte, []byte)) *MockLongHeaderOpenerDecryptHeaderCall {
+func (c *MockLongHeaderOpenerDecryptHeaderCall) Do(
+	f func([]byte, *byte, []byte),
+) *MockLongHeaderOpenerDecryptHeaderCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockLongHeaderOpenerDecryptHeaderCall) DoAndReturn(f func([]byte, *byte, []byte)) *MockLongHeaderOpenerDecryptHeaderCall {
+func (c *MockLongHeaderOpenerDecryptHeaderCall) DoAndReturn(
+	f func([]byte, *byte, []byte),
+) *MockLongHeaderOpenerDecryptHeaderCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -2636,7 +2897,15 @@ func (m *MockLongHeaderOpener) Open(dst, src []byte, pn protocol.PacketNumber, a
 // Open indicates an expected call of Open.
 func (mr *MockLongHeaderOpenerMockRecorder) Open(dst, src, pn, associatedData any) *MockLongHeaderOpenerOpenCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Open", reflect.TypeOf((*MockLongHeaderOpener)(nil).Open), dst, src, pn, associatedData)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"Open",
+		reflect.TypeOf((*MockLongHeaderOpener)(nil).Open),
+		dst,
+		src,
+		pn,
+		associatedData,
+	)
 	return &MockLongHeaderOpenerOpenCall{Call: call}
 }
 
@@ -2652,16 +2921,21 @@ func (c *MockLongHeaderOpenerOpenCall) Return(arg0 []byte, arg1 error) *MockLong
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockLongHeaderOpenerOpenCall) Do(f func([]byte, []byte, protocol.PacketNumber, []byte) ([]byte, error)) *MockLongHeaderOpenerOpenCall {
+func (c *MockLongHeaderOpenerOpenCall) Do(
+	f func([]byte, []byte, protocol.PacketNumber, []byte) ([]byte, error),
+) *MockLongHeaderOpenerOpenCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockLongHeaderOpenerOpenCall) DoAndReturn(f func([]byte, []byte, protocol.PacketNumber, []byte) ([]byte, error)) *MockLongHeaderOpenerOpenCall {
+func (c *MockLongHeaderOpenerOpenCall) DoAndReturn(
+	f func([]byte, []byte, protocol.PacketNumber, []byte) ([]byte, error),
+) *MockLongHeaderOpenerOpenCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
+
 // Code generated by MockGen. DO NOT EDIT.
 // Source: github.com/lemon4ksan/sein/internal/quic (interfaces: Packer)
 //
@@ -2697,7 +2971,12 @@ func (m *MockPacker) EXPECT() *MockPackerMockRecorder {
 }
 
 // AppendPacket mocks base method.
-func (m *MockPacker) AppendPacket(arg0 *packetBuffer, maxPacketSize protocol.ByteCount, now monotime.Time, v protocol.Version) (shortHeaderPacket, error) {
+func (m *MockPacker) AppendPacket(
+	arg0 *packetBuffer,
+	maxPacketSize protocol.ByteCount,
+	now monotime.Time,
+	v protocol.Version,
+) (shortHeaderPacket, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AppendPacket", arg0, maxPacketSize, now, v)
 	ret0, _ := ret[0].(shortHeaderPacket)
@@ -2708,7 +2987,15 @@ func (m *MockPacker) AppendPacket(arg0 *packetBuffer, maxPacketSize protocol.Byt
 // AppendPacket indicates an expected call of AppendPacket.
 func (mr *MockPackerMockRecorder) AppendPacket(arg0, maxPacketSize, now, v any) *MockPackerAppendPacketCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AppendPacket", reflect.TypeOf((*MockPacker)(nil).AppendPacket), arg0, maxPacketSize, now, v)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"AppendPacket",
+		reflect.TypeOf((*MockPacker)(nil).AppendPacket),
+		arg0,
+		maxPacketSize,
+		now,
+		v,
+	)
 	return &MockPackerAppendPacketCall{Call: call}
 }
 
@@ -2724,19 +3011,27 @@ func (c *MockPackerAppendPacketCall) Return(arg0 shortHeaderPacket, arg1 error) 
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockPackerAppendPacketCall) Do(f func(*packetBuffer, protocol.ByteCount, monotime.Time, protocol.Version) (shortHeaderPacket, error)) *MockPackerAppendPacketCall {
+func (c *MockPackerAppendPacketCall) Do(
+	f func(*packetBuffer, protocol.ByteCount, monotime.Time, protocol.Version) (shortHeaderPacket, error),
+) *MockPackerAppendPacketCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockPackerAppendPacketCall) DoAndReturn(f func(*packetBuffer, protocol.ByteCount, monotime.Time, protocol.Version) (shortHeaderPacket, error)) *MockPackerAppendPacketCall {
+func (c *MockPackerAppendPacketCall) DoAndReturn(
+	f func(*packetBuffer, protocol.ByteCount, monotime.Time, protocol.Version) (shortHeaderPacket, error),
+) *MockPackerAppendPacketCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // PackAckOnlyPacket mocks base method.
-func (m *MockPacker) PackAckOnlyPacket(maxPacketSize protocol.ByteCount, now monotime.Time, v protocol.Version) (shortHeaderPacket, *packetBuffer, error) {
+func (m *MockPacker) PackAckOnlyPacket(
+	maxPacketSize protocol.ByteCount,
+	now monotime.Time,
+	v protocol.Version,
+) (shortHeaderPacket, *packetBuffer, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "PackAckOnlyPacket", maxPacketSize, now, v)
 	ret0, _ := ret[0].(shortHeaderPacket)
@@ -2748,7 +3043,14 @@ func (m *MockPacker) PackAckOnlyPacket(maxPacketSize protocol.ByteCount, now mon
 // PackAckOnlyPacket indicates an expected call of PackAckOnlyPacket.
 func (mr *MockPackerMockRecorder) PackAckOnlyPacket(maxPacketSize, now, v any) *MockPackerPackAckOnlyPacketCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PackAckOnlyPacket", reflect.TypeOf((*MockPacker)(nil).PackAckOnlyPacket), maxPacketSize, now, v)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"PackAckOnlyPacket",
+		reflect.TypeOf((*MockPacker)(nil).PackAckOnlyPacket),
+		maxPacketSize,
+		now,
+		v,
+	)
 	return &MockPackerPackAckOnlyPacketCall{Call: call}
 }
 
@@ -2758,25 +3060,37 @@ type MockPackerPackAckOnlyPacketCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockPackerPackAckOnlyPacketCall) Return(arg0 shortHeaderPacket, arg1 *packetBuffer, arg2 error) *MockPackerPackAckOnlyPacketCall {
+func (c *MockPackerPackAckOnlyPacketCall) Return(
+	arg0 shortHeaderPacket,
+	arg1 *packetBuffer,
+	arg2 error,
+) *MockPackerPackAckOnlyPacketCall {
 	c.Call = c.Call.Return(arg0, arg1, arg2)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockPackerPackAckOnlyPacketCall) Do(f func(protocol.ByteCount, monotime.Time, protocol.Version) (shortHeaderPacket, *packetBuffer, error)) *MockPackerPackAckOnlyPacketCall {
+func (c *MockPackerPackAckOnlyPacketCall) Do(
+	f func(protocol.ByteCount, monotime.Time, protocol.Version) (shortHeaderPacket, *packetBuffer, error),
+) *MockPackerPackAckOnlyPacketCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockPackerPackAckOnlyPacketCall) DoAndReturn(f func(protocol.ByteCount, monotime.Time, protocol.Version) (shortHeaderPacket, *packetBuffer, error)) *MockPackerPackAckOnlyPacketCall {
+func (c *MockPackerPackAckOnlyPacketCall) DoAndReturn(
+	f func(protocol.ByteCount, monotime.Time, protocol.Version) (shortHeaderPacket, *packetBuffer, error),
+) *MockPackerPackAckOnlyPacketCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // PackApplicationClose mocks base method.
-func (m *MockPacker) PackApplicationClose(arg0 *qerr.ApplicationError, arg1 protocol.ByteCount, arg2 protocol.Version) (*coalescedPacket, error) {
+func (m *MockPacker) PackApplicationClose(
+	arg0 *qerr.ApplicationError,
+	arg1 protocol.ByteCount,
+	arg2 protocol.Version,
+) (*coalescedPacket, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "PackApplicationClose", arg0, arg1, arg2)
 	ret0, _ := ret[0].(*coalescedPacket)
@@ -2787,7 +3101,14 @@ func (m *MockPacker) PackApplicationClose(arg0 *qerr.ApplicationError, arg1 prot
 // PackApplicationClose indicates an expected call of PackApplicationClose.
 func (mr *MockPackerMockRecorder) PackApplicationClose(arg0, arg1, arg2 any) *MockPackerPackApplicationCloseCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PackApplicationClose", reflect.TypeOf((*MockPacker)(nil).PackApplicationClose), arg0, arg1, arg2)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"PackApplicationClose",
+		reflect.TypeOf((*MockPacker)(nil).PackApplicationClose),
+		arg0,
+		arg1,
+		arg2,
+	)
 	return &MockPackerPackApplicationCloseCall{Call: call}
 }
 
@@ -2797,25 +3118,37 @@ type MockPackerPackApplicationCloseCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockPackerPackApplicationCloseCall) Return(arg0 *coalescedPacket, arg1 error) *MockPackerPackApplicationCloseCall {
+func (c *MockPackerPackApplicationCloseCall) Return(
+	arg0 *coalescedPacket,
+	arg1 error,
+) *MockPackerPackApplicationCloseCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockPackerPackApplicationCloseCall) Do(f func(*qerr.ApplicationError, protocol.ByteCount, protocol.Version) (*coalescedPacket, error)) *MockPackerPackApplicationCloseCall {
+func (c *MockPackerPackApplicationCloseCall) Do(
+	f func(*qerr.ApplicationError, protocol.ByteCount, protocol.Version) (*coalescedPacket, error),
+) *MockPackerPackApplicationCloseCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockPackerPackApplicationCloseCall) DoAndReturn(f func(*qerr.ApplicationError, protocol.ByteCount, protocol.Version) (*coalescedPacket, error)) *MockPackerPackApplicationCloseCall {
+func (c *MockPackerPackApplicationCloseCall) DoAndReturn(
+	f func(*qerr.ApplicationError, protocol.ByteCount, protocol.Version) (*coalescedPacket, error),
+) *MockPackerPackApplicationCloseCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // PackCoalescedPacket mocks base method.
-func (m *MockPacker) PackCoalescedPacket(onlyAck bool, maxPacketSize protocol.ByteCount, now monotime.Time, v protocol.Version) (*coalescedPacket, error) {
+func (m *MockPacker) PackCoalescedPacket(
+	onlyAck bool,
+	maxPacketSize protocol.ByteCount,
+	now monotime.Time,
+	v protocol.Version,
+) (*coalescedPacket, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "PackCoalescedPacket", onlyAck, maxPacketSize, now, v)
 	ret0, _ := ret[0].(*coalescedPacket)
@@ -2824,9 +3157,19 @@ func (m *MockPacker) PackCoalescedPacket(onlyAck bool, maxPacketSize protocol.By
 }
 
 // PackCoalescedPacket indicates an expected call of PackCoalescedPacket.
-func (mr *MockPackerMockRecorder) PackCoalescedPacket(onlyAck, maxPacketSize, now, v any) *MockPackerPackCoalescedPacketCall {
+func (mr *MockPackerMockRecorder) PackCoalescedPacket(
+	onlyAck, maxPacketSize, now, v any,
+) *MockPackerPackCoalescedPacketCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PackCoalescedPacket", reflect.TypeOf((*MockPacker)(nil).PackCoalescedPacket), onlyAck, maxPacketSize, now, v)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"PackCoalescedPacket",
+		reflect.TypeOf((*MockPacker)(nil).PackCoalescedPacket),
+		onlyAck,
+		maxPacketSize,
+		now,
+		v,
+	)
 	return &MockPackerPackCoalescedPacketCall{Call: call}
 }
 
@@ -2836,25 +3179,36 @@ type MockPackerPackCoalescedPacketCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockPackerPackCoalescedPacketCall) Return(arg0 *coalescedPacket, arg1 error) *MockPackerPackCoalescedPacketCall {
+func (c *MockPackerPackCoalescedPacketCall) Return(
+	arg0 *coalescedPacket,
+	arg1 error,
+) *MockPackerPackCoalescedPacketCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockPackerPackCoalescedPacketCall) Do(f func(bool, protocol.ByteCount, monotime.Time, protocol.Version) (*coalescedPacket, error)) *MockPackerPackCoalescedPacketCall {
+func (c *MockPackerPackCoalescedPacketCall) Do(
+	f func(bool, protocol.ByteCount, monotime.Time, protocol.Version) (*coalescedPacket, error),
+) *MockPackerPackCoalescedPacketCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockPackerPackCoalescedPacketCall) DoAndReturn(f func(bool, protocol.ByteCount, monotime.Time, protocol.Version) (*coalescedPacket, error)) *MockPackerPackCoalescedPacketCall {
+func (c *MockPackerPackCoalescedPacketCall) DoAndReturn(
+	f func(bool, protocol.ByteCount, monotime.Time, protocol.Version) (*coalescedPacket, error),
+) *MockPackerPackCoalescedPacketCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // PackConnectionClose mocks base method.
-func (m *MockPacker) PackConnectionClose(arg0 *qerr.TransportError, arg1 protocol.ByteCount, arg2 protocol.Version) (*coalescedPacket, error) {
+func (m *MockPacker) PackConnectionClose(
+	arg0 *qerr.TransportError,
+	arg1 protocol.ByteCount,
+	arg2 protocol.Version,
+) (*coalescedPacket, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "PackConnectionClose", arg0, arg1, arg2)
 	ret0, _ := ret[0].(*coalescedPacket)
@@ -2865,7 +3219,14 @@ func (m *MockPacker) PackConnectionClose(arg0 *qerr.TransportError, arg1 protoco
 // PackConnectionClose indicates an expected call of PackConnectionClose.
 func (mr *MockPackerMockRecorder) PackConnectionClose(arg0, arg1, arg2 any) *MockPackerPackConnectionCloseCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PackConnectionClose", reflect.TypeOf((*MockPacker)(nil).PackConnectionClose), arg0, arg1, arg2)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"PackConnectionClose",
+		reflect.TypeOf((*MockPacker)(nil).PackConnectionClose),
+		arg0,
+		arg1,
+		arg2,
+	)
 	return &MockPackerPackConnectionCloseCall{Call: call}
 }
 
@@ -2875,25 +3236,36 @@ type MockPackerPackConnectionCloseCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockPackerPackConnectionCloseCall) Return(arg0 *coalescedPacket, arg1 error) *MockPackerPackConnectionCloseCall {
+func (c *MockPackerPackConnectionCloseCall) Return(
+	arg0 *coalescedPacket,
+	arg1 error,
+) *MockPackerPackConnectionCloseCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockPackerPackConnectionCloseCall) Do(f func(*qerr.TransportError, protocol.ByteCount, protocol.Version) (*coalescedPacket, error)) *MockPackerPackConnectionCloseCall {
+func (c *MockPackerPackConnectionCloseCall) Do(
+	f func(*qerr.TransportError, protocol.ByteCount, protocol.Version) (*coalescedPacket, error),
+) *MockPackerPackConnectionCloseCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockPackerPackConnectionCloseCall) DoAndReturn(f func(*qerr.TransportError, protocol.ByteCount, protocol.Version) (*coalescedPacket, error)) *MockPackerPackConnectionCloseCall {
+func (c *MockPackerPackConnectionCloseCall) DoAndReturn(
+	f func(*qerr.TransportError, protocol.ByteCount, protocol.Version) (*coalescedPacket, error),
+) *MockPackerPackConnectionCloseCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // PackMTUProbePacket mocks base method.
-func (m *MockPacker) PackMTUProbePacket(ping ackhandler.Frame, size protocol.ByteCount, v protocol.Version) (shortHeaderPacket, *packetBuffer, error) {
+func (m *MockPacker) PackMTUProbePacket(
+	ping ackhandler.Frame,
+	size protocol.ByteCount,
+	v protocol.Version,
+) (shortHeaderPacket, *packetBuffer, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "PackMTUProbePacket", ping, size, v)
 	ret0, _ := ret[0].(shortHeaderPacket)
@@ -2905,7 +3277,14 @@ func (m *MockPacker) PackMTUProbePacket(ping ackhandler.Frame, size protocol.Byt
 // PackMTUProbePacket indicates an expected call of PackMTUProbePacket.
 func (mr *MockPackerMockRecorder) PackMTUProbePacket(ping, size, v any) *MockPackerPackMTUProbePacketCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PackMTUProbePacket", reflect.TypeOf((*MockPacker)(nil).PackMTUProbePacket), ping, size, v)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"PackMTUProbePacket",
+		reflect.TypeOf((*MockPacker)(nil).PackMTUProbePacket),
+		ping,
+		size,
+		v,
+	)
 	return &MockPackerPackMTUProbePacketCall{Call: call}
 }
 
@@ -2915,25 +3294,39 @@ type MockPackerPackMTUProbePacketCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockPackerPackMTUProbePacketCall) Return(arg0 shortHeaderPacket, arg1 *packetBuffer, arg2 error) *MockPackerPackMTUProbePacketCall {
+func (c *MockPackerPackMTUProbePacketCall) Return(
+	arg0 shortHeaderPacket,
+	arg1 *packetBuffer,
+	arg2 error,
+) *MockPackerPackMTUProbePacketCall {
 	c.Call = c.Call.Return(arg0, arg1, arg2)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockPackerPackMTUProbePacketCall) Do(f func(ackhandler.Frame, protocol.ByteCount, protocol.Version) (shortHeaderPacket, *packetBuffer, error)) *MockPackerPackMTUProbePacketCall {
+func (c *MockPackerPackMTUProbePacketCall) Do(
+	f func(ackhandler.Frame, protocol.ByteCount, protocol.Version) (shortHeaderPacket, *packetBuffer, error),
+) *MockPackerPackMTUProbePacketCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockPackerPackMTUProbePacketCall) DoAndReturn(f func(ackhandler.Frame, protocol.ByteCount, protocol.Version) (shortHeaderPacket, *packetBuffer, error)) *MockPackerPackMTUProbePacketCall {
+func (c *MockPackerPackMTUProbePacketCall) DoAndReturn(
+	f func(ackhandler.Frame, protocol.ByteCount, protocol.Version) (shortHeaderPacket, *packetBuffer, error),
+) *MockPackerPackMTUProbePacketCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // PackPTOProbePacket mocks base method.
-func (m *MockPacker) PackPTOProbePacket(arg0 protocol.EncryptionLevel, arg1 protocol.ByteCount, addPingIfEmpty bool, now monotime.Time, v protocol.Version) (*coalescedPacket, error) {
+func (m *MockPacker) PackPTOProbePacket(
+	arg0 protocol.EncryptionLevel,
+	arg1 protocol.ByteCount,
+	addPingIfEmpty bool,
+	now monotime.Time,
+	v protocol.Version,
+) (*coalescedPacket, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "PackPTOProbePacket", arg0, arg1, addPingIfEmpty, now, v)
 	ret0, _ := ret[0].(*coalescedPacket)
@@ -2942,9 +3335,20 @@ func (m *MockPacker) PackPTOProbePacket(arg0 protocol.EncryptionLevel, arg1 prot
 }
 
 // PackPTOProbePacket indicates an expected call of PackPTOProbePacket.
-func (mr *MockPackerMockRecorder) PackPTOProbePacket(arg0, arg1, addPingIfEmpty, now, v any) *MockPackerPackPTOProbePacketCall {
+func (mr *MockPackerMockRecorder) PackPTOProbePacket(
+	arg0, arg1, addPingIfEmpty, now, v any,
+) *MockPackerPackPTOProbePacketCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PackPTOProbePacket", reflect.TypeOf((*MockPacker)(nil).PackPTOProbePacket), arg0, arg1, addPingIfEmpty, now, v)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"PackPTOProbePacket",
+		reflect.TypeOf((*MockPacker)(nil).PackPTOProbePacket),
+		arg0,
+		arg1,
+		addPingIfEmpty,
+		now,
+		v,
+	)
 	return &MockPackerPackPTOProbePacketCall{Call: call}
 }
 
@@ -2960,19 +3364,27 @@ func (c *MockPackerPackPTOProbePacketCall) Return(arg0 *coalescedPacket, arg1 er
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockPackerPackPTOProbePacketCall) Do(f func(protocol.EncryptionLevel, protocol.ByteCount, bool, monotime.Time, protocol.Version) (*coalescedPacket, error)) *MockPackerPackPTOProbePacketCall {
+func (c *MockPackerPackPTOProbePacketCall) Do(
+	f func(protocol.EncryptionLevel, protocol.ByteCount, bool, monotime.Time, protocol.Version) (*coalescedPacket, error),
+) *MockPackerPackPTOProbePacketCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockPackerPackPTOProbePacketCall) DoAndReturn(f func(protocol.EncryptionLevel, protocol.ByteCount, bool, monotime.Time, protocol.Version) (*coalescedPacket, error)) *MockPackerPackPTOProbePacketCall {
+func (c *MockPackerPackPTOProbePacketCall) DoAndReturn(
+	f func(protocol.EncryptionLevel, protocol.ByteCount, bool, monotime.Time, protocol.Version) (*coalescedPacket, error),
+) *MockPackerPackPTOProbePacketCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // PackPathProbePacket mocks base method.
-func (m *MockPacker) PackPathProbePacket(arg0 protocol.ConnectionID, arg1 []ackhandler.Frame, arg2 protocol.Version) (shortHeaderPacket, *packetBuffer, error) {
+func (m *MockPacker) PackPathProbePacket(
+	arg0 protocol.ConnectionID,
+	arg1 []ackhandler.Frame,
+	arg2 protocol.Version,
+) (shortHeaderPacket, *packetBuffer, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "PackPathProbePacket", arg0, arg1, arg2)
 	ret0, _ := ret[0].(shortHeaderPacket)
@@ -2984,7 +3396,14 @@ func (m *MockPacker) PackPathProbePacket(arg0 protocol.ConnectionID, arg1 []ackh
 // PackPathProbePacket indicates an expected call of PackPathProbePacket.
 func (mr *MockPackerMockRecorder) PackPathProbePacket(arg0, arg1, arg2 any) *MockPackerPackPathProbePacketCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PackPathProbePacket", reflect.TypeOf((*MockPacker)(nil).PackPathProbePacket), arg0, arg1, arg2)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"PackPathProbePacket",
+		reflect.TypeOf((*MockPacker)(nil).PackPathProbePacket),
+		arg0,
+		arg1,
+		arg2,
+	)
 	return &MockPackerPackPathProbePacketCall{Call: call}
 }
 
@@ -2994,19 +3413,27 @@ type MockPackerPackPathProbePacketCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockPackerPackPathProbePacketCall) Return(arg0 shortHeaderPacket, arg1 *packetBuffer, arg2 error) *MockPackerPackPathProbePacketCall {
+func (c *MockPackerPackPathProbePacketCall) Return(
+	arg0 shortHeaderPacket,
+	arg1 *packetBuffer,
+	arg2 error,
+) *MockPackerPackPathProbePacketCall {
 	c.Call = c.Call.Return(arg0, arg1, arg2)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockPackerPackPathProbePacketCall) Do(f func(protocol.ConnectionID, []ackhandler.Frame, protocol.Version) (shortHeaderPacket, *packetBuffer, error)) *MockPackerPackPathProbePacketCall {
+func (c *MockPackerPackPathProbePacketCall) Do(
+	f func(protocol.ConnectionID, []ackhandler.Frame, protocol.Version) (shortHeaderPacket, *packetBuffer, error),
+) *MockPackerPackPathProbePacketCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockPackerPackPathProbePacketCall) DoAndReturn(f func(protocol.ConnectionID, []ackhandler.Frame, protocol.Version) (shortHeaderPacket, *packetBuffer, error)) *MockPackerPackPathProbePacketCall {
+func (c *MockPackerPackPathProbePacketCall) DoAndReturn(
+	f func(protocol.ConnectionID, []ackhandler.Frame, protocol.Version) (shortHeaderPacket, *packetBuffer, error),
+) *MockPackerPackPathProbePacketCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -3020,7 +3447,12 @@ func (m *MockPacker) SetToken(arg0 []byte) {
 // SetToken indicates an expected call of SetToken.
 func (mr *MockPackerMockRecorder) SetToken(arg0 any) *MockPackerSetTokenCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetToken", reflect.TypeOf((*MockPacker)(nil).SetToken), arg0)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"SetToken",
+		reflect.TypeOf((*MockPacker)(nil).SetToken),
+		arg0,
+	)
 	return &MockPackerSetTokenCall{Call: call}
 }
 
@@ -3046,6 +3478,7 @@ func (c *MockPackerSetTokenCall) DoAndReturn(f func([]byte)) *MockPackerSetToken
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
+
 // Code generated by MockGen. DO NOT EDIT.
 // Source: github.com/lemon4ksan/sein/internal/quic (interfaces: PacketHandler)
 //
@@ -3087,9 +3520,16 @@ func (m *MockPacketHandler) closeWithTransportError(arg0 qerr.TransportErrorCode
 }
 
 // closeWithTransportError indicates an expected call of closeWithTransportError.
-func (mr *MockPacketHandlerMockRecorder) closeWithTransportError(arg0 any) *MockPacketHandlercloseWithTransportErrorCall {
+func (mr *MockPacketHandlerMockRecorder) closeWithTransportError(
+	arg0 any,
+) *MockPacketHandlercloseWithTransportErrorCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "closeWithTransportError", reflect.TypeOf((*MockPacketHandler)(nil).closeWithTransportError), arg0)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"closeWithTransportError",
+		reflect.TypeOf((*MockPacketHandler)(nil).closeWithTransportError),
+		arg0,
+	)
 	return &MockPacketHandlercloseWithTransportErrorCall{Call: call}
 }
 
@@ -3105,13 +3545,17 @@ func (c *MockPacketHandlercloseWithTransportErrorCall) Return() *MockPacketHandl
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockPacketHandlercloseWithTransportErrorCall) Do(f func(qerr.TransportErrorCode)) *MockPacketHandlercloseWithTransportErrorCall {
+func (c *MockPacketHandlercloseWithTransportErrorCall) Do(
+	f func(qerr.TransportErrorCode),
+) *MockPacketHandlercloseWithTransportErrorCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockPacketHandlercloseWithTransportErrorCall) DoAndReturn(f func(qerr.TransportErrorCode)) *MockPacketHandlercloseWithTransportErrorCall {
+func (c *MockPacketHandlercloseWithTransportErrorCall) DoAndReturn(
+	f func(qerr.TransportErrorCode),
+) *MockPacketHandlercloseWithTransportErrorCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -3125,7 +3569,12 @@ func (m *MockPacketHandler) destroy(arg0 error) {
 // destroy indicates an expected call of destroy.
 func (mr *MockPacketHandlerMockRecorder) destroy(arg0 any) *MockPacketHandlerdestroyCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "destroy", reflect.TypeOf((*MockPacketHandler)(nil).destroy), arg0)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"destroy",
+		reflect.TypeOf((*MockPacketHandler)(nil).destroy),
+		arg0,
+	)
 	return &MockPacketHandlerdestroyCall{Call: call}
 }
 
@@ -3161,7 +3610,12 @@ func (m *MockPacketHandler) handlePacket(arg0 receivedPacket) {
 // handlePacket indicates an expected call of handlePacket.
 func (mr *MockPacketHandlerMockRecorder) handlePacket(arg0 any) *MockPacketHandlerhandlePacketCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "handlePacket", reflect.TypeOf((*MockPacketHandler)(nil).handlePacket), arg0)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"handlePacket",
+		reflect.TypeOf((*MockPacketHandler)(nil).handlePacket),
+		arg0,
+	)
 	return &MockPacketHandlerhandlePacketCall{Call: call}
 }
 
@@ -3187,6 +3641,7 @@ func (c *MockPacketHandlerhandlePacketCall) DoAndReturn(f func(receivedPacket)) 
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
+
 // Code generated by MockGen. DO NOT EDIT.
 // Source: net (interfaces: PacketConn)
 //
@@ -3270,7 +3725,11 @@ func (m *MockPacketConn) LocalAddr() net.Addr {
 // LocalAddr indicates an expected call of LocalAddr.
 func (mr *MockPacketConnMockRecorder) LocalAddr() *MockPacketConnLocalAddrCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LocalAddr", reflect.TypeOf((*MockPacketConn)(nil).LocalAddr))
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"LocalAddr",
+		reflect.TypeOf((*MockPacketConn)(nil).LocalAddr),
+	)
 	return &MockPacketConnLocalAddrCall{Call: call}
 }
 
@@ -3310,7 +3769,12 @@ func (m *MockPacketConn) ReadFrom(p []byte) (int, net.Addr, error) {
 // ReadFrom indicates an expected call of ReadFrom.
 func (mr *MockPacketConnMockRecorder) ReadFrom(p any) *MockPacketConnReadFromCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadFrom", reflect.TypeOf((*MockPacketConn)(nil).ReadFrom), p)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"ReadFrom",
+		reflect.TypeOf((*MockPacketConn)(nil).ReadFrom),
+		p,
+	)
 	return &MockPacketConnReadFromCall{Call: call}
 }
 
@@ -3348,7 +3812,12 @@ func (m *MockPacketConn) SetDeadline(t time.Time) error {
 // SetDeadline indicates an expected call of SetDeadline.
 func (mr *MockPacketConnMockRecorder) SetDeadline(t any) *MockPacketConnSetDeadlineCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetDeadline", reflect.TypeOf((*MockPacketConn)(nil).SetDeadline), t)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"SetDeadline",
+		reflect.TypeOf((*MockPacketConn)(nil).SetDeadline),
+		t,
+	)
 	return &MockPacketConnSetDeadlineCall{Call: call}
 }
 
@@ -3386,7 +3855,12 @@ func (m *MockPacketConn) SetReadDeadline(t time.Time) error {
 // SetReadDeadline indicates an expected call of SetReadDeadline.
 func (mr *MockPacketConnMockRecorder) SetReadDeadline(t any) *MockPacketConnSetReadDeadlineCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetReadDeadline", reflect.TypeOf((*MockPacketConn)(nil).SetReadDeadline), t)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"SetReadDeadline",
+		reflect.TypeOf((*MockPacketConn)(nil).SetReadDeadline),
+		t,
+	)
 	return &MockPacketConnSetReadDeadlineCall{Call: call}
 }
 
@@ -3424,7 +3898,12 @@ func (m *MockPacketConn) SetWriteDeadline(t time.Time) error {
 // SetWriteDeadline indicates an expected call of SetWriteDeadline.
 func (mr *MockPacketConnMockRecorder) SetWriteDeadline(t any) *MockPacketConnSetWriteDeadlineCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetWriteDeadline", reflect.TypeOf((*MockPacketConn)(nil).SetWriteDeadline), t)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"SetWriteDeadline",
+		reflect.TypeOf((*MockPacketConn)(nil).SetWriteDeadline),
+		t,
+	)
 	return &MockPacketConnSetWriteDeadlineCall{Call: call}
 }
 
@@ -3463,7 +3942,13 @@ func (m *MockPacketConn) WriteTo(p []byte, addr net.Addr) (int, error) {
 // WriteTo indicates an expected call of WriteTo.
 func (mr *MockPacketConnMockRecorder) WriteTo(p, addr any) *MockPacketConnWriteToCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteTo", reflect.TypeOf((*MockPacketConn)(nil).WriteTo), p, addr)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"WriteTo",
+		reflect.TypeOf((*MockPacketConn)(nil).WriteTo),
+		p,
+		addr,
+	)
 	return &MockPacketConnWriteToCall{Call: call}
 }
 
@@ -3489,6 +3974,7 @@ func (c *MockPacketConnWriteToCall) DoAndReturn(f func([]byte, net.Addr) (int, e
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
+
 // Code generated by MockGen. DO NOT EDIT.
 // Source: github.com/lemon4ksan/sein/internal/quic (interfaces: RawConn)
 //
@@ -3649,7 +4135,12 @@ func (m *MockRawConn) SetReadDeadline(arg0 time.Time) error {
 // SetReadDeadline indicates an expected call of SetReadDeadline.
 func (mr *MockRawConnMockRecorder) SetReadDeadline(arg0 any) *MockRawConnSetReadDeadlineCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetReadDeadline", reflect.TypeOf((*MockRawConn)(nil).SetReadDeadline), arg0)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"SetReadDeadline",
+		reflect.TypeOf((*MockRawConn)(nil).SetReadDeadline),
+		arg0,
+	)
 	return &MockRawConnSetReadDeadlineCall{Call: call}
 }
 
@@ -3677,7 +4168,13 @@ func (c *MockRawConnSetReadDeadlineCall) DoAndReturn(f func(time.Time) error) *M
 }
 
 // WritePacket mocks base method.
-func (m *MockRawConn) WritePacket(b []byte, addr net.Addr, packetInfoOOB []byte, gsoSize uint16, ecn protocol.ECN) (int, error) {
+func (m *MockRawConn) WritePacket(
+	b []byte,
+	addr net.Addr,
+	packetInfoOOB []byte,
+	gsoSize uint16,
+	ecn protocol.ECN,
+) (int, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "WritePacket", b, addr, packetInfoOOB, gsoSize, ecn)
 	ret0, _ := ret[0].(int)
@@ -3688,7 +4185,16 @@ func (m *MockRawConn) WritePacket(b []byte, addr net.Addr, packetInfoOOB []byte,
 // WritePacket indicates an expected call of WritePacket.
 func (mr *MockRawConnMockRecorder) WritePacket(b, addr, packetInfoOOB, gsoSize, ecn any) *MockRawConnWritePacketCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WritePacket", reflect.TypeOf((*MockRawConn)(nil).WritePacket), b, addr, packetInfoOOB, gsoSize, ecn)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"WritePacket",
+		reflect.TypeOf((*MockRawConn)(nil).WritePacket),
+		b,
+		addr,
+		packetInfoOOB,
+		gsoSize,
+		ecn,
+	)
 	return &MockRawConnWritePacketCall{Call: call}
 }
 
@@ -3704,13 +4210,17 @@ func (c *MockRawConnWritePacketCall) Return(arg0 int, arg1 error) *MockRawConnWr
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockRawConnWritePacketCall) Do(f func([]byte, net.Addr, []byte, uint16, protocol.ECN) (int, error)) *MockRawConnWritePacketCall {
+func (c *MockRawConnWritePacketCall) Do(
+	f func([]byte, net.Addr, []byte, uint16, protocol.ECN) (int, error),
+) *MockRawConnWritePacketCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockRawConnWritePacketCall) DoAndReturn(f func([]byte, net.Addr, []byte, uint16, protocol.ECN) (int, error)) *MockRawConnWritePacketCall {
+func (c *MockRawConnWritePacketCall) DoAndReturn(
+	f func([]byte, net.Addr, []byte, uint16, protocol.ECN) (int, error),
+) *MockRawConnWritePacketCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -3726,7 +4236,11 @@ func (m *MockRawConn) capabilities() connCapabilities {
 // capabilities indicates an expected call of capabilities.
 func (mr *MockRawConnMockRecorder) capabilities() *MockRawConncapabilitiesCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "capabilities", reflect.TypeOf((*MockRawConn)(nil).capabilities))
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"capabilities",
+		reflect.TypeOf((*MockRawConn)(nil).capabilities),
+	)
 	return &MockRawConncapabilitiesCall{Call: call}
 }
 
@@ -3752,6 +4266,7 @@ func (c *MockRawConncapabilitiesCall) DoAndReturn(f func() connCapabilities) *Mo
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
+
 // Code generated by MockGen. DO NOT EDIT.
 // Source: github.com/lemon4ksan/sein/internal/quic (interfaces: SealingManager)
 
@@ -3793,7 +4308,11 @@ func (m *MockSealingManager) ZeroRTTSealer() (handshake.LongHeaderSealer, error)
 // ZeroRTTSealer indicates an expected call of ZeroRTTSealer.
 func (mr *MockSealingManagerMockRecorder) ZeroRTTSealer() *MockSealingManagerZeroRTTSealerCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ZeroRTTSealer", reflect.TypeOf((*MockSealingManager)(nil).ZeroRTTSealer))
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"ZeroRTTSealer",
+		reflect.TypeOf((*MockSealingManager)(nil).ZeroRTTSealer),
+	)
 	return &MockSealingManagerZeroRTTSealerCall{Call: call}
 }
 
@@ -3803,19 +4322,26 @@ type MockSealingManagerZeroRTTSealerCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockSealingManagerZeroRTTSealerCall) Return(arg0 handshake.LongHeaderSealer, arg1 error) *MockSealingManagerZeroRTTSealerCall {
+func (c *MockSealingManagerZeroRTTSealerCall) Return(
+	arg0 handshake.LongHeaderSealer,
+	arg1 error,
+) *MockSealingManagerZeroRTTSealerCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSealingManagerZeroRTTSealerCall) Do(f func() (handshake.LongHeaderSealer, error)) *MockSealingManagerZeroRTTSealerCall {
+func (c *MockSealingManagerZeroRTTSealerCall) Do(
+	f func() (handshake.LongHeaderSealer, error),
+) *MockSealingManagerZeroRTTSealerCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSealingManagerZeroRTTSealerCall) DoAndReturn(f func() (handshake.LongHeaderSealer, error)) *MockSealingManagerZeroRTTSealerCall {
+func (c *MockSealingManagerZeroRTTSealerCall) DoAndReturn(
+	f func() (handshake.LongHeaderSealer, error),
+) *MockSealingManagerZeroRTTSealerCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -3832,7 +4358,11 @@ func (m *MockSealingManager) OneRTTSealer() (handshake.ShortHeaderSealer, error)
 // OneRTTSealer indicates an expected call of OneRTTSealer.
 func (mr *MockSealingManagerMockRecorder) OneRTTSealer() *MockSealingManagerOneRTTSealerCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OneRTTSealer", reflect.TypeOf((*MockSealingManager)(nil).OneRTTSealer))
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"OneRTTSealer",
+		reflect.TypeOf((*MockSealingManager)(nil).OneRTTSealer),
+	)
 	return &MockSealingManagerOneRTTSealerCall{Call: call}
 }
 
@@ -3842,19 +4372,26 @@ type MockSealingManagerOneRTTSealerCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockSealingManagerOneRTTSealerCall) Return(arg0 handshake.ShortHeaderSealer, arg1 error) *MockSealingManagerOneRTTSealerCall {
+func (c *MockSealingManagerOneRTTSealerCall) Return(
+	arg0 handshake.ShortHeaderSealer,
+	arg1 error,
+) *MockSealingManagerOneRTTSealerCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSealingManagerOneRTTSealerCall) Do(f func() (handshake.ShortHeaderSealer, error)) *MockSealingManagerOneRTTSealerCall {
+func (c *MockSealingManagerOneRTTSealerCall) Do(
+	f func() (handshake.ShortHeaderSealer, error),
+) *MockSealingManagerOneRTTSealerCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSealingManagerOneRTTSealerCall) DoAndReturn(f func() (handshake.ShortHeaderSealer, error)) *MockSealingManagerOneRTTSealerCall {
+func (c *MockSealingManagerOneRTTSealerCall) DoAndReturn(
+	f func() (handshake.ShortHeaderSealer, error),
+) *MockSealingManagerOneRTTSealerCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -3871,7 +4408,11 @@ func (m *MockSealingManager) HandshakeSealer() (handshake.LongHeaderSealer, erro
 // HandshakeSealer indicates an expected call of HandshakeSealer.
 func (mr *MockSealingManagerMockRecorder) HandshakeSealer() *MockSealingManagerHandshakeSealerCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HandshakeSealer", reflect.TypeOf((*MockSealingManager)(nil).HandshakeSealer))
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"HandshakeSealer",
+		reflect.TypeOf((*MockSealingManager)(nil).HandshakeSealer),
+	)
 	return &MockSealingManagerHandshakeSealerCall{Call: call}
 }
 
@@ -3881,19 +4422,26 @@ type MockSealingManagerHandshakeSealerCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockSealingManagerHandshakeSealerCall) Return(arg0 handshake.LongHeaderSealer, arg1 error) *MockSealingManagerHandshakeSealerCall {
+func (c *MockSealingManagerHandshakeSealerCall) Return(
+	arg0 handshake.LongHeaderSealer,
+	arg1 error,
+) *MockSealingManagerHandshakeSealerCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSealingManagerHandshakeSealerCall) Do(f func() (handshake.LongHeaderSealer, error)) *MockSealingManagerHandshakeSealerCall {
+func (c *MockSealingManagerHandshakeSealerCall) Do(
+	f func() (handshake.LongHeaderSealer, error),
+) *MockSealingManagerHandshakeSealerCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSealingManagerHandshakeSealerCall) DoAndReturn(f func() (handshake.LongHeaderSealer, error)) *MockSealingManagerHandshakeSealerCall {
+func (c *MockSealingManagerHandshakeSealerCall) DoAndReturn(
+	f func() (handshake.LongHeaderSealer, error),
+) *MockSealingManagerHandshakeSealerCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -3910,7 +4458,11 @@ func (m *MockSealingManager) InitialSealer() (handshake.LongHeaderSealer, error)
 // InitialSealer indicates an expected call of InitialSealer.
 func (mr *MockSealingManagerMockRecorder) InitialSealer() *MockSealingManagerInitialSealerCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InitialSealer", reflect.TypeOf((*MockSealingManager)(nil).InitialSealer))
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"InitialSealer",
+		reflect.TypeOf((*MockSealingManager)(nil).InitialSealer),
+	)
 	return &MockSealingManagerInitialSealerCall{Call: call}
 }
 
@@ -3920,22 +4472,30 @@ type MockSealingManagerInitialSealerCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockSealingManagerInitialSealerCall) Return(arg0 handshake.LongHeaderSealer, arg1 error) *MockSealingManagerInitialSealerCall {
+func (c *MockSealingManagerInitialSealerCall) Return(
+	arg0 handshake.LongHeaderSealer,
+	arg1 error,
+) *MockSealingManagerInitialSealerCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSealingManagerInitialSealerCall) Do(f func() (handshake.LongHeaderSealer, error)) *MockSealingManagerInitialSealerCall {
+func (c *MockSealingManagerInitialSealerCall) Do(
+	f func() (handshake.LongHeaderSealer, error),
+) *MockSealingManagerInitialSealerCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSealingManagerInitialSealerCall) DoAndReturn(f func() (handshake.LongHeaderSealer, error)) *MockSealingManagerInitialSealerCall {
+func (c *MockSealingManagerInitialSealerCall) DoAndReturn(
+	f func() (handshake.LongHeaderSealer, error),
+) *MockSealingManagerInitialSealerCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
+
 // Code generated by MockGen. DO NOT EDIT.
 // Source: github.com/lemon4ksan/sein/internal/quic (interfaces: SendConn)
 //
@@ -3979,7 +4539,13 @@ func (m *MockSendConn) ChangeRemoteAddr(addr net.Addr, info packetInfo) {
 // ChangeRemoteAddr indicates an expected call of ChangeRemoteAddr.
 func (mr *MockSendConnMockRecorder) ChangeRemoteAddr(addr, info any) *MockSendConnChangeRemoteAddrCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChangeRemoteAddr", reflect.TypeOf((*MockSendConn)(nil).ChangeRemoteAddr), addr, info)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"ChangeRemoteAddr",
+		reflect.TypeOf((*MockSendConn)(nil).ChangeRemoteAddr),
+		addr,
+		info,
+	)
 	return &MockSendConnChangeRemoteAddrCall{Call: call}
 }
 
@@ -4093,7 +4659,11 @@ func (m *MockSendConn) RemoteAddr() net.Addr {
 // RemoteAddr indicates an expected call of RemoteAddr.
 func (mr *MockSendConnMockRecorder) RemoteAddr() *MockSendConnRemoteAddrCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoteAddr", reflect.TypeOf((*MockSendConn)(nil).RemoteAddr))
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"RemoteAddr",
+		reflect.TypeOf((*MockSendConn)(nil).RemoteAddr),
+	)
 	return &MockSendConnRemoteAddrCall{Call: call}
 }
 
@@ -4131,7 +4701,14 @@ func (m *MockSendConn) Write(b []byte, gsoSize uint16, ecn protocol.ECN) error {
 // Write indicates an expected call of Write.
 func (mr *MockSendConnMockRecorder) Write(b, gsoSize, ecn any) *MockSendConnWriteCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Write", reflect.TypeOf((*MockSendConn)(nil).Write), b, gsoSize, ecn)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"Write",
+		reflect.TypeOf((*MockSendConn)(nil).Write),
+		b,
+		gsoSize,
+		ecn,
+	)
 	return &MockSendConnWriteCall{Call: call}
 }
 
@@ -4169,7 +4746,14 @@ func (m *MockSendConn) WriteTo(arg0 []byte, arg1 net.Addr, arg2 packetInfo) erro
 // WriteTo indicates an expected call of WriteTo.
 func (mr *MockSendConnMockRecorder) WriteTo(arg0, arg1, arg2 any) *MockSendConnWriteToCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteTo", reflect.TypeOf((*MockSendConn)(nil).WriteTo), arg0, arg1, arg2)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"WriteTo",
+		reflect.TypeOf((*MockSendConn)(nil).WriteTo),
+		arg0,
+		arg1,
+		arg2,
+	)
 	return &MockSendConnWriteToCall{Call: call}
 }
 
@@ -4207,7 +4791,11 @@ func (m *MockSendConn) capabilities() connCapabilities {
 // capabilities indicates an expected call of capabilities.
 func (mr *MockSendConnMockRecorder) capabilities() *MockSendConncapabilitiesCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "capabilities", reflect.TypeOf((*MockSendConn)(nil).capabilities))
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"capabilities",
+		reflect.TypeOf((*MockSendConn)(nil).capabilities),
+	)
 	return &MockSendConncapabilitiesCall{Call: call}
 }
 
@@ -4233,6 +4821,7 @@ func (c *MockSendConncapabilitiesCall) DoAndReturn(f func() connCapabilities) *M
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
+
 // Code generated by MockGen. DO NOT EDIT.
 // Source: github.com/lemon4ksan/sein/internal/quic (interfaces: Sender)
 //
@@ -4388,7 +4977,14 @@ func (m *MockSender) Send(p *packetBuffer, gsoSize uint16, ecn protocol.ECN) {
 // Send indicates an expected call of Send.
 func (mr *MockSenderMockRecorder) Send(p, gsoSize, ecn any) *MockSenderSendCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Send", reflect.TypeOf((*MockSender)(nil).Send), p, gsoSize, ecn)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"Send",
+		reflect.TypeOf((*MockSender)(nil).Send),
+		p,
+		gsoSize,
+		ecn,
+	)
 	return &MockSenderSendCall{Call: call}
 }
 
@@ -4424,7 +5020,14 @@ func (m *MockSender) SendProbe(arg0 *packetBuffer, arg1 net.Addr, arg2 packetInf
 // SendProbe indicates an expected call of SendProbe.
 func (mr *MockSenderMockRecorder) SendProbe(arg0, arg1, arg2 any) *MockSenderSendProbeCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendProbe", reflect.TypeOf((*MockSender)(nil).SendProbe), arg0, arg1, arg2)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"SendProbe",
+		reflect.TypeOf((*MockSender)(nil).SendProbe),
+		arg0,
+		arg1,
+		arg2,
+	)
 	return &MockSenderSendProbeCall{Call: call}
 }
 
@@ -4488,6 +5091,7 @@ func (c *MockSenderWouldBlockCall) DoAndReturn(f func() bool) *MockSenderWouldBl
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
+
 // Code generated by MockGen. DO NOT EDIT.
 // Source: github.com/lemon4ksan/sein/internal/quic/internal/ackhandler (interfaces: SentPacketHandler)
 //
@@ -4539,7 +5143,13 @@ func (m *MockSentPacketHandler) DropPackets(arg0 protocol.EncryptionLevel, rcvTi
 // DropPackets indicates an expected call of DropPackets.
 func (mr *MockSentPacketHandlerMockRecorder) DropPackets(arg0, rcvTime any) *MockSentPacketHandlerDropPacketsCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropPackets", reflect.TypeOf((*MockSentPacketHandler)(nil).DropPackets), arg0, rcvTime)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"DropPackets",
+		reflect.TypeOf((*MockSentPacketHandler)(nil).DropPackets),
+		arg0,
+		rcvTime,
+	)
 	return &MockSentPacketHandlerDropPacketsCall{Call: call}
 }
 
@@ -4555,13 +5165,17 @@ func (c *MockSentPacketHandlerDropPacketsCall) Return() *MockSentPacketHandlerDr
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSentPacketHandlerDropPacketsCall) Do(f func(protocol.EncryptionLevel, monotime.Time)) *MockSentPacketHandlerDropPacketsCall {
+func (c *MockSentPacketHandlerDropPacketsCall) Do(
+	f func(protocol.EncryptionLevel, monotime.Time),
+) *MockSentPacketHandlerDropPacketsCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSentPacketHandlerDropPacketsCall) DoAndReturn(f func(protocol.EncryptionLevel, monotime.Time)) *MockSentPacketHandlerDropPacketsCall {
+func (c *MockSentPacketHandlerDropPacketsCall) DoAndReturn(
+	f func(protocol.EncryptionLevel, monotime.Time),
+) *MockSentPacketHandlerDropPacketsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -4577,7 +5191,12 @@ func (m *MockSentPacketHandler) ECNMode(isShortHeaderPacket bool) protocol.ECN {
 // ECNMode indicates an expected call of ECNMode.
 func (mr *MockSentPacketHandlerMockRecorder) ECNMode(isShortHeaderPacket any) *MockSentPacketHandlerECNModeCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ECNMode", reflect.TypeOf((*MockSentPacketHandler)(nil).ECNMode), isShortHeaderPacket)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"ECNMode",
+		reflect.TypeOf((*MockSentPacketHandler)(nil).ECNMode),
+		isShortHeaderPacket,
+	)
 	return &MockSentPacketHandlerECNModeCall{Call: call}
 }
 
@@ -4615,7 +5234,11 @@ func (m *MockSentPacketHandler) LossDetectionTimeout() monotime.Time {
 // LossDetectionTimeout indicates an expected call of LossDetectionTimeout.
 func (mr *MockSentPacketHandlerMockRecorder) LossDetectionTimeout() *MockSentPacketHandlerLossDetectionTimeoutCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LossDetectionTimeout", reflect.TypeOf((*MockSentPacketHandler)(nil).LossDetectionTimeout))
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"LossDetectionTimeout",
+		reflect.TypeOf((*MockSentPacketHandler)(nil).LossDetectionTimeout),
+	)
 	return &MockSentPacketHandlerLossDetectionTimeoutCall{Call: call}
 }
 
@@ -4625,19 +5248,25 @@ type MockSentPacketHandlerLossDetectionTimeoutCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockSentPacketHandlerLossDetectionTimeoutCall) Return(arg0 monotime.Time) *MockSentPacketHandlerLossDetectionTimeoutCall {
+func (c *MockSentPacketHandlerLossDetectionTimeoutCall) Return(
+	arg0 monotime.Time,
+) *MockSentPacketHandlerLossDetectionTimeoutCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSentPacketHandlerLossDetectionTimeoutCall) Do(f func() monotime.Time) *MockSentPacketHandlerLossDetectionTimeoutCall {
+func (c *MockSentPacketHandlerLossDetectionTimeoutCall) Do(
+	f func() monotime.Time,
+) *MockSentPacketHandlerLossDetectionTimeoutCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSentPacketHandlerLossDetectionTimeoutCall) DoAndReturn(f func() monotime.Time) *MockSentPacketHandlerLossDetectionTimeoutCall {
+func (c *MockSentPacketHandlerLossDetectionTimeoutCall) DoAndReturn(
+	f func() monotime.Time,
+) *MockSentPacketHandlerLossDetectionTimeoutCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -4649,9 +5278,17 @@ func (m *MockSentPacketHandler) MigratedPath(now monotime.Time, initialMaxPacket
 }
 
 // MigratedPath indicates an expected call of MigratedPath.
-func (mr *MockSentPacketHandlerMockRecorder) MigratedPath(now, initialMaxPacketSize any) *MockSentPacketHandlerMigratedPathCall {
+func (mr *MockSentPacketHandlerMockRecorder) MigratedPath(
+	now, initialMaxPacketSize any,
+) *MockSentPacketHandlerMigratedPathCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MigratedPath", reflect.TypeOf((*MockSentPacketHandler)(nil).MigratedPath), now, initialMaxPacketSize)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"MigratedPath",
+		reflect.TypeOf((*MockSentPacketHandler)(nil).MigratedPath),
+		now,
+		initialMaxPacketSize,
+	)
 	return &MockSentPacketHandlerMigratedPathCall{Call: call}
 }
 
@@ -4667,13 +5304,17 @@ func (c *MockSentPacketHandlerMigratedPathCall) Return() *MockSentPacketHandlerM
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSentPacketHandlerMigratedPathCall) Do(f func(monotime.Time, protocol.ByteCount)) *MockSentPacketHandlerMigratedPathCall {
+func (c *MockSentPacketHandlerMigratedPathCall) Do(
+	f func(monotime.Time, protocol.ByteCount),
+) *MockSentPacketHandlerMigratedPathCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSentPacketHandlerMigratedPathCall) DoAndReturn(f func(monotime.Time, protocol.ByteCount)) *MockSentPacketHandlerMigratedPathCall {
+func (c *MockSentPacketHandlerMigratedPathCall) DoAndReturn(
+	f func(monotime.Time, protocol.ByteCount),
+) *MockSentPacketHandlerMigratedPathCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -4687,9 +5328,16 @@ func (m *MockSentPacketHandler) OnLossDetectionTimeout(now monotime.Time) error 
 }
 
 // OnLossDetectionTimeout indicates an expected call of OnLossDetectionTimeout.
-func (mr *MockSentPacketHandlerMockRecorder) OnLossDetectionTimeout(now any) *MockSentPacketHandlerOnLossDetectionTimeoutCall {
+func (mr *MockSentPacketHandlerMockRecorder) OnLossDetectionTimeout(
+	now any,
+) *MockSentPacketHandlerOnLossDetectionTimeoutCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OnLossDetectionTimeout", reflect.TypeOf((*MockSentPacketHandler)(nil).OnLossDetectionTimeout), now)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"OnLossDetectionTimeout",
+		reflect.TypeOf((*MockSentPacketHandler)(nil).OnLossDetectionTimeout),
+		now,
+	)
 	return &MockSentPacketHandlerOnLossDetectionTimeoutCall{Call: call}
 }
 
@@ -4699,25 +5347,33 @@ type MockSentPacketHandlerOnLossDetectionTimeoutCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockSentPacketHandlerOnLossDetectionTimeoutCall) Return(arg0 error) *MockSentPacketHandlerOnLossDetectionTimeoutCall {
+func (c *MockSentPacketHandlerOnLossDetectionTimeoutCall) Return(
+	arg0 error,
+) *MockSentPacketHandlerOnLossDetectionTimeoutCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSentPacketHandlerOnLossDetectionTimeoutCall) Do(f func(monotime.Time) error) *MockSentPacketHandlerOnLossDetectionTimeoutCall {
+func (c *MockSentPacketHandlerOnLossDetectionTimeoutCall) Do(
+	f func(monotime.Time) error,
+) *MockSentPacketHandlerOnLossDetectionTimeoutCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSentPacketHandlerOnLossDetectionTimeoutCall) DoAndReturn(f func(monotime.Time) error) *MockSentPacketHandlerOnLossDetectionTimeoutCall {
+func (c *MockSentPacketHandlerOnLossDetectionTimeoutCall) DoAndReturn(
+	f func(monotime.Time) error,
+) *MockSentPacketHandlerOnLossDetectionTimeoutCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // PeekPacketNumber mocks base method.
-func (m *MockSentPacketHandler) PeekPacketNumber(arg0 protocol.EncryptionLevel) (protocol.PacketNumber, protocol.PacketNumberLen) {
+func (m *MockSentPacketHandler) PeekPacketNumber(
+	arg0 protocol.EncryptionLevel,
+) (protocol.PacketNumber, protocol.PacketNumberLen) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "PeekPacketNumber", arg0)
 	ret0, _ := ret[0].(protocol.PacketNumber)
@@ -4728,7 +5384,12 @@ func (m *MockSentPacketHandler) PeekPacketNumber(arg0 protocol.EncryptionLevel) 
 // PeekPacketNumber indicates an expected call of PeekPacketNumber.
 func (mr *MockSentPacketHandlerMockRecorder) PeekPacketNumber(arg0 any) *MockSentPacketHandlerPeekPacketNumberCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PeekPacketNumber", reflect.TypeOf((*MockSentPacketHandler)(nil).PeekPacketNumber), arg0)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"PeekPacketNumber",
+		reflect.TypeOf((*MockSentPacketHandler)(nil).PeekPacketNumber),
+		arg0,
+	)
 	return &MockSentPacketHandlerPeekPacketNumberCall{Call: call}
 }
 
@@ -4738,19 +5399,26 @@ type MockSentPacketHandlerPeekPacketNumberCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockSentPacketHandlerPeekPacketNumberCall) Return(arg0 protocol.PacketNumber, arg1 protocol.PacketNumberLen) *MockSentPacketHandlerPeekPacketNumberCall {
+func (c *MockSentPacketHandlerPeekPacketNumberCall) Return(
+	arg0 protocol.PacketNumber,
+	arg1 protocol.PacketNumberLen,
+) *MockSentPacketHandlerPeekPacketNumberCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSentPacketHandlerPeekPacketNumberCall) Do(f func(protocol.EncryptionLevel) (protocol.PacketNumber, protocol.PacketNumberLen)) *MockSentPacketHandlerPeekPacketNumberCall {
+func (c *MockSentPacketHandlerPeekPacketNumberCall) Do(
+	f func(protocol.EncryptionLevel) (protocol.PacketNumber, protocol.PacketNumberLen),
+) *MockSentPacketHandlerPeekPacketNumberCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSentPacketHandlerPeekPacketNumberCall) DoAndReturn(f func(protocol.EncryptionLevel) (protocol.PacketNumber, protocol.PacketNumberLen)) *MockSentPacketHandlerPeekPacketNumberCall {
+func (c *MockSentPacketHandlerPeekPacketNumberCall) DoAndReturn(
+	f func(protocol.EncryptionLevel) (protocol.PacketNumber, protocol.PacketNumberLen),
+) *MockSentPacketHandlerPeekPacketNumberCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -4766,7 +5434,12 @@ func (m *MockSentPacketHandler) PopPacketNumber(arg0 protocol.EncryptionLevel) p
 // PopPacketNumber indicates an expected call of PopPacketNumber.
 func (mr *MockSentPacketHandlerMockRecorder) PopPacketNumber(arg0 any) *MockSentPacketHandlerPopPacketNumberCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PopPacketNumber", reflect.TypeOf((*MockSentPacketHandler)(nil).PopPacketNumber), arg0)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"PopPacketNumber",
+		reflect.TypeOf((*MockSentPacketHandler)(nil).PopPacketNumber),
+		arg0,
+	)
 	return &MockSentPacketHandlerPopPacketNumberCall{Call: call}
 }
 
@@ -4776,19 +5449,25 @@ type MockSentPacketHandlerPopPacketNumberCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockSentPacketHandlerPopPacketNumberCall) Return(arg0 protocol.PacketNumber) *MockSentPacketHandlerPopPacketNumberCall {
+func (c *MockSentPacketHandlerPopPacketNumberCall) Return(
+	arg0 protocol.PacketNumber,
+) *MockSentPacketHandlerPopPacketNumberCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSentPacketHandlerPopPacketNumberCall) Do(f func(protocol.EncryptionLevel) protocol.PacketNumber) *MockSentPacketHandlerPopPacketNumberCall {
+func (c *MockSentPacketHandlerPopPacketNumberCall) Do(
+	f func(protocol.EncryptionLevel) protocol.PacketNumber,
+) *MockSentPacketHandlerPopPacketNumberCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSentPacketHandlerPopPacketNumberCall) DoAndReturn(f func(protocol.EncryptionLevel) protocol.PacketNumber) *MockSentPacketHandlerPopPacketNumberCall {
+func (c *MockSentPacketHandlerPopPacketNumberCall) DoAndReturn(
+	f func(protocol.EncryptionLevel) protocol.PacketNumber,
+) *MockSentPacketHandlerPopPacketNumberCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -4804,7 +5483,12 @@ func (m *MockSentPacketHandler) QueueProbePacket(arg0 protocol.EncryptionLevel) 
 // QueueProbePacket indicates an expected call of QueueProbePacket.
 func (mr *MockSentPacketHandlerMockRecorder) QueueProbePacket(arg0 any) *MockSentPacketHandlerQueueProbePacketCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueueProbePacket", reflect.TypeOf((*MockSentPacketHandler)(nil).QueueProbePacket), arg0)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"QueueProbePacket",
+		reflect.TypeOf((*MockSentPacketHandler)(nil).QueueProbePacket),
+		arg0,
+	)
 	return &MockSentPacketHandlerQueueProbePacketCall{Call: call}
 }
 
@@ -4820,19 +5504,27 @@ func (c *MockSentPacketHandlerQueueProbePacketCall) Return(arg0 bool) *MockSentP
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSentPacketHandlerQueueProbePacketCall) Do(f func(protocol.EncryptionLevel) bool) *MockSentPacketHandlerQueueProbePacketCall {
+func (c *MockSentPacketHandlerQueueProbePacketCall) Do(
+	f func(protocol.EncryptionLevel) bool,
+) *MockSentPacketHandlerQueueProbePacketCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSentPacketHandlerQueueProbePacketCall) DoAndReturn(f func(protocol.EncryptionLevel) bool) *MockSentPacketHandlerQueueProbePacketCall {
+func (c *MockSentPacketHandlerQueueProbePacketCall) DoAndReturn(
+	f func(protocol.EncryptionLevel) bool,
+) *MockSentPacketHandlerQueueProbePacketCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // ReceivedAck mocks base method.
-func (m *MockSentPacketHandler) ReceivedAck(f *wire.AckFrame, encLevel protocol.EncryptionLevel, rcvTime monotime.Time) (bool, error) {
+func (m *MockSentPacketHandler) ReceivedAck(
+	f *wire.AckFrame,
+	encLevel protocol.EncryptionLevel,
+	rcvTime monotime.Time,
+) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ReceivedAck", f, encLevel, rcvTime)
 	ret0, _ := ret[0].(bool)
@@ -4841,9 +5533,18 @@ func (m *MockSentPacketHandler) ReceivedAck(f *wire.AckFrame, encLevel protocol.
 }
 
 // ReceivedAck indicates an expected call of ReceivedAck.
-func (mr *MockSentPacketHandlerMockRecorder) ReceivedAck(f, encLevel, rcvTime any) *MockSentPacketHandlerReceivedAckCall {
+func (mr *MockSentPacketHandlerMockRecorder) ReceivedAck(
+	f, encLevel, rcvTime any,
+) *MockSentPacketHandlerReceivedAckCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReceivedAck", reflect.TypeOf((*MockSentPacketHandler)(nil).ReceivedAck), f, encLevel, rcvTime)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"ReceivedAck",
+		reflect.TypeOf((*MockSentPacketHandler)(nil).ReceivedAck),
+		f,
+		encLevel,
+		rcvTime,
+	)
 	return &MockSentPacketHandlerReceivedAckCall{Call: call}
 }
 
@@ -4859,13 +5560,17 @@ func (c *MockSentPacketHandlerReceivedAckCall) Return(arg0 bool, arg1 error) *Mo
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSentPacketHandlerReceivedAckCall) Do(f func(*wire.AckFrame, protocol.EncryptionLevel, monotime.Time) (bool, error)) *MockSentPacketHandlerReceivedAckCall {
+func (c *MockSentPacketHandlerReceivedAckCall) Do(
+	f func(*wire.AckFrame, protocol.EncryptionLevel, monotime.Time) (bool, error),
+) *MockSentPacketHandlerReceivedAckCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSentPacketHandlerReceivedAckCall) DoAndReturn(f func(*wire.AckFrame, protocol.EncryptionLevel, monotime.Time) (bool, error)) *MockSentPacketHandlerReceivedAckCall {
+func (c *MockSentPacketHandlerReceivedAckCall) DoAndReturn(
+	f func(*wire.AckFrame, protocol.EncryptionLevel, monotime.Time) (bool, error),
+) *MockSentPacketHandlerReceivedAckCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -4879,7 +5584,13 @@ func (m *MockSentPacketHandler) ReceivedBytes(arg0 protocol.ByteCount, rcvTime m
 // ReceivedBytes indicates an expected call of ReceivedBytes.
 func (mr *MockSentPacketHandlerMockRecorder) ReceivedBytes(arg0, rcvTime any) *MockSentPacketHandlerReceivedBytesCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReceivedBytes", reflect.TypeOf((*MockSentPacketHandler)(nil).ReceivedBytes), arg0, rcvTime)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"ReceivedBytes",
+		reflect.TypeOf((*MockSentPacketHandler)(nil).ReceivedBytes),
+		arg0,
+		rcvTime,
+	)
 	return &MockSentPacketHandlerReceivedBytesCall{Call: call}
 }
 
@@ -4895,13 +5606,17 @@ func (c *MockSentPacketHandlerReceivedBytesCall) Return() *MockSentPacketHandler
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSentPacketHandlerReceivedBytesCall) Do(f func(protocol.ByteCount, monotime.Time)) *MockSentPacketHandlerReceivedBytesCall {
+func (c *MockSentPacketHandlerReceivedBytesCall) Do(
+	f func(protocol.ByteCount, monotime.Time),
+) *MockSentPacketHandlerReceivedBytesCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSentPacketHandlerReceivedBytesCall) DoAndReturn(f func(protocol.ByteCount, monotime.Time)) *MockSentPacketHandlerReceivedBytesCall {
+func (c *MockSentPacketHandlerReceivedBytesCall) DoAndReturn(
+	f func(protocol.ByteCount, monotime.Time),
+) *MockSentPacketHandlerReceivedBytesCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -4915,7 +5630,13 @@ func (m *MockSentPacketHandler) ReceivedPacket(arg0 protocol.EncryptionLevel, ar
 // ReceivedPacket indicates an expected call of ReceivedPacket.
 func (mr *MockSentPacketHandlerMockRecorder) ReceivedPacket(arg0, arg1 any) *MockSentPacketHandlerReceivedPacketCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReceivedPacket", reflect.TypeOf((*MockSentPacketHandler)(nil).ReceivedPacket), arg0, arg1)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"ReceivedPacket",
+		reflect.TypeOf((*MockSentPacketHandler)(nil).ReceivedPacket),
+		arg0,
+		arg1,
+	)
 	return &MockSentPacketHandlerReceivedPacketCall{Call: call}
 }
 
@@ -4931,13 +5652,17 @@ func (c *MockSentPacketHandlerReceivedPacketCall) Return() *MockSentPacketHandle
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSentPacketHandlerReceivedPacketCall) Do(f func(protocol.EncryptionLevel, monotime.Time)) *MockSentPacketHandlerReceivedPacketCall {
+func (c *MockSentPacketHandlerReceivedPacketCall) Do(
+	f func(protocol.EncryptionLevel, monotime.Time),
+) *MockSentPacketHandlerReceivedPacketCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSentPacketHandlerReceivedPacketCall) DoAndReturn(f func(protocol.EncryptionLevel, monotime.Time)) *MockSentPacketHandlerReceivedPacketCall {
+func (c *MockSentPacketHandlerReceivedPacketCall) DoAndReturn(
+	f func(protocol.EncryptionLevel, monotime.Time),
+) *MockSentPacketHandlerReceivedPacketCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -4951,7 +5676,12 @@ func (m *MockSentPacketHandler) ResetForRetry(rcvTime monotime.Time) {
 // ResetForRetry indicates an expected call of ResetForRetry.
 func (mr *MockSentPacketHandlerMockRecorder) ResetForRetry(rcvTime any) *MockSentPacketHandlerResetForRetryCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResetForRetry", reflect.TypeOf((*MockSentPacketHandler)(nil).ResetForRetry), rcvTime)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"ResetForRetry",
+		reflect.TypeOf((*MockSentPacketHandler)(nil).ResetForRetry),
+		rcvTime,
+	)
 	return &MockSentPacketHandlerResetForRetryCall{Call: call}
 }
 
@@ -4973,7 +5703,9 @@ func (c *MockSentPacketHandlerResetForRetryCall) Do(f func(monotime.Time)) *Mock
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSentPacketHandlerResetForRetryCall) DoAndReturn(f func(monotime.Time)) *MockSentPacketHandlerResetForRetryCall {
+func (c *MockSentPacketHandlerResetForRetryCall) DoAndReturn(
+	f func(monotime.Time),
+) *MockSentPacketHandlerResetForRetryCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -4989,7 +5721,12 @@ func (m *MockSentPacketHandler) SendMode(now monotime.Time) ackhandler.SendMode 
 // SendMode indicates an expected call of SendMode.
 func (mr *MockSentPacketHandlerMockRecorder) SendMode(now any) *MockSentPacketHandlerSendModeCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendMode", reflect.TypeOf((*MockSentPacketHandler)(nil).SendMode), now)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"SendMode",
+		reflect.TypeOf((*MockSentPacketHandler)(nil).SendMode),
+		now,
+	)
 	return &MockSentPacketHandlerSendModeCall{Call: call}
 }
 
@@ -5005,27 +5742,69 @@ func (c *MockSentPacketHandlerSendModeCall) Return(arg0 ackhandler.SendMode) *Mo
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSentPacketHandlerSendModeCall) Do(f func(monotime.Time) ackhandler.SendMode) *MockSentPacketHandlerSendModeCall {
+func (c *MockSentPacketHandlerSendModeCall) Do(
+	f func(monotime.Time) ackhandler.SendMode,
+) *MockSentPacketHandlerSendModeCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSentPacketHandlerSendModeCall) DoAndReturn(f func(monotime.Time) ackhandler.SendMode) *MockSentPacketHandlerSendModeCall {
+func (c *MockSentPacketHandlerSendModeCall) DoAndReturn(
+	f func(monotime.Time) ackhandler.SendMode,
+) *MockSentPacketHandlerSendModeCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // SentPacket mocks base method.
-func (m *MockSentPacketHandler) SentPacket(t monotime.Time, pn, largestAcked protocol.PacketNumber, streamFrames []ackhandler.StreamFrame, frames []ackhandler.Frame, encLevel protocol.EncryptionLevel, ecn protocol.ECN, size protocol.ByteCount, isPathMTUProbePacket, isPathProbePacket bool) {
+func (m *MockSentPacketHandler) SentPacket(
+	t monotime.Time,
+	pn, largestAcked protocol.PacketNumber,
+	streamFrames []ackhandler.StreamFrame,
+	frames []ackhandler.Frame,
+	encLevel protocol.EncryptionLevel,
+	ecn protocol.ECN,
+	size protocol.ByteCount,
+	isPathMTUProbePacket, isPathProbePacket bool,
+) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SentPacket", t, pn, largestAcked, streamFrames, frames, encLevel, ecn, size, isPathMTUProbePacket, isPathProbePacket)
+	m.ctrl.Call(
+		m,
+		"SentPacket",
+		t,
+		pn,
+		largestAcked,
+		streamFrames,
+		frames,
+		encLevel,
+		ecn,
+		size,
+		isPathMTUProbePacket,
+		isPathProbePacket,
+	)
 }
 
 // SentPacket indicates an expected call of SentPacket.
-func (mr *MockSentPacketHandlerMockRecorder) SentPacket(t, pn, largestAcked, streamFrames, frames, encLevel, ecn, size, isPathMTUProbePacket, isPathProbePacket any) *MockSentPacketHandlerSentPacketCall {
+func (mr *MockSentPacketHandlerMockRecorder) SentPacket(
+	t, pn, largestAcked, streamFrames, frames, encLevel, ecn, size, isPathMTUProbePacket, isPathProbePacket any,
+) *MockSentPacketHandlerSentPacketCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SentPacket", reflect.TypeOf((*MockSentPacketHandler)(nil).SentPacket), t, pn, largestAcked, streamFrames, frames, encLevel, ecn, size, isPathMTUProbePacket, isPathProbePacket)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"SentPacket",
+		reflect.TypeOf((*MockSentPacketHandler)(nil).SentPacket),
+		t,
+		pn,
+		largestAcked,
+		streamFrames,
+		frames,
+		encLevel,
+		ecn,
+		size,
+		isPathMTUProbePacket,
+		isPathProbePacket,
+	)
 	return &MockSentPacketHandlerSentPacketCall{Call: call}
 }
 
@@ -5041,13 +5820,17 @@ func (c *MockSentPacketHandlerSentPacketCall) Return() *MockSentPacketHandlerSen
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSentPacketHandlerSentPacketCall) Do(f func(monotime.Time, protocol.PacketNumber, protocol.PacketNumber, []ackhandler.StreamFrame, []ackhandler.Frame, protocol.EncryptionLevel, protocol.ECN, protocol.ByteCount, bool, bool)) *MockSentPacketHandlerSentPacketCall {
+func (c *MockSentPacketHandlerSentPacketCall) Do(
+	f func(monotime.Time, protocol.PacketNumber, protocol.PacketNumber, []ackhandler.StreamFrame, []ackhandler.Frame, protocol.EncryptionLevel, protocol.ECN, protocol.ByteCount, bool, bool),
+) *MockSentPacketHandlerSentPacketCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSentPacketHandlerSentPacketCall) DoAndReturn(f func(monotime.Time, protocol.PacketNumber, protocol.PacketNumber, []ackhandler.StreamFrame, []ackhandler.Frame, protocol.EncryptionLevel, protocol.ECN, protocol.ByteCount, bool, bool)) *MockSentPacketHandlerSentPacketCall {
+func (c *MockSentPacketHandlerSentPacketCall) DoAndReturn(
+	f func(monotime.Time, protocol.PacketNumber, protocol.PacketNumber, []ackhandler.StreamFrame, []ackhandler.Frame, protocol.EncryptionLevel, protocol.ECN, protocol.ByteCount, bool, bool),
+) *MockSentPacketHandlerSentPacketCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -5059,9 +5842,16 @@ func (m *MockSentPacketHandler) SetMaxDatagramSize(count protocol.ByteCount) {
 }
 
 // SetMaxDatagramSize indicates an expected call of SetMaxDatagramSize.
-func (mr *MockSentPacketHandlerMockRecorder) SetMaxDatagramSize(count any) *MockSentPacketHandlerSetMaxDatagramSizeCall {
+func (mr *MockSentPacketHandlerMockRecorder) SetMaxDatagramSize(
+	count any,
+) *MockSentPacketHandlerSetMaxDatagramSizeCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetMaxDatagramSize", reflect.TypeOf((*MockSentPacketHandler)(nil).SetMaxDatagramSize), count)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"SetMaxDatagramSize",
+		reflect.TypeOf((*MockSentPacketHandler)(nil).SetMaxDatagramSize),
+		count,
+	)
 	return &MockSentPacketHandlerSetMaxDatagramSizeCall{Call: call}
 }
 
@@ -5077,13 +5867,17 @@ func (c *MockSentPacketHandlerSetMaxDatagramSizeCall) Return() *MockSentPacketHa
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSentPacketHandlerSetMaxDatagramSizeCall) Do(f func(protocol.ByteCount)) *MockSentPacketHandlerSetMaxDatagramSizeCall {
+func (c *MockSentPacketHandlerSetMaxDatagramSizeCall) Do(
+	f func(protocol.ByteCount),
+) *MockSentPacketHandlerSetMaxDatagramSizeCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSentPacketHandlerSetMaxDatagramSizeCall) DoAndReturn(f func(protocol.ByteCount)) *MockSentPacketHandlerSetMaxDatagramSizeCall {
+func (c *MockSentPacketHandlerSetMaxDatagramSizeCall) DoAndReturn(
+	f func(protocol.ByteCount),
+) *MockSentPacketHandlerSetMaxDatagramSizeCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -5099,13 +5893,21 @@ func (m *MockSentPacketHandler) TimeUntilSend() monotime.Time {
 // AmplificationAllowance indicates an expected call of AmplificationAllowance.
 func (mr *MockSentPacketHandlerMockRecorder) AmplificationAllowance() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AmplificationAllowance", reflect.TypeOf((*MockSentPacketHandler)(nil).AmplificationAllowance))
+	return mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"AmplificationAllowance",
+		reflect.TypeOf((*MockSentPacketHandler)(nil).AmplificationAllowance),
+	)
 }
 
 // TimeUntilSend indicates an expected call of TimeUntilSend.
 func (mr *MockSentPacketHandlerMockRecorder) TimeUntilSend() *MockSentPacketHandlerTimeUntilSendCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TimeUntilSend", reflect.TypeOf((*MockSentPacketHandler)(nil).TimeUntilSend))
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"TimeUntilSend",
+		reflect.TypeOf((*MockSentPacketHandler)(nil).TimeUntilSend),
+	)
 	return &MockSentPacketHandlerTimeUntilSendCall{Call: call}
 }
 
@@ -5127,10 +5929,13 @@ func (c *MockSentPacketHandlerTimeUntilSendCall) Do(f func() monotime.Time) *Moc
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSentPacketHandlerTimeUntilSendCall) DoAndReturn(f func() monotime.Time) *MockSentPacketHandlerTimeUntilSendCall {
+func (c *MockSentPacketHandlerTimeUntilSendCall) DoAndReturn(
+	f func() monotime.Time,
+) *MockSentPacketHandlerTimeUntilSendCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
+
 // Code generated by MockGen. DO NOT EDIT.
 // Source: github.com/lemon4ksan/sein/internal/quic/internal/handshake (interfaces: ShortHeaderOpener)
 //
@@ -5166,7 +5971,10 @@ func (m *MockShortHeaderOpener) EXPECT() *MockShortHeaderOpenerMockRecorder {
 }
 
 // DecodePacketNumber mocks base method.
-func (m *MockShortHeaderOpener) DecodePacketNumber(wirePN protocol.PacketNumber, wirePNLen protocol.PacketNumberLen) protocol.PacketNumber {
+func (m *MockShortHeaderOpener) DecodePacketNumber(
+	wirePN protocol.PacketNumber,
+	wirePNLen protocol.PacketNumberLen,
+) protocol.PacketNumber {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DecodePacketNumber", wirePN, wirePNLen)
 	ret0, _ := ret[0].(protocol.PacketNumber)
@@ -5174,9 +5982,17 @@ func (m *MockShortHeaderOpener) DecodePacketNumber(wirePN protocol.PacketNumber,
 }
 
 // DecodePacketNumber indicates an expected call of DecodePacketNumber.
-func (mr *MockShortHeaderOpenerMockRecorder) DecodePacketNumber(wirePN, wirePNLen any) *MockShortHeaderOpenerDecodePacketNumberCall {
+func (mr *MockShortHeaderOpenerMockRecorder) DecodePacketNumber(
+	wirePN, wirePNLen any,
+) *MockShortHeaderOpenerDecodePacketNumberCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DecodePacketNumber", reflect.TypeOf((*MockShortHeaderOpener)(nil).DecodePacketNumber), wirePN, wirePNLen)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"DecodePacketNumber",
+		reflect.TypeOf((*MockShortHeaderOpener)(nil).DecodePacketNumber),
+		wirePN,
+		wirePNLen,
+	)
 	return &MockShortHeaderOpenerDecodePacketNumberCall{Call: call}
 }
 
@@ -5186,19 +6002,25 @@ type MockShortHeaderOpenerDecodePacketNumberCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockShortHeaderOpenerDecodePacketNumberCall) Return(arg0 protocol.PacketNumber) *MockShortHeaderOpenerDecodePacketNumberCall {
+func (c *MockShortHeaderOpenerDecodePacketNumberCall) Return(
+	arg0 protocol.PacketNumber,
+) *MockShortHeaderOpenerDecodePacketNumberCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockShortHeaderOpenerDecodePacketNumberCall) Do(f func(protocol.PacketNumber, protocol.PacketNumberLen) protocol.PacketNumber) *MockShortHeaderOpenerDecodePacketNumberCall {
+func (c *MockShortHeaderOpenerDecodePacketNumberCall) Do(
+	f func(protocol.PacketNumber, protocol.PacketNumberLen) protocol.PacketNumber,
+) *MockShortHeaderOpenerDecodePacketNumberCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockShortHeaderOpenerDecodePacketNumberCall) DoAndReturn(f func(protocol.PacketNumber, protocol.PacketNumberLen) protocol.PacketNumber) *MockShortHeaderOpenerDecodePacketNumberCall {
+func (c *MockShortHeaderOpenerDecodePacketNumberCall) DoAndReturn(
+	f func(protocol.PacketNumber, protocol.PacketNumberLen) protocol.PacketNumber,
+) *MockShortHeaderOpenerDecodePacketNumberCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -5210,9 +6032,18 @@ func (m *MockShortHeaderOpener) DecryptHeader(sample []byte, firstByte *byte, pn
 }
 
 // DecryptHeader indicates an expected call of DecryptHeader.
-func (mr *MockShortHeaderOpenerMockRecorder) DecryptHeader(sample, firstByte, pnBytes any) *MockShortHeaderOpenerDecryptHeaderCall {
+func (mr *MockShortHeaderOpenerMockRecorder) DecryptHeader(
+	sample, firstByte, pnBytes any,
+) *MockShortHeaderOpenerDecryptHeaderCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DecryptHeader", reflect.TypeOf((*MockShortHeaderOpener)(nil).DecryptHeader), sample, firstByte, pnBytes)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"DecryptHeader",
+		reflect.TypeOf((*MockShortHeaderOpener)(nil).DecryptHeader),
+		sample,
+		firstByte,
+		pnBytes,
+	)
 	return &MockShortHeaderOpenerDecryptHeaderCall{Call: call}
 }
 
@@ -5228,19 +6059,29 @@ func (c *MockShortHeaderOpenerDecryptHeaderCall) Return() *MockShortHeaderOpener
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockShortHeaderOpenerDecryptHeaderCall) Do(f func([]byte, *byte, []byte)) *MockShortHeaderOpenerDecryptHeaderCall {
+func (c *MockShortHeaderOpenerDecryptHeaderCall) Do(
+	f func([]byte, *byte, []byte),
+) *MockShortHeaderOpenerDecryptHeaderCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockShortHeaderOpenerDecryptHeaderCall) DoAndReturn(f func([]byte, *byte, []byte)) *MockShortHeaderOpenerDecryptHeaderCall {
+func (c *MockShortHeaderOpenerDecryptHeaderCall) DoAndReturn(
+	f func([]byte, *byte, []byte),
+) *MockShortHeaderOpenerDecryptHeaderCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // Open mocks base method.
-func (m *MockShortHeaderOpener) Open(dst, src []byte, rcvTime monotime.Time, pn protocol.PacketNumber, kp protocol.KeyPhaseBit, associatedData []byte) ([]byte, error) {
+func (m *MockShortHeaderOpener) Open(
+	dst, src []byte,
+	rcvTime monotime.Time,
+	pn protocol.PacketNumber,
+	kp protocol.KeyPhaseBit,
+	associatedData []byte,
+) ([]byte, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Open", dst, src, rcvTime, pn, kp, associatedData)
 	ret0, _ := ret[0].([]byte)
@@ -5249,9 +6090,21 @@ func (m *MockShortHeaderOpener) Open(dst, src []byte, rcvTime monotime.Time, pn 
 }
 
 // Open indicates an expected call of Open.
-func (mr *MockShortHeaderOpenerMockRecorder) Open(dst, src, rcvTime, pn, kp, associatedData any) *MockShortHeaderOpenerOpenCall {
+func (mr *MockShortHeaderOpenerMockRecorder) Open(
+	dst, src, rcvTime, pn, kp, associatedData any,
+) *MockShortHeaderOpenerOpenCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Open", reflect.TypeOf((*MockShortHeaderOpener)(nil).Open), dst, src, rcvTime, pn, kp, associatedData)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"Open",
+		reflect.TypeOf((*MockShortHeaderOpener)(nil).Open),
+		dst,
+		src,
+		rcvTime,
+		pn,
+		kp,
+		associatedData,
+	)
 	return &MockShortHeaderOpenerOpenCall{Call: call}
 }
 
@@ -5267,16 +6120,21 @@ func (c *MockShortHeaderOpenerOpenCall) Return(arg0 []byte, arg1 error) *MockSho
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockShortHeaderOpenerOpenCall) Do(f func([]byte, []byte, monotime.Time, protocol.PacketNumber, protocol.KeyPhaseBit, []byte) ([]byte, error)) *MockShortHeaderOpenerOpenCall {
+func (c *MockShortHeaderOpenerOpenCall) Do(
+	f func([]byte, []byte, monotime.Time, protocol.PacketNumber, protocol.KeyPhaseBit, []byte) ([]byte, error),
+) *MockShortHeaderOpenerOpenCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockShortHeaderOpenerOpenCall) DoAndReturn(f func([]byte, []byte, monotime.Time, protocol.PacketNumber, protocol.KeyPhaseBit, []byte) ([]byte, error)) *MockShortHeaderOpenerOpenCall {
+func (c *MockShortHeaderOpenerOpenCall) DoAndReturn(
+	f func([]byte, []byte, monotime.Time, protocol.PacketNumber, protocol.KeyPhaseBit, []byte) ([]byte, error),
+) *MockShortHeaderOpenerOpenCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
+
 // Code generated by MockGen. DO NOT EDIT.
 // Source: github.com/lemon4ksan/sein/internal/quic/internal/handshake (interfaces: ShortHeaderSealer)
 //
@@ -5318,9 +6176,18 @@ func (m *MockShortHeaderSealer) EncryptHeader(sample []byte, firstByte *byte, pn
 }
 
 // EncryptHeader indicates an expected call of EncryptHeader.
-func (mr *MockShortHeaderSealerMockRecorder) EncryptHeader(sample, firstByte, pnBytes any) *MockShortHeaderSealerEncryptHeaderCall {
+func (mr *MockShortHeaderSealerMockRecorder) EncryptHeader(
+	sample, firstByte, pnBytes any,
+) *MockShortHeaderSealerEncryptHeaderCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EncryptHeader", reflect.TypeOf((*MockShortHeaderSealer)(nil).EncryptHeader), sample, firstByte, pnBytes)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"EncryptHeader",
+		reflect.TypeOf((*MockShortHeaderSealer)(nil).EncryptHeader),
+		sample,
+		firstByte,
+		pnBytes,
+	)
 	return &MockShortHeaderSealerEncryptHeaderCall{Call: call}
 }
 
@@ -5336,13 +6203,17 @@ func (c *MockShortHeaderSealerEncryptHeaderCall) Return() *MockShortHeaderSealer
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockShortHeaderSealerEncryptHeaderCall) Do(f func([]byte, *byte, []byte)) *MockShortHeaderSealerEncryptHeaderCall {
+func (c *MockShortHeaderSealerEncryptHeaderCall) Do(
+	f func([]byte, *byte, []byte),
+) *MockShortHeaderSealerEncryptHeaderCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockShortHeaderSealerEncryptHeaderCall) DoAndReturn(f func([]byte, *byte, []byte)) *MockShortHeaderSealerEncryptHeaderCall {
+func (c *MockShortHeaderSealerEncryptHeaderCall) DoAndReturn(
+	f func([]byte, *byte, []byte),
+) *MockShortHeaderSealerEncryptHeaderCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -5358,7 +6229,11 @@ func (m *MockShortHeaderSealer) KeyPhase() protocol.KeyPhaseBit {
 // KeyPhase indicates an expected call of KeyPhase.
 func (mr *MockShortHeaderSealerMockRecorder) KeyPhase() *MockShortHeaderSealerKeyPhaseCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "KeyPhase", reflect.TypeOf((*MockShortHeaderSealer)(nil).KeyPhase))
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"KeyPhase",
+		reflect.TypeOf((*MockShortHeaderSealer)(nil).KeyPhase),
+	)
 	return &MockShortHeaderSealerKeyPhaseCall{Call: call}
 }
 
@@ -5380,7 +6255,9 @@ func (c *MockShortHeaderSealerKeyPhaseCall) Do(f func() protocol.KeyPhaseBit) *M
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockShortHeaderSealerKeyPhaseCall) DoAndReturn(f func() protocol.KeyPhaseBit) *MockShortHeaderSealerKeyPhaseCall {
+func (c *MockShortHeaderSealerKeyPhaseCall) DoAndReturn(
+	f func() protocol.KeyPhaseBit,
+) *MockShortHeaderSealerKeyPhaseCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -5396,7 +6273,11 @@ func (m *MockShortHeaderSealer) Overhead() int {
 // Overhead indicates an expected call of Overhead.
 func (mr *MockShortHeaderSealerMockRecorder) Overhead() *MockShortHeaderSealerOverheadCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Overhead", reflect.TypeOf((*MockShortHeaderSealer)(nil).Overhead))
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"Overhead",
+		reflect.TypeOf((*MockShortHeaderSealer)(nil).Overhead),
+	)
 	return &MockShortHeaderSealerOverheadCall{Call: call}
 }
 
@@ -5424,7 +6305,11 @@ func (c *MockShortHeaderSealerOverheadCall) DoAndReturn(f func() int) *MockShort
 }
 
 // Seal mocks base method.
-func (m *MockShortHeaderSealer) Seal(dst, src []byte, packetNumber protocol.PacketNumber, associatedData []byte) []byte {
+func (m *MockShortHeaderSealer) Seal(
+	dst, src []byte,
+	packetNumber protocol.PacketNumber,
+	associatedData []byte,
+) []byte {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Seal", dst, src, packetNumber, associatedData)
 	ret0, _ := ret[0].([]byte)
@@ -5432,9 +6317,19 @@ func (m *MockShortHeaderSealer) Seal(dst, src []byte, packetNumber protocol.Pack
 }
 
 // Seal indicates an expected call of Seal.
-func (mr *MockShortHeaderSealerMockRecorder) Seal(dst, src, packetNumber, associatedData any) *MockShortHeaderSealerSealCall {
+func (mr *MockShortHeaderSealerMockRecorder) Seal(
+	dst, src, packetNumber, associatedData any,
+) *MockShortHeaderSealerSealCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Seal", reflect.TypeOf((*MockShortHeaderSealer)(nil).Seal), dst, src, packetNumber, associatedData)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"Seal",
+		reflect.TypeOf((*MockShortHeaderSealer)(nil).Seal),
+		dst,
+		src,
+		packetNumber,
+		associatedData,
+	)
 	return &MockShortHeaderSealerSealCall{Call: call}
 }
 
@@ -5450,16 +6345,21 @@ func (c *MockShortHeaderSealerSealCall) Return(arg0 []byte) *MockShortHeaderSeal
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockShortHeaderSealerSealCall) Do(f func([]byte, []byte, protocol.PacketNumber, []byte) []byte) *MockShortHeaderSealerSealCall {
+func (c *MockShortHeaderSealerSealCall) Do(
+	f func([]byte, []byte, protocol.PacketNumber, []byte) []byte,
+) *MockShortHeaderSealerSealCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockShortHeaderSealerSealCall) DoAndReturn(f func([]byte, []byte, protocol.PacketNumber, []byte) []byte) *MockShortHeaderSealerSealCall {
+func (c *MockShortHeaderSealerSealCall) DoAndReturn(
+	f func([]byte, []byte, protocol.PacketNumber, []byte) []byte,
+) *MockShortHeaderSealerSealCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
+
 // Code generated by MockGen. DO NOT EDIT.
 // Source: github.com/lemon4ksan/sein/internal/quic (interfaces: StreamControlFrameGetter)
 //
@@ -5505,9 +6405,16 @@ func (m *MockStreamControlFrameGetter) getControlFrame(arg0 monotime.Time) (ackh
 }
 
 // getControlFrame indicates an expected call of getControlFrame.
-func (mr *MockStreamControlFrameGetterMockRecorder) getControlFrame(arg0 any) *MockStreamControlFrameGettergetControlFrameCall {
+func (mr *MockStreamControlFrameGetterMockRecorder) getControlFrame(
+	arg0 any,
+) *MockStreamControlFrameGettergetControlFrameCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "getControlFrame", reflect.TypeOf((*MockStreamControlFrameGetter)(nil).getControlFrame), arg0)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"getControlFrame",
+		reflect.TypeOf((*MockStreamControlFrameGetter)(nil).getControlFrame),
+		arg0,
+	)
 	return &MockStreamControlFrameGettergetControlFrameCall{Call: call}
 }
 
@@ -5517,22 +6424,30 @@ type MockStreamControlFrameGettergetControlFrameCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockStreamControlFrameGettergetControlFrameCall) Return(arg0 ackhandler.Frame, ok, hasMore bool) *MockStreamControlFrameGettergetControlFrameCall {
+func (c *MockStreamControlFrameGettergetControlFrameCall) Return(
+	arg0 ackhandler.Frame,
+	ok, hasMore bool,
+) *MockStreamControlFrameGettergetControlFrameCall {
 	c.Call = c.Call.Return(arg0, ok, hasMore)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockStreamControlFrameGettergetControlFrameCall) Do(f func(monotime.Time) (ackhandler.Frame, bool, bool)) *MockStreamControlFrameGettergetControlFrameCall {
+func (c *MockStreamControlFrameGettergetControlFrameCall) Do(
+	f func(monotime.Time) (ackhandler.Frame, bool, bool),
+) *MockStreamControlFrameGettergetControlFrameCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockStreamControlFrameGettergetControlFrameCall) DoAndReturn(f func(monotime.Time) (ackhandler.Frame, bool, bool)) *MockStreamControlFrameGettergetControlFrameCall {
+func (c *MockStreamControlFrameGettergetControlFrameCall) DoAndReturn(
+	f func(monotime.Time) (ackhandler.Frame, bool, bool),
+) *MockStreamControlFrameGettergetControlFrameCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
+
 // Code generated by MockGen. DO NOT EDIT.
 // Source: github.com/lemon4ksan/sein/internal/quic (interfaces: StreamFrameGetter)
 //
@@ -5568,7 +6483,10 @@ func (m *MockStreamFrameGetter) EXPECT() *MockStreamFrameGetterMockRecorder {
 }
 
 // popRetransmissionFrame mocks base method.
-func (m *MockStreamFrameGetter) popRetransmissionFrame(arg0 protocol.ByteCount, arg1 protocol.Version) (ackhandler.StreamFrame, bool) {
+func (m *MockStreamFrameGetter) popRetransmissionFrame(
+	arg0 protocol.ByteCount,
+	arg1 protocol.Version,
+) (ackhandler.StreamFrame, bool) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "popRetransmissionFrame", arg0, arg1)
 	ret0, _ := ret[0].(ackhandler.StreamFrame)
@@ -5577,9 +6495,17 @@ func (m *MockStreamFrameGetter) popRetransmissionFrame(arg0 protocol.ByteCount, 
 }
 
 // popRetransmissionFrame indicates an expected call of popRetransmissionFrame.
-func (mr *MockStreamFrameGetterMockRecorder) popRetransmissionFrame(arg0, arg1 any) *MockStreamFrameGetterpopRetransmissionFrameCall {
+func (mr *MockStreamFrameGetterMockRecorder) popRetransmissionFrame(
+	arg0, arg1 any,
+) *MockStreamFrameGetterpopRetransmissionFrameCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "popRetransmissionFrame", reflect.TypeOf((*MockStreamFrameGetter)(nil).popRetransmissionFrame), arg0, arg1)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"popRetransmissionFrame",
+		reflect.TypeOf((*MockStreamFrameGetter)(nil).popRetransmissionFrame),
+		arg0,
+		arg1,
+	)
 	return &MockStreamFrameGetterpopRetransmissionFrameCall{Call: call}
 }
 
@@ -5589,25 +6515,35 @@ type MockStreamFrameGetterpopRetransmissionFrameCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockStreamFrameGetterpopRetransmissionFrameCall) Return(arg0 ackhandler.StreamFrame, arg1 bool) *MockStreamFrameGetterpopRetransmissionFrameCall {
+func (c *MockStreamFrameGetterpopRetransmissionFrameCall) Return(
+	arg0 ackhandler.StreamFrame,
+	arg1 bool,
+) *MockStreamFrameGetterpopRetransmissionFrameCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockStreamFrameGetterpopRetransmissionFrameCall) Do(f func(protocol.ByteCount, protocol.Version) (ackhandler.StreamFrame, bool)) *MockStreamFrameGetterpopRetransmissionFrameCall {
+func (c *MockStreamFrameGetterpopRetransmissionFrameCall) Do(
+	f func(protocol.ByteCount, protocol.Version) (ackhandler.StreamFrame, bool),
+) *MockStreamFrameGetterpopRetransmissionFrameCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockStreamFrameGetterpopRetransmissionFrameCall) DoAndReturn(f func(protocol.ByteCount, protocol.Version) (ackhandler.StreamFrame, bool)) *MockStreamFrameGetterpopRetransmissionFrameCall {
+func (c *MockStreamFrameGetterpopRetransmissionFrameCall) DoAndReturn(
+	f func(protocol.ByteCount, protocol.Version) (ackhandler.StreamFrame, bool),
+) *MockStreamFrameGetterpopRetransmissionFrameCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // popStreamFrame mocks base method.
-func (m *MockStreamFrameGetter) popStreamFrame(arg0 protocol.ByteCount, arg1 protocol.Version) (ackhandler.StreamFrame, *wire.StreamDataBlockedFrame, bool) {
+func (m *MockStreamFrameGetter) popStreamFrame(
+	arg0 protocol.ByteCount,
+	arg1 protocol.Version,
+) (ackhandler.StreamFrame, *wire.StreamDataBlockedFrame, bool) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "popStreamFrame", arg0, arg1)
 	ret0, _ := ret[0].(ackhandler.StreamFrame)
@@ -5619,7 +6555,13 @@ func (m *MockStreamFrameGetter) popStreamFrame(arg0 protocol.ByteCount, arg1 pro
 // popStreamFrame indicates an expected call of popStreamFrame.
 func (mr *MockStreamFrameGetterMockRecorder) popStreamFrame(arg0, arg1 any) *MockStreamFrameGetterpopStreamFrameCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "popStreamFrame", reflect.TypeOf((*MockStreamFrameGetter)(nil).popStreamFrame), arg0, arg1)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"popStreamFrame",
+		reflect.TypeOf((*MockStreamFrameGetter)(nil).popStreamFrame),
+		arg0,
+		arg1,
+	)
 	return &MockStreamFrameGetterpopStreamFrameCall{Call: call}
 }
 
@@ -5629,19 +6571,27 @@ type MockStreamFrameGetterpopStreamFrameCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockStreamFrameGetterpopStreamFrameCall) Return(arg0 ackhandler.StreamFrame, arg1 *wire.StreamDataBlockedFrame, hasMoreData bool) *MockStreamFrameGetterpopStreamFrameCall {
+func (c *MockStreamFrameGetterpopStreamFrameCall) Return(
+	arg0 ackhandler.StreamFrame,
+	arg1 *wire.StreamDataBlockedFrame,
+	hasMoreData bool,
+) *MockStreamFrameGetterpopStreamFrameCall {
 	c.Call = c.Call.Return(arg0, arg1, hasMoreData)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockStreamFrameGetterpopStreamFrameCall) Do(f func(protocol.ByteCount, protocol.Version) (ackhandler.StreamFrame, *wire.StreamDataBlockedFrame, bool)) *MockStreamFrameGetterpopStreamFrameCall {
+func (c *MockStreamFrameGetterpopStreamFrameCall) Do(
+	f func(protocol.ByteCount, protocol.Version) (ackhandler.StreamFrame, *wire.StreamDataBlockedFrame, bool),
+) *MockStreamFrameGetterpopStreamFrameCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockStreamFrameGetterpopStreamFrameCall) DoAndReturn(f func(protocol.ByteCount, protocol.Version) (ackhandler.StreamFrame, *wire.StreamDataBlockedFrame, bool)) *MockStreamFrameGetterpopStreamFrameCall {
+func (c *MockStreamFrameGetterpopStreamFrameCall) DoAndReturn(
+	f func(protocol.ByteCount, protocol.Version) (ackhandler.StreamFrame, *wire.StreamDataBlockedFrame, bool),
+) *MockStreamFrameGetterpopStreamFrameCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -5659,7 +6609,11 @@ func (m *MockStreamFrameGetter) priority() (int8, bool, uint32) {
 // priority indicates an expected call of priority.
 func (mr *MockStreamFrameGetterMockRecorder) priority() *MockStreamFrameGetterpriorityCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "priority", reflect.TypeOf((*MockStreamFrameGetter)(nil).priority))
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"priority",
+		reflect.TypeOf((*MockStreamFrameGetter)(nil).priority),
+	)
 	return &MockStreamFrameGetterpriorityCall{Call: call}
 }
 
@@ -5669,7 +6623,11 @@ type MockStreamFrameGetterpriorityCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockStreamFrameGetterpriorityCall) Return(urgency int8, incremental bool, generation uint32) *MockStreamFrameGetterpriorityCall {
+func (c *MockStreamFrameGetterpriorityCall) Return(
+	urgency int8,
+	incremental bool,
+	generation uint32,
+) *MockStreamFrameGetterpriorityCall {
 	c.Call = c.Call.Return(urgency, incremental, generation)
 	return c
 }
@@ -5681,10 +6639,13 @@ func (c *MockStreamFrameGetterpriorityCall) Do(f func() (int8, bool, uint32)) *M
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockStreamFrameGetterpriorityCall) DoAndReturn(f func() (int8, bool, uint32)) *MockStreamFrameGetterpriorityCall {
+func (c *MockStreamFrameGetterpriorityCall) DoAndReturn(
+	f func() (int8, bool, uint32),
+) *MockStreamFrameGetterpriorityCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
+
 // Code generated by MockGen. DO NOT EDIT.
 // Source: github.com/lemon4ksan/sein/internal/quic (interfaces: StreamSender)
 //
@@ -5728,7 +6689,11 @@ func (m *MockStreamSender) onHasConnectionData() {
 // onHasConnectionData indicates an expected call of onHasConnectionData.
 func (mr *MockStreamSenderMockRecorder) onHasConnectionData() *MockStreamSenderonHasConnectionDataCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "onHasConnectionData", reflect.TypeOf((*MockStreamSender)(nil).onHasConnectionData))
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"onHasConnectionData",
+		reflect.TypeOf((*MockStreamSender)(nil).onHasConnectionData),
+	)
 	return &MockStreamSenderonHasConnectionDataCall{Call: call}
 }
 
@@ -5762,9 +6727,17 @@ func (m *MockStreamSender) onHasStreamControlFrame(arg0 protocol.StreamID, arg1 
 }
 
 // onHasStreamControlFrame indicates an expected call of onHasStreamControlFrame.
-func (mr *MockStreamSenderMockRecorder) onHasStreamControlFrame(arg0, arg1 any) *MockStreamSenderonHasStreamControlFrameCall {
+func (mr *MockStreamSenderMockRecorder) onHasStreamControlFrame(
+	arg0, arg1 any,
+) *MockStreamSenderonHasStreamControlFrameCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "onHasStreamControlFrame", reflect.TypeOf((*MockStreamSender)(nil).onHasStreamControlFrame), arg0, arg1)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"onHasStreamControlFrame",
+		reflect.TypeOf((*MockStreamSender)(nil).onHasStreamControlFrame),
+		arg0,
+		arg1,
+	)
 	return &MockStreamSenderonHasStreamControlFrameCall{Call: call}
 }
 
@@ -5780,13 +6753,17 @@ func (c *MockStreamSenderonHasStreamControlFrameCall) Return() *MockStreamSender
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockStreamSenderonHasStreamControlFrameCall) Do(f func(protocol.StreamID, streamControlFrameGetter)) *MockStreamSenderonHasStreamControlFrameCall {
+func (c *MockStreamSenderonHasStreamControlFrameCall) Do(
+	f func(protocol.StreamID, streamControlFrameGetter),
+) *MockStreamSenderonHasStreamControlFrameCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockStreamSenderonHasStreamControlFrameCall) DoAndReturn(f func(protocol.StreamID, streamControlFrameGetter)) *MockStreamSenderonHasStreamControlFrameCall {
+func (c *MockStreamSenderonHasStreamControlFrameCall) DoAndReturn(
+	f func(protocol.StreamID, streamControlFrameGetter),
+) *MockStreamSenderonHasStreamControlFrameCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -5800,7 +6777,13 @@ func (m *MockStreamSender) onHasStreamData(arg0 protocol.StreamID, arg1 *SendStr
 // onHasStreamData indicates an expected call of onHasStreamData.
 func (mr *MockStreamSenderMockRecorder) onHasStreamData(arg0, arg1 any) *MockStreamSenderonHasStreamDataCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "onHasStreamData", reflect.TypeOf((*MockStreamSender)(nil).onHasStreamData), arg0, arg1)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"onHasStreamData",
+		reflect.TypeOf((*MockStreamSender)(nil).onHasStreamData),
+		arg0,
+		arg1,
+	)
 	return &MockStreamSenderonHasStreamDataCall{Call: call}
 }
 
@@ -5816,13 +6799,17 @@ func (c *MockStreamSenderonHasStreamDataCall) Return() *MockStreamSenderonHasStr
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockStreamSenderonHasStreamDataCall) Do(f func(protocol.StreamID, *SendStream)) *MockStreamSenderonHasStreamDataCall {
+func (c *MockStreamSenderonHasStreamDataCall) Do(
+	f func(protocol.StreamID, *SendStream),
+) *MockStreamSenderonHasStreamDataCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockStreamSenderonHasStreamDataCall) DoAndReturn(f func(protocol.StreamID, *SendStream)) *MockStreamSenderonHasStreamDataCall {
+func (c *MockStreamSenderonHasStreamDataCall) DoAndReturn(
+	f func(protocol.StreamID, *SendStream),
+) *MockStreamSenderonHasStreamDataCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -5834,9 +6821,17 @@ func (m *MockStreamSender) onHasStreamRetransmission(arg0 protocol.StreamID, arg
 }
 
 // onHasStreamRetransmission indicates an expected call of onHasStreamRetransmission.
-func (mr *MockStreamSenderMockRecorder) onHasStreamRetransmission(arg0, arg1 any) *MockStreamSenderonHasStreamRetransmissionCall {
+func (mr *MockStreamSenderMockRecorder) onHasStreamRetransmission(
+	arg0, arg1 any,
+) *MockStreamSenderonHasStreamRetransmissionCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "onHasStreamRetransmission", reflect.TypeOf((*MockStreamSender)(nil).onHasStreamRetransmission), arg0, arg1)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"onHasStreamRetransmission",
+		reflect.TypeOf((*MockStreamSender)(nil).onHasStreamRetransmission),
+		arg0,
+		arg1,
+	)
 	return &MockStreamSenderonHasStreamRetransmissionCall{Call: call}
 }
 
@@ -5852,13 +6847,17 @@ func (c *MockStreamSenderonHasStreamRetransmissionCall) Return() *MockStreamSend
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockStreamSenderonHasStreamRetransmissionCall) Do(f func(protocol.StreamID, *SendStream)) *MockStreamSenderonHasStreamRetransmissionCall {
+func (c *MockStreamSenderonHasStreamRetransmissionCall) Do(
+	f func(protocol.StreamID, *SendStream),
+) *MockStreamSenderonHasStreamRetransmissionCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockStreamSenderonHasStreamRetransmissionCall) DoAndReturn(f func(protocol.StreamID, *SendStream)) *MockStreamSenderonHasStreamRetransmissionCall {
+func (c *MockStreamSenderonHasStreamRetransmissionCall) DoAndReturn(
+	f func(protocol.StreamID, *SendStream),
+) *MockStreamSenderonHasStreamRetransmissionCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -5872,7 +6871,12 @@ func (m *MockStreamSender) onStreamCompleted(arg0 protocol.StreamID) {
 // onStreamCompleted indicates an expected call of onStreamCompleted.
 func (mr *MockStreamSenderMockRecorder) onStreamCompleted(arg0 any) *MockStreamSenderonStreamCompletedCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "onStreamCompleted", reflect.TypeOf((*MockStreamSender)(nil).onStreamCompleted), arg0)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"onStreamCompleted",
+		reflect.TypeOf((*MockStreamSender)(nil).onStreamCompleted),
+		arg0,
+	)
 	return &MockStreamSenderonStreamCompletedCall{Call: call}
 }
 
@@ -5894,7 +6898,9 @@ func (c *MockStreamSenderonStreamCompletedCall) Do(f func(protocol.StreamID)) *M
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockStreamSenderonStreamCompletedCall) DoAndReturn(f func(protocol.StreamID)) *MockStreamSenderonStreamCompletedCall {
+func (c *MockStreamSenderonStreamCompletedCall) DoAndReturn(
+	f func(protocol.StreamID),
+) *MockStreamSenderonStreamCompletedCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -5908,7 +6914,12 @@ func (m *MockStreamSender) updateStreamPriority(arg0 protocol.StreamID) {
 // updateStreamPriority indicates an expected call of updateStreamPriority.
 func (mr *MockStreamSenderMockRecorder) updateStreamPriority(arg0 any) *MockStreamSenderupdateStreamPriorityCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "updateStreamPriority", reflect.TypeOf((*MockStreamSender)(nil).updateStreamPriority), arg0)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"updateStreamPriority",
+		reflect.TypeOf((*MockStreamSender)(nil).updateStreamPriority),
+		arg0,
+	)
 	return &MockStreamSenderupdateStreamPriorityCall{Call: call}
 }
 
@@ -5924,16 +6935,21 @@ func (c *MockStreamSenderupdateStreamPriorityCall) Return() *MockStreamSenderupd
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockStreamSenderupdateStreamPriorityCall) Do(f func(protocol.StreamID)) *MockStreamSenderupdateStreamPriorityCall {
+func (c *MockStreamSenderupdateStreamPriorityCall) Do(
+	f func(protocol.StreamID),
+) *MockStreamSenderupdateStreamPriorityCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockStreamSenderupdateStreamPriorityCall) DoAndReturn(f func(protocol.StreamID)) *MockStreamSenderupdateStreamPriorityCall {
+func (c *MockStreamSenderupdateStreamPriorityCall) DoAndReturn(
+	f func(protocol.StreamID),
+) *MockStreamSenderupdateStreamPriorityCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
+
 // Code generated by MockGen. DO NOT EDIT.
 // Source: github.com/lemon4ksan/sein/internal/quic (interfaces: Unpacker)
 //
@@ -5980,7 +6996,13 @@ func (m *MockUnpacker) UnpackLongHeader(hdr *wire.Header, data []byte) (*unpacke
 // UnpackLongHeader indicates an expected call of UnpackLongHeader.
 func (mr *MockUnpackerMockRecorder) UnpackLongHeader(hdr, data any) *MockUnpackerUnpackLongHeaderCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnpackLongHeader", reflect.TypeOf((*MockUnpacker)(nil).UnpackLongHeader), hdr, data)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"UnpackLongHeader",
+		reflect.TypeOf((*MockUnpacker)(nil).UnpackLongHeader),
+		hdr,
+		data,
+	)
 	return &MockUnpackerUnpackLongHeaderCall{Call: call}
 }
 
@@ -5996,19 +7018,26 @@ func (c *MockUnpackerUnpackLongHeaderCall) Return(arg0 *unpackedPacket, arg1 err
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockUnpackerUnpackLongHeaderCall) Do(f func(*wire.Header, []byte) (*unpackedPacket, error)) *MockUnpackerUnpackLongHeaderCall {
+func (c *MockUnpackerUnpackLongHeaderCall) Do(
+	f func(*wire.Header, []byte) (*unpackedPacket, error),
+) *MockUnpackerUnpackLongHeaderCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockUnpackerUnpackLongHeaderCall) DoAndReturn(f func(*wire.Header, []byte) (*unpackedPacket, error)) *MockUnpackerUnpackLongHeaderCall {
+func (c *MockUnpackerUnpackLongHeaderCall) DoAndReturn(
+	f func(*wire.Header, []byte) (*unpackedPacket, error),
+) *MockUnpackerUnpackLongHeaderCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // UnpackShortHeader mocks base method.
-func (m *MockUnpacker) UnpackShortHeader(rcvTime monotime.Time, data []byte) (protocol.PacketNumber, protocol.PacketNumberLen, protocol.KeyPhaseBit, []byte, error) {
+func (m *MockUnpacker) UnpackShortHeader(
+	rcvTime monotime.Time,
+	data []byte,
+) (protocol.PacketNumber, protocol.PacketNumberLen, protocol.KeyPhaseBit, []byte, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UnpackShortHeader", rcvTime, data)
 	ret0, _ := ret[0].(protocol.PacketNumber)
@@ -6022,7 +7051,13 @@ func (m *MockUnpacker) UnpackShortHeader(rcvTime monotime.Time, data []byte) (pr
 // UnpackShortHeader indicates an expected call of UnpackShortHeader.
 func (mr *MockUnpackerMockRecorder) UnpackShortHeader(rcvTime, data any) *MockUnpackerUnpackShortHeaderCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnpackShortHeader", reflect.TypeOf((*MockUnpacker)(nil).UnpackShortHeader), rcvTime, data)
+	call := mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"UnpackShortHeader",
+		reflect.TypeOf((*MockUnpacker)(nil).UnpackShortHeader),
+		rcvTime,
+		data,
+	)
 	return &MockUnpackerUnpackShortHeaderCall{Call: call}
 }
 
@@ -6032,22 +7067,33 @@ type MockUnpackerUnpackShortHeaderCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockUnpackerUnpackShortHeaderCall) Return(arg0 protocol.PacketNumber, arg1 protocol.PacketNumberLen, arg2 protocol.KeyPhaseBit, arg3 []byte, arg4 error) *MockUnpackerUnpackShortHeaderCall {
+func (c *MockUnpackerUnpackShortHeaderCall) Return(
+	arg0 protocol.PacketNumber,
+	arg1 protocol.PacketNumberLen,
+	arg2 protocol.KeyPhaseBit,
+	arg3 []byte,
+	arg4 error,
+) *MockUnpackerUnpackShortHeaderCall {
 	c.Call = c.Call.Return(arg0, arg1, arg2, arg3, arg4)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockUnpackerUnpackShortHeaderCall) Do(f func(monotime.Time, []byte) (protocol.PacketNumber, protocol.PacketNumberLen, protocol.KeyPhaseBit, []byte, error)) *MockUnpackerUnpackShortHeaderCall {
+func (c *MockUnpackerUnpackShortHeaderCall) Do(
+	f func(monotime.Time, []byte) (protocol.PacketNumber, protocol.PacketNumberLen, protocol.KeyPhaseBit, []byte, error),
+) *MockUnpackerUnpackShortHeaderCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockUnpackerUnpackShortHeaderCall) DoAndReturn(f func(monotime.Time, []byte) (protocol.PacketNumber, protocol.PacketNumberLen, protocol.KeyPhaseBit, []byte, error)) *MockUnpackerUnpackShortHeaderCall {
+func (c *MockUnpackerUnpackShortHeaderCall) DoAndReturn(
+	f func(monotime.Time, []byte) (protocol.PacketNumber, protocol.PacketNumberLen, protocol.KeyPhaseBit, []byte, error),
+) *MockUnpackerUnpackShortHeaderCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
+
 type benchIncomingStream struct{}
 
 func (b *benchIncomingStream) closeForShutdown(error) {}

@@ -37,6 +37,7 @@ func TestCasingConversions(t *testing.T) {
 	assert.Equal(t, "TIMEOUT_SECONDS", casing.ToScreamingSnake("timeoutSeconds"))
 	assert.Equal(t, "HTTP_SERVER_URL", casing.ToScreamingSnake("httpServerURL"))
 }
+
 func FuzzCasingConversions(f *testing.F) {
 	f.Add("HTTPServerURL")
 	f.Add("user_id")

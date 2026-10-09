@@ -178,6 +178,7 @@ func TestChallenge_DrainEarlyExit(t *testing.T) {
 	require.Equal(t, 40, *p4)
 	require.Nil(t, buf.Pop())
 }
+
 func TestRepro_New_NegativeCapacityHangs(t *testing.T) {
 	done := make(chan struct{})
 

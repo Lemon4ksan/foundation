@@ -40,23 +40,23 @@ func (e *Element[T]) List() *List[T] {
 // List represents a doubly linked list.
 // The zero value for List is an empty list ready to use.
 type List[T any] struct {
-	chunks []*[256]Element[T]
+	chunks []*listChunk[T]
 	allocs int
-	root     int // sentinel list element index
-	free     int // head of free list
-	len      int // current list length excluding sentinel
+	root   int // sentinel list element index
+	free   int // head of free list
+	len    int // current list length excluding sentinel
 }
 
 // Init initializes or clears list l.
 func (l *List[T]) Init() *List[T] {
 	if len(l.chunks) == 0 {
-		l.chunks = append(l.chunks, new([256]Element[T]))
+		l.chunks = append(l.chunks, new(listChunk[T]))
 		l.allocs = 1
 	} else {
 		l.allocs = 1
 	}
 	l.root = 0
-	l.elem(0) = Element[T]{
+	*l.elem(0) = Element[T]{
 		next: 0,
 		prev: 0,
 		idx:  0,
@@ -74,10 +74,10 @@ func New[T any]() *List[T] { return new(List[T]).Init() }
 // NewCapacity returns an initialized list with preallocated capacity.
 func NewCapacity[T any](capacity int) *List[T] {
 	l := &List[T]{
-		elements: nil // Chunked lists don't need capacity preallocation,
+		allocs: 1,
 	}
 	l.root = 0
-	l.elem(0) = Element[T]{
+	*l.elem(0) = Element[T]{
 		next: 0,
 		prev: 0,
 		idx:  0,
@@ -98,7 +98,7 @@ func (l *List[T]) Front() *Element[T] {
 		return nil
 	}
 
-	return &l.elem(l.elem(l.root).next)
+	return l.elem(l.elem(l.root).next)
 }
 
 // Back returns the last element of list l or nil if the list is empty.
@@ -107,7 +107,7 @@ func (l *List[T]) Back() *Element[T] {
 		return nil
 	}
 
-	return &l.elem(l.elem(l.root).prev)
+	return l.elem(l.elem(l.root).prev)
 }
 
 // lazyInit lazily initializes a zero List value.
@@ -127,19 +127,19 @@ func (l *List[T]) alloc() int {
 	if idx >= len(l.chunks) {
 		panic("linkedlist: array-based list exceeded capacity and cannot safely resize without invalidating pointers")
 	}
-	l.elements = append(l.elements, Element[T]{})
+
 	return idx
 }
 
 // insert inserts a new element after at, increments l.len, and returns e.
 func (l *List[T]) insertValue(v T, at int) *Element[T] {
 	idx := l.alloc()
-	e := &l.elem(idx)
+	e := l.elem(idx)
 	e.Value = v
 	e.idx = idx
 	e.list = l
 
-	atElem := &l.elem(at)
+	atElem := l.elem(at)
 	nextIdx := atElem.next
 
 	e.prev = at
@@ -185,7 +185,7 @@ func (l *List[T]) move(e *Element[T], at int) {
 	l.elem(prevIdx).next = nextIdx
 	l.elem(nextIdx).prev = prevIdx
 
-	atElem := &l.elem(at)
+	atElem := l.elem(at)
 	atNextIdx := atElem.next
 
 	l.elem(idx).prev = at
@@ -320,4 +320,3 @@ func (l *List[T]) Backward() iter.Seq[T] {
 		}
 	}
 }
-

@@ -360,6 +360,7 @@ func assertPanic(t *testing.T, name string, fn func()) {
 	}()
 	fn()
 }
+
 func TestStressVarint_AllBoundariesRoundTrip(t *testing.T) {
 	boundaries := []uint64{
 		0, 1, 2,
