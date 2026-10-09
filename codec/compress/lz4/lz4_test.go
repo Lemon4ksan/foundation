@@ -1,7 +1,4 @@
 // Copyright (c) 2026 Lemon4ksan All rights reserved.
-// Copyright (c) 2015 Pierre Curto All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
 
 package lz4_test
 
@@ -95,5 +92,20 @@ func TestLZ4_CompressionLevels(t *testing.T) {
 				t.Fatalf("level %v mismatch", lvl)
 			}
 		})
+	}
+}
+
+// Merged from doc_test.go
+
+func TestCompressBlockAllocs(t *testing.T) {
+	data := bytes.Repeat([]byte("hello lz4 compression! "), 10)
+	dst := make([]byte, lz4.CompressBlockBound(len(data)))
+
+	allocs := testing.AllocsPerRun(10, func() {
+		_, _ = lz4.CompressBlock(data, dst)
+	})
+
+	if allocs > 0 {
+		t.Errorf("CompressBlock allocated %v times", allocs)
 	}
 }

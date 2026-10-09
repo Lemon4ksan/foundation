@@ -208,3 +208,4 @@ func TestArchitecture_PublicPackagesDocGo(t *testing.T) {
 		}
 	}
 }
+

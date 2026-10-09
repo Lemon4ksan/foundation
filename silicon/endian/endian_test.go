@@ -102,3 +102,89 @@ func TestEndian_BigEndian_All(t *testing.T) {
 	endian.StoreBE16(buf, 0xCAFE)
 	assert.Equal(t, uint16(0xCAFE), endian.LoadBE16(buf, 0))
 }
+
+// Merged from endian_bench_test.go
+
+func BenchmarkLoad64LE(b *testing.B) {
+	buf := make([]byte, 16)
+	endian.Store64(buf, 0, 0x1122334455667788)
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		_ = endian.Load64(buf, 0)
+	}
+}
+
+func BenchmarkStore64LE(b *testing.B) {
+	buf := make([]byte, 16)
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		endian.Store64(buf, 0, 0x1122334455667788)
+	}
+}
+
+func BenchmarkUint64LE(b *testing.B) {
+	buf := make([]byte, 16)
+	endian.PutUint64LE(buf, 0x1122334455667788)
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		_ = endian.Uint64LE(buf)
+	}
+}
+
+func BenchmarkPutUint64LE(b *testing.B) {
+	buf := make([]byte, 16)
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		endian.PutUint64LE(buf, 0x1122334455667788)
+	}
+}
+
+func BenchmarkLoadBE64(b *testing.B) {
+	buf := make([]byte, 16)
+	endian.StoreBE64(buf, 0, 0x1122334455667788)
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		_ = endian.LoadBE64(buf, 0)
+	}
+}
+
+func BenchmarkStoreBE64(b *testing.B) {
+	buf := make([]byte, 16)
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		endian.StoreBE64(buf, 0, 0x1122334455667788)
+	}
+}
+
+func BenchmarkUint64BE(b *testing.B) {
+	buf := make([]byte, 16)
+	endian.PutUint64BE(buf, 0x1122334455667788)
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		_ = endian.Uint64BE(buf)
+	}
+}
+
+func BenchmarkPutUint64BE(b *testing.B) {
+	buf := make([]byte, 16)
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		endian.PutUint64BE(buf, 0x1122334455667788)
+	}
+}

@@ -8,6 +8,7 @@ package sysnet
 
 import (
 	"errors"
+	"runtime"
 	"sync/atomic"
 	"syscall"
 	"unsafe"
@@ -127,11 +128,13 @@ func RegisterBuffer(data []byte) (*BufferRegistration, error) {
 		)
 
 		if r1 != 0 && r1 != ^uintptr(0) {
-			return &BufferRegistration{
+			reg := &BufferRegistration{
 				BufferID: r1,
 				Data:     data,
 				IsRIO:    true,
-			}, nil
+			}
+			runtime.SetFinalizer(reg, (*BufferRegistration).Deregister)
+			return reg, nil
 		}
 
 		_ = err
@@ -149,11 +152,13 @@ func RegisterBuffer(data []byte) (*BufferRegistration, error) {
 		return nil, ErrRIOFailed
 	}
 
-	return &BufferRegistration{
+	reg := &BufferRegistration{
 		BufferID: uintptr(unsafe.Pointer(&data[0])),
 		Data:     data,
 		IsRIO:    false,
-	}, nil
+	}
+	runtime.SetFinalizer(reg, (*BufferRegistration).Deregister)
+	return reg, nil
 }
 
 // Deregister unlocks or unregisters the memory buffer from the Windows kernel.

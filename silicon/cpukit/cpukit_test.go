@@ -77,3 +77,50 @@ func TestHasGFNI_ConcurrentExecution(t *testing.T) {
 
 	wg.Wait()
 }
+
+// Merged from cpukit_bench_test.go
+
+func BenchmarkHasAVX2(b *testing.B) {
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		_ = cpukit.HasAVX2()
+	}
+}
+
+func BenchmarkHasBMI(b *testing.B) {
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		_ = cpukit.HasBMI()
+	}
+}
+
+func BenchmarkHasAESNI(b *testing.B) {
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		_ = cpukit.HasAESNI()
+	}
+}
+
+func BenchmarkCacheLineSize(b *testing.B) {
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		_ = cpukit.CacheLineSize()
+	}
+}
+
+func BenchmarkHasGFNI(b *testing.B) {
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		_ = cpukit.HasGFNI()
+	}
+}
