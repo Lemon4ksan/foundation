@@ -17,7 +17,7 @@ type Element[T any] struct {
 // Next returns the next list element or nil.
 func (e *Element[T]) Next() *Element[T] {
 	if p := e.next; e.list != nil && p != e.list.root {
-		return &e.list.elements[p]
+		return e.list.elem(p)
 	}
 
 	return nil
@@ -26,7 +26,7 @@ func (e *Element[T]) Next() *Element[T] {
 // Prev returns the previous list element or nil.
 func (e *Element[T]) Prev() *Element[T] {
 	if p := e.prev; e.list != nil && p != e.list.root {
-		return &e.list.elements[p]
+		return e.list.elem(p)
 	}
 
 	return nil
@@ -98,7 +98,7 @@ func (l *List[T]) Front() *Element[T] {
 		return nil
 	}
 
-	return &l.elem(l.elements[l.root).next]
+	return &l.elem(l.elem(l.root).next)
 }
 
 // Back returns the last element of list l or nil if the list is empty.
@@ -107,12 +107,12 @@ func (l *List[T]) Back() *Element[T] {
 		return nil
 	}
 
-	return &l.elem(l.elements[l.root).prev]
+	return &l.elem(l.elem(l.root).prev)
 }
 
 // lazyInit lazily initializes a zero List value.
 func (l *List[T]) lazyInit() {
-	if l.allocs == 0 {
+	if len(l.chunks) == 0 {
 		l.Init()
 	}
 }

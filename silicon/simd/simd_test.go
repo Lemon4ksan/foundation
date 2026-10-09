@@ -412,6 +412,7 @@ func TestSIMD_MaskCRLF_And_ToLowerSWAR(t *testing.T) {
 	longData := []byte("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n")
 	simd.MaskCRLF(longData)
 	assert.Equal(t, 51, len(longData))
+	assert.Equal(t, []byte("HTTP/1.1 200 OK  Content-Type: application/json    "), longData)
 
 	// 2. ToLowerSWAR
 	src := []byte("HELLO WORLD! 123 ABCDEFGHIJKLMNOPQRSTUVWXYZ-extra-tail")
@@ -551,3 +552,196 @@ func FuzzIndexDoubleCRLF(f *testing.F) {
 		}
 	})
 }
+
+func TestMaskCRLF_AllBytes(t *testing.T) {
+	t.Parallel()
+
+	// 256 bytes covering the entire byte range [0x00 .. 0xFF]
+	data := make([]byte, 256)
+	expected := make([]byte, 256)
+	for i := 0; i < 256; i++ {
+		b := byte(i)
+		data[i] = b
+		if b == '\r' || b == '\n' {
+			expected[i] = ' '
+		} else {
+			expected[i] = b
+		}
+	}
+
+	simd.MaskCRLF(data)
+	assert.Equal(t, expected, data)
+
+	// Specifically verify that '\n' (0x0A) became 0x20 (' '), NOT 0x2A ('*')
+	assert.Equal(t, byte(' '), data[0x0A])
+	// And that '\r' (0x0D) became 0x20 (' '), NOT 0x2D ('-')
+	assert.Equal(t, byte(' '), data[0x0D])
+	// And that 0x2A ('*') was preserved
+	assert.Equal(t, byte('*'), data[0x2A])
+	// And that 0x2D ('-') was preserved
+	assert.Equal(t, byte('-'), data[0x2D])
+}
+
+func TestMaskCRLF_LengthsAndBoundaries(t *testing.T) {
+	t.Parallel()
+
+	lengths := []int{0, 1, 2, 7, 8, 15, 16, 31, 32, 33, 47, 63, 64, 65, 96, 97, 128, 256, 1024}
+	for _, l := range lengths {
+		src := make([]byte, l)
+		exp := make([]byte, l)
+		for i := 0; i < l; i++ {
+			b := byte('a' + (i % 26))
+			src[i] = b
+			exp[i] = b
+		}
+		if l > 0 {
+			src[0] = '\r'
+			exp[0] = ' '
+		}
+		if l > 15 {
+			src[15] = '\n'
+			exp[15] = ' '
+		}
+		if l > 31 {
+			src[31] = '\r'
+			exp[31] = ' '
+		}
+		if l > 32 {
+			src[32] = '\n'
+			exp[32] = ' '
+		}
+		if l > 63 {
+			src[63] = '\r'
+			exp[63] = ' '
+		}
+		if l > 64 {
+			src[64] = '\n'
+			exp[64] = ' '
+		}
+		if l > 1 {
+			src[l-1] = '\n'
+			exp[l-1] = ' '
+		}
+
+		simd.MaskCRLF(src)
+		assert.Equal(t, exp, src)
+	}
+}
+
+func TestIndexByteSWAR_UnalignedOffsets(t *testing.T) {
+	t.Parallel()
+
+	base := make([]byte, 256)
+	for i := range base {
+		base[i] = 'X'
+	}
+
+	for offset := 0; offset < 8; offset++ {
+		for length := 0; length <= 128; length++ {
+			sub := make([]byte, length)
+			copy(sub, base[offset:offset+length])
+
+			// 1. Target not found
+			got := simd.IndexByteSWAR(sub, 'A')
+			assert.Equal(t, -1, got)
+
+			if length > 0 {
+				// Target at first position
+				sub[0] = 'A'
+				assert.Equal(t, 0, simd.IndexByteSWAR(sub, 'A'))
+				sub[0] = 'X'
+
+				// Target at last position
+				sub[length-1] = 'A'
+				assert.Equal(t, length-1, simd.IndexByteSWAR(sub, 'A'))
+				sub[length-1] = 'X'
+
+				if length > 8 {
+					// Target in middle (SWAR chunk)
+					sub[5] = 'A'
+					assert.Equal(t, 5, simd.IndexByteSWAR(sub, 'A'))
+					sub[5] = 'X'
+				}
+			}
+		}
+	}
+}
+
+func BenchmarkMaskCRLF_Short(b *testing.B) {
+	data := make([]byte, 16)
+	for i := range data {
+		data[i] = 'A'
+	}
+	data[5] = '\r'
+	data[10] = '\n'
+
+	b.SetBytes(int64(len(data)))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		simd.MaskCRLF(data)
+	}
+}
+
+func BenchmarkMaskCRLF_Medium(b *testing.B) {
+	data := make([]byte, 64)
+	for i := range data {
+		data[i] = 'A'
+	}
+	data[15] = '\r'
+	data[16] = '\n'
+	data[45] = '\r'
+	data[46] = '\n'
+
+	b.SetBytes(int64(len(data)))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		simd.MaskCRLF(data)
+	}
+}
+
+func BenchmarkMaskCRLF_Large(b *testing.B) {
+	data := make([]byte, 1024)
+	for i := range data {
+		data[i] = 'A'
+	}
+	for i := 0; i < 1024; i += 64 {
+		data[i] = '\r'
+		data[i+1] = '\n'
+	}
+
+	b.SetBytes(int64(len(data)))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		simd.MaskCRLF(data)
+	}
+}
+
+func BenchmarkIndexByteSWAR_Aligned(b *testing.B) {
+	data := make([]byte, 1024)
+	for i := range data {
+		data[i] = 'A'
+	}
+	data[1000] = 'Z'
+
+	b.SetBytes(int64(len(data)))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = simd.IndexByteSWAR(data, 'Z')
+	}
+}
+
+func BenchmarkIndexByteSWAR_Unaligned(b *testing.B) {
+	raw := make([]byte, 1025)
+	for i := range raw {
+		raw[i] = 'A'
+	}
+	raw[1001] = 'Z'
+	data := raw[1:] // unaligned by 1 byte
+
+	b.SetBytes(int64(len(data)))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = simd.IndexByteSWAR(data, 'Z')
+	}
+}
+

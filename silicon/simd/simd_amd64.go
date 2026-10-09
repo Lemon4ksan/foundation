@@ -18,6 +18,9 @@ var hasAVX2 = cpu.X86.HasAVX2
 var hasBMI2 = cpu.X86.HasBMI2
 
 //go:noescape
+func maskCRLFAVX2(b []byte)
+
+//go:noescape
 func applyFastMaskAVX2(b []byte, mask uint32)
 
 //go:noescape
@@ -30,12 +33,13 @@ func MaskCRLF(b []byte) {
 		return
 	}
 
+	tailStart := 0
 	if n >= 32 && hasAVX2 {
-		applyFastMaskAVX2(b, 0x20202020)
-		return
+		maskCRLFAVX2(b)
+		tailStart = n &^ 31
 	}
 
-	for i := range b {
+	for i := tailStart; i < n; i++ {
 		if b[i] == '\r' || b[i] == '\n' {
 			b[i] = ' '
 		}
