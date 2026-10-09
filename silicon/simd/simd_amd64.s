@@ -95,16 +95,11 @@ found_two:
 	MOVQ AX, ret+32(FP)
 	RET
 
-// func maskCRLFAVX2(b []byte)
-TEXT ·maskCRLFAVX2(SB), NOSPLIT, $0-24
-	JMP ·applyFastMaskAVX2(SB)
-
 // func applyFastMaskAVX2(b []byte, mask uint32)
 TEXT ·applyFastMaskAVX2(SB), NOSPLIT, $0-28
 	MOVQ b_base+0(FP), AX
 	MOVQ b_len+8(FP), BX
 
-mask_entry:
 	CMPQ BX, $32
 	JL mask_fallback
 
