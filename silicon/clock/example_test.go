@@ -21,3 +21,26 @@ func ExampleCoarseTime() {
 	// Output:
 	// Cached time retrieved successfully
 }
+
+func ExampleRDTSC() {
+	// Read serialized hardware time-stamp counter (LFENCE + RDTSC)
+	c := clock.RDTSC()
+	if c > 0 {
+		fmt.Println("RDTSC cycle count retrieved")
+	}
+
+	// Output:
+	// RDTSC cycle count retrieved
+}
+
+func ExampleElapsedCycles() {
+	// Measure elapsed duration using calibrated cycle counting
+	start := clock.RDTSC()
+	elapsed := clock.ElapsedCycles(start)
+	if elapsed >= 0 {
+		fmt.Println("Elapsed cycles duration computed")
+	}
+
+	// Output:
+	// Elapsed cycles duration computed
+}

@@ -7,6 +7,7 @@ package bytesconv
 import (
 	"bytes"
 	"maps"
+	"strings"
 	"testing"
 
 	"github.com/lemon4ksan/foundation/testing/assert"
@@ -102,24 +103,52 @@ func TestContainsFoldASCII(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
+		name   string
 		src    string
 		target string
 		want   bool
 	}{
-		{"gzip, deflate", "gzip", true},
-		{"Bz gZip", "gzip", true},
-		{"GZIP", "gzip", true},
-		{"gZip", "gzip", true},
-		{"BR", "br", true},
-		{"zStD, gzip", "zstd", true},
-		{"gzip", "br", false},
-		{"", "gzip", false},
-		{"gzip", "", true},
+		{"substring at start", "gzip, deflate", "gzip", true},
+		{"mixed case", "Bz gZip", "gzip", true},
+		{"all uppercase", "GZIP", "gzip", true},
+		{"mixed case exact", "gZip", "gzip", true},
+		{"short uppercase", "BR", "br", true},
+		{"mixed case middle", "zStD, gzip", "zstd", true},
+		{"mismatch", "gzip", "br", false},
+		{"empty src", "", "gzip", false},
+		{"empty target", "gzip", "", true},
+		{"both empty", "", "", true},
+		{"target longer than src", "abc", "abcdef", false},
+		{"single char match lower", "hello", "h", true},
+		{"single char match upper", "hello", "H", true},
+		{"single char match non-letter", "user:123", ":", true},
+		{"single char mismatch", "hello", "z", false},
+		{"single char mismatch non-letter", "user:123", ";", false},
+		{"equal length match", "ABCdef", "abcDEF", true},
+		{"equal length mismatch", "ABCdef", "abcDEG", false},
+		{"substring at end", "hello WORLD", "world", true},
+		{"substring with punctuation", "content-type: application/json", "CONTENT-TYPE", true},
 	}
 
 	for _, tt := range tests {
-		assert.Equal(t, tt.want, ContainsFoldASCII([]byte(tt.src), tt.target))
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, ContainsFoldASCII([]byte(tt.src), tt.target))
+		})
 	}
+
+	t.Run("adversarial_repeated_prefix", func(t *testing.T) {
+		t.Parallel()
+
+		// 50,000 'a's followed by 'b'
+		src := append(bytes.Repeat([]byte("a"), 50000), 'b')
+		// target with 1,000 'a's ending in 'c' (should not match)
+		mismatchTarget := strings.Repeat("A", 1000) + "C"
+		assert.False(t, ContainsFoldASCII(src, mismatchTarget))
+
+		// target with 1,000 'a's ending in 'b' (should match at the end)
+		matchTarget := strings.Repeat("A", 1000) + "B"
+		assert.True(t, ContainsFoldASCII(src, matchTarget))
+	})
 }
 
 func TestParseUintFast(t *testing.T) {
@@ -160,6 +189,39 @@ func TestFastHash64(t *testing.T) {
 	assert.NotZero(t, FastHash64(nil))
 }
 
+func TestFastHash64_Unaligned(t *testing.T) {
+	t.Parallel()
+
+	// Create a backing buffer with distinct byte patterns
+	data := make([]byte, 128)
+	for i := range data {
+		data[i] = byte(i*31 + 7)
+	}
+
+	// Verify that slices at unaligned byte offsets (1 through 7) do not panic
+	// and produce hash values identical to freshly allocated, aligned copies.
+	for offset := range 8 {
+		unaligned := data[offset : offset+64]
+		copied := append([]byte(nil), unaligned...)
+
+		hUnaligned := FastHash64(unaligned)
+		hCopied := FastHash64(copied)
+
+		assert.Equal(t, hCopied, hUnaligned)
+		assert.NotZero(t, hUnaligned)
+	}
+
+	// Verify short, unaligned slices of various lengths
+	for offset := 1; offset < 8; offset++ {
+		for length := 0; length < 32; length++ {
+			slice := data[offset : offset+length]
+			h := FastHash64(slice)
+			copied := append([]byte(nil), slice...)
+			assert.Equal(t, FastHash64(copied), h)
+		}
+	}
+}
+
 func TestPatternSlicer(t *testing.T) {
 	t.Parallel()
 
@@ -182,6 +244,30 @@ func TestPatternSlicer(t *testing.T) {
 	s3 := NewPatternSlicer([]byte("DELIM"), 5)
 	all := s3.SliceAll([]byte("AADELIMBBDELIMCC"))
 	assert.Len(t, all, 3)
+
+	// Boundary slices: index 0 and index len(data)
+	sBoundaryZero := NewPatternSlicer([]byte("key"), 0)
+	parts0, ok0 := sBoundaryZero.Slice([]byte("key:val"))
+	assert.True(t, ok0)
+	assert.Len(t, parts0, 2)
+	assert.Empty(t, parts0[0])
+	assert.Equal(t, "key:val", string(parts0[1]))
+
+	sBoundaryEnd := NewPatternSlicer([]byte("val"), 3)
+	partsEnd, okEnd := sBoundaryEnd.Slice([]byte("key:val"))
+	assert.True(t, okEnd)
+	assert.Len(t, partsEnd, 2)
+	assert.Equal(t, "key:val", string(partsEnd[0]))
+	assert.Empty(t, partsEnd[1])
+
+	// Out-of-bounds offset checks
+	sNegative := NewPatternSlicer([]byte("key"), -5)
+	_, okNegative := sNegative.Slice([]byte("key:val"))
+	assert.False(t, okNegative)
+
+	sOverflow := NewPatternSlicer([]byte("val"), 50)
+	_, okOverflow := sOverflow.Slice([]byte("key:val"))
+	assert.False(t, okOverflow)
 
 	// Slice edge cases: empty or no match
 	assert.Len(t, s1.SliceAll(nil), 1)
@@ -267,5 +353,33 @@ func BenchmarkBase64Encode1KB(b *testing.B) {
 
 	for b.Loop() {
 		_ = Base64Encode(dst, src)
+	}
+}
+
+func BenchmarkContainsFoldASCII_Adversarial(b *testing.B) {
+	// Adversarial payload: 64KB of repeated 'A's, target with 1024 'a's ending in 'B'.
+	// Under a naive O(N*M) nested loop, this incurs 64K * 1K = ~65M operations per check.
+	// With Rabin-Karp O(N), this executes in linear time with zero allocations.
+	src := bytes.Repeat([]byte("A"), 65536)
+	target := strings.Repeat("a", 1024) + "B"
+	b.SetBytes(int64(len(src)))
+	b.ReportAllocs()
+
+	for b.Loop() {
+		_ = ContainsFoldASCII(src, target)
+	}
+}
+
+func BenchmarkFastHash64_Unaligned(b *testing.B) {
+	buf := make([]byte, 1025)
+	for i := range buf {
+		buf[i] = byte(i)
+	}
+	unaligned := buf[1:] // unaligned 1024 bytes
+	b.SetBytes(1024)
+	b.ReportAllocs()
+
+	for b.Loop() {
+		_ = FastHash64(unaligned)
 	}
 }

@@ -149,13 +149,37 @@ func (p Path) Scheme() string {
 	return p.scheme
 }
 
+// Authority returns the authority (host/domain and optional port/userinfo) component of the path
+// between "://" and the subsequent slash, or empty string if not present.
+func (p Path) Authority() string {
+	idx := strings.Index(p.raw, "://")
+	if idx == -1 {
+		return ""
+	}
+	rest := p.raw[idx+3:]
+	slash := strings.IndexAny(rest, "/\\")
+	if slash == -1 {
+		return rest
+	}
+	return rest[:slash]
+}
+
 // IsAbs reports whether the path is absolute.
 func (p Path) IsAbs() bool {
 	if p.isURL || p.scheme == "file" {
 		return true
 	}
 
-	if len(p.raw) >= 2 && p.raw[1] == ':' {
+	// Windows UNC paths (e.g. \\server\share or //server/share)
+	if strings.HasPrefix(p.raw, `\\`) || strings.HasPrefix(p.raw, "//") {
+		return true
+	}
+
+	// Windows drive-letter paths require a root slash (e.g. C:\ or C:/).
+	// Bare "C:" or "C:foo" is drive-relative, not absolute.
+	if len(p.raw) >= 3 && p.raw[1] == ':' &&
+		((p.raw[0] >= 'a' && p.raw[0] <= 'z') || (p.raw[0] >= 'A' && p.raw[0] <= 'Z')) &&
+		(p.raw[2] == '/' || p.raw[2] == '\\') {
 		return true
 	}
 
@@ -445,10 +469,18 @@ func (p Path) Ancestors() iter.Seq[Path] {
 	}
 }
 
+func isDriveSegment(s string) bool {
+	return len(s) == 2 && s[1] == ':' &&
+		((s[0] >= 'a' && s[0] <= 'z') || (s[0] >= 'A' && s[0] <= 'Z'))
+}
+
 // HasPrefix reports whether p has the directory prefix prefix.
 // Both paths are compared segment by segment.
 func (p Path) HasPrefix(prefix Path) bool {
 	if p.isURL != prefix.isURL || p.scheme != prefix.scheme {
+		return false
+	}
+	if p.Authority() != prefix.Authority() {
 		return false
 	}
 
@@ -469,51 +501,151 @@ func (p Path) HasPrefix(prefix Path) bool {
 		}
 
 		pSeg, pOk := pNext()
-		if !pOk || pSeg != preSeg {
+		segMatch := pSeg == preSeg
+		if !segMatch && isDriveSegment(pSeg) && isDriveSegment(preSeg) && strings.EqualFold(pSeg, preSeg) {
+			segMatch = true
+		}
+		if !pOk || !segMatch {
 			return false
 		}
 	}
 }
 
+// volume returns the root volume prefix for Windows drive letters (e.g. "C:")
+// or UNC paths (e.g. "//server/share").
+func volume(raw string) string {
+	if len(raw) >= 2 && raw[1] == ':' &&
+		((raw[0] >= 'a' && raw[0] <= 'z') || (raw[0] >= 'A' && raw[0] <= 'Z')) {
+		return raw[:2]
+	}
+	if strings.HasPrefix(raw, "//") || strings.HasPrefix(raw, `\\`) {
+		rest := raw[2:]
+		idx := strings.IndexAny(rest, "/\\")
+		if idx == -1 {
+			return raw
+		}
+		shareRest := rest[idx+1:]
+		shareIdx := strings.IndexAny(shareRest, "/\\")
+		if shareIdx == -1 {
+			return raw
+		}
+		return raw[:2+idx+1+shareIdx]
+	}
+	return ""
+}
+
 // Rel computes the relative path from base to p.
 // If the paths do not share a common base or have incompatible schemes, returns (Path{}, false).
+//
+// Concurrency & Zero-Allocation Semantics:
+// When paths are identical or incompatible, Rel performs strictly zero heap allocations.
+// Parallel segment traversal uses iter.Pull without slice allocations.
 func (p Path) Rel(base Path) (Path, bool) {
 	if p.isURL != base.isURL || p.scheme != base.scheme {
 		return Path{}, false
 	}
-
-	var baseParts []string
-	for s := range base.Segments() {
-		baseParts = append(baseParts, s)
+	if p.Authority() != base.Authority() {
+		return Path{}, false
+	}
+	if p.IsAbs() != base.IsAbs() {
+		return Path{}, false
+	}
+	if !strings.EqualFold(volume(p.raw), volume(base.raw)) {
+		return Path{}, false
 	}
 
-	var targetParts []string
-	for s := range p.Segments() {
-		targetParts = append(targetParts, s)
-	}
-
-	// Find common prefix
-	common := 0
-	for common < len(baseParts) && common < len(targetParts) && baseParts[common] == targetParts[common] {
-		common++
-	}
-
-	var resParts []string
-	for i := common; i < len(baseParts); i++ {
-		resParts = append(resParts, "..")
-	}
-	resParts = append(resParts, targetParts[common:]...)
-
-	if len(resParts) == 0 {
+	pClean := strings.TrimRight(p.raw, "/\\")
+	baseClean := strings.TrimRight(base.raw, "/\\")
+	if pClean == baseClean {
 		return Path{raw: ".", scheme: "", isURL: false}, true
 	}
 
+	baseNext, baseStop := iter.Pull(base.Segments())
+	defer baseStop()
+
+	pNext, pStop := iter.Pull(p.Segments())
+	defer pStop()
+
+	var (
+		diverged  bool
+		upCount   int
+		pFirst    string
+		pHasFirst bool
+	)
+
+	for {
+		bSeg, bOk := baseNext()
+		pSeg, pOk := pNext()
+
+		if !bOk && !pOk {
+			// Both ended simultaneously without divergence
+			break
+		}
+
+		segMatch := bSeg == pSeg
+		if !segMatch && isDriveSegment(bSeg) && isDriveSegment(pSeg) && strings.EqualFold(bSeg, pSeg) {
+			segMatch = true
+		}
+
+		if bOk && pOk && segMatch && !diverged {
+			// In lockstep matching
+			continue
+		}
+
+		// Divergence reached!
+		diverged = true
+
+		if bOk {
+			upCount = 1
+		}
+		if pOk {
+			pFirst = pSeg
+			pHasFirst = true
+		}
+		break
+	}
+
+	if !diverged {
+		return Path{raw: ".", scheme: "", isURL: false}, true
+	}
+
+	// Count remaining base segments that need "../"
+	for {
+		_, bOk := baseNext()
+		if !bOk {
+			break
+		}
+		upCount++
+	}
+
 	var sb strings.Builder
-	for i, part := range resParts {
-		if i > 0 {
+	for i := 0; i < upCount; i++ {
+		if sb.Len() > 0 {
 			sb.WriteByte('/')
 		}
-		sb.WriteString(part)
+		sb.WriteString("..")
+	}
+
+	if pHasFirst {
+		if sb.Len() > 0 {
+			sb.WriteByte('/')
+		}
+		sb.WriteString(pFirst)
+	}
+
+	for {
+		pSeg, pOk := pNext()
+		if !pOk {
+			break
+		}
+		if sb.Len() > 0 {
+			sb.WriteByte('/')
+		}
+		sb.WriteString(pSeg)
+	}
+
+	if sb.Len() == 0 {
+		return Path{raw: ".", scheme: "", isURL: false}, true
 	}
 
 	return Path{raw: sb.String(), scheme: "", isURL: false}, true

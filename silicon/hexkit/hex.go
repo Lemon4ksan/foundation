@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Lemon4ksan All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
+
 package hexkit
 
 import (
@@ -85,7 +86,8 @@ func Encode(dst, src []byte) int {
 
 func encodeScalar(dst, src []byte) int {
 	for i, v := range src {
-		*(*uint16)(unsafe.Pointer(&dst[i*2])) = hexLUT16[v]
+		dst[i*2] = byte(hexLUT16[v])
+		dst[i*2+1] = byte(hexLUT16[v] >> 8)
 	}
 	return len(src) * 2
 }

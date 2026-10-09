@@ -284,11 +284,7 @@ func (d *Deque[T]) Drain() iter.Seq[T] {
 
 // grow doubles the buffer capacity and unwraps elements into contiguous FIFO order.
 func (d *Deque[T]) grow() {
-	newCap := len(d.buf) * 2
-	if newCap < 4 {
-		newCap = 4
-	}
-	newBuf := make([]T, newCap)
+	newBuf := make([]T, max(len(d.buf)*2, 4))
 	n := copy(newBuf, d.buf[d.head:])
 	copy(newBuf[n:], d.buf[:d.head])
 	d.buf = newBuf

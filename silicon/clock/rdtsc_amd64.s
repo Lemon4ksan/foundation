@@ -8,6 +8,7 @@
 
 // func rdtsc() uint64
 TEXT ·rdtsc(SB), NOSPLIT, $0-8
+	LFENCE
 	RDTSC
 	SHLQ $32, DX
 	ORQ DX, AX

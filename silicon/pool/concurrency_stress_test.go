@@ -247,16 +247,21 @@ func TestRequestArena_CapacityLeakAudit(t *testing.T) {
 
 	b := arena.Alloc(10)
 	assert.Len(t, b, 10)
+	assert.Equal(t, 10, cap(b))
 
-	// Record the actual capacity of the slice returned by arena.Alloc
-	t.Logf("Alloc(10) -> len=%d, cap=%d", len(b), cap(b))
+	// Verify appending doesn't touch subsequent arena allocations
+	bNext := arena.Alloc(16)
+	assert.Len(t, bNext, 16)
+	assert.Equal(t, 16, cap(bNext))
 
-	// If cap(b) > 10, appending to b touches subsequent arena buffer space!
-	if cap(b) > 10 {
-		t.Logf(
-			"NOTE: arena.Alloc returns slice with cap=%d > len=10. Callers appending to b write into arena memory.",
-			cap(b),
-		)
+	for i := range bNext {
+		bNext[i] = 0xAA
+	}
+
+	_ = append(b, []byte{0x55, 0x55, 0x55, 0x55}...)
+
+	for i := range bNext {
+		assert.Equal(t, byte(0xAA), bNext[i])
 	}
 }
 

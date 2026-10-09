@@ -16,6 +16,7 @@ type ReturnType string
 
 const (
 	TypeNone      ReturnType = ""
+	TypeVoid      ReturnType = "void"
 	TypeInt       ReturnType = "int"
 	TypeInt64     ReturnType = "int64"
 	TypeUint64    ReturnType = "uint64"
@@ -43,6 +44,8 @@ const (
 // Kind returns the ReturnKind for this ReturnType.
 func (rt ReturnType) Kind() ReturnKind {
 	switch strings.ToLower(strings.TrimSpace(string(rt))) {
+	case "void", "none":
+		return RetNone
 	case "", "int", "int64", "uint64", "uintptr", "pointer", "ptr", "size_t", "uint64_t", "int64_t":
 		return RetInt64
 	case "int32", "uint32", "int32_t", "uint32_t":
@@ -51,7 +54,7 @@ func (rt ReturnType) Kind() ReturnKind {
 		return RetFloat32
 	case "double", "float64":
 		return RetFloat64
-	case "m128", "__m128", "__m128i", "__m128d", "vec128", "vector128", "[16]byte":
+	case "m128", "__m128", "__m128i", "__m128d", "vec128", "vector128", "vector", "vec", "simd", "[16]byte":
 		return RetVector128
 	case "m256", "__m256", "__m256i", "__m256d", "vec256", "vector256", "[32]byte":
 		return RetVector256
@@ -91,6 +94,9 @@ func (rt ReturnType) GoType() string {
 	case RetInt64:
 		if string(rt) == "int64" {
 			return "int64"
+		}
+		if string(rt) == "int" {
+			return "int"
 		}
 		return "uint64"
 	case RetFloat32:
@@ -169,7 +175,7 @@ func EmitPlan9Assembly(
 			case RetFloat64:
 				storeRet = "FMOVD"
 				retReg = "F0"
-			case RetVector128:
+			case RetVector128, RetVector256:
 				storeRet = "FMOVQ"
 				retReg = "F0"
 			case RetInt32:
@@ -225,6 +231,9 @@ func EmitPlan9Assembly(
 		if hasSig {
 			paramCount = sig.ParamCount
 			hasRet = sig.HasReturn
+			if kind == RetNone {
+				hasRet = false
+			}
 		}
 
 		retSize := 0
@@ -272,7 +281,9 @@ func EmitPlan9Assembly(
 			}
 		}
 
-		hasTrailingRet := len(insts) > 0 && insts[len(insts)-1].IsRet
+		hasTrailingRet := len(insts) > 0 && (insts[len(insts)-1].IsRet ||
+			strings.HasPrefix(insts[len(insts)-1].Text, "RET") ||
+			insts[len(insts)-1].Text == "LRET")
 		if !hasTrailingRet {
 			if hasRet {
 				fmt.Fprintf(&buf, "\t%s %s, ret+%d(FP)\n", storeRet, retReg, retOffset)
@@ -349,7 +360,7 @@ func EmitGoStub(pkg string, sigs []FuncSignature, arch string) []byte {
 		}
 
 		ret := ""
-		if sig.HasReturn {
+		if sig.HasReturn && sig.ReturnType.Kind() != RetNone {
 			ret = " " + sig.ReturnType.GoType()
 		}
 

@@ -109,9 +109,9 @@ func generateReservedVersion() Version {
 	return Version((binary.BigEndian.Uint32(b[:]) | 0x0a0a0a0a) & 0xfafafafa)
 }
 
-// GetGreasedVersions adds one reserved version number to a slice of version numbers, at a random position.
+// GreasedVersions adds one reserved version number to a slice of version numbers, at a random position.
 // It doesn't modify the supported slice.
-func GetGreasedVersions(supported []Version) []Version {
+func GreasedVersions(supported []Version) []Version {
 	versionNegotiationMx.Lock()
 	defer versionNegotiationMx.Unlock()
 

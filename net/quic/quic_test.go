@@ -62,11 +62,13 @@ func getPacketWithPacketType(
 	t.Helper()
 
 	b, err := (&wire.ExtendedHeader{
-		Type:             typ,
-		DestConnectionID: connID,
-		Length:           length,
-		Version:          protocol.Version1,
-		PacketNumberLen:  protocol.PacketNumberLen2,
+		Header: wire.Header{
+			Type:             typ,
+			DestConnectionID: connID,
+			Length:           length,
+			Version:          protocol.Version1,
+		},
+		PacketNumberLen: protocol.PacketNumberLen2,
 	}).Append(nil, protocol.Version1)
 	require.NoError(t, err)
 

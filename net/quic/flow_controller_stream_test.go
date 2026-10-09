@@ -140,13 +140,13 @@ func TestStreamAbandoning(t *testing.T) {
 	)
 
 	require.NoError(t, fc.UpdateHighestReceived(50, true, monotime.Now()))
-	require.Zero(t, fc.GetWindowUpdate(monotime.Now()))
-	require.Zero(t, connFC.GetWindowUpdate(monotime.Now()))
+	require.Zero(t, fc.WindowUpdate(monotime.Now()))
+	require.Zero(t, connFC.WindowUpdate(monotime.Now()))
 
 	// Abandon the stream.
 	// This marks all bytes as having been consumed.
 	fc.Abandon()
-	require.Equal(t, protocol.ByteCount(150), connFC.GetWindowUpdate(monotime.Now()))
+	require.Equal(t, protocol.ByteCount(150), connFC.WindowUpdate(monotime.Now()))
 }
 
 func TestStreamSendWindow(t *testing.T) {
@@ -232,28 +232,28 @@ func TestStreamWindowUpdate(t *testing.T) {
 		utils.NewRTTStats(),
 		utils.DefaultLogger,
 	)
-	require.Zero(t, fc.GetWindowUpdate(monotime.Now()))
+	require.Zero(t, fc.WindowUpdate(monotime.Now()))
 	hasStreamWindowUpdate, _ := fc.AddBytesRead(24)
 	require.False(t, hasStreamWindowUpdate)
-	require.Zero(t, fc.GetWindowUpdate(monotime.Now()))
+	require.Zero(t, fc.WindowUpdate(monotime.Now()))
 	// the window is updated when it's 25% filled
 	hasStreamWindowUpdate, _ = fc.AddBytesRead(1)
 	require.True(t, hasStreamWindowUpdate)
-	require.Equal(t, protocol.ByteCount(125), fc.GetWindowUpdate(monotime.Now()))
+	require.Equal(t, protocol.ByteCount(125), fc.WindowUpdate(monotime.Now()))
 
 	hasStreamWindowUpdate, _ = fc.AddBytesRead(24)
 	require.False(t, hasStreamWindowUpdate)
-	require.Zero(t, fc.GetWindowUpdate(monotime.Now()))
+	require.Zero(t, fc.WindowUpdate(monotime.Now()))
 	// the window is updated when it's 25% filled
 	hasStreamWindowUpdate, _ = fc.AddBytesRead(1)
 	require.True(t, hasStreamWindowUpdate)
-	require.Equal(t, protocol.ByteCount(150), fc.GetWindowUpdate(monotime.Now()))
+	require.Equal(t, protocol.ByteCount(150), fc.WindowUpdate(monotime.Now()))
 
 	// Receive the final offset.
 	// We don't need to send any more flow control updates.
 	require.NoError(t, fc.UpdateHighestReceived(100, true, monotime.Now()))
 	fc.AddBytesRead(50)
-	require.Zero(t, fc.GetWindowUpdate(monotime.Now()))
+	require.Zero(t, fc.WindowUpdate(monotime.Now()))
 }
 
 func TestStreamConnectionWindowUpdate(t *testing.T) {
@@ -276,9 +276,9 @@ func TestStreamConnectionWindowUpdate(t *testing.T) {
 
 	hasStreamWindowUpdate, hasConnWindowUpdate := fc.AddBytesRead(50)
 	require.False(t, hasStreamWindowUpdate)
-	require.Zero(t, fc.GetWindowUpdate(monotime.Now()))
+	require.Zero(t, fc.WindowUpdate(monotime.Now()))
 	require.True(t, hasConnWindowUpdate)
-	require.NotZero(t, connFC.GetWindowUpdate(monotime.Now()))
+	require.NotZero(t, connFC.WindowUpdate(monotime.Now()))
 }
 
 func TestStreamWindowAutoTuning(t *testing.T) {
@@ -312,7 +312,7 @@ func TestStreamWindowAutoTuning(t *testing.T) {
 
 	fc.AddBytesRead(51)
 	// one initial stream window size added
-	require.Equal(t, protocol.ByteCount(51+100), fc.GetWindowUpdate(now))
+	require.Equal(t, protocol.ByteCount(51+100), fc.WindowUpdate(now))
 	// one initial connection window size added
 	require.Equal(t, protocol.ByteCount(51+150), connFC.getWindowUpdate(now))
 
@@ -321,18 +321,18 @@ func TestStreamWindowAutoTuning(t *testing.T) {
 
 	fc.AddBytesRead(51)
 	// stream window size doubled to 200 bytes
-	require.Equal(t, protocol.ByteCount(102+2*100), fc.GetWindowUpdate(now))
+	require.Equal(t, protocol.ByteCount(102+2*100), fc.WindowUpdate(now))
 	// The connection window is now increased as well,
 	// so that we don't get blocked on connection level flow control:
 	// The increase is by 200 bytes * a connection factor of 1.5: 300 bytes.
-	require.Equal(t, protocol.ByteCount(102+300), connFC.GetWindowUpdate(now))
+	require.Equal(t, protocol.ByteCount(102+300), connFC.WindowUpdate(now))
 
 	// data consumption is fast enough, window size is increased
 	now = now.Add(2 * time.Second)
 
 	fc.AddBytesRead(101)
 	// stream window size increased again, but bumps into its maximum value
-	require.Equal(t, protocol.ByteCount(203+399), fc.GetWindowUpdate(now))
+	require.Equal(t, protocol.ByteCount(203+399), fc.WindowUpdate(now))
 	// the connection window is also increased, but it bumps into its maximum value
-	require.Equal(t, protocol.ByteCount(203+350), connFC.GetWindowUpdate(now))
+	require.Equal(t, protocol.ByteCount(203+350), connFC.WindowUpdate(now))
 }

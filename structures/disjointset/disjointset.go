@@ -31,7 +31,7 @@ func New(n int) *Set {
 
 	parent := make([]int, n)
 	size := make([]int, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		parent[i] = i
 		size[i] = 1
 	}
@@ -140,7 +140,7 @@ func (d *Set) Reset() {
 		return
 	}
 	n := len(d.parent)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		d.parent[i] = i
 		d.size[i] = 1
 	}

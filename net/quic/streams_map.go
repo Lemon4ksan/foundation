@@ -237,7 +237,7 @@ func (m *streamsMap) getSendStream(id protocol.StreamID) (sendStreamFrameHandler
 			}
 		}
 
-		str, err := m.outgoingUniStreams.GetStream(id)
+		str, err := m.outgoingUniStreams.Stream(id)
 		if str == nil || err != nil {
 			return nil, err
 		}
@@ -246,7 +246,7 @@ func (m *streamsMap) getSendStream(id protocol.StreamID) (sendStreamFrameHandler
 
 	case protocol.StreamTypeBidi:
 		if protocol.StreamInitiator(id) == m.perspective {
-			str, err := m.outgoingBidiStreams.GetStream(id)
+			str, err := m.outgoingBidiStreams.Stream(id)
 			if str == nil || err != nil {
 				return nil, err
 			}
@@ -254,7 +254,7 @@ func (m *streamsMap) getSendStream(id protocol.StreamID) (sendStreamFrameHandler
 			return str, nil
 		}
 
-		str, err := m.incomingBidiStreams.GetOrOpenStream(id)
+		str, err := m.incomingBidiStreams.OrOpenStream(id)
 		if str == nil || err != nil {
 			return nil, err
 		}
@@ -311,7 +311,7 @@ func (m *streamsMap) getReceiveStream(id protocol.StreamID) (receiveStreamFrameH
 			}
 		}
 
-		str, err := m.incomingUniStreams.GetOrOpenStream(id)
+		str, err := m.incomingUniStreams.OrOpenStream(id)
 		if err != nil || str == nil {
 			return nil, err
 		}
@@ -325,9 +325,9 @@ func (m *streamsMap) getReceiveStream(id protocol.StreamID) (receiveStreamFrameH
 		)
 
 		if protocol.StreamInitiator(id) == m.perspective {
-			str, err = m.outgoingBidiStreams.GetStream(id)
+			str, err = m.outgoingBidiStreams.Stream(id)
 		} else {
-			str, err = m.incomingBidiStreams.GetOrOpenStream(id)
+			str, err = m.incomingBidiStreams.OrOpenStream(id)
 		}
 
 		if str == nil || err != nil {

@@ -52,7 +52,7 @@ type SentPacketHandler interface {
 	PeekPacketNumber(protocol.EncryptionLevel) (protocol.PacketNumber, protocol.PacketNumberLen)
 	PopPacketNumber(protocol.EncryptionLevel) protocol.PacketNumber
 
-	GetLossDetectionTimeout() monotime.Time
+	LossDetectionTimeout() monotime.Time
 	OnLossDetectionTimeout(now monotime.Time) error
 
 	MigratedPath(now monotime.Time, initialMaxPacketSize protocol.ByteCount)

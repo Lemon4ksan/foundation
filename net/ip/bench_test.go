@@ -10,12 +10,12 @@ import (
 	"github.com/lemon4ksan/foundation/net/ip"
 )
 
-func BenchmarkSourceIPRotator_Next_Serial(b *testing.B) {
+func BenchmarkSourceRotator_Next_Serial(b *testing.B) {
 	addrs := []string{
 		"192.168.1.1", "192.168.1.2", "192.168.1.3", "192.168.1.4",
 		"10.0.0.1", "10.0.0.2", "10.0.0.3", "10.0.0.4",
 	}
-	rot, err := ip.NewSourceIPRotator(addrs)
+	rot, err := ip.NewSourceRotator(addrs)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -28,12 +28,12 @@ func BenchmarkSourceIPRotator_Next_Serial(b *testing.B) {
 	}
 }
 
-func BenchmarkSourceIPRotator_Next_Parallel(b *testing.B) {
+func BenchmarkSourceRotator_Next_Parallel(b *testing.B) {
 	addrs := []string{
 		"192.168.1.1", "192.168.1.2", "192.168.1.3", "192.168.1.4",
 		"10.0.0.1", "10.0.0.2", "10.0.0.3", "10.0.0.4",
 	}
-	rot, err := ip.NewSourceIPRotator(addrs)
+	rot, err := ip.NewSourceRotator(addrs)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -48,8 +48,8 @@ func BenchmarkSourceIPRotator_Next_Parallel(b *testing.B) {
 	})
 }
 
-func BenchmarkIPv6SubnetRotator_NextFast(b *testing.B) {
-	rot, err := ip.NewIPv6SubnetRotator("2001:db8:abcd:0012::/64")
+func BenchmarkSubnetRotator_NextFast(b *testing.B) {
+	rot, err := ip.NewSubnetRotator("2001:db8:abcd:0012::/64")
 	if err != nil {
 		b.Fatal(err)
 	}

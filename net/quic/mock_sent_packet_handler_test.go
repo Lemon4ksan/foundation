@@ -125,40 +125,40 @@ func (c *MockSentPacketHandlerECNModeCall) DoAndReturn(f func(bool) protocol.ECN
 	return c
 }
 
-// GetLossDetectionTimeout mocks base method.
-func (m *MockSentPacketHandler) GetLossDetectionTimeout() monotime.Time {
+// LossDetectionTimeout mocks base method.
+func (m *MockSentPacketHandler) LossDetectionTimeout() monotime.Time {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetLossDetectionTimeout")
+	ret := m.ctrl.Call(m, "LossDetectionTimeout")
 	ret0, _ := ret[0].(monotime.Time)
 	return ret0
 }
 
-// GetLossDetectionTimeout indicates an expected call of GetLossDetectionTimeout.
-func (mr *MockSentPacketHandlerMockRecorder) GetLossDetectionTimeout() *MockSentPacketHandlerGetLossDetectionTimeoutCall {
+// LossDetectionTimeout indicates an expected call of LossDetectionTimeout.
+func (mr *MockSentPacketHandlerMockRecorder) LossDetectionTimeout() *MockSentPacketHandlerLossDetectionTimeoutCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLossDetectionTimeout", reflect.TypeOf((*MockSentPacketHandler)(nil).GetLossDetectionTimeout))
-	return &MockSentPacketHandlerGetLossDetectionTimeoutCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LossDetectionTimeout", reflect.TypeOf((*MockSentPacketHandler)(nil).LossDetectionTimeout))
+	return &MockSentPacketHandlerLossDetectionTimeoutCall{Call: call}
 }
 
-// MockSentPacketHandlerGetLossDetectionTimeoutCall wrap *gomock.Call
-type MockSentPacketHandlerGetLossDetectionTimeoutCall struct {
+// MockSentPacketHandlerLossDetectionTimeoutCall wrap *gomock.Call
+type MockSentPacketHandlerLossDetectionTimeoutCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockSentPacketHandlerGetLossDetectionTimeoutCall) Return(arg0 monotime.Time) *MockSentPacketHandlerGetLossDetectionTimeoutCall {
+func (c *MockSentPacketHandlerLossDetectionTimeoutCall) Return(arg0 monotime.Time) *MockSentPacketHandlerLossDetectionTimeoutCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSentPacketHandlerGetLossDetectionTimeoutCall) Do(f func() monotime.Time) *MockSentPacketHandlerGetLossDetectionTimeoutCall {
+func (c *MockSentPacketHandlerLossDetectionTimeoutCall) Do(f func() monotime.Time) *MockSentPacketHandlerLossDetectionTimeoutCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSentPacketHandlerGetLossDetectionTimeoutCall) DoAndReturn(f func() monotime.Time) *MockSentPacketHandlerGetLossDetectionTimeoutCall {
+func (c *MockSentPacketHandlerLossDetectionTimeoutCall) DoAndReturn(f func() monotime.Time) *MockSentPacketHandlerLossDetectionTimeoutCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

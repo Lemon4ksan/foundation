@@ -58,6 +58,22 @@ func TestConstantTime(t *testing.T) {
 	if randkit.ConstantTimeEqual(s1, s1+"x") {
 		t.Fatal("expected ConstantTimeEqual with different lengths == false")
 	}
+	if !randkit.ConstantTimeEqual("", "") {
+		t.Fatal("expected ConstantTimeEqual(\"\", \"\") == true")
+	}
+	if randkit.ConstantTimeEqual("", "a") {
+		t.Fatal("expected ConstantTimeEqual(\"\", \"a\") == false")
+	}
+	if randkit.ConstantTimeEqual("a", "") {
+		t.Fatal("expected ConstantTimeEqual(\"a\", \"\") == false")
+	}
+
+	allocs := testing.AllocsPerRun(100, func() {
+		_ = randkit.ConstantTimeEqual(s1, s2)
+	})
+	if allocs != 0 {
+		t.Fatalf("expected 0 allocs for ConstantTimeEqual, got %v", allocs)
+	}
 }
 
 func BenchmarkConstantTimeEqual(b *testing.B) {

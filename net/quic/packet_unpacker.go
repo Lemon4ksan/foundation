@@ -70,7 +70,7 @@ func (u *packetUnpacker) UnpackLongHeader(hdr *wire.Header, data []byte) (*unpac
 	case protocol.PacketTypeInitial:
 		encLevel = protocol.EncryptionInitial
 
-		opener, err := u.cs.GetInitialOpener()
+		opener, err := u.cs.InitialOpener()
 		if err != nil {
 			return nil, err
 		}
@@ -83,7 +83,7 @@ func (u *packetUnpacker) UnpackLongHeader(hdr *wire.Header, data []byte) (*unpac
 	case protocol.PacketTypeHandshake:
 		encLevel = protocol.EncryptionHandshake
 
-		opener, err := u.cs.GetHandshakeOpener()
+		opener, err := u.cs.HandshakeOpener()
 		if err != nil {
 			return nil, err
 		}
@@ -96,7 +96,7 @@ func (u *packetUnpacker) UnpackLongHeader(hdr *wire.Header, data []byte) (*unpac
 	case protocol.PacketType0RTT:
 		encLevel = protocol.Encryption0RTT
 
-		opener, err := u.cs.Get0RTTOpener()
+		opener, err := u.cs.ZeroRTTOpener()
 		if err != nil {
 			return nil, err
 		}
@@ -128,7 +128,7 @@ func (u *packetUnpacker) UnpackShortHeader(
 	rcvTime monotime.Time,
 	data []byte,
 ) (protocol.PacketNumber, protocol.PacketNumberLen, protocol.KeyPhaseBit, []byte, error) {
-	opener, err := u.cs.Get1RTTOpener()
+	opener, err := u.cs.OneRTTOpener()
 	if err != nil {
 		return 0, 0, 0, nil, err
 	}

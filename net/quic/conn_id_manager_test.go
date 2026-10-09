@@ -276,7 +276,7 @@ func TestConnIDManagerPathMigration(t *testing.T) {
 	)
 
 	// no connection ID available yet
-	_, ok := m.GetConnIDForPath(1)
+	_, ok := m.ConnIDForPath(1)
 	require.False(t, ok)
 
 	// add two connection IDs
@@ -290,7 +290,7 @@ func TestConnIDManagerPathMigration(t *testing.T) {
 		ConnectionID:        protocol.ParseConnectionID([]byte{5, 4, 3, 2}),
 		StatelessResetToken: protocol.StatelessResetToken{5, 4, 3, 2, 5, 4, 3, 2},
 	}))
-	connID, ok := m.GetConnIDForPath(1)
+	connID, ok := m.ConnIDForPath(1)
 	require.True(t, ok)
 	require.Equal(t, protocol.ParseConnectionID([]byte{4, 3, 2, 1}), connID)
 	require.Equal(t, []protocol.StatelessResetToken{{4, 3, 2, 1, 4, 3, 2, 1}}, addedTokens)
@@ -299,7 +299,7 @@ func TestConnIDManagerPathMigration(t *testing.T) {
 	addedTokens = addedTokens[:0]
 
 	require.False(t, m.IsActiveStatelessResetToken(protocol.StatelessResetToken{5, 4, 3, 2, 5, 4, 3, 2}))
-	connID, ok = m.GetConnIDForPath(2)
+	connID, ok = m.ConnIDForPath(2)
 	require.True(t, ok)
 	require.Equal(t, protocol.ParseConnectionID([]byte{5, 4, 3, 2}), connID)
 	require.Equal(t, []protocol.StatelessResetToken{{5, 4, 3, 2, 5, 4, 3, 2}}, addedTokens)
@@ -308,7 +308,7 @@ func TestConnIDManagerPathMigration(t *testing.T) {
 
 	addedTokens = addedTokens[:0]
 	// asking for the connection for path 1 again returns the same connection ID
-	connID, ok = m.GetConnIDForPath(1)
+	connID, ok = m.ConnIDForPath(1)
 	require.True(t, ok)
 	require.Equal(t, protocol.ParseConnectionID([]byte{4, 3, 2, 1}), connID)
 	require.Empty(t, addedTokens)
@@ -333,7 +333,7 @@ func TestConnIDManagerPathMigration(t *testing.T) {
 	addedTokens = addedTokens[:0]
 
 	// the connection ID is not used for new paths
-	_, ok = m.GetConnIDForPath(3)
+	_, ok = m.ConnIDForPath(3)
 	require.False(t, ok)
 
 	// Manually retiring the connection ID does nothing.
@@ -341,7 +341,7 @@ func TestConnIDManagerPathMigration(t *testing.T) {
 	m.RetireConnIDForPath(1)
 	require.Empty(t, frameQueue)
 
-	_, ok = m.GetConnIDForPath(1)
+	_, ok = m.ConnIDForPath(1)
 	require.False(t, ok)
 	require.Empty(t, removedTokens)
 
@@ -351,7 +351,7 @@ func TestConnIDManagerPathMigration(t *testing.T) {
 		ConnectionID:        protocol.ParseConnectionID([]byte{7, 6, 5, 4}),
 		StatelessResetToken: protocol.StatelessResetToken{16, 15, 14, 13},
 	}))
-	connID, ok = m.GetConnIDForPath(1)
+	connID, ok = m.ConnIDForPath(1)
 	require.True(t, ok)
 	require.Equal(t, protocol.ParseConnectionID([]byte{7, 6, 5, 4}), connID)
 	require.Equal(t, []protocol.StatelessResetToken{{16, 15, 14, 13}}, addedTokens)
@@ -389,7 +389,7 @@ func TestConnIDManagerZeroLengthConnectionID(t *testing.T) {
 
 	// for path probing, we don't need to change the connection ID
 	for id := pathID(1); id < 10; id++ {
-		connID, ok := m.GetConnIDForPath(id)
+		connID, ok := m.ConnIDForPath(id)
 		require.True(t, ok)
 		require.Equal(t, protocol.ConnectionID{}, connID)
 	}

@@ -138,8 +138,9 @@ func parseFieldTag(tag reflect.StructTag) Tag {
 		s = s[1:]
 		i = 0
 		for i < len(s) && s[i] != '"' {
-			if s[i] == '\\' {
-				i++
+			if s[i] == '\\' && i+1 < len(s) {
+				i += 2
+				continue
 			}
 			i++
 		}

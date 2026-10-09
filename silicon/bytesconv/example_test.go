@@ -33,3 +33,23 @@ func ExampleB2S() {
 	// Output:
 	// hello
 }
+
+func ExampleContainsFoldASCII() {
+	header := []byte("Content-Type: text/html; charset=UTF-8")
+	found := bytesconv.ContainsFoldASCII(header, "charset=utf-8")
+	fmt.Println("Contains charset:", found)
+
+	// Output:
+	// Contains charset: true
+}
+
+func ExamplePatternSlicer_Slice() {
+	slicer := bytesconv.NewPatternSlicer([]byte(":"), 1)
+	parts, ok := slicer.Slice([]byte("Host: localhost"))
+	if ok {
+		fmt.Printf("Prefix: %q, Suffix: %q\n", parts[0], parts[1])
+	}
+
+	// Output:
+	// Prefix: "Host:", Suffix: " localhost"
+}

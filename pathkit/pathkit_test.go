@@ -505,6 +505,20 @@ func TestPath_ZeroAllocGuarantees(t *testing.T) {
 		}
 	})
 	assert.Equal(t, 0.0, allocsAnc)
+
+	// 7. Rel zero-alloc on identical paths (returns ".")
+	pIdentical := pathkit.New("/var/log/nginx/access.log")
+	allocsRelIdentical := testing.AllocsPerRun(1000, func() {
+		_, _ = pIdentical.Rel(pIdentical)
+	})
+	assert.Equal(t, 0.0, allocsRelIdentical)
+
+	// 8. Rel zero-alloc on incompatible paths
+	pIncompat := pathkit.New("https://api.github.com")
+	allocsRelIncompat := testing.AllocsPerRun(1000, func() {
+		_, _ = pIdentical.Rel(pIncompat)
+	})
+	assert.Equal(t, 0.0, allocsRelIncompat)
 }
 
 func BenchmarkSegmentsSeq_ZeroAlloc(b *testing.B) {
@@ -577,5 +591,211 @@ func BenchmarkPath_New_And_Methods(b *testing.B) {
 		_ = p.Base()
 		_ = p.Ext()
 		_ = p.Dir()
+	}
+}
+
+func TestPath_AuthorityComparison(t *testing.T) {
+	t.Parallel()
+
+	// 1. Authority extraction
+	assert.Equal(t, "google.com", pathkit.New("https://google.com/api").Authority())
+	assert.Equal(t, "google.com", pathkit.New("https://google.com").Authority())
+	assert.Equal(t, "google.com", pathkit.New("https://google.com/").Authority())
+	assert.Equal(t, "example.com:8080", pathkit.New("http://example.com:8080/v1").Authority())
+	assert.Equal(t, "user:pass@example.com:9000", pathkit.New("https://user:pass@example.com:9000/path").Authority())
+	assert.Equal(t, "my-bucket", pathkit.New("s3://my-bucket/key").Authority())
+	assert.Equal(t, "", pathkit.New("file:///C:/path").Authority())
+	assert.Equal(t, "server", pathkit.New("file://server/share").Authority())
+	assert.Equal(t, "", pathkit.New("/var/log").Authority())
+	assert.Equal(t, "", pathkit.New(`C:\Users`).Authority())
+
+	// 2. HasPrefix with authorities
+	pGoogle := pathkit.New("https://google.com/api/v1")
+	pGooglePrefix := pathkit.New("https://google.com/api")
+	pApple := pathkit.New("https://apple.com/api")
+	pGooglePort := pathkit.New("https://google.com:8080/api")
+
+	assert.True(t, pGoogle.HasPrefix(pGooglePrefix))
+	assert.False(t, pGoogle.HasPrefix(pApple))
+	assert.False(t, pGoogle.HasPrefix(pGooglePort))
+
+	// s3 buckets
+	assert.True(t, pathkit.New("s3://bucket-a/data/file.csv").HasPrefix(pathkit.New("s3://bucket-a/data")))
+	assert.False(t, pathkit.New("s3://bucket-a/data/file.csv").HasPrefix(pathkit.New("s3://bucket-b/data")))
+
+	// 3. Rel with authorities
+	rel, ok := pathkit.New("https://google.com/api/v1/users").Rel(pGooglePrefix)
+	require.True(t, ok)
+	assert.Equal(t, "v1/users", rel.String())
+
+	// Different authorities must fail
+	_, ok = pathkit.New("https://google.com/api").Rel(pApple)
+	assert.False(t, ok)
+
+	_, ok = pathkit.New("https://google.com:8080/api").Rel(pGooglePrefix)
+	assert.False(t, ok)
+
+	// Incompatible schemes
+	_, ok = pathkit.New("http://google.com/api").Rel(pathkit.New("https://google.com/api"))
+	assert.False(t, ok)
+}
+
+func TestPath_WindowsIsAbs_Validation(t *testing.T) {
+	t.Parallel()
+
+	// 1. Bare drive letter or drive-relative paths (MUST NOT be absolute)
+	assert.False(t, pathkit.New("C:").IsAbs())
+	assert.False(t, pathkit.New("c:").IsAbs())
+	assert.False(t, pathkit.New("D:").IsAbs())
+	assert.False(t, pathkit.New("C:foo").IsAbs())
+	assert.False(t, pathkit.New(`C:foo\bar`).IsAbs())
+	assert.False(t, pathkit.New("c:relative/path").IsAbs())
+	assert.False(t, pathkit.New("1:/foo").IsAbs())
+	assert.False(t, pathkit.New("?:/foo").IsAbs())
+
+	// 2. Windows drive paths with root separator (MUST be absolute)
+	assert.True(t, pathkit.New("C:/").IsAbs())
+	assert.True(t, pathkit.New(`C:\`).IsAbs())
+	assert.True(t, pathkit.New("C:/Windows").IsAbs())
+	assert.True(t, pathkit.New(`C:\Windows\System32`).IsAbs())
+	assert.True(t, pathkit.New("c:/users/app").IsAbs())
+	assert.True(t, pathkit.New(`d:\data`).IsAbs())
+
+	// 3. Windows UNC paths starting with \\ or // (MUST be absolute)
+	assert.True(t, pathkit.New(`\\server\share`).IsAbs())
+	assert.True(t, pathkit.New(`\\server\share\folder\file.txt`).IsAbs())
+	assert.True(t, pathkit.New("//server/share").IsAbs())
+	assert.True(t, pathkit.New("//server/share/folder/file.txt").IsAbs())
+
+	// 4. Unix paths
+	assert.True(t, pathkit.New("/").IsAbs())
+	assert.True(t, pathkit.New("/var/log").IsAbs())
+	assert.False(t, pathkit.New("var/log").IsAbs())
+	assert.False(t, pathkit.New("./var/log").IsAbs())
+	assert.False(t, pathkit.New("../var/log").IsAbs())
+	assert.False(t, pathkit.New("").IsAbs())
+
+	// 5. URLs and file URIs
+	assert.True(t, pathkit.New("https://google.com").IsAbs())
+	assert.True(t, pathkit.New("file:///C:/path").IsAbs())
+	assert.True(t, pathkit.New("s3://bucket/key").IsAbs())
+}
+
+func TestPath_Rel_ParallelTraversal(t *testing.T) {
+	t.Parallel()
+
+	// 1. Common prefix cases
+	base := pathkit.New("/a/b")
+	rel, ok := pathkit.New("/a/b/c/d").Rel(base)
+	require.True(t, ok)
+	assert.Equal(t, "c/d", rel.String())
+
+	// 2. Target is ancestor of base (needs ../)
+	rel, ok = pathkit.New("/a/b").Rel(pathkit.New("/a/b/c/d"))
+	require.True(t, ok)
+	assert.Equal(t, "../..", rel.String())
+
+	// 3. Divergence after common prefix
+	rel, ok = pathkit.New("/a/b/x/y").Rel(pathkit.New("/a/b/c/d"))
+	require.True(t, ok)
+	assert.Equal(t, "../../x/y", rel.String())
+
+	// 4. Divergence at root
+	rel, ok = pathkit.New("/x/y").Rel(pathkit.New("/a/b"))
+	require.True(t, ok)
+	assert.Equal(t, "../../x/y", rel.String())
+
+	// 5. Identical paths
+	rel, ok = pathkit.New("/a/b/c").Rel(pathkit.New("/a/b/c"))
+	require.True(t, ok)
+	assert.Equal(t, ".", rel.String())
+
+	// 6. Base is root
+	rel, ok = pathkit.New("/a/b").Rel(pathkit.New("/"))
+	require.True(t, ok)
+	assert.Equal(t, "a/b", rel.String())
+
+	// Target is root
+	rel, ok = pathkit.New("/").Rel(pathkit.New("/a/b"))
+	require.True(t, ok)
+	assert.Equal(t, "../..", rel.String())
+
+	// 7. Relative paths
+	rel, ok = pathkit.New("a/b/c").Rel(pathkit.New("a/b"))
+	require.True(t, ok)
+	assert.Equal(t, "c", rel.String())
+
+	rel, ok = pathkit.New("a/b").Rel(pathkit.New("a/b/c"))
+	require.True(t, ok)
+	assert.Equal(t, "..", rel.String())
+
+	rel, ok = pathkit.New("a/x").Rel(pathkit.New("a/y"))
+	require.True(t, ok)
+	assert.Equal(t, "../x", rel.String())
+
+	// 8. Incompatible: absolute vs relative
+	_, ok = pathkit.New("/a/b").Rel(pathkit.New("a/b"))
+	assert.False(t, ok)
+
+	_, ok = pathkit.New("a/b").Rel(pathkit.New("/a/b"))
+	assert.False(t, ok)
+
+	// 9. Windows drive letters
+	rel, ok = pathkit.New("C:/foo/bar/baz").Rel(pathkit.New("C:/foo"))
+	require.True(t, ok)
+	assert.Equal(t, "bar/baz", rel.String())
+
+	rel, ok = pathkit.New("C:/foo/bar").Rel(pathkit.New("C:/foo/baz"))
+	require.True(t, ok)
+	assert.Equal(t, "../bar", rel.String())
+
+	// Case-insensitive drive letter
+	rel, ok = pathkit.New("C:/foo/bar").Rel(pathkit.New("c:/foo/baz"))
+	require.True(t, ok)
+	assert.Equal(t, "../bar", rel.String())
+
+	// Different drive letters (MUST fail)
+	_, ok = pathkit.New("C:/foo").Rel(pathkit.New("D:/foo"))
+	assert.False(t, ok)
+
+	// 10. Windows UNC paths
+	rel, ok = pathkit.New("//server/share/sub/file.txt").Rel(pathkit.New("//server/share/sub"))
+	require.True(t, ok)
+	assert.Equal(t, "file.txt", rel.String())
+
+	rel, ok = pathkit.New("//server/share/dirA").Rel(pathkit.New("//server/share/dirB"))
+	require.True(t, ok)
+	assert.Equal(t, "../dirA", rel.String())
+
+	// Different UNC shares (MUST fail)
+	_, ok = pathkit.New("//server1/share/dir").Rel(pathkit.New("//server2/share/dir"))
+	assert.False(t, ok)
+
+	// 11. URLs
+	rel, ok = pathkit.New("https://example.com/v1/api/endpoint").Rel(pathkit.New("https://example.com/v1"))
+	require.True(t, ok)
+	assert.Equal(t, "api/endpoint", rel.String())
+
+	rel, ok = pathkit.New("https://example.com/v1").Rel(pathkit.New("https://example.com/v1/api/endpoint"))
+	require.True(t, ok)
+	assert.Equal(t, "../..", rel.String())
+}
+
+func BenchmarkPath_Rel(b *testing.B) {
+	target := pathkit.New("/var/log/nginx/access.log")
+	base := pathkit.New("/var/log")
+
+	b.ReportAllocs()
+	for b.Loop() {
+		_, _ = target.Rel(base)
+	}
+}
+
+func BenchmarkPath_Rel_ZeroAlloc(b *testing.B) {
+	p := pathkit.New("/var/log/nginx/access.log")
+
+	b.ReportAllocs()
+	for b.Loop() {
+		_, _ = p.Rel(p)
 	}
 }

@@ -79,6 +79,75 @@ func TestDecodeErrors(t *testing.T) {
 	}
 }
 
+func TestEncodeDecodeVariousLengths(t *testing.T) {
+	lengths := []int{
+		0, 1, 2, 7, 8, 15, 16, 17, 23, 24, 31, 32, 33,
+		47, 48, 63, 64, 65, 127, 128, 255, 256, 511, 512, 1024, 4096,
+	}
+	for _, l := range lengths {
+		src := make([]byte, l)
+		for i := range src {
+			src[i] = byte((i*31 + 7) & 0xff)
+		}
+
+		dst := make([]byte, hexkit.EncodedLen(l))
+		n := hexkit.Encode(dst, src)
+		if n != hexkit.EncodedLen(l) {
+			t.Fatalf("len %d: expected %d bytes encoded, got %d", l, hexkit.EncodedLen(l), n)
+		}
+
+		expected := stdhex.EncodeToString(src)
+		if string(dst) != expected {
+			t.Fatalf("len %d: encoded mismatch: got %s, want %s", l, string(dst), expected)
+		}
+
+		decoded := make([]byte, l)
+		dn, err := hexkit.Decode(decoded, dst)
+		if err != nil {
+			t.Fatalf("len %d: unexpected decode error: %v", l, err)
+		}
+		if dn != l {
+			t.Fatalf("len %d: expected %d bytes decoded, got %d", l, l, dn)
+		}
+		if !bytes.Equal(decoded, src) {
+			t.Fatalf("len %d: roundtrip mismatch", l)
+		}
+	}
+}
+
+func TestUnalignedDestination(t *testing.T) {
+	// Allocate a buffer and write into an unaligned offset (+1) to verify no alignment faults / SIGBUS.
+	src := []byte("The quick brown fox jumps over the lazy dog. 1234567890!@#$%^&*()")
+	needed := hexkit.EncodedLen(len(src))
+
+	rawDst := make([]byte, needed+3)
+	unalignedDst := rawDst[1 : 1+needed]
+
+	n := hexkit.Encode(unalignedDst, src)
+	if n != needed {
+		t.Fatalf("expected %d, got %d", needed, n)
+	}
+
+	expected := stdhex.EncodeToString(src)
+	if string(unalignedDst) != expected {
+		t.Fatalf("unaligned encode mismatch")
+	}
+
+	rawDec := make([]byte, len(src)+3)
+	unalignedDec := rawDec[1 : 1+len(src)]
+
+	dn, err := hexkit.Decode(unalignedDec, unalignedDst)
+	if err != nil {
+		t.Fatalf("unexpected decode error: %v", err)
+	}
+	if dn != len(src) {
+		t.Fatalf("expected %d, got %d", len(src), dn)
+	}
+	if !bytes.Equal(unalignedDec, src) {
+		t.Fatalf("unaligned decode mismatch")
+	}
+}
+
 func BenchmarkSiliconHexEncode16(b *testing.B) {
 	src := [16]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}
 	var dst [32]byte

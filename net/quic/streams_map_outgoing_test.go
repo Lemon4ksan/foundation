@@ -43,14 +43,14 @@ func testStreamsMapOutgoingOpenAndDelete(
 	)
 	m.SetMaxStream(protocol.MaxStreamID)
 
-	_, err := m.GetStream(firstStream)
+	_, err := m.Stream(firstStream)
 	require.ErrorIs(t, err, &qerr.TransportError{ErrorCode: qerr.StreamStateError})
 	require.ErrorContains(t, err, fmt.Sprintf("peer attempted to open stream %d", firstStream))
 
 	str1, err := m.OpenStream()
 	require.NoError(t, err)
 	require.Equal(t, firstStream, str1.id)
-	s, err := m.GetStream(firstStream)
+	s, err := m.Stream(firstStream)
 	require.NoError(t, err)
 	require.Equal(t, s, str1)
 
@@ -79,7 +79,7 @@ func testStreamsMapOutgoingOpenAndDelete(
 	require.ErrorIs(t, err, &qerr.TransportError{ErrorCode: qerr.StreamStateError})
 	require.ErrorContains(t, err, "tried to delete unknown outgoing stream")
 	// after deleting the stream it's not available anymore
-	str, err := m.GetStream(firstStream)
+	str, err := m.Stream(firstStream)
 	require.NoError(t, err)
 	require.Nil(t, str)
 }

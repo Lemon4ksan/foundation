@@ -633,3 +633,58 @@ func BenchmarkAdversarial_SentinelErrors_LimitReached(b *testing.B) {
 		}
 	}
 }
+
+// ---------------------------------------------------------------------------
+// 6. Modernized Connection Getters & Thread Safety Verification
+// ---------------------------------------------------------------------------
+
+func TestAdversarial_Conn_ModernizedGetters_Concurrent(t *testing.T) {
+	tc := newClientTestConnection(t, nil, nil, false)
+	conn := tc.conn
+	tc.connRunner.EXPECT().Remove(gomock.Any()).AnyTimes()
+
+	const (
+		numWorkers = 24
+		iters      = 1000
+	)
+
+	var wg sync.WaitGroup
+	wg.Add(numWorkers)
+
+	for w := range numWorkers {
+		go func(workerID int) {
+			defer wg.Done()
+			for i := range iters {
+				switch (workerID + i) % 5 {
+				case 0:
+					state := conn.ConnectionState()
+					_ = state.GSO
+					_ = state.Used0RTT
+				case 1:
+					stats := conn.ConnectionStats()
+					_ = stats.MinRTT
+					_ = stats.BytesSent
+					_ = stats.PacketsReceived
+				case 2:
+					_ = conn.Context()
+				case 3:
+					_ = conn.LocalAddr()
+				case 4:
+					_ = conn.RemoteAddr()
+				}
+			}
+		}(w)
+	}
+
+	// Mutate stats concurrently using conn.connStats atomic counters
+	go func() {
+		for range 5000 {
+			conn.connStats.BytesSent.Add(1200)
+			conn.connStats.PacketsSent.Add(1)
+			conn.connStats.BytesReceived.Add(1200)
+			conn.connStats.PacketsReceived.Add(1)
+		}
+	}()
+
+	wg.Wait()
+}

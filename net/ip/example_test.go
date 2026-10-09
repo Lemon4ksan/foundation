@@ -6,8 +6,8 @@ import (
 	"github.com/lemon4ksan/foundation/net/ip"
 )
 
-func ExampleSourceIPRotator() {
-	rotator, err := ip.NewSourceIPRotator([]string{"10.0.0.1", "10.0.0.2"})
+func ExampleSourceRotator() {
+	rotator, err := ip.NewSourceRotator([]string{"10.0.0.1", "10.0.0.2"})
 	if err != nil {
 		return
 	}

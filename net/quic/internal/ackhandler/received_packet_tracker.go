@@ -55,7 +55,7 @@ func (h *receivedPacketTracker) ReceivedPacket(pn protocol.PacketNumber, ecn pro
 	return nil
 }
 
-func (h *receivedPacketTracker) GetAckFrame() *wire.AckFrame {
+func (h *receivedPacketTracker) AckFrame() *wire.AckFrame {
 	if !h.hasNewAck {
 		return nil
 	}
@@ -245,7 +245,7 @@ func (h *appDataReceivedPacketTracker) shouldQueueACK(
 	return false
 }
 
-func (h *appDataReceivedPacketTracker) GetAckFrame(now monotime.Time, onlyIfQueued bool) *wire.AckFrame {
+func (h *appDataReceivedPacketTracker) AckFrame(now monotime.Time, onlyIfQueued bool) *wire.AckFrame {
 	if onlyIfQueued && !h.ackQueued {
 		if h.ackAlarm.IsZero() || h.ackAlarm.After(now) {
 			return nil
@@ -256,7 +256,7 @@ func (h *appDataReceivedPacketTracker) GetAckFrame(now monotime.Time, onlyIfQueu
 		}
 	}
 
-	ack := h.receivedPacketTracker.GetAckFrame()
+	ack := h.receivedPacketTracker.AckFrame()
 	if ack == nil {
 		return nil
 	}
@@ -269,4 +269,4 @@ func (h *appDataReceivedPacketTracker) GetAckFrame(now monotime.Time, onlyIfQueu
 	return ack
 }
 
-func (h *appDataReceivedPacketTracker) GetAlarmTimeout() monotime.Time { return h.ackAlarm }
+func (h *appDataReceivedPacketTracker) AlarmTimeout() monotime.Time { return h.ackAlarm }

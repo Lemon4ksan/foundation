@@ -15,13 +15,15 @@ import (
 
 func TestWritesLongHeaderVersion1(t *testing.T) {
 	header := &ExtendedHeader{
-		Type:             protocol.PacketTypeHandshake,
-		DestConnectionID: protocol.ParseConnectionID([]byte{0xde, 0xad, 0xbe, 0xef, 0xca, 0xfe}),
-		SrcConnectionID:  protocol.ParseConnectionID([]byte{0xde, 0xca, 0xfb, 0xad, 0x0, 0x0, 0x13, 0x37}),
-		Version:          0x1020304,
-		Length:           1234,
-		PacketNumber:     0xdecaf,
-		PacketNumberLen:  protocol.PacketNumberLen3,
+		Header: Header{
+			Type:             protocol.PacketTypeHandshake,
+			DestConnectionID: protocol.ParseConnectionID([]byte{0xde, 0xad, 0xbe, 0xef, 0xca, 0xfe}),
+			SrcConnectionID:  protocol.ParseConnectionID([]byte{0xde, 0xca, 0xfb, 0xad, 0x0, 0x0, 0x13, 0x37}),
+			Version:          0x1020304,
+			Length:           1234,
+		},
+		PacketNumber:    0xdecaf,
+		PacketNumberLen: protocol.PacketNumberLen3,
 	}
 	b, err := header.Append(nil, protocol.Version1)
 	require.NoError(t, err)
@@ -37,7 +39,7 @@ func TestWritesLongHeaderVersion1(t *testing.T) {
 	expected = append(expected, encodeVarInt(1234)...)      // length
 	expected = append(expected, []byte{0xd, 0xec, 0xaf}...) // packet number
 	require.Equal(t, expected, b)
-	require.Equal(t, protocol.ByteCount(len(b)), header.GetLength(protocol.Version1))
+	require.Equal(t, protocol.ByteCount(len(b)), header.Length(protocol.Version1))
 }
 
 func TestWritesHandshakePacketVersion2(t *testing.T) {
@@ -50,7 +52,7 @@ func TestWritesHandshakePacketVersion2(t *testing.T) {
 	b, err := header.Append(nil, protocol.Version2)
 	require.NoError(t, err)
 	require.Equal(t, byte(0b11), b[0]>>4&0b11)
-	require.Equal(t, protocol.ByteCount(len(b)), header.GetLength(protocol.Version2))
+	require.Equal(t, protocol.ByteCount(len(b)), header.Length(protocol.Version2))
 }
 
 func TestWritesHeaderWith20ByteConnectionID(t *testing.T) {
@@ -72,7 +74,7 @@ func TestWritesHeaderWith20ByteConnectionID(t *testing.T) {
 		string(b),
 		string([]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20}),
 	)
-	require.Equal(t, protocol.ByteCount(len(b)), header.GetLength(protocol.Version1))
+	require.Equal(t, protocol.ByteCount(len(b)), header.Length(protocol.Version1))
 }
 
 func TestWritesInitialContainingToken(t *testing.T) {
@@ -92,14 +94,16 @@ func TestWritesInitialContainingToken(t *testing.T) {
 
 	expectedSubstring := append(encodeVarInt(uint64(len(token))), token...)
 	require.Contains(t, string(b), string(expectedSubstring))
-	require.Equal(t, protocol.ByteCount(len(b)), header.GetLength(protocol.Version1))
+	require.Equal(t, protocol.ByteCount(len(b)), header.Length(protocol.Version1))
 }
 
 func TestUses2ByteEncodingForLengthOnInitialPackets(t *testing.T) {
 	header := &ExtendedHeader{
-		Version:         0x1020304,
-		Type:            protocol.PacketTypeInitial,
-		Length:          37,
+		Header: Header{
+			Version: 0x1020304,
+			Type:    protocol.PacketTypeInitial,
+			Length:  37,
+		},
 		PacketNumber:    0xdecafbad,
 		PacketNumberLen: protocol.PacketNumberLen4,
 	}
@@ -108,7 +112,7 @@ func TestUses2ByteEncodingForLengthOnInitialPackets(t *testing.T) {
 
 	lengthEncoded := varint.AppendWithLen(nil, 37, 2)
 	require.Equal(t, lengthEncoded, b[len(b)-6:len(b)-4])
-	require.Equal(t, protocol.ByteCount(len(b)), header.GetLength(protocol.Version1))
+	require.Equal(t, protocol.ByteCount(len(b)), header.Length(protocol.Version1))
 }
 
 func TestWritesInitialPacketVersion2(t *testing.T) {
@@ -121,7 +125,7 @@ func TestWritesInitialPacketVersion2(t *testing.T) {
 	b, err := header.Append(nil, protocol.Version2)
 	require.NoError(t, err)
 	require.Equal(t, byte(0b01), b[0]>>4&0b11)
-	require.Equal(t, protocol.ByteCount(len(b)), header.GetLength(protocol.Version2))
+	require.Equal(t, protocol.ByteCount(len(b)), header.Length(protocol.Version2))
 }
 
 func TestWrites0RTTPacketVersion2(t *testing.T) {
@@ -134,7 +138,7 @@ func TestWrites0RTTPacketVersion2(t *testing.T) {
 	b, err := header.Append(nil, protocol.Version2)
 	require.NoError(t, err)
 	require.Equal(t, byte(0b10), b[0]>>4&0b11)
-	require.Equal(t, protocol.ByteCount(len(b)), header.GetLength(protocol.Version2))
+	require.Equal(t, protocol.ByteCount(len(b)), header.Length(protocol.Version2))
 }
 
 func TestWritesRetryPacket(t *testing.T) {
@@ -174,13 +178,15 @@ func TestLogsLongHeaders(t *testing.T) {
 	logger := setupLogTest(t, buf)
 
 	(&ExtendedHeader{
-		DestConnectionID: protocol.ParseConnectionID([]byte{0xde, 0xad, 0xbe, 0xef, 0xca, 0xfe, 0x13, 0x37}),
-		SrcConnectionID:  protocol.ParseConnectionID([]byte{0xde, 0xca, 0xfb, 0xad, 0x013, 0x37, 0x13, 0x37}),
-		Type:             protocol.PacketTypeHandshake,
-		Length:           54321,
-		Version:          0xfeed,
-		PacketNumber:     1337,
-		PacketNumberLen:  protocol.PacketNumberLen2,
+		Header: Header{
+			DestConnectionID: protocol.ParseConnectionID([]byte{0xde, 0xad, 0xbe, 0xef, 0xca, 0xfe, 0x13, 0x37}),
+			SrcConnectionID:  protocol.ParseConnectionID([]byte{0xde, 0xca, 0xfb, 0xad, 0x013, 0x37, 0x13, 0x37}),
+			Type:             protocol.PacketTypeHandshake,
+			Length:           54321,
+			Version:          0xfeed,
+		},
+		PacketNumber:    1337,
+		PacketNumberLen: protocol.PacketNumberLen2,
 	}).Log(logger)
 	require.Contains(
 		t,
@@ -194,14 +200,16 @@ func TestLogsInitialPacketsWithToken(t *testing.T) {
 	logger := setupLogTest(t, buf)
 
 	(&ExtendedHeader{
-		DestConnectionID: protocol.ParseConnectionID([]byte{0xca, 0xfe, 0x13, 0x37}),
-		SrcConnectionID:  protocol.ParseConnectionID([]byte{0xde, 0xca, 0xfb, 0xad}),
-		Type:             protocol.PacketTypeInitial,
-		Token:            []byte{0xde, 0xad, 0xbe, 0xef},
-		Length:           100,
-		Version:          0xfeed,
-		PacketNumber:     42,
-		PacketNumberLen:  protocol.PacketNumberLen2,
+		Header: Header{
+			DestConnectionID: protocol.ParseConnectionID([]byte{0xca, 0xfe, 0x13, 0x37}),
+			SrcConnectionID:  protocol.ParseConnectionID([]byte{0xde, 0xca, 0xfb, 0xad}),
+			Type:             protocol.PacketTypeInitial,
+			Token:            []byte{0xde, 0xad, 0xbe, 0xef},
+			Length:           100,
+			Version:          0xfeed,
+		},
+		PacketNumber:    42,
+		PacketNumberLen: protocol.PacketNumberLen2,
 	}).Log(logger)
 	require.Contains(
 		t,
@@ -215,13 +223,15 @@ func TestLogsInitialPacketsWithoutToken(t *testing.T) {
 	logger := setupLogTest(t, buf)
 
 	(&ExtendedHeader{
-		DestConnectionID: protocol.ParseConnectionID([]byte{0xca, 0xfe, 0x13, 0x37}),
-		SrcConnectionID:  protocol.ParseConnectionID([]byte{0xde, 0xca, 0xfb, 0xad}),
-		Type:             protocol.PacketTypeInitial,
-		Length:           100,
-		Version:          0xfeed,
-		PacketNumber:     42,
-		PacketNumberLen:  protocol.PacketNumberLen2,
+		Header: Header{
+			DestConnectionID: protocol.ParseConnectionID([]byte{0xca, 0xfe, 0x13, 0x37}),
+			SrcConnectionID:  protocol.ParseConnectionID([]byte{0xde, 0xca, 0xfb, 0xad}),
+			Type:             protocol.PacketTypeInitial,
+			Length:           100,
+			Version:          0xfeed,
+		},
+		PacketNumber:    42,
+		PacketNumberLen: protocol.PacketNumberLen2,
 	}).Log(logger)
 	require.Contains(
 		t,
@@ -252,13 +262,15 @@ func BenchmarkParseExtendedHeader(b *testing.B) {
 	b.ReportAllocs()
 
 	data, err := (&ExtendedHeader{
-		Type:             protocol.PacketTypeHandshake,
-		DestConnectionID: protocol.ParseConnectionID([]byte{0xde, 0xad, 0xbe, 0xef, 0xca, 0xfe}),
-		SrcConnectionID:  protocol.ParseConnectionID([]byte{0xde, 0xca, 0xfb, 0xad, 0x0, 0x0, 0x13, 0x37}),
-		Version:          protocol.Version1,
-		Length:           1234,
-		PacketNumber:     0xdecaf,
-		PacketNumberLen:  protocol.PacketNumberLen3,
+		Header: Header{
+			Type:             protocol.PacketTypeHandshake,
+			DestConnectionID: protocol.ParseConnectionID([]byte{0xde, 0xad, 0xbe, 0xef, 0xca, 0xfe}),
+			SrcConnectionID:  protocol.ParseConnectionID([]byte{0xde, 0xca, 0xfb, 0xad, 0x0, 0x0, 0x13, 0x37}),
+			Version:          protocol.Version1,
+			Length:           1234,
+		},
+		PacketNumber:    0xdecaf,
+		PacketNumberLen: protocol.PacketNumberLen3,
 	}).Append(nil, protocol.Version1)
 	if err != nil {
 		b.Fatal(err)

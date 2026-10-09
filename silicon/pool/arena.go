@@ -51,7 +51,7 @@ func (a *RequestArena) Alloc(n int) []byte {
 		start := a.off
 		a.off += alignedN
 
-		return a.buf[start : start+n]
+		return a.buf[start : start+n : start+n]
 	}
 
 	return make([]byte, n)

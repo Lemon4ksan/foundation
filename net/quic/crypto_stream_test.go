@@ -29,7 +29,7 @@ func TestCryptoStreamDataAssembly(t *testing.T) {
 
 	var data []byte
 	for {
-		b := str.GetCryptoData()
+		b := str.CryptoData()
 		if b == nil {
 			break
 		}
@@ -59,7 +59,7 @@ func TestCryptoStreamFinishWithQueuedData(t *testing.T) {
 	t.Run("with data at current offset", func(t *testing.T) {
 		str := newCryptoStream()
 		require.NoError(t, str.HandleCryptoFrame(&wire.CryptoFrame{Data: []byte("foo")}))
-		require.Equal(t, []byte("foo"), str.GetCryptoData())
+		require.Equal(t, []byte("foo"), str.CryptoData())
 		require.NoError(t, str.HandleCryptoFrame(&wire.CryptoFrame{Data: []byte("bar"), Offset: 3}))
 		require.ErrorIs(t, str.Finish(), &qerr.TransportError{ErrorCode: qerr.ProtocolViolation})
 	})
@@ -74,7 +74,7 @@ func TestCryptoStreamFinishWithQueuedData(t *testing.T) {
 func TestCryptoStreamReceiveDataAfterFinish(t *testing.T) {
 	str := newCryptoStream()
 	require.NoError(t, str.HandleCryptoFrame(&wire.CryptoFrame{Data: []byte("foobar")}))
-	require.Equal(t, []byte("foobar"), str.GetCryptoData())
+	require.Equal(t, []byte("foobar"), str.CryptoData())
 	require.NoError(t, str.Finish())
 	// receiving a retransmission is ok
 	require.NoError(t, str.HandleCryptoFrame(&wire.CryptoFrame{Data: []byte("bar"), Offset: 3}))

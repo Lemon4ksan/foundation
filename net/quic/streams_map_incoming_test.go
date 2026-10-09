@@ -70,8 +70,8 @@ func testStreamsMapIncomingGettingStreams(
 		perspective,
 	)
 
-	// all streams up to the id on GetOrOpenStream are opened
-	str, err := m.GetOrOpenStream(firstStream + 4)
+	// all streams up to the id on OrOpenStream are opened
+	str, err := m.OrOpenStream(firstStream + 4)
 	require.NoError(t, err)
 	require.NotNil(t, str)
 	require.Equal(t, 2, newStreamCounter)
@@ -84,7 +84,7 @@ func testStreamsMapIncomingGettingStreams(
 	require.NoError(t, err)
 	require.Equal(t, firstStream, str.id)
 	// open some more streams
-	str, err = m.GetOrOpenStream(firstStream + 16)
+	str, err = m.OrOpenStream(firstStream + 16)
 	require.NoError(t, err)
 	require.Equal(t, 5, newStreamCounter)
 	require.Equal(t, firstStream+16, str.id)
@@ -95,9 +95,9 @@ func testStreamsMapIncomingGettingStreams(
 		require.Equal(t, firstStream+4*protocol.StreamID(i), str.id)
 	}
 
-	_, err = m.GetOrOpenStream(firstStream + 4*maxNumStreams - 4)
+	_, err = m.OrOpenStream(firstStream + 4*maxNumStreams - 4)
 	require.NoError(t, err)
-	_, err = m.GetOrOpenStream(firstStream + 4*maxNumStreams)
+	_, err = m.OrOpenStream(firstStream + 4*maxNumStreams)
 	require.ErrorIs(t, err, &qerr.TransportError{ErrorCode: qerr.StreamLimitError})
 	require.ErrorContains(t, err, "peer tried to open stream")
 	require.Equal(t, maxNumStreams, newStreamCounter)
@@ -155,7 +155,7 @@ func TestStreamsMapIncomingAcceptingStreams(t *testing.T) {
 		default:
 		}
 
-		_, err := m.GetOrOpenStream(protocol.FirstIncomingUniStreamClient)
+		_, err := m.OrOpenStream(protocol.FirstIncomingUniStreamClient)
 		require.NoError(t, err)
 
 		synctest.Wait()
@@ -196,14 +196,14 @@ func testStreamsMapIncomingDeletingStreams(
 	require.ErrorIs(t, err, &qerr.TransportError{ErrorCode: qerr.StreamStateError})
 	require.ErrorContains(t, err, "tried to delete unknown incoming stream")
 
-	s, err := m.GetOrOpenStream(firstStream + 4)
+	s, err := m.OrOpenStream(firstStream + 4)
 	require.NoError(t, err)
 	require.NotNil(t, s)
 	// delete the stream
 	require.NoError(t, m.DeleteStream(firstStream+4))
 	require.Empty(t, frameQueue)
-	// it's not returned by GetOrOpenStream anymore
-	s, err = m.GetOrOpenStream(firstStream + 4)
+	// it's not returned by OrOpenStream anymore
+	s, err = m.OrOpenStream(firstStream + 4)
 	require.NoError(t, err)
 	require.Nil(t, s)
 
@@ -262,7 +262,7 @@ func testStreamsMapIncomingDeletingStreamsWithHighLimits(
 	)
 
 	// open a bunch of streams
-	_, err := m.GetOrOpenStream(firstStream + 16)
+	_, err := m.OrOpenStream(firstStream + 16)
 	require.NoError(t, err)
 	// accept all streams
 	for range 5 {
@@ -301,7 +301,7 @@ func TestStreamsMapIncomingClosing(t *testing.T) {
 
 		var streams []*mockStream
 
-		_, err := m.GetOrOpenStream(protocol.FirstIncomingUniStreamServer + 8)
+		_, err := m.OrOpenStream(protocol.FirstIncomingUniStreamServer + 8)
 		require.NoError(t, err)
 
 		for range 3 {
@@ -377,7 +377,7 @@ func TestStreamsMapIncomingRandomized(t *testing.T) {
 		errChan2 := make(chan error, 1)
 		go func() {
 			for i := range num {
-				if _, err := m.GetOrOpenStream(ids[i]); err != nil {
+				if _, err := m.OrOpenStream(ids[i]); err != nil {
 					errChan2 <- err
 					return
 				}

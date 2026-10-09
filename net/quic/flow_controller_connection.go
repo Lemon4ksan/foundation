@@ -151,7 +151,7 @@ func (c *connectionFlowController) IsNewlyBlocked() (bool, protocol.ByteCount) {
 	return true, c.sendWindow
 }
 
-func (c *connectionFlowController) GetWindowUpdate(now monotime.Time) protocol.ByteCount {
+func (c *connectionFlowController) WindowUpdate(now monotime.Time) protocol.ByteCount {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 

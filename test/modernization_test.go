@@ -93,7 +93,7 @@ func scanRepository(t *testing.T, repoRoot string) ([]Violation, error) {
 
 		node, parseErr := parser.ParseFile(fset, path, nil, parser.ParseComments)
 		if parseErr != nil {
-			return nil
+			return fmt.Errorf("failed to parse %s: %w", path, parseErr)
 		}
 
 		pkgName := node.Name.Name
@@ -129,7 +129,10 @@ func checkFuncDecl(fset *token.FileSet, fd *ast.FuncDecl, pkgName, relPath strin
 				File:      relPath,
 				Line:      line,
 				Symbol:    fmt.Sprintf("(%s).%s", recvType, name),
-				Details:   fmt.Sprintf("Exported getter method has 'Get' prefix; should be renamed without 'Get' (e.g., %s)", trimGetPrefix(name)),
+				Details: fmt.Sprintf(
+					"Exported getter method has 'Get' prefix; should be renamed without 'Get' (e.g., %s)",
+					trimGetPrefix(name),
+				),
 			})
 		}
 	}
@@ -158,7 +161,10 @@ func checkFuncDecl(fset *token.FileSet, fd *ast.FuncDecl, pkgName, relPath strin
 				File:      relPath,
 				Line:      line,
 				Symbol:    name,
-				Details:   fmt.Sprintf("Exported function stutters with package name %q; rename to remove package prefix", pkgName),
+				Details: fmt.Sprintf(
+					"Exported function stutters with package name %q; rename to remove package prefix",
+					pkgName,
+				),
 			})
 		}
 	}
@@ -211,7 +217,10 @@ func checkGenDecl(fset *token.FileSet, gd *ast.GenDecl, pkgName, relPath string,
 								File:      relPath,
 								Line:      mLine,
 								Symbol:    fmt.Sprintf("%s.%s", typeName, mName.Name),
-								Details:   fmt.Sprintf("Interface method has 'Get' prefix; should be renamed without 'Get' (e.g., %s)", trimGetPrefix(mName.Name)),
+								Details: fmt.Sprintf(
+									"Interface method has 'Get' prefix; should be renamed without 'Get' (e.g., %s)",
+									trimGetPrefix(mName.Name),
+								),
 							})
 						}
 					}
@@ -349,7 +358,13 @@ func isTypeStuttering(typeName, pkgName, relPath string) (string, bool) {
 
 	// Direct prefix match: pkg "bitset", type "BitSet"
 	if lowerType == lowerPkg {
-		return fmt.Sprintf("Type %s stutters with package name %s (caller writes %s.%s)", typeName, pkgName, pkgName, typeName), true
+		return fmt.Sprintf(
+			"Type %s stutters with package name %s (caller writes %s.%s)",
+			typeName,
+			pkgName,
+			pkgName,
+			typeName,
+		), true
 	}
 
 	// Prefix stuttering: pkg "ringbuffer", type "RingBuffer"
@@ -358,7 +373,13 @@ func isTypeStuttering(typeName, pkgName, relPath string) (string, bool) {
 		// Verify word boundary
 		nextChar := rune(typeName[len(pkgName)])
 		if unicode.IsUpper(nextChar) || unicode.IsDigit(nextChar) {
-			return fmt.Sprintf("Exported type %s starts with package name %s (caller writes %s.%s)", typeName, pkgName, pkgName, typeName), true
+			return fmt.Sprintf(
+				"Exported type %s starts with package name %s (caller writes %s.%s)",
+				typeName,
+				pkgName,
+				pkgName,
+				typeName,
+			), true
 		}
 	}
 
@@ -367,7 +388,13 @@ func isTypeStuttering(typeName, pkgName, relPath string) (string, bool) {
 	// pkg "limiter", type "AdaptiveLimiter", "KeyedLimiter"
 	// pkg "spinlock", type "SpinLock"
 	if strings.HasSuffix(lowerType, lowerPkg) && len(lowerType) > len(lowerPkg) {
-		return fmt.Sprintf("Exported type %s ends with package name %s (caller writes %s.%s)", typeName, pkgName, pkgName, typeName), true
+		return fmt.Sprintf(
+			"Exported type %s ends with package name %s (caller writes %s.%s)",
+			typeName,
+			pkgName,
+			pkgName,
+			typeName,
+		), true
 	}
 
 	// Specific inventory targets from PROJECT.md
@@ -469,7 +496,15 @@ func TestModernization_AcceptanceSuite(t *testing.T) {
 		for _, v := range violations {
 			if v.Category == CategoryStuttering {
 				count++
-				msg := fmt.Sprintf("[%s] %s:%d: %s.%s (%s)", v.Milestone, v.File, v.Line, v.Package, v.Symbol, v.Details)
+				msg := fmt.Sprintf(
+					"[%s] %s:%d: %s.%s (%s)",
+					v.Milestone,
+					v.File,
+					v.Line,
+					v.Package,
+					v.Symbol,
+					v.Details,
+				)
 				if strict {
 					t.Errorf("Stuttering type violation: %s", msg)
 				} else {

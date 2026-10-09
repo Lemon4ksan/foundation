@@ -454,7 +454,15 @@ func TestAdversarial_ZeroAlloc_AllPrimitives(t *testing.T) {
 			_ = f.Name
 		}
 	})
-	assert.Equal(t, float64(0), allocsVisible, "VisibleFields (depth <= 3) must be 0 allocs/op")
+	if isRaceEnabled {
+		assert.True(
+			t,
+			allocsVisible <= 2,
+			"VisibleFields under -race must be <= 2 allocs/op",
+		)
+	} else {
+		assert.Equal(t, float64(0), allocsVisible, "VisibleFields (depth <= 3) must be 0 allocs/op")
+	}
 
 	// 3. SchemaCache.Get cache hit
 	cache := refkit.NewSchemaCache()

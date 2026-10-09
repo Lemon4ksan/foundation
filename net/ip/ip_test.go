@@ -14,11 +14,11 @@ import (
 	"github.com/lemon4ksan/foundation/testing/require"
 )
 
-func TestSourceIPRotator_RoundRobin(t *testing.T) {
+func TestSourceRotator_RoundRobin(t *testing.T) {
 	t.Parallel()
 
 	addrs := []string{"192.168.1.1", "192.168.1.2", "192.168.1.3"}
-	rot, err := ip.NewSourceIPRotator(addrs)
+	rot, err := ip.NewSourceRotator(addrs)
 	require.NoError(t, err)
 	assert.Equal(t, 3, rot.Size())
 
@@ -30,11 +30,11 @@ func TestSourceIPRotator_RoundRobin(t *testing.T) {
 	}
 }
 
-func TestSourceIPRotator_NextOK(t *testing.T) {
+func TestSourceRotator_NextOK(t *testing.T) {
 	t.Parallel()
 
 	addrs := []string{"10.0.0.1"}
-	rot, err := ip.NewSourceIPRotator(addrs)
+	rot, err := ip.NewSourceRotator(addrs)
 	require.NoError(t, err)
 
 	val, ok := rot.NextOK()
@@ -43,17 +43,17 @@ func TestSourceIPRotator_NextOK(t *testing.T) {
 	assert.Equal(t, "10.0.0.1", val.String())
 
 	// Empty rotator
-	var emptyRot ip.SourceIPRotator
+	var emptyRot ip.SourceRotator
 	valEmpty, okEmpty := emptyRot.NextOK()
 	assert.False(t, okEmpty)
 	assert.Nil(t, valEmpty)
 }
 
-func TestSourceIPRotator_NextForFamily(t *testing.T) {
+func TestSourceRotator_NextForFamily(t *testing.T) {
 	t.Parallel()
 
 	addrs := []string{"192.168.1.1", "2001:db8::1", "10.0.0.1", "2001:db8::2"}
-	rot, err := ip.NewSourceIPRotator(addrs)
+	rot, err := ip.NewSourceRotator(addrs)
 	require.NoError(t, err)
 
 	v4_1 := rot.NextForFamily(true)
@@ -69,10 +69,10 @@ func TestSourceIPRotator_NextForFamily(t *testing.T) {
 	assert.Equal(t, "10.0.0.1", v4_2.String())
 }
 
-func TestSourceIPRotator_UpdatePool(t *testing.T) {
+func TestSourceRotator_UpdatePool(t *testing.T) {
 	t.Parallel()
 
-	rot, err := ip.NewSourceIPRotator([]string{"127.0.0.1"})
+	rot, err := ip.NewSourceRotator([]string{"127.0.0.1"})
 	require.NoError(t, err)
 	assert.Equal(t, 1, rot.Size())
 
@@ -82,11 +82,11 @@ func TestSourceIPRotator_UpdatePool(t *testing.T) {
 	assert.Equal(t, "10.0.0.1", rot.Next().String())
 }
 
-func TestSourceIPRotator_Concurrent(t *testing.T) {
+func TestSourceRotator_Concurrent(t *testing.T) {
 	t.Parallel()
 
 	addrs := []string{"1.1.1.1", "2.2.2.2", "3.3.3.3", "4.4.4.4"}
-	rot, err := ip.NewSourceIPRotator(addrs)
+	rot, err := ip.NewSourceRotator(addrs)
 	require.NoError(t, err)
 
 	var wg sync.WaitGroup
@@ -105,10 +105,10 @@ func TestSourceIPRotator_Concurrent(t *testing.T) {
 	wg.Wait()
 }
 
-func TestIPv6SubnetRotator_Next(t *testing.T) {
+func TestSubnetRotator_Next(t *testing.T) {
 	t.Parallel()
 
-	rot, err := ip.NewIPv6SubnetRotator("2001:db8:abcd:0012::/64")
+	rot, err := ip.NewSubnetRotator("2001:db8:abcd:0012::/64")
 	require.NoError(t, err)
 
 	seen := make(map[string]bool)
@@ -122,10 +122,10 @@ func TestIPv6SubnetRotator_Next(t *testing.T) {
 	assert.Greater(t, len(seen), 90)
 }
 
-func TestIPv6SubnetRotator_NextFast(t *testing.T) {
+func TestSubnetRotator_NextFast(t *testing.T) {
 	t.Parallel()
 
-	rot, err := ip.NewIPv6SubnetRotator("2001:db8:abcd:0012::/64")
+	rot, err := ip.NewSubnetRotator("2001:db8:abcd:0012::/64")
 	require.NoError(t, err)
 
 	seen := make(map[string]bool)

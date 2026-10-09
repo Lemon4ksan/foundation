@@ -221,14 +221,7 @@ func TestListener_IncomingAndNetListener(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestInterface_AliasesAndIter(t *testing.T) {
-	// Type aliases
-	var (
-		_ *Connection      = (*Conn)(nil)
-		_ *Session         = (*Conn)(nil)
-		_ *EarlyConnection = (*Conn)(nil)
-	)
-
+func TestInterface_Iter(t *testing.T) {
 	// SupportedVersionsSeq yields RFC 9000 (Version1) and RFC 9369 (Version2)
 	var versions []Version
 	for v := range SupportedVersionsSeq() {

@@ -842,7 +842,7 @@ func TestReceiveStreamCancelReadAbandonsUnreadData(t *testing.T) {
 
 	now := monotime.Now()
 	require.NoError(t, str.handleStreamFrame(&wire.StreamFrame{Data: []byte("foobar"), Fin: true}, now))
-	require.Zero(t, connFC.GetWindowUpdate(now))
+	require.Zero(t, connFC.WindowUpdate(now))
 
 	mockSender.EXPECT().onHasStreamControlFrame(streamID, str)
 	mockSender.EXPECT().onStreamCompleted(streamID)
@@ -852,7 +852,7 @@ func TestReceiveStreamCancelReadAbandonsUnreadData(t *testing.T) {
 	// CancelRead completes the receive side once the final offset is known.
 	// Completion abandons the unread stream data, which returns connection-level
 	// flow-control credit and makes a connection window update available.
-	require.NotZero(t, connFC.GetWindowUpdate(now))
+	require.NotZero(t, connFC.WindowUpdate(now))
 }
 
 func TestReceiveStreamCancelReadAfterFIN(t *testing.T) {
@@ -930,7 +930,7 @@ func TestReceiveStreamResetAbandonsUnreadData(t *testing.T) {
 	str := newReceiveStream(streamID, mockSender, fc)
 
 	now := monotime.Now()
-	require.Zero(t, connFC.GetWindowUpdate(now))
+	require.Zero(t, connFC.WindowUpdate(now))
 	require.NoError(
 		t,
 		str.handleResetStreamFrame(&wire.ResetStreamFrame{StreamID: streamID, ErrorCode: 1234, FinalSize: 6}, now),
@@ -939,7 +939,7 @@ func TestReceiveStreamResetAbandonsUnreadData(t *testing.T) {
 	// A RESET_STREAM with no reliable data abandons the unread final size.
 	// That returns connection-level flow-control credit and makes a connection
 	// window update available.
-	require.NotZero(t, connFC.GetWindowUpdate(now))
+	require.NotZero(t, connFC.WindowUpdate(now))
 }
 
 func TestReceiveStreamReset(t *testing.T) {

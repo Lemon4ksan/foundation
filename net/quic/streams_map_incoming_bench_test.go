@@ -30,7 +30,7 @@ func BenchmarkIncomingStreamsMap_Get(b *testing.B) {
 	// Pre-open 10,000 streams
 	for i := range 10000 {
 		id := protocol.StreamID(i*4 + 4) // Bidi server streams start at 4
-		m.GetOrOpenStream(id)
+		m.OrOpenStream(id)
 	}
 
 	b.ResetTimer()
@@ -42,7 +42,7 @@ func BenchmarkIncomingStreamsMap_Get(b *testing.B) {
 			// Read randomly from pre-opened streams to simulate hot path
 			idx := i.Add(1) % 10000
 			id := protocol.StreamID(idx*4 + 4)
-			_, _ = m.GetOrOpenStream(id)
+			_, _ = m.OrOpenStream(id)
 		}
 	})
 }

@@ -134,8 +134,8 @@ func newTestConnectionWithGSO(
 	cryptoSetup := NewMockCryptoSetup(mockCtrl)
 	cryptoSetup.EXPECT().StartHandshake(gomock.Any()).Return(nil).AnyTimes()
 	cryptoSetup.EXPECT().NextEvent().Return(handshake.Event{Kind: handshake.EventNoEvent}).AnyTimes()
-	cryptoSetup.EXPECT().Get1RTTOpener().Return(nil, nil).AnyTimes()
-	cryptoSetup.EXPECT().Get1RTTSealer().Return(nil, nil).AnyTimes()
+	cryptoSetup.EXPECT().OneRTTOpener().Return(nil, nil).AnyTimes()
+	cryptoSetup.EXPECT().OneRTTSealer().Return(nil, nil).AnyTimes()
 	cryptoSetup.EXPECT().Close().Return(nil).AnyTimes()
 	conn.cryptoStreamHandler = cryptoSetup
 
@@ -429,7 +429,9 @@ func TestConnectionClientDrop0RTT(t *testing.T) {
 	p := getLongHeaderPacket(t,
 		tc.remoteAddr,
 		&wire.ExtendedHeader{
-			Type: protocol.PacketType0RTT, Length: 2, Version: protocol.Version1,
+			Header: wire.Header{
+				Type: protocol.PacketType0RTT, Length: 2, Version: protocol.Version1,
+			},
 			PacketNumberLen: protocol.PacketNumberLen2,
 		},
 		nil,
@@ -452,12 +454,14 @@ func TestConnectionUnpacking(t *testing.T) {
 
 	// receive a long header packet
 	hdr := &wire.ExtendedHeader{
-		Type:             protocol.PacketTypeInitial,
-		DestConnectionID: tc.srcConnID,
-		Version:          protocol.Version1,
-		Length:           1,
-		PacketNumber:     0x37,
-		PacketNumberLen:  protocol.PacketNumberLen1,
+		Header: wire.Header{
+			Type:             protocol.PacketTypeInitial,
+			DestConnectionID: tc.srcConnID,
+			Version:          protocol.Version1,
+			Length:           1,
+		},
+		PacketNumber:    0x37,
+		PacketNumberLen: protocol.PacketNumberLen1,
 	}
 	unpackedHdr := *hdr
 	unpackedHdr.PacketNumber = 0x1337
@@ -513,30 +517,36 @@ func TestConnectionUnpackCoalescedPacket(t *testing.T) {
 		connectionOptUnpacker(unpacker),
 	)
 	hdr1 := &wire.ExtendedHeader{
-		Type:             protocol.PacketTypeInitial,
-		DestConnectionID: tc.srcConnID,
-		Version:          protocol.Version1,
-		Length:           1,
-		PacketNumber:     37,
-		PacketNumberLen:  protocol.PacketNumberLen1,
+		Header: wire.Header{
+			Type:             protocol.PacketTypeInitial,
+			DestConnectionID: tc.srcConnID,
+			Version:          protocol.Version1,
+			Length:           1,
+		},
+		PacketNumber:    37,
+		PacketNumberLen: protocol.PacketNumberLen1,
 	}
 	hdr2 := &wire.ExtendedHeader{
-		Type:             protocol.PacketTypeHandshake,
-		DestConnectionID: tc.srcConnID,
-		Version:          protocol.Version1,
-		Length:           1,
-		PacketNumber:     38,
-		PacketNumberLen:  protocol.PacketNumberLen1,
+		Header: wire.Header{
+			Type:             protocol.PacketTypeHandshake,
+			DestConnectionID: tc.srcConnID,
+			Version:          protocol.Version1,
+			Length:           1,
+		},
+		PacketNumber:    38,
+		PacketNumberLen: protocol.PacketNumberLen1,
 	}
 	// add a packet with a different source connection ID
 	incorrectSrcConnID := protocol.ParseConnectionID([]byte{0xa, 0xb, 0xc})
 	hdr3 := &wire.ExtendedHeader{
-		Type:             protocol.PacketTypeHandshake,
-		DestConnectionID: incorrectSrcConnID,
-		Version:          protocol.Version1,
-		Length:           1,
-		PacketNumber:     0x42,
-		PacketNumberLen:  protocol.PacketNumberLen1,
+		Header: wire.Header{
+			Type:             protocol.PacketTypeHandshake,
+			DestConnectionID: incorrectSrcConnID,
+			Version:          protocol.Version1,
+			Length:           1,
+		},
+		PacketNumber:    0x42,
+		PacketNumberLen: protocol.PacketNumberLen1,
 	}
 	unpackedHdr1 := *hdr1
 	unpackedHdr1.PacketNumber = 1337
@@ -1299,7 +1309,7 @@ func TestConnectionIdleTimeout(t *testing.T) {
 		}))
 		tc.conn.applyTransportParameters()
 
-		sph.EXPECT().GetLossDetectionTimeout().AnyTimes()
+		sph.EXPECT().LossDetectionTimeout().AnyTimes()
 		sph.EXPECT().SendMode(gomock.Any()).Return(ackhandler.SendAny).AnyTimes()
 		sph.EXPECT().
 			SentPacket(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any())
@@ -1357,7 +1367,7 @@ func TestConnectionGSOBatch(t *testing.T) {
 		sph.EXPECT().
 			SentPacket(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 			AnyTimes()
-		sph.EXPECT().GetLossDetectionTimeout().AnyTimes()
+		sph.EXPECT().LossDetectionTimeout().AnyTimes()
 		sph.EXPECT().ECNMode(gomock.Any()).Return(protocol.ECT1).AnyTimes()
 
 		maxPacketSize := tc.conn.maxPacketSize()
@@ -1433,7 +1443,7 @@ func TestConnectionGSOBatchPacketSize(t *testing.T) {
 		sph.EXPECT().
 			SentPacket(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 			AnyTimes()
-		sph.EXPECT().GetLossDetectionTimeout().AnyTimes()
+		sph.EXPECT().LossDetectionTimeout().AnyTimes()
 		sph.EXPECT().ECNMode(gomock.Any()).Return(protocol.ECT1).AnyTimes()
 
 		maxPacketSize := tc.conn.maxPacketSize()
@@ -1543,7 +1553,7 @@ func TestConnectionGSOBatchECN(t *testing.T) {
 		sph.EXPECT().
 			SentPacket(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 			AnyTimes()
-		sph.EXPECT().GetLossDetectionTimeout().AnyTimes()
+		sph.EXPECT().LossDetectionTimeout().AnyTimes()
 		sph.EXPECT().ECNMode(gomock.Any()).DoAndReturn(func(bool) protocol.ECN { return ecnMode }).AnyTimes()
 
 		// 3. Send a GSO batch, until the ECN marking changes.
@@ -1664,7 +1674,7 @@ func testConnectionPTOProbePackets(t *testing.T, encLevel protocol.EncryptionLev
 			sendMode = ackhandler.SendPTOAppData
 		}
 
-		sph.EXPECT().GetLossDetectionTimeout().AnyTimes()
+		sph.EXPECT().LossDetectionTimeout().AnyTimes()
 		sph.EXPECT().TimeUntilSend().AnyTimes()
 		sph.EXPECT().SendMode(gomock.Any()).Return(sendMode)
 		sph.EXPECT().SendMode(gomock.Any()).Return(ackhandler.SendNone)
@@ -1743,7 +1753,7 @@ func testConnectionSendQueue(t *testing.T, enableGSO bool) {
 				return available
 			},
 		)
-		sph.EXPECT().GetLossDetectionTimeout().AnyTimes()
+		sph.EXPECT().LossDetectionTimeout().AnyTimes()
 		sph.EXPECT().
 			SentPacket(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any())
 		sph.EXPECT().SendMode(gomock.Any()).Return(ackhandler.SendAny).AnyTimes()
@@ -1857,7 +1867,7 @@ func getRetryPacket(t *testing.T, src, dest, origDest protocol.ConnectionID, tok
 	b, err := (&wire.ExtendedHeader{Header: hdr}).Append(nil, protocol.Version1)
 	require.NoError(t, err)
 
-	tag := handshake.GetRetryIntegrityTag(b, origDest, protocol.Version1)
+	tag := handshake.RetryIntegrityTag(b, origDest, protocol.Version1)
 	b = append(b, tag[:]...)
 
 	return receivedPacket{
@@ -1947,7 +1957,7 @@ func testConnectionConnectionIDChanges(t *testing.T, sendRetry bool) {
 			data, err := hdr.Append(nil, protocol.Version1)
 			require.NoError(t, err)
 
-			data = append(data, make([]byte, hdr.Length-protocol.ByteCount(hdr.PacketNumberLen))...)
+			data = append(data, make([]byte, hdr.Header.Length-protocol.ByteCount(hdr.PacketNumberLen))...)
 
 			return data
 		}
@@ -1992,13 +2002,15 @@ func testConnectionConnectionIDChanges(t *testing.T, sendRetry bool) {
 
 		// Send the first packet. The server changes the connection ID to newConnID.
 		hdr1 := wire.ExtendedHeader{
-			SrcConnectionID:  newConnID,
-			DestConnectionID: tc.srcConnID,
-			Type:             protocol.PacketTypeInitial,
-			Length:           200,
-			Version:          protocol.Version1,
-			PacketNumber:     1,
-			PacketNumberLen:  protocol.PacketNumberLen2,
+			Header: wire.Header{
+				SrcConnectionID:  newConnID,
+				DestConnectionID: tc.srcConnID,
+				Type:             protocol.PacketTypeInitial,
+				Length:           200,
+				Version:          protocol.Version1,
+			},
+			PacketNumber:    1,
+			PacketNumberLen: protocol.PacketNumberLen2,
 		}
 		hdr2 := hdr1
 		hdr2.SrcConnectionID = newConnID2

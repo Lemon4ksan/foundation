@@ -226,3 +226,27 @@ func BenchmarkRNGUint32n(b *testing.B) {
 		benchSink.Add(uint64(s))
 	})
 }
+
+func TestRNG_Perm(t *testing.T) {
+	t.Parallel()
+
+	r := randkit.NewRNG()
+
+	assert.Empty(t, r.Perm(-1))
+	assert.Empty(t, r.Perm(0))
+
+	p1 := r.Perm(1)
+	require.Len(t, p1, 1)
+	assert.Equal(t, 0, p1[0])
+
+	for _, n := range []int{2, 5, 10, 50} {
+		p := r.Perm(n)
+		require.Len(t, p, n)
+		seen := make(map[int]bool, n)
+		for _, v := range p {
+			assert.True(t, v >= 0 && v < n)
+			seen[v] = true
+		}
+		assert.Len(t, seen, n)
+	}
+}

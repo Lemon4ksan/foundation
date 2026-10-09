@@ -178,7 +178,7 @@ func (m *outgoingStreamsMap[T]) maybeSendBlockedFrame() {
 	m.blockedSent = true
 }
 
-func (m *outgoingStreamsMap[T]) GetStream(id protocol.StreamID) (T, error) {
+func (m *outgoingStreamsMap[T]) Stream(id protocol.StreamID) (T, error) {
 	m.mutex.RLock()
 
 	if id >= m.nextStream {

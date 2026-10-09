@@ -939,7 +939,7 @@ func (h *sentPacketHandler) OnLossDetectionTimeout(now monotime.Time) error {
 	return nil
 }
 
-func (h *sentPacketHandler) GetLossDetectionTimeout() monotime.Time {
+func (h *sentPacketHandler) LossDetectionTimeout() monotime.Time {
 	return h.alarm.Time
 }
 
@@ -1026,7 +1026,7 @@ func (h *sentPacketHandler) SendMode(now monotime.Time) SendMode {
 			h.logger.Debugf(
 				"Congestion limited: bytes in flight %d, window %d",
 				h.bytesInFlight,
-				h.congestion.GetCongestionWindow(),
+				h.congestion.CongestionWindow(),
 			)
 		}
 

@@ -116,7 +116,7 @@ func (h *ExtendedHeader) Append(b []byte, v protocol.Version) ([]byte, error) {
 		b = append(b, h.Token...)
 	}
 
-	b = varint.AppendWithLen(b, uint64(h.Length), 2)
+	b = varint.AppendWithLen(b, uint64(h.Header.Length), 2)
 
 	return appendPacketNumber(b, h.PacketNumber, h.PacketNumberLen)
 }
@@ -126,8 +126,8 @@ func (h *ExtendedHeader) ParsedLen() protocol.ByteCount {
 	return h.parsedLen
 }
 
-// GetLength determines the length of the Header.
-func (h *ExtendedHeader) GetLength(_ protocol.Version) protocol.ByteCount {
+// Length determines the length of the Header.
+func (h *ExtendedHeader) Length(_ protocol.Version) protocol.ByteCount {
 	length := 1 /* type byte */ + 4 /* version */ + 1 /* dest conn ID len */ + protocol.ByteCount(
 		h.DestConnectionID.Len(),
 	) + 1 /* src conn ID len */ + protocol.ByteCount(
@@ -175,7 +175,7 @@ func (h *ExtendedHeader) Log(logger utils.Logger) {
 		token,
 		h.PacketNumber,
 		h.PacketNumberLen,
-		h.Length,
+		h.Header.Length,
 		h.Version,
 	)
 }

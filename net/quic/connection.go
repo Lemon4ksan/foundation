@@ -42,7 +42,7 @@ type cryptoStreamHandler interface {
 	ChangeConnectionID(protocol.ConnectionID)
 	SetLargest1RTTAcked(protocol.PacketNumber) error
 	SetHandshakeConfirmed()
-	GetSessionTicket() ([]byte, error)
+	SessionTicket() ([]byte, error)
 	NextEvent() handshake.Event
 	DiscardInitialKeys()
 	HandleMessage([]byte, protocol.EncryptionLevel) error
@@ -629,7 +629,7 @@ func (c *Conn) Tick(now time.Time) error {
 	}
 
 	// Check for loss detection timeout.
-	if timeout := c.sentPacketHandler.GetLossDetectionTimeout(); !timeout.IsZero() && !timeout.After(mt) {
+	if timeout := c.sentPacketHandler.LossDetectionTimeout(); !timeout.IsZero() && !timeout.After(mt) {
 		if err := c.sentPacketHandler.OnLossDetectionTimeout(mt); err != nil {
 			c.setCloseError(&closeError{err: err})
 			return err
@@ -875,7 +875,7 @@ func (c *Conn) handleHandshakeComplete(now monotime.Time) error {
 		return err
 	}
 
-	ticket, err := c.cryptoStreamHandler.GetSessionTicket()
+	ticket, err := c.cryptoStreamHandler.SessionTicket()
 	if err != nil {
 		return err
 	}
@@ -1101,7 +1101,7 @@ func (c *Conn) handleShortHeaderPacket(
 
 	if c.pathManager == nil {
 		c.pathManager = newPathManager(
-			c.connIDManager.GetConnIDForPath,
+			c.connIDManager.ConnIDForPath,
 			c.connIDManager.RetireConnIDForPath,
 			c.logger,
 		)
@@ -1286,7 +1286,7 @@ func (c *Conn) handleRetryPacket(
 		return false
 	}
 
-	tag := handshake.GetRetryIntegrityTag(data[:len(data)-16], destConnID, hdr.Version)
+	tag := handshake.RetryIntegrityTag(data[:len(data)-16], destConnID, hdr.Version)
 	if !bytes.Equal(data[len(data)-16:], tag[:]) {
 		c.logger.Debugf("Ignoring spoofed Retry. Integrity Tag doesn't match.")
 
@@ -1643,7 +1643,7 @@ func (c *Conn) handleCryptoFrame(
 	}
 
 	for {
-		data := c.cryptoStreamManager.GetCryptoData(encLevel)
+		data := c.cryptoStreamManager.CryptoData(encLevel)
 		if data == nil {
 			break
 		}
@@ -2167,7 +2167,7 @@ func (c *Conn) sendPackets(now monotime.Time) error {
 	// Performance-wise, this doesn't matter, since we only send a very small (<10) number of
 	// MTU probe packets per connection.
 	if c.handshakeConfirmed && c.mtuDiscoverer != nil && c.mtuDiscoverer.ShouldSendProbe(now) {
-		ping, size := c.mtuDiscoverer.GetPing(now)
+		ping, size := c.mtuDiscoverer.Ping(now)
 
 		p, buf, err := c.packer.PackMTUProbePacket(ping, size, c.version)
 		if err != nil {
@@ -2184,11 +2184,11 @@ func (c *Conn) sendPackets(now monotime.Time) error {
 		return nil
 	}
 
-	if offset := c.connFlowController.GetWindowUpdate(now); offset > 0 {
+	if offset := c.connFlowController.WindowUpdate(now); offset > 0 {
 		c.framer.QueueControlFrame(&wire.MaxDataFrame{MaximumData: offset})
 	}
 
-	if cf := c.cryptoStreamManager.GetPostHandshakeData(protocol.MaxPostHandshakeCryptoFrameSize); cf != nil {
+	if cf := c.cryptoStreamManager.PostHandshakeData(protocol.MaxPostHandshakeCryptoFrameSize); cf != nil {
 		c.queueControlFrame(cf)
 	}
 
@@ -2885,7 +2885,7 @@ func (c *Conn) getPathManager() *pathManagerOutgoing {
 
 	// Initialize the path manager
 	new := newPathManagerOutgoing(
-		c.connIDManager.GetConnIDForPath,
+		c.connIDManager.ConnIDForPath,
 		c.connIDManager.RetireConnIDForPath,
 		c.scheduleSending,
 	)

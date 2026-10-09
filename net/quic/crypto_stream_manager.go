@@ -44,21 +44,21 @@ func (m *cryptoStreamManager) HandleCryptoFrame(frame *wire.CryptoFrame, encLeve
 	}
 }
 
-func (m *cryptoStreamManager) GetCryptoData(encLevel protocol.EncryptionLevel) []byte {
+func (m *cryptoStreamManager) CryptoData(encLevel protocol.EncryptionLevel) []byte {
 	//nolint:exhaustive // CRYPTO frames cannot be sent in 0-RTT packets.
 	switch encLevel {
 	case protocol.EncryptionInitial:
-		return m.initialStream.GetCryptoData()
+		return m.initialStream.CryptoData()
 	case protocol.EncryptionHandshake:
-		return m.handshakeStream.GetCryptoData()
+		return m.handshakeStream.CryptoData()
 	case protocol.Encryption1RTT:
-		return m.oneRTTStream.GetCryptoData()
+		return m.oneRTTStream.CryptoData()
 	default:
 		panic(fmt.Sprintf("received CRYPTO frame with unexpected encryption level: %s", encLevel))
 	}
 }
 
-func (m *cryptoStreamManager) GetPostHandshakeData(maxSize protocol.ByteCount) *wire.CryptoFrame {
+func (m *cryptoStreamManager) PostHandshakeData(maxSize protocol.ByteCount) *wire.CryptoFrame {
 	if !m.oneRTTStream.HasData() {
 		return nil
 	}

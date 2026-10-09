@@ -9,6 +9,17 @@
 // It supports both AMD64 (with AVX2/FMA/PCLMUL) and ARM64 (with SIMD/Crypto) targets. The tool
 // can also emit corresponding Go stub files to bridge the generated assembly with Go packages.
 //
+// Key features include:
+//   - Portable ELF object generation: forces -target x86_64-pc-linux-gnu or aarch64-linux-gnu across
+//     all host operating systems, bypassing platform-specific object format discrepancies (PE addends,
+//     Mach-O symbol mangling and section layout).
+//   - Typed return tracking: supports float32, float64, and SIMD vector returns (m128, m256), emitting
+//     the correct return instructions (MOVSS, MOVSD, MOVOU, VMOVDQU from XMM/YMM registers on AMD64,
+//     and FMOVS, FMOVD, FMOVQ on ARM64) into the Go return frame.
+//   - Prologue stack alignment preservation: retains dynamic stack alignment instructions (e.g.
+//     ANDQ $-32, SP) and accounts for alignment padding in frame sizing, ensuring AVX aligned memory
+//     spills (VMOVDQA) do not fault.
+//
 // # Compared to the standard library
 //
 // Stdlib counterpart: none - fills gap: automated C-to-Plan9 assembly translation

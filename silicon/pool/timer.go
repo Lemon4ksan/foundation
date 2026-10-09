@@ -19,7 +19,6 @@ func AcquireTimer(d time.Duration) *time.Timer {
 	}
 
 	t := v.(*time.Timer)
-	stopAndDrainTimer(t)
 	t.Reset(d)
 
 	return t

@@ -33,12 +33,22 @@ func TestCoarseClock(t *testing.T) {
 	if newNano <= nano {
 		t.Fatalf("expected coarse nano to advance, before=%d after=%d", nano, newNano)
 	}
+
+	since := clock.CoarseSince(ct)
+	if since < 0 {
+		t.Fatalf("expected non-negative CoarseSince, got %v", since)
+	}
 }
 
 func TestRDTSC(t *testing.T) {
 	c1 := clock.RDTSC()
 	if c1 == 0 {
 		t.Fatal("expected non-zero RDTSC cycles")
+	}
+
+	cycles := clock.Cycles()
+	if cycles == 0 {
+		t.Fatal("expected non-zero Cycles")
 	}
 
 	time.Sleep(2 * time.Millisecond)
@@ -59,6 +69,18 @@ func BenchmarkRDTSC(b *testing.B) {
 
 	for b.Loop() {
 		_ = clock.RDTSC()
+	}
+}
+
+func BenchmarkElapsedCycles(b *testing.B) {
+	b.ReportAllocs()
+
+	for b.Loop() {
+		start := clock.RDTSC()
+		dur := clock.ElapsedCycles(start)
+		if dur <= 0 {
+			b.Fatalf("expected positive elapsed duration, got %v", dur)
+		}
 	}
 }
 

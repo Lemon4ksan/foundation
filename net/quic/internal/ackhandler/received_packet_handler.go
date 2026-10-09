@@ -91,11 +91,11 @@ func (h *ReceivedPacketHandler) DropPackets(encLevel protocol.EncryptionLevel) {
 	}
 }
 
-func (h *ReceivedPacketHandler) GetAlarmTimeout() monotime.Time {
-	return h.appDataPackets.GetAlarmTimeout()
+func (h *ReceivedPacketHandler) AlarmTimeout() monotime.Time {
+	return h.appDataPackets.AlarmTimeout()
 }
 
-func (h *ReceivedPacketHandler) GetAckFrame(
+func (h *ReceivedPacketHandler) AckFrame(
 	encLevel protocol.EncryptionLevel,
 	now monotime.Time,
 	onlyIfQueued bool,
@@ -104,20 +104,20 @@ func (h *ReceivedPacketHandler) GetAckFrame(
 	switch encLevel {
 	case protocol.EncryptionInitial:
 		if h.initialPackets != nil {
-			return h.initialPackets.GetAckFrame()
+			return h.initialPackets.AckFrame()
 		}
 
 		return nil
 
 	case protocol.EncryptionHandshake:
 		if h.handshakePackets != nil {
-			return h.handshakePackets.GetAckFrame()
+			return h.handshakePackets.AckFrame()
 		}
 
 		return nil
 
 	case protocol.Encryption1RTT:
-		return h.appDataPackets.GetAckFrame(now, onlyIfQueued)
+		return h.appDataPackets.AckFrame(now, onlyIfQueued)
 	default:
 		// 0-RTT packets can't contain ACK frames
 		return nil

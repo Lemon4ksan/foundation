@@ -79,40 +79,40 @@ func (c *MockSendAlgorithmWithDebugInfosCanSendCall) DoAndReturn(f func(protocol
 	return c
 }
 
-// GetCongestionWindow mocks base method.
-func (m *MockSendAlgorithmWithDebugInfos) GetCongestionWindow() protocol.ByteCount {
+// CongestionWindow mocks base method.
+func (m *MockSendAlgorithmWithDebugInfos) CongestionWindow() protocol.ByteCount {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetCongestionWindow")
+	ret := m.ctrl.Call(m, "CongestionWindow")
 	ret0, _ := ret[0].(protocol.ByteCount)
 	return ret0
 }
 
-// GetCongestionWindow indicates an expected call of GetCongestionWindow.
-func (mr *MockSendAlgorithmWithDebugInfosMockRecorder) GetCongestionWindow() *MockSendAlgorithmWithDebugInfosGetCongestionWindowCall {
+// CongestionWindow indicates an expected call of CongestionWindow.
+func (mr *MockSendAlgorithmWithDebugInfosMockRecorder) CongestionWindow() *MockSendAlgorithmWithDebugInfosCongestionWindowCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCongestionWindow", reflect.TypeOf((*MockSendAlgorithmWithDebugInfos)(nil).GetCongestionWindow))
-	return &MockSendAlgorithmWithDebugInfosGetCongestionWindowCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CongestionWindow", reflect.TypeOf((*MockSendAlgorithmWithDebugInfos)(nil).CongestionWindow))
+	return &MockSendAlgorithmWithDebugInfosCongestionWindowCall{Call: call}
 }
 
-// MockSendAlgorithmWithDebugInfosGetCongestionWindowCall wrap *gomock.Call
-type MockSendAlgorithmWithDebugInfosGetCongestionWindowCall struct {
+// MockSendAlgorithmWithDebugInfosCongestionWindowCall wrap *gomock.Call
+type MockSendAlgorithmWithDebugInfosCongestionWindowCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockSendAlgorithmWithDebugInfosGetCongestionWindowCall) Return(arg0 protocol.ByteCount) *MockSendAlgorithmWithDebugInfosGetCongestionWindowCall {
+func (c *MockSendAlgorithmWithDebugInfosCongestionWindowCall) Return(arg0 protocol.ByteCount) *MockSendAlgorithmWithDebugInfosCongestionWindowCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSendAlgorithmWithDebugInfosGetCongestionWindowCall) Do(f func() protocol.ByteCount) *MockSendAlgorithmWithDebugInfosGetCongestionWindowCall {
+func (c *MockSendAlgorithmWithDebugInfosCongestionWindowCall) Do(f func() protocol.ByteCount) *MockSendAlgorithmWithDebugInfosCongestionWindowCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSendAlgorithmWithDebugInfosGetCongestionWindowCall) DoAndReturn(f func() protocol.ByteCount) *MockSendAlgorithmWithDebugInfosGetCongestionWindowCall {
+func (c *MockSendAlgorithmWithDebugInfosCongestionWindowCall) DoAndReturn(f func() protocol.ByteCount) *MockSendAlgorithmWithDebugInfosCongestionWindowCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
