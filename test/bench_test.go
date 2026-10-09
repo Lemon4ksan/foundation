@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Lemon4ksan All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package test_test
 
 import (
@@ -8,6 +12,7 @@ import (
 	"go/token"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -28,6 +33,7 @@ const (
 type Violation struct {
 	Category  ViolationCategory
 	Milestone string
+	Package   string
 	File      string
 	Line      int
 	Symbol    string
@@ -119,10 +125,10 @@ func checkFuncDecl(fset *token.FileSet, fd *ast.FuncDecl, pkgName, relPath strin
 			*violations = append(*violations, Violation{
 				Category:  CategoryGetterPrefix,
 				Milestone: determineMilestone(relPath),
-
-				File:   relPath,
-				Line:   line,
-				Symbol: fmt.Sprintf("(%s).%s", recvType, name),
+				Package:   pkgName,
+				File:      relPath,
+				Line:      line,
+				Symbol:    fmt.Sprintf("(%s).%s", recvType, name),
 				Details: fmt.Sprintf(
 					"Exported getter method has 'Get' prefix; should be renamed without 'Get' (e.g., %s)",
 					trimGetPrefix(name),
@@ -138,11 +144,11 @@ func checkFuncDecl(fset *token.FileSet, fd *ast.FuncDecl, pkgName, relPath strin
 			*violations = append(*violations, Violation{
 				Category:  CategoryGetterPrefix,
 				Milestone: determineMilestone(relPath),
-
-				File:    relPath,
-				Line:    line,
-				Symbol:  name,
-				Details: fmt.Sprintf("Exported function has 'Get' prefix; should be renamed to remove getter prefix"),
+				Package:   pkgName,
+				File:      relPath,
+				Line:      line,
+				Symbol:    name,
+				Details:   fmt.Sprintf("Exported function has 'Get' prefix; should be renamed to remove getter prefix"),
 			})
 		}
 
@@ -151,10 +157,10 @@ func checkFuncDecl(fset *token.FileSet, fd *ast.FuncDecl, pkgName, relPath strin
 			*violations = append(*violations, Violation{
 				Category:  CategoryStuttering,
 				Milestone: determineMilestone(relPath),
-
-				File:   relPath,
-				Line:   line,
-				Symbol: name,
+				Package:   pkgName,
+				File:      relPath,
+				Line:      line,
+				Symbol:    name,
 				Details: fmt.Sprintf(
 					"Exported function stutters with package name %q; rename to remove package prefix",
 					pkgName,
@@ -189,11 +195,11 @@ func checkGenDecl(fset *token.FileSet, gd *ast.GenDecl, pkgName, relPath string,
 					*violations = append(*violations, Violation{
 						Category:  CategoryTypeAlias,
 						Milestone: "M4",
-
-						File:    relPath,
-						Line:    line,
-						Symbol:  typeName,
-						Details: "Backward-compatibility type alias masks modern Conn/Token name; must be removed in-place",
+						Package:   pkgName,
+						File:      relPath,
+						Line:      line,
+						Symbol:    typeName,
+						Details:   "Backward-compatibility type alias masks modern Conn/Token name; must be removed in-place",
 					})
 				}
 			}
@@ -207,10 +213,10 @@ func checkGenDecl(fset *token.FileSet, gd *ast.GenDecl, pkgName, relPath string,
 							*violations = append(*violations, Violation{
 								Category:  CategoryGetterPrefix,
 								Milestone: determineMilestone(relPath),
-
-								File:   relPath,
-								Line:   mLine,
-								Symbol: fmt.Sprintf("%s.%s", typeName, mName.Name),
+								Package:   pkgName,
+								File:      relPath,
+								Line:      mLine,
+								Symbol:    fmt.Sprintf("%s.%s", typeName, mName.Name),
 								Details: fmt.Sprintf(
 									"Interface method has 'Get' prefix; should be renamed without 'Get' (e.g., %s)",
 									trimGetPrefix(mName.Name),
@@ -227,11 +233,11 @@ func checkGenDecl(fset *token.FileSet, gd *ast.GenDecl, pkgName, relPath string,
 					*violations = append(*violations, Violation{
 						Category:  CategoryStuttering,
 						Milestone: determineMilestone(relPath),
-
-						File:    relPath,
-						Line:    line,
-						Symbol:  typeName,
-						Details: stutterDesc,
+						Package:   pkgName,
+						File:      relPath,
+						Line:      line,
+						Symbol:    typeName,
+						Details:   stutterDesc,
 					})
 				}
 
@@ -240,11 +246,11 @@ func checkGenDecl(fset *token.FileSet, gd *ast.GenDecl, pkgName, relPath string,
 					*violations = append(*violations, Violation{
 						Category:  CategoryDomainClarity,
 						Milestone: determineMilestone(relPath),
-
-						File:    relPath,
-						Line:    line,
-						Symbol:  typeName,
-						Details: clarityDesc,
+						Package:   pkgName,
+						File:      relPath,
+						Line:      line,
+						Symbol:    typeName,
+						Details:   clarityDesc,
 					})
 				}
 			}
@@ -265,11 +271,11 @@ func checkGenDecl(fset *token.FileSet, gd *ast.GenDecl, pkgName, relPath string,
 					*violations = append(*violations, Violation{
 						Category:  CategoryTypeAlias,
 						Milestone: "M4",
-
-						File:    relPath,
-						Line:    line,
-						Symbol:  name.Name,
-						Details: "Legacy alias constant for CertCompression*; must be removed per PROJECT.md Feature 10",
+						Package:   pkgName,
+						File:      relPath,
+						Line:      line,
+						Symbol:    name.Name,
+						Details:   "Legacy alias constant for CertCompression*; must be removed per PROJECT.md Feature 10",
 					})
 				}
 			}
@@ -460,4 +466,110 @@ func determineMilestone(relPath string) string {
 }
 
 // TestModernization_AcceptanceSuite verifies the repository against all acceptance criteria in ORIGINAL_REQUEST.md.
-func TestModernization_AcceptanceSuite(t *testing.T) { t.Skip("TODO") }
+func TestModernization_AcceptanceSuite(t *testing.T) {
+	repoRoot := findRepoRoot(t)
+	violations, err := scanRepository(t, repoRoot)
+	if err != nil {
+		t.Fatalf("failed to scan repository: %v", err)
+	}
+
+	strict := isStrictEnforcement()
+
+	t.Run("Criterion1_NoGetterPrefixes", func(t *testing.T) {
+		var count int
+		for _, v := range violations {
+			if v.Category == CategoryGetterPrefix {
+				count++
+				msg := fmt.Sprintf("[%s] %s:%d: %s (%s)", v.Milestone, v.File, v.Line, v.Symbol, v.Details)
+				if strict {
+					t.Errorf("Getter prefix violation: %s", msg)
+				} else {
+					t.Logf("VIOLATION: %s", msg)
+				}
+			}
+		}
+		t.Logf("Criterion 1 Summary: Discovered %d exported getter prefix violations across repository.", count)
+	})
+
+	t.Run("Criterion2_NoStutteringExportedTypes", func(t *testing.T) {
+		var count int
+		for _, v := range violations {
+			if v.Category == CategoryStuttering {
+				count++
+				msg := fmt.Sprintf(
+					"[%s] %s:%d: %s.%s (%s)",
+					v.Milestone,
+					v.File,
+					v.Line,
+					v.Package,
+					v.Symbol,
+					v.Details,
+				)
+				if strict {
+					t.Errorf("Stuttering type violation: %s", msg)
+				} else {
+					t.Logf("VIOLATION: %s", msg)
+				}
+			}
+		}
+		t.Logf("Criterion 2 Summary: Discovered %d stuttering exported type/func violations across repository.", count)
+	})
+
+	t.Run("Criterion3_NoBackwardCompatibilityAliases", func(t *testing.T) {
+		var count int
+		for _, v := range violations {
+			if v.Category == CategoryTypeAlias {
+				count++
+				msg := fmt.Sprintf("[%s] %s:%d: %s (%s)", v.Milestone, v.File, v.Line, v.Symbol, v.Details)
+				if strict {
+					t.Errorf("Type alias violation: %s", msg)
+				} else {
+					t.Logf("VIOLATION: %s", msg)
+				}
+			}
+		}
+		t.Logf("Criterion 3 Summary: Discovered %d backward-compatibility alias violations across repository.", count)
+	})
+
+	t.Run("Criterion_DomainClarity", func(t *testing.T) {
+		var count int
+		for _, v := range violations {
+			if v.Category == CategoryDomainClarity {
+				count++
+				msg := fmt.Sprintf("[%s] %s:%d: %s (%s)", v.Milestone, v.File, v.Line, v.Symbol, v.Details)
+				if strict {
+					t.Errorf("Domain clarity violation: %s", msg)
+				} else {
+					t.Logf("VIOLATION: %s", msg)
+				}
+			}
+		}
+		t.Logf("Domain Clarity Summary: Discovered %d overly generic / non-descriptive names across repository.", count)
+	})
+
+	t.Run("Criterion4_BuildClean", func(t *testing.T) {
+		cmd := exec.Command("go", "build", "./...")
+		cmd.Dir = repoRoot
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("go build ./... failed:\n%s", string(out))
+		}
+		t.Log("Criterion 4: Entire project builds cleanly with 0 errors.")
+	})
+
+	// Milestone Breakdown Report
+	t.Run("MilestoneBreakdown", func(t *testing.T) {
+		milestoneCounts := make(map[string]int)
+		for _, v := range violations {
+			milestoneCounts[v.Milestone]++
+		}
+		t.Log("=== Modernization Violations by Milestone ===")
+		for _, m := range []string{"M1", "M2", "M3", "M4", "M5"} {
+			t.Logf("  Milestone %s: %d pending modernization violations", m, milestoneCounts[m])
+		}
+		t.Logf("  Total Pending Violations: %d", len(violations))
+		if strict && len(violations) > 0 {
+			t.Fatalf("Modernization incomplete: %d violations must be resolved across milestones.", len(violations))
+		}
+	})
+}

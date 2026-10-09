@@ -68,24 +68,28 @@ func TestBreaker_ConcurrentStateTransitions(t *testing.T) {
 
 	// Phase 2: Inject failures to trip breaker
 	failMode.Store(true)
-	time.Sleep(100 * time.Millisecond)
+	deadline := time.Now().Add(500 * time.Millisecond)
+	for time.Now().Before(deadline) && cb.State() != breaker.StateOpen {
+		time.Sleep(1 * time.Millisecond)
+	}
 
-	if cb.State() != breaker.StateOpen {
-		t.Fatalf("expected StateOpen, got %v", cb.State())
+	if state := cb.State(); state != breaker.StateOpen {
+		t.Fatalf("expected StateOpen, got %v", state)
 	}
 
 	// Phase 3: Recover downstream and wait for Cooldown
 	failMode.Store(false)
-	time.Sleep(80 * time.Millisecond) // Cooldown is 50ms
-
-	// Breaker should probe in HalfOpen and transition back to Closed
-	time.Sleep(50 * time.Millisecond)
+	// Wait for Cooldown (50ms) and successful probe to transition back to Closed
+	deadline = time.Now().Add(1 * time.Second)
+	for time.Now().Before(deadline) && cb.State() != breaker.StateClosed {
+		time.Sleep(5 * time.Millisecond)
+	}
 
 	stop.Store(true)
 	wg.Wait()
 
-	if cb.State() != breaker.StateClosed {
-		t.Fatalf("expected Breaker to recover to StateClosed, got %v", cb.State())
+	if state := cb.State(); state != breaker.StateClosed {
+		t.Fatalf("expected Breaker to recover to StateClosed, got %v", state)
 	}
 	if errOpenHits.Load() == 0 {
 		t.Fatal("expected ErrOpen rejections during StateOpen")
