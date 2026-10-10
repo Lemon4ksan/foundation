@@ -528,8 +528,15 @@ func compilePtrEncoder(t reflect.Type) (encoderFunc, error) {
 	}, nil
 }
 
+type sliceHeader struct {
+	Data unsafe.Pointer
+	Len  int
+	Cap  int
+}
+
 func compileSliceEncoder(t reflect.Type) (encoderFunc, error) {
 	elemType := t.Elem()
+	elemSize := elemType.Size()
 	var (
 		once    sync.Once
 		elemEnc encoderFunc
@@ -537,8 +544,8 @@ func compileSliceEncoder(t reflect.Type) (encoderFunc, error) {
 	)
 
 	return func(e *encodeState, p unsafe.Pointer) error {
-		sliceVal := reflect.NewAt(t, p).Elem()
-		if sliceVal.IsNil() {
+		sh := (*sliceHeader)(p)
+		if sh.Data == nil {
 			e.buf = append(e.buf, "null"...)
 			return nil
 		}
@@ -551,14 +558,13 @@ func compileSliceEncoder(t reflect.Type) (encoderFunc, error) {
 		}
 
 		e.buf = append(e.buf, '[')
-		n := sliceVal.Len()
+		n := sh.Len
 		for i := range n {
 			if i > 0 {
 				e.buf = append(e.buf, ',')
 			}
 
-			elemVal := sliceVal.Index(i)
-			elemPtr := unsafe.Pointer(elemVal.Addr().Pointer())
+			elemPtr := unsafe.Add(sh.Data, uintptr(i)*elemSize)
 			if err := elemEnc(e, elemPtr); err != nil {
 				return err
 			}
@@ -571,22 +577,21 @@ func compileSliceEncoder(t reflect.Type) (encoderFunc, error) {
 
 func compileArrayEncoder(t reflect.Type) (encoderFunc, error) {
 	elemType := t.Elem()
+	elemSize := elemType.Size()
+	n := t.Len()
 	elemEnc, err := getEncoder(elemType)
 	if err != nil {
 		return nil, err
 	}
 
 	return func(e *encodeState, p unsafe.Pointer) error {
-		arrVal := reflect.NewAt(t, p).Elem()
 		e.buf = append(e.buf, '[')
-		n := arrVal.Len()
 		for i := range n {
 			if i > 0 {
 				e.buf = append(e.buf, ',')
 			}
 
-			elemVal := arrVal.Index(i)
-			elemPtr := unsafe.Pointer(elemVal.Addr().Pointer())
+			elemPtr := unsafe.Add(p, uintptr(i)*elemSize)
 			if err := elemEnc(e, elemPtr); err != nil {
 				return err
 			}

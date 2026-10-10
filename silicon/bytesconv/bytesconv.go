@@ -137,7 +137,14 @@ func toUpperScalar(dst, src []byte) {
 	}
 }
 
+//go:noinline
+func growSlice(s []byte, n int) []byte {
+	return slices.Grow(s, n)
+}
+
 // AppendToLower appends the ASCII lowercased version of src to dst with zero heap allocations when capacity allows.
+//
+//go:inline
 func AppendToLower(dst, src []byte) []byte {
 	n := len(src)
 	if n == 0 {
@@ -145,13 +152,17 @@ func AppendToLower(dst, src []byte) []byte {
 	}
 
 	start := len(dst)
-	dst = slices.Grow(dst, n)[:start+n]
-	out := dst[start : start+n]
-	toLowerVector(out, src)
+	if cap(dst)-start < n {
+		dst = growSlice(dst, n)
+	}
+	dst = dst[:start+n]
+	toLowerVector(dst[start:start+n], src)
 	return dst
 }
 
 // AppendToUpper appends the ASCII uppercased version of src to dst with zero heap allocations when capacity allows.
+//
+//go:inline
 func AppendToUpper(dst, src []byte) []byte {
 	n := len(src)
 	if n == 0 {
@@ -159,9 +170,11 @@ func AppendToUpper(dst, src []byte) []byte {
 	}
 
 	start := len(dst)
-	dst = slices.Grow(dst, n)[:start+n]
-	out := dst[start : start+n]
-	toUpperVector(out, src)
+	if cap(dst)-start < n {
+		dst = growSlice(dst, n)
+	}
+	dst = dst[:start+n]
+	toUpperVector(dst[start:start+n], src)
 	return dst
 }
 
