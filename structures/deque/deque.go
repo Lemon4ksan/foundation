@@ -202,11 +202,12 @@ func (d *Deque[T]) Back() (T, bool) {
 		var zero T
 		return zero, false
 	}
+	buf := d.buf
 	backIdx := d.head + d.len - 1
-	if backIdx >= len(d.buf) {
-		backIdx -= len(d.buf)
+	if backIdx >= len(buf) {
+		backIdx -= len(buf)
 	}
-	return d.buf[backIdx], true
+	return buf[backIdx], true
 }
 
 // At returns the element at logical index i.
@@ -215,17 +216,22 @@ func (d *Deque[T]) Back() (T, bool) {
 // Negative indices index from the back: -1 represents the back element, -len represents the front.
 // Panics if i < -len or i >= len.
 func (d *Deque[T]) At(i int) T {
-	if d == nil || i < -d.len || i >= d.len {
+	if d == nil {
 		panic("deque: index out of range")
 	}
+	length := d.len
 	if i < 0 {
-		i += d.len
+		i += length
 	}
+	if uint(i) >= uint(length) {
+		panic("deque: index out of range")
+	}
+	buf := d.buf
 	idx := d.head + i
-	if idx >= len(d.buf) {
-		idx -= len(d.buf)
+	if idx >= len(buf) {
+		idx -= len(buf)
 	}
-	return d.buf[idx]
+	return buf[idx]
 }
 
 // Set replaces the element at logical index i with elem.
@@ -233,17 +239,22 @@ func (d *Deque[T]) At(i int) T {
 // Supports negative indices (-1 is back, -len is front).
 // Panics if i < -len or i >= len.
 func (d *Deque[T]) Set(i int, elem T) {
-	if d == nil || i < -d.len || i >= d.len {
+	if d == nil {
 		panic("deque: index out of range")
 	}
+	length := d.len
 	if i < 0 {
-		i += d.len
+		i += length
 	}
+	if uint(i) >= uint(length) {
+		panic("deque: index out of range")
+	}
+	buf := d.buf
 	idx := d.head + i
-	if idx >= len(d.buf) {
-		idx -= len(d.buf)
+	if idx >= len(buf) {
+		idx -= len(buf)
 	}
-	d.buf[idx] = elem
+	buf[idx] = elem
 }
 
 // Values returns an inlined push iterator over queued elements from front to back without mutating the deque.

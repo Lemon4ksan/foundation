@@ -7,6 +7,7 @@
 package hexkit
 
 import (
+	"runtime"
 	"unsafe"
 
 	"github.com/lemon4ksan/foundation/silicon/cpukit"
@@ -21,6 +22,8 @@ func encodeVector(dst, src []byte) int {
 			uint64(uintptr(unsafe.Pointer(&dst[0]))),
 			0, 0, 0,
 		)
+		runtime.KeepAlive(src)
+		runtime.KeepAlive(dst)
 		if chunks < len(src) {
 			encodeScalar(dst[chunks*2:], src[chunks:])
 		}
@@ -31,13 +34,22 @@ func encodeVector(dst, src []byte) int {
 
 func decodeVector(dst, src []byte) (int, error) {
 	if len(src) >= 32 && cpukit.HasAVX2() {
+		chunks := len(src) &^ 31
 		ok := hex_decode_avx2(
 			uint64(uintptr(unsafe.Pointer(&src[0]))),
-			uint64(len(src)),
+			uint64(chunks),
 			uint64(uintptr(unsafe.Pointer(&dst[0]))),
 			0, 0, 0,
 		)
+		runtime.KeepAlive(src)
+		runtime.KeepAlive(dst)
 		if ok == 1 {
+			if chunks < len(src) {
+				tail, err := decodeScalar(dst[chunks/2:], src[chunks:])
+				if err != nil {
+					return chunks/2 + tail, err
+				}
+			}
 			return len(src) / 2, nil
 		}
 	}

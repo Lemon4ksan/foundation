@@ -85,11 +85,27 @@ func Encode(dst, src []byte) int {
 }
 
 func encodeScalar(dst, src []byte) int {
-	for i, v := range src {
-		dst[i*2] = byte(hexLUT16[v])
-		dst[i*2+1] = byte(hexLUT16[v] >> 8)
+	n := len(src)
+	if n == 0 {
+		return 0
 	}
-	return len(src) * 2
+	_ = dst[n*2-1]
+	_ = src[n-1]
+	_ = hexLUT16[255]
+
+	i := 0
+	for i+4 <= n {
+		s0 := uint64(hexLUT16[src[i]])
+		s1 := uint64(hexLUT16[src[i+1]])
+		s2 := uint64(hexLUT16[src[i+2]])
+		s3 := uint64(hexLUT16[src[i+3]])
+		*(*uint64)(unsafe.Pointer(&dst[i*2])) = s0 | (s1 << 16) | (s2 << 32) | (s3 << 48)
+		i += 4
+	}
+	for ; i < n; i++ {
+		*(*uint16)(unsafe.Pointer(&dst[i*2])) = hexLUT16[src[i]]
+	}
+	return n * 2
 }
 
 // Encode16 encodes a fixed 16-byte buffer (e.g. UUID / TraceID) into a 32-byte hex slice.
@@ -97,22 +113,16 @@ func encodeScalar(dst, src []byte) int {
 //go:inline
 func Encode16[T ~[16]byte](dst *[32]byte, src T) {
 	s := (*[16]byte)(unsafe.Pointer(&src))
-	*(*uint16)(unsafe.Pointer(&dst[0])) = hexLUT16[s[0]]
-	*(*uint16)(unsafe.Pointer(&dst[2])) = hexLUT16[s[1]]
-	*(*uint16)(unsafe.Pointer(&dst[4])) = hexLUT16[s[2]]
-	*(*uint16)(unsafe.Pointer(&dst[6])) = hexLUT16[s[3]]
-	*(*uint16)(unsafe.Pointer(&dst[8])) = hexLUT16[s[4]]
-	*(*uint16)(unsafe.Pointer(&dst[10])) = hexLUT16[s[5]]
-	*(*uint16)(unsafe.Pointer(&dst[12])) = hexLUT16[s[6]]
-	*(*uint16)(unsafe.Pointer(&dst[14])) = hexLUT16[s[7]]
-	*(*uint16)(unsafe.Pointer(&dst[16])) = hexLUT16[s[8]]
-	*(*uint16)(unsafe.Pointer(&dst[18])) = hexLUT16[s[9]]
-	*(*uint16)(unsafe.Pointer(&dst[20])) = hexLUT16[s[10]]
-	*(*uint16)(unsafe.Pointer(&dst[22])) = hexLUT16[s[11]]
-	*(*uint16)(unsafe.Pointer(&dst[24])) = hexLUT16[s[12]]
-	*(*uint16)(unsafe.Pointer(&dst[26])) = hexLUT16[s[13]]
-	*(*uint16)(unsafe.Pointer(&dst[28])) = hexLUT16[s[14]]
-	*(*uint16)(unsafe.Pointer(&dst[30])) = hexLUT16[s[15]]
+	_ = dst[31]
+	_ = hexLUT16[255]
+	w0 := uint64(hexLUT16[s[0]]) | (uint64(hexLUT16[s[1]]) << 16) | (uint64(hexLUT16[s[2]]) << 32) | (uint64(hexLUT16[s[3]]) << 48)
+	w1 := uint64(hexLUT16[s[4]]) | (uint64(hexLUT16[s[5]]) << 16) | (uint64(hexLUT16[s[6]]) << 32) | (uint64(hexLUT16[s[7]]) << 48)
+	w2 := uint64(hexLUT16[s[8]]) | (uint64(hexLUT16[s[9]]) << 16) | (uint64(hexLUT16[s[10]]) << 32) | (uint64(hexLUT16[s[11]]) << 48)
+	w3 := uint64(hexLUT16[s[12]]) | (uint64(hexLUT16[s[13]]) << 16) | (uint64(hexLUT16[s[14]]) << 32) | (uint64(hexLUT16[s[15]]) << 48)
+	*(*uint64)(unsafe.Pointer(&dst[0])) = w0
+	*(*uint64)(unsafe.Pointer(&dst[8])) = w1
+	*(*uint64)(unsafe.Pointer(&dst[16])) = w2
+	*(*uint64)(unsafe.Pointer(&dst[24])) = w3
 }
 
 // Encode8 encodes a fixed 8-byte buffer (e.g. SpanID / uint64) into a 16-byte hex slice.
@@ -120,14 +130,12 @@ func Encode16[T ~[16]byte](dst *[32]byte, src T) {
 //go:inline
 func Encode8[T ~[8]byte](dst *[16]byte, src T) {
 	s := (*[8]byte)(unsafe.Pointer(&src))
-	*(*uint16)(unsafe.Pointer(&dst[0])) = hexLUT16[s[0]]
-	*(*uint16)(unsafe.Pointer(&dst[2])) = hexLUT16[s[1]]
-	*(*uint16)(unsafe.Pointer(&dst[4])) = hexLUT16[s[2]]
-	*(*uint16)(unsafe.Pointer(&dst[6])) = hexLUT16[s[3]]
-	*(*uint16)(unsafe.Pointer(&dst[8])) = hexLUT16[s[4]]
-	*(*uint16)(unsafe.Pointer(&dst[10])) = hexLUT16[s[5]]
-	*(*uint16)(unsafe.Pointer(&dst[12])) = hexLUT16[s[6]]
-	*(*uint16)(unsafe.Pointer(&dst[14])) = hexLUT16[s[7]]
+	_ = dst[15]
+	_ = hexLUT16[255]
+	w0 := uint64(hexLUT16[s[0]]) | (uint64(hexLUT16[s[1]]) << 16) | (uint64(hexLUT16[s[2]]) << 32) | (uint64(hexLUT16[s[3]]) << 48)
+	w1 := uint64(hexLUT16[s[4]]) | (uint64(hexLUT16[s[5]]) << 16) | (uint64(hexLUT16[s[6]]) << 32) | (uint64(hexLUT16[s[7]]) << 48)
+	*(*uint64)(unsafe.Pointer(&dst[0])) = w0
+	*(*uint64)(unsafe.Pointer(&dst[8])) = w1
 }
 
 // EncodeToString returns the hexadecimal encoding of src as a string.
@@ -155,6 +163,12 @@ func Decode(dst, src []byte) (int, error) {
 
 func decodeScalar(dst, src []byte) (int, error) {
 	needed := len(src) / 2
+	if needed == 0 {
+		return 0, nil
+	}
+	_ = dst[needed-1]
+	_ = src[len(src)-1]
+	_ = decodeLUT[255]
 	for i := range needed {
 		hi := decodeLUT[src[i*2]]
 		lo := decodeLUT[src[i*2+1]]
@@ -188,8 +202,11 @@ func Decode32[T ~[16]byte](dst *T, s string) bool {
 	if len(s) != 32 || dst == nil {
 		return false
 	}
-	src := unsafe.Slice(unsafe.StringData(s), len(s))
+	src := unsafe.Slice(unsafe.StringData(s), 32)
 	d := (*[16]byte)(unsafe.Pointer(dst))
+	_ = src[31]
+	_ = d[15]
+	_ = decodeLUT[255]
 	for i := range 16 {
 		hi := decodeLUT[src[i*2]]
 		lo := decodeLUT[src[i*2+1]]
@@ -209,8 +226,11 @@ func Decode16[T ~[8]byte](dst *T, s string) bool {
 	if len(s) != 16 || dst == nil {
 		return false
 	}
-	src := unsafe.Slice(unsafe.StringData(s), len(s))
+	src := unsafe.Slice(unsafe.StringData(s), 16)
 	d := (*[8]byte)(unsafe.Pointer(dst))
+	_ = src[15]
+	_ = d[7]
+	_ = decodeLUT[255]
 	for i := range 8 {
 		hi := decodeLUT[src[i*2]]
 		lo := decodeLUT[src[i*2+1]]
