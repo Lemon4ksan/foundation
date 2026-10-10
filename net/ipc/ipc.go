@@ -13,7 +13,11 @@ import (
 	"time"
 )
 
-// NewUnixTransport creates an [http.RoundTripper] bound to a local Unix domain socket path.
+// NewUnixTransport creates an [net/http.RoundTripper] bound to a local Unix domain socket path.
+//
+// Execution requires O(1) time complexity.
+// It allocates memory for the returned transport and dialer configuration.
+// The returned transport is safe for concurrent use by multiple goroutines.
 func NewUnixTransport(socketPath string) *http.Transport {
 	return &http.Transport{
 		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
@@ -26,6 +30,10 @@ func NewUnixTransport(socketPath string) *http.Transport {
 
 // ParseIPCURI parses a URL carrying "unix://" or "npipe://" scheme,
 // extracting the target socket path and relative HTTP request URI.
+//
+// Execution requires O(N) time complexity where N is the length of rawURL.
+// It is zero-allocation and operates strictly on the input string slices.
+// The operation is safe for concurrent use.
 //
 // Example:
 //

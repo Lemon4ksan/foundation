@@ -20,6 +20,10 @@ var (
 )
 
 // SPKIFingerprint calculates the 32-byte SHA-256 digest of a certificate's Subject Public Key Info (RFC 7469 §2.4).
+//
+// Execution requires O(N) time complexity where N is the length of the public key info.
+// The operation allocates memory for the return value and internal digest state.
+// It is safe for concurrent use.
 func SPKIFingerprint(cert *x509.Certificate) ([32]byte, error) {
 	if cert == nil || len(cert.RawSubjectPublicKeyInfo) == 0 {
 		return [32]byte{}, ErrInvalidSPKI
@@ -29,6 +33,10 @@ func SPKIFingerprint(cert *x509.Certificate) ([32]byte, error) {
 }
 
 // SPKIFingerprintFromDER calculates the 32-byte SHA-256 digest of raw DER-encoded Subject Public Key Info.
+//
+// Execution requires O(N) time complexity where N is the length of the raw data.
+// It allocates memory for the internal digest state.
+// The operation is safe for concurrent use.
 func SPKIFingerprintFromDER(rawSPKI []byte) [32]byte {
 	return sha256.Sum256(rawSPKI)
 }

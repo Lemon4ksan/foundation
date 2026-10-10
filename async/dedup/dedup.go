@@ -16,6 +16,7 @@ import (
 var ErrWorkerPanicked = errors.New("worker panicked during execution")
 
 // Result represents the deferred execution outcome of a [CallFn] worker.
+// The zero value is empty and ready to use.
 type Result[V any] struct {
 	// Val contains the value returned by a successful worker execution.
 	Val V
@@ -40,21 +41,19 @@ type call[V any] struct {
 	panicVal  any
 }
 
-// Group coordinates concurrent executions and suppresses duplicate calls
-// for identical parameterized keys.
+// Group coordinates concurrent executions and suppresses duplicate calls for identical parameterized keys.
 //
-// The zero value of Group is ready to use and safe for concurrent execution
-// by multiple goroutines.
+// The zero value is empty and ready to use.
+// Methods on [Group] are safe for concurrent use.
 type Group[K comparable, V any] struct {
 	mu    sync.Mutex
 	calls map[K]*call[V]
 }
 
 // KeysSeq returns an iterator over the in-flight deduplication keys currently executing.
-// A snapshot of active keys is captured under the group mutex.
-//
-// Concurrency Guarantees:
-// KeysSeq is safe for concurrent use.
+// A snapshot of active keys is captured under the group mutex in O(N) time, where N is the number of active calls.
+// It allocates an internal slice for the snapshot.
+// It is safe for concurrent use.
 func (g *Group[K, V]) KeysSeq() iter.Seq[K] {
 	return func(yield func(K) bool) {
 		if g == nil {
@@ -80,6 +79,7 @@ func (g *Group[K, V]) KeysSeq() iter.Seq[K] {
 }
 
 // InFlight returns the number of currently active in-flight deduplication calls.
+// It executes in amortized O(1) time and is safe for concurrent use.
 func (g *Group[K, V]) InFlight() int {
 	if g == nil {
 		return 0
@@ -91,6 +91,7 @@ func (g *Group[K, V]) InFlight() int {
 }
 
 // Len returns the number of currently active in-flight deduplication calls.
+// It executes in amortized O(1) time and is safe for concurrent use.
 func (g *Group[K, V]) Len() int {
 	return g.InFlight()
 }
@@ -107,10 +108,12 @@ type CallFn[V any] func(ctx context.Context) (V, error)
 // with the context error. If all concurrent waiting contexts are cancelled, the active
 // worker's context is cancelled immediately.
 //
-// If the worker function panics, the panic is re-raised (propagated) on the goroutine
-// of the initiating caller, while secondary waiting callers receive [ErrWorkerPanicked].
+// Panics if the worker function panics, propagating the panic on the goroutine
+// of the initiating caller. Secondary waiting callers receive [ErrWorkerPanicked].
 //
 // It returns an error if the passed context is already expired.
+// It is safe for concurrent use.
+// It may allocate memory to track new concurrent calls.
 func (g *Group[K, V]) Do(ctx context.Context, key K, callFn CallFn[V]) (V, error) {
 	if g == nil {
 		var zero V
@@ -166,6 +169,9 @@ func (g *Group[K, V]) Do(ctx context.Context, key K, callFn CallFn[V]) (V, error
 
 // DoChan executes and suppresses duplicate concurrent calls for a given key,
 // returning a receive-only channel that receives the single [Result].
+//
+// It is safe for concurrent use.
+// It allocates memory for the returned channel and internal tracking structures.
 func (g *Group[K, V]) DoChan(ctx context.Context, key K, callFn CallFn[V]) <-chan Result[V] {
 	ch := make(chan Result[V], 1)
 
