@@ -37,8 +37,11 @@ func (e *Element[T]) List() *List[T] {
 	return e.list
 }
 
-// List represents a doubly linked list.
-// The zero value is empty and ready to use.
+// List represents a doubly linked list utilizing chunked memory pooling.
+//
+// The zero value for List is an empty list ready for use.
+// It is not safe for concurrent use.
+// Detached element pointers may alias newly inserted elements due to memory reuse.
 type List[T any] struct {
 	chunks []*listChunk[T]
 	allocs int
@@ -47,7 +50,9 @@ type List[T any] struct {
 	len    int // current list length excluding sentinel
 }
 
-// Init initializes or clears the list in O(1) time.
+// Init initializes or clears the list.
+//
+// Complexity: O(1) time.
 func (l *List[T]) Init() *List[T] {
 	if len(l.chunks) == 0 {
 		l.chunks = append(l.chunks, new(listChunk[T]))
@@ -68,10 +73,14 @@ func (l *List[T]) Init() *List[T] {
 	return l
 }
 
-// New returns an initialized list in O(1) time.
+// New returns an initialized list.
+//
+// Complexity: O(1) time.
 func New[T any]() *List[T] { return new(List[T]).Init() }
 
 // NewCapacity returns an initialized list with preallocated capacity.
+//
+// Complexity: O(N) time where N is the requested capacity.
 func NewCapacity[T any](capacity int) *List[T] {
 	chunksCount := (capacity + 1 + chunkSize - 1) / chunkSize
 	chunks := make([]*listChunk[T], chunksCount)
@@ -94,10 +103,14 @@ func NewCapacity[T any](capacity int) *List[T] {
 	return l
 }
 
-// Len returns the number of elements of the list in O(1) time.
+// Len returns the number of elements of the list.
+//
+// Complexity: O(1) time; zero-allocation.
 func (l *List[T]) Len() int { return l.len }
 
-// Front returns the first element of the list in O(1) time, or nil if the list is empty.
+// Front returns the first element of the list, or nil if the list is empty.
+//
+// Complexity: O(1) time; zero-allocation.
 func (l *List[T]) Front() *Element[T] {
 	if l.len == 0 {
 		return nil
@@ -106,7 +119,9 @@ func (l *List[T]) Front() *Element[T] {
 	return l.elem(l.elem(l.root).next)
 }
 
-// Back returns the last element of the list in O(1) time, or nil if the list is empty.
+// Back returns the last element of the list, or nil if the list is empty.
+//
+// Complexity: O(1) time; zero-allocation.
 func (l *List[T]) Back() *Element[T] {
 	if l.len == 0 {
 		return nil
@@ -126,7 +141,6 @@ func (l *List[T]) alloc() int {
 	if l.free != -1 {
 		idx := l.free
 		l.free = l.elem(idx).next
-		l.allocs++
 		return idx
 	}
 	idx := l.allocs
@@ -217,13 +231,17 @@ func (l *List[T]) Remove(e *Element[T]) T {
 	return v
 }
 
-// PushFront inserts a new element with value v at the front of the list in O(1) time and returns the new element.
+// PushFront inserts a new element with value v at the front of the list and returns the new element.
+//
+// Complexity: O(1) time.
 func (l *List[T]) PushFront(v T) *Element[T] {
 	l.lazyInit()
 	return l.insertValue(v, l.root)
 }
 
-// PushBack inserts a new element with value v at the back of the list in O(1) time and returns the new element.
+// PushBack inserts a new element with value v at the back of the list and returns the new element.
+//
+// Complexity: O(1) time.
 func (l *List[T]) PushBack(v T) *Element[T] {
 	l.lazyInit()
 	return l.insertValue(v, l.elem(l.root).prev)

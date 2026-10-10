@@ -302,3 +302,15 @@ func TestValues_Unmarshaling_NumericAndString(t *testing.T) {
 	assert.InDelta(t, 123.456, float64(s2.F64), 0.001)
 	assert.True(t, bool(s2.Bool))
 }
+
+type myCustomFloat float64
+
+func TestReproduce_NumberStringCustomFloatTruncationBug(t *testing.T) {
+	// Custom float types are not exactly float64, so the type switch in NumberString
+	// falls into the default case, formatting them as int64.
+	val := myCustomFloat(3.14159)
+	
+	// We expect this to ideally be "3.14159", but due to the bug it returns "3"
+	// This proves the truncation bug exists for custom float types.
+	assert.Equal(t, "3", values.NumberString(val))
+}

@@ -51,3 +51,20 @@ func TestSecret_Allocations(t *testing.T) {
 		t.Errorf("expected 0 allocations, got %v", allocs)
 	}
 }
+
+func TestReproduce_ConcurrentUnmarshalRace(t *testing.T) {
+	var s secret.Secret[string]
+	
+	done := make(chan struct{})
+	go func() {
+		for i := 0; i < 1000; i++ {
+			_ = s.UnmarshalJSON([]byte(`"concurrent1"`))
+		}
+		done <- struct{}{}
+	}()
+	
+	for i := 0; i < 1000; i++ {
+		_ = s.UnmarshalJSON([]byte(`"concurrent2"`))
+	}
+	<-done
+}

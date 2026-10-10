@@ -63,3 +63,11 @@ func TestAllocations_ToSnake(t *testing.T) {
 		t.Logf("ToSnake allocated %v times", allocs)
 	}
 }
+
+func TestReproduce_ConvertDelimitedTrailingBug(t *testing.T) {
+	res := casing.ToSnake("  hello  ")
+	assert.Equal(t, "hello", res)
+	
+	res2 := casing.ToKebab("a--b")
+	assert.Equal(t, "a-b", res2)
+}

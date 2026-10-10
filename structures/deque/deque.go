@@ -6,9 +6,9 @@ package deque
 
 import "iter"
 
-// Deque represents a generic double-ended circular queue backed by a contiguous slice.
+// Deque represents a generic, double-ended circular queue backed by a contiguous slice.
 //
-// The zero value is empty and ready to use.
+// The zero value is empty and ready for use.
 // Read-only operations are safe for concurrent use; mutations require external synchronization.
 type Deque[T any] struct {
 	buf  []T

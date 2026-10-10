@@ -42,19 +42,18 @@ type call[V any] struct {
 	panicVal  any
 }
 
-// Group coordinates concurrent executions and suppresses duplicate calls for identical parameterized keys.
+// Group coordinates concurrent executions and suppresses duplicate calls for identical keys.
 //
-// The zero value is empty and ready to use.
-// Read-only operations are safe for concurrent use; mutations require external synchronization unless stated otherwise.
-// Note that methods on [Group] manage their own internal locks.
+// The zero value is valid and ready for use.
+// All exported methods are safe for concurrent use and manage their own internal synchronization.
 type Group[K comparable, V any] struct {
 	mu    sync.Mutex
 	calls map[K]*call[V]
 }
 
-// KeysSeq returns an iterator over the in-flight deduplication keys currently executing.
+// KeysSeq returns an iterator yielding the keys of currently active deduplication calls.
 //
-// Executes in O(N) time where N is the number of active calls to initialize the sequence and allocates memory for the snapshot.
+// Complexity: O(N) time where N is the number of active calls to initialize the sequence; allocates memory for the snapshot.
 func (g *Group[K, V]) KeysSeq() iter.Seq[K] {
 	return func(yield func(K) bool) {
 		if g == nil {
@@ -79,9 +78,9 @@ func (g *Group[K, V]) KeysSeq() iter.Seq[K] {
 	}
 }
 
-// InFlight returns the number of currently active in-flight deduplication calls.
+// InFlight returns the number of currently active deduplication calls.
 //
-// Executes in amortized O(1) time and is zero-allocation.
+// Complexity: O(1) time; zero-allocation.
 func (g *Group[K, V]) InFlight() int {
 	if g == nil {
 		return 0
@@ -92,9 +91,9 @@ func (g *Group[K, V]) InFlight() int {
 	return n
 }
 
-// Len returns the number of currently active in-flight deduplication calls.
+// Len returns the number of currently active deduplication calls.
 //
-// Executes in amortized O(1) time and is zero-allocation.
+// Complexity: O(1) time; zero-allocation.
 func (g *Group[K, V]) Len() int {
 	return g.InFlight()
 }
@@ -102,16 +101,14 @@ func (g *Group[K, V]) Len() int {
 // CallFn represents a context-aware generic function executed by a [Group].
 type CallFn[V any] func(ctx context.Context) (V, error)
 
-// Do executes and suppresses duplicate concurrent calls for a given key.
+// Do executes callFn and suppresses duplicate concurrent calls for the specified key.
 //
-// If an execution for the key is already in progress, Do blocks subsequent callers
-// until the active execution completes, returning the shared result.
-// If the context passed to Do is cancelled while waiting, the caller returns immediately
-// with the context error. If all concurrent waiting contexts are cancelled, the active
-// worker's context is cancelled immediately.
-// Panics if the worker function panics, propagating the panic on the goroutine
-// of the initiating caller. Secondary waiting callers receive [ErrWorkerPanicked].
-// Executes in O(1) time excluding the execution time of callFn and allocates memory when queuing a new concurrent call.
+// If an execution for the key is already in progress, Do blocks until it completes and returns the shared result.
+// If the provided context is canceled while waiting, Do returns immediately with the context error.
+// If all concurrent contexts waiting on the same call are canceled, the underlying worker's context is canceled.
+// If callFn panics, the panic is propagated to the initiating caller, while secondary waiting callers receive ErrWorkerPanicked.
+//
+// Complexity: O(1) time excluding callFn execution; allocates memory when initiating or joining a call.
 func (g *Group[K, V]) Do(ctx context.Context, key K, callFn CallFn[V]) (V, error) {
 	if g == nil {
 		var zero V
@@ -165,9 +162,9 @@ func (g *Group[K, V]) Do(ctx context.Context, key K, callFn CallFn[V]) (V, error
 	return g.wait(ctx, key, c, ch)
 }
 
-// DoChan executes and suppresses duplicate concurrent calls for a given key, returning a receive-only channel that receives the single [Result].
+// DoChan executes callFn and suppresses duplicate concurrent calls for the specified key, returning a channel that yields the result.
 //
-// Executes in O(1) time excluding the execution time of callFn and allocates memory for tracking and communication structures.
+// Complexity: O(1) time excluding callFn execution; allocates memory for channels and call tracking.
 func (g *Group[K, V]) DoChan(ctx context.Context, key K, callFn CallFn[V]) <-chan Result[V] {
 	ch := make(chan Result[V], 1)
 
@@ -314,10 +311,14 @@ func (g *Group[K, V]) run(ctx context.Context, key K, c *call[V], fn CallFn[V]) 
 			c.done = true
 			c.panicVal = r
 
-			delete(g.calls, key)
+			if g.calls[key] == c {
+				delete(g.calls, key)
+			}
 
+			initiatorPresent := false
 			for ch := range c.waiters {
 				if ch == c.initiator {
+					initiatorPresent = true
 					ch <- Result[V]{PanicVal: r}
 				} else {
 					ch <- Result[V]{Err: ErrWorkerPanicked}
@@ -326,6 +327,10 @@ func (g *Group[K, V]) run(ctx context.Context, key K, c *call[V], fn CallFn[V]) 
 
 			c.mu.Unlock()
 			g.mu.Unlock()
+
+			if !initiatorPresent {
+				panic(r)
+			}
 		}
 	}()
 
@@ -338,7 +343,9 @@ func (g *Group[K, V]) run(ctx context.Context, key K, c *call[V], fn CallFn[V]) 
 	c.val = val
 	c.err = err
 
-	delete(g.calls, key)
+	if g.calls[key] == c {
+		delete(g.calls, key)
+	}
 
 	for ch := range c.waiters {
 		ch <- Result[V]{Val: val, Err: err}

@@ -33,10 +33,10 @@ type Policy interface {
 	Reset()
 }
 
-// Exponential computes backoff growing by a factor with an optional jitter distribution.
+// Exponential computes a backoff duration that grows by a multiplicative factor, with an optional jitter distribution.
 //
-// The zero value is empty and ready to use.
-// Read-only operations are safe for concurrent use; mutations require external synchronization.
+// The zero value for Exponential is not valid; use [NewExponential] to initialize.
+// It is safe for concurrent use unless the decorrelated jitter mode is used.
 type Exponential struct {
 	Initial   time.Duration
 	Max       time.Duration
@@ -45,16 +45,20 @@ type Exponential struct {
 	lastSleep time.Duration
 }
 
-// NewExponential creates an [Exponential] with the provided limits and factor.
+// NewExponential creates an [Exponential] backoff generator utilizing the provided boundaries and growth factor.
 //
-// Executes in O(1) time and allocates memory.
+// Complexity: O(1) time.
 func NewExponential(initial, max time.Duration, factor float64) *Exponential {
 	if initial <= 0 {
 		initial = 100 * time.Millisecond
 	}
 
-	if max <= 0 || max < initial {
+	if max <= 0 {
 		max = 30 * time.Second
+	}
+	
+	if max < initial {
+		max = initial
 	}
 
 	if factor <= 1.0 {
@@ -162,10 +166,10 @@ func (b *Exponential) applyJitter(baseDelay time.Duration) time.Duration {
 	}
 }
 
-// Linear computes backoff growing linearly by step on each attempt.
+// Linear computes a backoff duration that grows linearly by a constant step on each successive attempt.
 //
-// The zero value is empty and ready to use.
-// Read-only operations are safe for concurrent use; mutations require external synchronization.
+// The zero value for Linear is not valid; use [NewLinear] to initialize.
+// It is safe for concurrent use.
 type Linear struct {
 	Initial time.Duration
 	Max     time.Duration
@@ -173,16 +177,20 @@ type Linear struct {
 	Jitter  JitterMode
 }
 
-// NewLinear creates a [Linear] calculator.
+// NewLinear creates a [Linear] backoff generator utilizing the provided boundaries and step increment.
 //
-// Executes in O(1) time and allocates memory.
+// Complexity: O(1) time.
 func NewLinear(initial, max, step time.Duration) *Linear {
 	if initial <= 0 {
 		initial = 100 * time.Millisecond
 	}
 
-	if max <= 0 || max < initial {
+	if max <= 0 {
 		max = 10 * time.Second
+	}
+	
+	if max < initial {
+		max = initial
 	}
 
 	if step <= 0 {
@@ -242,18 +250,18 @@ func (b *Linear) applyJitter(baseDelay time.Duration) time.Duration {
 	return baseDelay
 }
 
-// Constant computes a fixed static delay with optional jitter.
+// Constant computes a fixed static delay, optionally applying a jitter distribution.
 //
-// The zero value is empty and ready to use.
-// Read-only operations are safe for concurrent use; mutations require external synchronization.
+// The zero value for Constant is not valid; use [NewConstant] to initialize.
+// It is safe for concurrent use.
 type Constant struct {
 	Delay  time.Duration
 	Jitter JitterMode
 }
 
-// NewConstant creates a fixed static delay backoff.
+// NewConstant creates a [Constant] backoff generator enforcing the specified fixed delay.
 //
-// Executes in O(1) time and allocates memory.
+// Complexity: O(1) time.
 func NewConstant(delay time.Duration) *Constant {
 	return &Constant{
 		Delay:  delay,

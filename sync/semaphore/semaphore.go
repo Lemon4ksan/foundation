@@ -9,11 +9,11 @@ import (
 	"sync"
 )
 
-// Semaphore represents a resizable counting semaphore that coordinates access
-// to a shared pool of limited concurrent slots.
-// It executes in O(1) time.
-// It performs zero allocations.
-// It is safe for concurrent use.
+// Semaphore represents a dynamically resizable counting semaphore that coordinates access
+// to a shared pool of concurrent slots.
+//
+// The zero value represents a limit of 0 and is ready for use.
+// All exported methods are safe for concurrent use.
 type Semaphore struct {
 	mu      sync.Mutex
 	limit   int
@@ -21,9 +21,9 @@ type Semaphore struct {
 	waiters []chan struct{}
 }
 
-// New creates a [Semaphore] with the given initial limit.
-// It executes in O(1) time and allocates memory for the tracking structures.
-// It is safe for concurrent use.
+// New creates a [Semaphore] with the specified initial limit.
+//
+// Complexity: O(1) time.
 func New(initialLimit int) *Semaphore {
 	if initialLimit < 0 {
 		initialLimit = 0
@@ -34,9 +34,9 @@ func New(initialLimit int) *Semaphore {
 	}
 }
 
-// Acquire attempts to acquire a slot from the semaphore, blocking if the limit is exceeded.
-// It executes in O(1) time if uncontended, allocating a channel otherwise.
-// It is safe for concurrent use.
+// Acquire requests a slot from the semaphore, blocking until one is available or the context is canceled.
+//
+// Complexity: O(1) time if uncontended. Allocates memory for a channel if blocking is required.
 func (s *Semaphore) Acquire(ctx context.Context) error {
 	if err := ctx.Err(); err != nil {
 		return err
@@ -83,9 +83,9 @@ func (s *Semaphore) Acquire(ctx context.Context) error {
 	}
 }
 
-// Release releases an acquired slot back to the semaphore and wakes up the next waiting goroutine if available.
-// It executes in O(1) time and performs zero allocations.
-// It is safe for concurrent use.
+// Release returns an acquired slot to the semaphore, waking the next blocked goroutine if one exists.
+//
+// Complexity: O(1) time.
 func (s *Semaphore) Release() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -96,10 +96,9 @@ func (s *Semaphore) Release() {
 	}
 }
 
-// Resize dynamically adjusts the maximum allowed limit of the semaphore on the fly.
-// It executes in O(W) time where W is the number of woken waiters.
-// It performs zero allocations.
-// It is safe for concurrent use.
+// Resize updates the maximum allowed limit of the semaphore.
+//
+// Complexity: O(W) time where W is the number of waiting goroutines woken by the increased limit.
 func (s *Semaphore) Resize(newLimit int) {
 	if newLimit < 0 {
 		newLimit = 0

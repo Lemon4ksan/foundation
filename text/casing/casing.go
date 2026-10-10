@@ -26,6 +26,9 @@ const (
 )
 
 // ToSnake converts s into snake_case (e.g. "HTTPServerURL" -> "http_server_url", "userName" -> "user_name").
+//
+// Note: This function currently does not strip consecutive, leading, or trailing delimiters
+// (e.g. ToSnake("  hello  ") results in "hello__" instead of "hello").
 func ToSnake(s string) string {
 	return convertDelimited(s, '_', false)
 }
@@ -120,46 +123,24 @@ func SplitWords(s string) []string {
 }
 
 func convertDelimited(s string, delimiter byte, screaming bool) string {
-	if s == "" {
+	words := SplitWords(s)
+	if len(words) == 0 {
 		return ""
 	}
 
 	var sb strings.Builder
 	sb.Grow(len(s) + 4)
 
-	for i := 0; i < len(s); i++ {
-		c := s[i]
-
-		if c == '_' || c == '-' || c == ' ' || c == '.' || c == '/' {
-			if sb.Len() > 0 {
-				sb.WriteByte(delimiter)
-			}
-
-			continue
+	for i, w := range words {
+		if i > 0 {
+			sb.WriteByte(delimiter)
 		}
-
-		if c >= 'A' && c <= 'Z' {
-			if i > 0 && s[i-1] != '_' && s[i-1] != '-' && s[i-1] != ' ' {
-				prevIsUpper := s[i-1] >= 'A' && s[i-1] <= 'Z'
-				nextIsLower := i+1 < len(s) && s[i+1] >= 'a' && s[i+1] <= 'z'
-
-				if !prevIsUpper || nextIsLower {
-					if sb.Len() > 0 {
-						sb.WriteByte(delimiter)
-					}
-				}
-			}
-
-			if screaming {
-				sb.WriteByte(c)
-			} else {
-				sb.WriteByte(bytesconv.LowercaseByte(c))
-			}
-		} else {
+		for j := 0; j < len(w); j++ {
+			c := w[j]
 			if screaming {
 				sb.WriteByte(uppercaseByte(c))
 			} else {
-				sb.WriteByte(c)
+				sb.WriteByte(bytesconv.LowercaseByte(c))
 			}
 		}
 	}

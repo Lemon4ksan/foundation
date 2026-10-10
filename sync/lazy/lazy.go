@@ -15,10 +15,10 @@ type result[T any] struct {
 	err   error
 }
 
-// Value implements a thread-safe, generic lazy initializer with support for transactional cache resetting and lockless reads.
+// Value implements a thread-safe, generic lazy initializer with support for cache resetting and lockless reads.
 //
-// The zero value is empty and not ready to use.
-// Read-only operations are safe for concurrent use; mutations require external synchronization unless stated otherwise.
+// The zero value for Value is not valid; use [New] to initialize.
+// It is safe for concurrent use.
 type Value[T any] struct {
 	mu   sync.Mutex
 	init func() (T, error)
@@ -27,7 +27,7 @@ type Value[T any] struct {
 
 // New creates a [Value] configured with the given initialization function.
 //
-// It executes in O(1) time and allocates memory. It is safe for concurrent use.
+// It executes in O(1) time.
 func New[T any](init func() (T, error)) *Value[T] {
 	return &Value[T]{init: init}
 }
@@ -42,7 +42,9 @@ func New[T any](init func() (T, error)) *Value[T] {
 // Get is fully optimized for concurrent use: once initialized, multiple readers
 // retrieve the value concurrently via lockless atomic loads with zero lock
 // contention and zero memory allocations.
-// It executes in O(1) time and may allocate memory. It is safe for concurrent use.
+//
+// It executes in O(1) time (excluding the initialization function) and may allocate memory.
+// It is safe for concurrent use.
 func (l *Value[T]) Get() (T, error) {
 	// Fast Path: Check if the value is already cached via lockless atomic load.
 	if r := l.res.Load(); r != nil {
@@ -74,7 +76,8 @@ func (l *Value[T]) Get() (T, error) {
 // The next invocation of [Value.Get] will re-run the initialization function.
 // Reset is safe for concurrent use: concurrent readers will either observe the
 // previous result or wait and re-initialize safely without data races.
-// It executes in O(1) time and does not allocate memory. It is safe for concurrent use.
+//
+// It executes in O(1) time and does not allocate memory.
 func (l *Value[T]) Reset() {
 	l.mu.Lock()
 	defer l.mu.Unlock()

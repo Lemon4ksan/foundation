@@ -82,7 +82,9 @@ func (s Secret[T]) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON deserializes a raw value into the protected container.
 //
 // It executes in O(N) time where N is the length of data and allocates memory.
-// It is safe for concurrent use.
+// Note: Despite being a common operation, this method mutates the underlying pointer receiver
+// directly via json.Unmarshal. It is NOT safe for concurrent use on the same instance;
+// concurrent calls will result in a data race and potential corruption.
 func (s *Secret[T]) UnmarshalJSON(data []byte) error {
 	return json.Unmarshal(data, &s.val)
 }
