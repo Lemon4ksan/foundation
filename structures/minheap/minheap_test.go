@@ -148,3 +148,44 @@ func BenchmarkHeap_Drain(b *testing.B) {
 		}
 	}
 }
+
+func TestHeap_CapacityAndShrinkToFit(t *testing.T) {
+	h := NewWithCapacity[int, string](100)
+	require.Equal(t, 0, h.Len())
+	require.Equal(t, 100, h.Cap())
+
+	for i := 0; i < 50; i++ {
+		h.Push(i, "val")
+	}
+	require.Equal(t, 50, h.Len())
+	require.Equal(t, 100, h.Cap())
+
+	h.ShrinkToFit()
+	require.Equal(t, 50, h.Len())
+	require.Equal(t, 50, h.Cap())
+
+	h.Clear()
+	require.Equal(t, 0, h.Len())
+	require.Equal(t, 50, h.Cap())
+
+	h.ShrinkToFit()
+	require.Equal(t, 0, h.Len())
+	require.Equal(t, 0, h.Cap())
+}
+
+func TestHeap_Reserve(t *testing.T) {
+	var h Heap[int, int]
+	h.Reserve(64)
+	require.True(t, h.Cap() >= 64)
+
+	allocs := testing.AllocsPerRun(10, func() {
+		for i := 0; i < 64; i++ {
+			h.Push(i, i)
+		}
+		for i := 0; i < 64; i++ {
+			h.Pop()
+		}
+	})
+	require.Equal(t, float64(0), allocs)
+}
+

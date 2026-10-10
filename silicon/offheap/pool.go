@@ -4,7 +4,10 @@
 
 package offheap
 
-import "sync"
+import (
+	"sync"
+	"sync/atomic"
+)
 
 // ArenaPool is a thread-safe pool of [Arena] instances for concurrent goroutine access.
 //
@@ -15,8 +18,10 @@ import "sync"
 //
 // ArenaPool is safe for concurrent use by multiple goroutines.
 type ArenaPool struct {
-	pool     sync.Pool
-	pageSize int
+	pool         sync.Pool
+	pageSize     int
+	activeArenas  atomic.Int64
+	totalCreated  atomic.Int64
 }
 
 // NewArenaPool creates an [ArenaPool] that provisions arenas of pageSize bytes each.
@@ -33,6 +38,7 @@ func NewArenaPool(pageSize int) *ArenaPool {
 			if err != nil {
 				return nil
 			}
+			p.totalCreated.Add(1)
 
 			return a
 		},
@@ -58,11 +64,14 @@ func (p *ArenaPool) Acquire() *Arena {
 		if err != nil {
 			return nil
 		}
+		p.totalCreated.Add(1)
+		p.activeArenas.Add(1)
 
 		return fresh
 	}
 
 	a.Reset()
+	p.activeArenas.Add(1)
 
 	return a
 }
@@ -75,10 +84,34 @@ func (p *ArenaPool) Release(a *Arena) {
 	}
 
 	a.Reset()
+	p.activeArenas.Add(-1)
 	p.pool.Put(a)
 }
 
 // PageSize returns the configured per-arena page size in bytes.
 func (p *ArenaPool) PageSize() int {
 	return p.pageSize
+}
+
+// ActiveCount returns the number of arenas currently checked out of the pool.
+func (p *ArenaPool) ActiveCount() int {
+	c := p.activeArenas.Load()
+	if c < 0 {
+		return 0
+	}
+	return int(c)
+}
+
+// TotalCreated returns the total number of physical arenas allocated by the pool.
+func (p *ArenaPool) TotalCreated() int {
+	return int(p.totalCreated.Load())
+}
+
+// AllocatedBytes returns the total off-heap bytes currently checked out by active callers.
+func (p *ArenaPool) AllocatedBytes() int64 {
+	c := p.activeArenas.Load()
+	if c < 0 {
+		return 0
+	}
+	return c * int64(p.pageSize)
 }

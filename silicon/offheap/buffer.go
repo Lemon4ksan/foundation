@@ -35,11 +35,12 @@ func freeKernelPageCleanup(s kernelPageCleanupState) {
 }
 
 type Buffer struct {
-	ptr     unsafe.Pointer // Points into OS kernel-managed memory (mmap / VirtualAlloc)
-	readPos int32          // Current read cursor position within [0, len)
-	len     int32          // Number of bytes written
-	cap     int32          // Total allocated capacity in bytes
-	cleanup runtime.Cleanup
+	ptr       unsafe.Pointer // Points into OS kernel-managed memory (mmap / VirtualAlloc)
+	readPos   int32          // Current read cursor position within [0, len)
+	len       int32          // Number of bytes written
+	cap       int32          // Total allocated capacity in bytes
+	fromArena bool           // True if buffer memory belongs to an Arena
+	cleanup   runtime.Cleanup
 }
 
 // NewBuffer allocates a new Buffer of designated capacity directly from OS kernel.
@@ -186,6 +187,26 @@ func (b *Buffer) Cap() int {
 	return int(b.cap)
 }
 
+// Available returns the number of unwritten bytes remaining before reaching buffer capacity.
+//
+//go:nosplit
+//go:inline
+func (b *Buffer) Available() int {
+	if b == nil {
+		return 0
+	}
+
+	return int(b.cap - b.len)
+}
+
+// FromArena reports whether this buffer was allocated from an [Arena].
+//
+//go:nosplit
+//go:inline
+func (b *Buffer) FromArena() bool {
+	return b != nil && b.fromArena
+}
+
 // Reset resets both the write length and the read cursor to zero in O(1) time, without zeroing memory.
 // The buffer can be reused immediately after Reset.
 //
@@ -210,11 +231,15 @@ func (b *Buffer) RewindRead() {
 }
 
 // Release returns the raw physical memory page back to the OS kernel.
+// For buffers allocated from an Arena, Release detaches the buffer without freeing
+// the enclosing arena's memory slab.
 // After Release, all slice views obtained via [Buffer.Bytes] are invalid.
 func (b *Buffer) Release() {
 	if b != nil && b.ptr != nil {
 		b.cleanup.Stop()
-		_ = freeKernelPage(b.ptr, int(b.cap))
+		if !b.fromArena {
+			_ = freeKernelPage(b.ptr, int(b.cap))
+		}
 		b.ptr = nil
 		b.len = 0
 		b.readPos = 0

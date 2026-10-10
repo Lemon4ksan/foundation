@@ -123,10 +123,44 @@ func (a *Arena) AllocBuffer(capacity int) *Buffer {
 	}
 
 	return &Buffer{
-		ptr: ptr,
-		len: 0,
-		cap: int32(capacity),
+		ptr:       ptr,
+		len:       0,
+		cap:       int32(capacity),
+		fromArena: true,
 	}
+}
+
+// Cap returns the total capacity of the arena in bytes.
+//
+//go:nosplit
+//go:inline
+func (a *Arena) Cap() int {
+	if a == nil {
+		return 0
+	}
+	return int(a.size)
+}
+
+// Len returns the number of bytes allocated so far in the arena.
+//
+//go:nosplit
+//go:inline
+func (a *Arena) Len() int {
+	if a == nil {
+		return 0
+	}
+	return int(a.offset)
+}
+
+// Available returns the number of unallocated bytes remaining in the arena.
+//
+//go:nosplit
+//go:inline
+func (a *Arena) Available() int {
+	if a == nil {
+		return 0
+	}
+	return int(a.size - a.offset)
 }
 
 // Reset clears arena offset in O(1) time without clearing page bytes.

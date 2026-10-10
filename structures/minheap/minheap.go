@@ -17,8 +17,49 @@ type entry[K, V any] struct {
 // A Heap is a minimum heap ordered by key.
 type Heap[K cmp.Ordered, V any] []entry[K, V]
 
+// NewWithCapacity returns an empty heap with pre-allocated capacity.
+func NewWithCapacity[K cmp.Ordered, V any](capacity int) Heap[K, V] {
+	if capacity <= 0 {
+		return nil
+	}
+	return make(Heap[K, V], 0, capacity)
+}
+
 // Len returns the number of elements currently in the heap.
 func (h Heap[K, V]) Len() int { return len(h) }
+
+// Cap returns the capacity of the underlying heap slice.
+func (h Heap[K, V]) Cap() int { return cap(h) }
+
+// ShrinkToFit releases excess capacity from the underlying buffer to match Len.
+func (h *Heap[K, V]) ShrinkToFit() {
+	if len(*h) == 0 {
+		*h = nil
+		return
+	}
+	if len(*h) < cap(*h) {
+		shrink := make(Heap[K, V], len(*h))
+		copy(shrink, *h)
+		*h = shrink
+	}
+}
+
+// Reserve ensures capacity for at least additional elements to avoid reallocations.
+func (h *Heap[K, V]) Reserve(additional int) {
+	if additional <= 0 {
+		return
+	}
+	needed := len(*h) + additional
+	if needed > cap(*h) {
+		newCap := cap(*h) * 2
+		if newCap < needed {
+			newCap = needed
+		}
+		newH := make(Heap[K, V], len(*h), newCap)
+		copy(newH, *h)
+		*h = newH
+	}
+}
 
 // Empty reports whether the heap contains zero elements.
 func (h Heap[K, V]) Empty() bool { return len(h) == 0 }
