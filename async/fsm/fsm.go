@@ -48,8 +48,6 @@ type Machine[State, Event comparable] struct {
 }
 
 // New instantiates and returns a new [Machine] with the given initial state.
-//
-// Executes in O(1) time and allocates memory for the internal maps tracking rules and hooks.
 func New[State, Event comparable](initial State) *Machine[State, Event] {
 	return &Machine[State, Event]{
 		current:     initial,
@@ -60,8 +58,6 @@ func New[State, Event comparable](initial State) *Machine[State, Event] {
 }
 
 // AddRules registers one or more valid [TransitionRule] objects in the state machine.
-//
-// Executes in O(N) time where N is the number of rules, and allocates memory for new rules.
 func (f *Machine[State, Event]) AddRules(rules ...TransitionRule[State, Event]) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -76,8 +72,6 @@ func (f *Machine[State, Event]) AddRules(rules ...TransitionRule[State, Event]) 
 }
 
 // CurrentState returns the current state of the machine.
-//
-// Executes in O(1) time and is zero-allocation.
 func (f *Machine[State, Event]) CurrentState() State {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
@@ -86,8 +80,6 @@ func (f *Machine[State, Event]) CurrentState() State {
 }
 
 // ForceSet bypasses the transition rules and sets the current state directly.
-//
-// Executes in O(1) time and is zero-allocation.
 func (f *Machine[State, Event]) ForceSet(state State) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -96,8 +88,6 @@ func (f *Machine[State, Event]) ForceSet(state State) {
 }
 
 // OnBefore registers a callback that is invoked before a transition for the given event is applied.
-//
-// Executes in amortized O(1) time and allocates memory for appending the hook.
 func (f *Machine[State, Event]) OnBefore(event Event, cb TransitionCallback[State, Event]) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -106,8 +96,6 @@ func (f *Machine[State, Event]) OnBefore(event Event, cb TransitionCallback[Stat
 }
 
 // OnAfter registers a callback that is invoked after a transition for the given event has been applied.
-//
-// Executes in amortized O(1) time and allocates memory for appending the hook.
 func (f *Machine[State, Event]) OnAfter(event Event, cb TransitionCallback[State, Event]) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -116,8 +104,6 @@ func (f *Machine[State, Event]) OnAfter(event Event, cb TransitionCallback[State
 }
 
 // Validate checks whether a transition from the current state on the given event is defined in the registered rules.
-//
-// Executes in O(1) time and is zero-allocation.
 func (f *Machine[State, Event]) Validate(event Event) (State, bool) {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
@@ -134,8 +120,6 @@ func (f *Machine[State, Event]) Validate(event Event) (State, bool) {
 }
 
 // Transition atomically moves the machine from its current state to the next state determined by the given event.
-//
-// Executes in O(N) time where N is the number of registered hooks for the event, and allocates memory to snapshot the hooks.
 func (f *Machine[State, Event]) Transition(ctx context.Context, event Event) error {
 	f.transMu.Lock()
 	defer f.transMu.Unlock()
@@ -191,8 +175,6 @@ func (f *Machine[State, Event]) Transition(ctx context.Context, event Event) err
 }
 
 // ToDOT exports the state machine's transition graph as a Graphviz DOT representation.
-//
-// Executes in O(R) time where R is the total number of transition rules, and allocates memory for building the output string.
 func (f *Machine[State, Event]) ToDOT() string {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
@@ -217,8 +199,6 @@ func (f *Machine[State, Event]) ToDOT() string {
 }
 
 // String returns a human-readable representation of the machine for debugging.
-//
-// Executes in O(R) time where R is the number of registered states, and allocates memory for the returned string.
 func (f *Machine[State, Event]) String() string {
 	f.mu.RLock()
 	defer f.mu.RUnlock()

@@ -224,7 +224,6 @@ func (b *Bus) SubscribeBuffer(bufferSize int, evs ...Event) *Subscription {
 //
 // E can be a value or pointer type that satisfies [Event].
 // An optional custom bufferSize can be provided (default 128).
-// Complexity: amortized O(1) time; allocates memory.
 func (b *Bus) SubscribeTyped[E any](bufSize ...int) *TypedSubscription[E] {
 	size := 128
 	if len(bufSize) > 0 && bufSize[0] > 0 {
@@ -309,7 +308,6 @@ func (b *Bus) SubscribeTyped[E any](bufSize ...int) *TypedSubscription[E] {
 // SubscribeAll registers a subscription to receive every event published on the [Bus].
 //
 // If the [Bus] is closed, it returns a subscription with an already closed channel.
-// Complexity: amortized O(1) time; allocates memory.
 func (b *Bus) SubscribeAll() *Subscription {
 	b.mu.Lock()
 	defer b.mu.Unlock()

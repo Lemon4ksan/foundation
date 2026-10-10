@@ -46,11 +46,6 @@ func FilterLazy[T any](seq iter.Seq[T], fn func(T) bool) iter.Seq[T] {
 //
 // It starts with the initial value and sequentially executes the accumulator
 // function fn on each element.
-//
-// # Complexity
-//
-//   - Time: O(N)
-//   - Space: O(1) auxiliary space.
 func Reduce[F, T any](seq iter.Seq[F], initial T, fn func(T, F) T) T {
 	if seq == nil || fn == nil {
 		return initial

@@ -22,8 +22,6 @@ type Limit float64
 const Inf = Limit(math.MaxFloat64)
 
 // Every converts a minimum time interval between events to a Limit.
-//
-// Executes in O(1) time and is zero-allocation.
 func Every(interval time.Duration) Limit {
 	if interval <= 0 {
 		return Inf
@@ -48,8 +46,6 @@ type Limiter struct {
 }
 
 // Limit returns the maximum overall event rate.
-//
-// Executes in O(1) time and is zero-allocation.
 func (l *Limiter) Limit() Limit {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -57,8 +53,6 @@ func (l *Limiter) Limit() Limit {
 }
 
 // Burst returns the maximum burst size.
-//
-// Executes in O(1) time and is zero-allocation.
 func (l *Limiter) Burst() int {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -66,8 +60,6 @@ func (l *Limiter) Burst() int {
 }
 
 // TokensAt returns the number of tokens available at time t.
-//
-// Executes in O(1) time and is zero-allocation.
 func (l *Limiter) TokensAt(t time.Time) float64 {
 	l.mu.Lock()
 	tokens := l.advance(t) // does not mutate l
@@ -76,15 +68,11 @@ func (l *Limiter) TokensAt(t time.Time) float64 {
 }
 
 // Tokens returns the number of tokens available now.
-//
-// Executes in O(1) time and is zero-allocation.
 func (l *Limiter) Tokens() float64 {
 	return l.TokensAt(time.Now())
 }
 
 // NewLimiter creates a new [Limiter] that allows events up to rate r and permits bursts of at most b tokens.
-//
-// Executes in O(1) time and allocates memory.
 func NewLimiter(r Limit, b int) *Limiter {
 	return &Limiter{
 		limit:  r,
@@ -94,15 +82,11 @@ func NewLimiter(r Limit, b int) *Limiter {
 }
 
 // Allow reports whether an event may happen now.
-//
-// Executes in O(1) time and is zero-allocation.
 func (l *Limiter) Allow() bool {
 	return l.AllowN(time.Now(), 1)
 }
 
 // AllowN reports whether n events may happen at time t.
-//
-// Executes in O(1) time and is zero-allocation.
 func (l *Limiter) AllowN(t time.Time, n int) bool {
 	return l.reserveN(t, n, 0).ok
 }
@@ -120,15 +104,11 @@ type Reservation struct {
 }
 
 // OK reports whether the limiter can provide the requested number of tokens within the maximum wait time.
-//
-// Executes in O(1) time and is zero-allocation.
 func (r *Reservation) OK() bool {
 	return r.ok
 }
 
 // Delay returns the wait duration required before the reservation can be acted upon.
-//
-// Executes in O(1) time and is zero-allocation.
 func (r *Reservation) Delay() time.Duration {
 	return r.DelayFrom(time.Now())
 }
@@ -137,8 +117,6 @@ func (r *Reservation) Delay() time.Duration {
 const InfDuration = time.Duration(math.MaxInt64)
 
 // DelayFrom returns the duration for which the reservation holder must wait before taking the reserved action.
-//
-// Executes in O(1) time and is zero-allocation.
 func (r *Reservation) DelayFrom(t time.Time) time.Duration {
 	if !r.ok {
 		return InfDuration
@@ -151,15 +129,11 @@ func (r *Reservation) DelayFrom(t time.Time) time.Duration {
 }
 
 // Cancel indicates that the reservation holder will not perform the reserved action.
-//
-// Executes in O(1) time and is zero-allocation.
 func (r *Reservation) Cancel() {
 	r.CancelAt(time.Now())
 }
 
 // CancelAt indicates that the reservation holder will not perform the reserved action at time t.
-//
-// Executes in O(1) time and is zero-allocation.
 func (r *Reservation) CancelAt(t time.Time) {
 	if !r.ok {
 		return
@@ -198,30 +172,22 @@ func (r *Reservation) CancelAt(t time.Time) {
 }
 
 // Reserve returns a [Reservation] indicating how long to wait before an event can happen.
-//
-// Executes in O(1) time and allocates memory for the Reservation.
 func (l *Limiter) Reserve() *Reservation {
 	return l.ReserveN(time.Now(), 1)
 }
 
 // ReserveN returns a [Reservation] indicating how long to wait before n events can happen.
-//
-// Executes in O(1) time and allocates memory for the Reservation.
 func (l *Limiter) ReserveN(t time.Time, n int) *Reservation {
 	r := l.reserveN(t, n, InfDuration)
 	return &r
 }
 
 // Wait blocks until the limiter permits an event to happen.
-//
-// Executes in amortized O(1) time excluding wait duration and is zero-allocation.
 func (l *Limiter) Wait(ctx context.Context) (err error) {
 	return l.WaitN(ctx, 1)
 }
 
 // WaitN blocks until the limiter permits n events to happen.
-//
-// Executes in amortized O(1) time excluding wait duration and is zero-allocation.
 func (l *Limiter) WaitN(ctx context.Context, n int) (err error) {
 	// The test code calls lim.wait with a fake timer generator.
 	// This is the real timer generator.
@@ -285,15 +251,11 @@ func (l *Limiter) wait(
 }
 
 // SetLimit sets a new rate limit for the limiter.
-//
-// Executes in O(1) time and is zero-allocation.
 func (l *Limiter) SetLimit(newLimit Limit) {
 	l.SetLimitAt(time.Now(), newLimit)
 }
 
 // SetLimitAt sets a new rate limit for the limiter at a specific time.
-//
-// Executes in O(1) time and is zero-allocation.
 func (l *Limiter) SetLimitAt(t time.Time, newLimit Limit) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -306,15 +268,11 @@ func (l *Limiter) SetLimitAt(t time.Time, newLimit Limit) {
 }
 
 // SetBurst sets a new burst size for the limiter.
-//
-// Executes in O(1) time and is zero-allocation.
 func (l *Limiter) SetBurst(newBurst int) {
 	l.SetBurstAt(time.Now(), newBurst)
 }
 
 // SetBurstAt sets a new burst size for the limiter at a specific time.
-//
-// Executes in O(1) time and is zero-allocation.
 func (l *Limiter) SetBurstAt(t time.Time, newBurst int) {
 	l.mu.Lock()
 	defer l.mu.Unlock()

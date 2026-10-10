@@ -35,7 +35,6 @@ type Sometimes struct {
 // Specifying multiple filters produces the union of these execution streams.
 // If Do is called multiple times simultaneously, the calls will block and run serially.
 // Because a call to Do may block until f returns, if f causes Do to be called, it will deadlock.
-// Executes in amortized O(1) time excluding the execution of f and is zero-allocation.
 func (s *Sometimes) Do(f func()) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

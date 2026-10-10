@@ -19,7 +19,6 @@ type Set struct {
 //
 // Each element initially belongs to its own singleton set with size 1.
 // Panics if n < 0.
-// Executes in O(N) time and allocates memory for the tracking structures.
 func New(n int) *Set {
 	if n < 0 {
 		panic("disjointset: negative element count")
@@ -43,8 +42,6 @@ func New(n int) *Set {
 }
 
 // Len returns the total number of elements tracked by the disjoint set.
-//
-// Executes in O(1) time and is zero-allocation.
 func (d *Set) Len() int {
 	if d == nil {
 		return 0
@@ -53,8 +50,6 @@ func (d *Set) Len() int {
 }
 
 // Count returns the number of disjoint sets currently tracked.
-//
-// Executes in O(1) time and is zero-allocation.
 func (d *Set) Count() int {
 	if d == nil {
 		return 0
@@ -66,7 +61,6 @@ func (d *Set) Count() int {
 //
 // It executes full two-pass iterative path compression.
 // Panics if x is out of bounds.
-// Executes in amortized O(alpha(N)) time, where alpha is the inverse Ackermann function, and is zero-allocation.
 func (d *Set) Find(x int) int {
 	if d == nil || x < 0 || x >= len(d.parent) {
 		panic("disjointset: index out of range")
@@ -98,7 +92,6 @@ func (d *Set) Find(x int) int {
 //
 // Returns true if x and y belonged to different sets and were successfully merged, or false if they were already in the same set.
 // Panics if either x or y is out of bounds.
-// Executes in amortized O(alpha(N)) time and is zero-allocation.
 func (d *Set) Union(x, y int) bool {
 	rootX := d.Find(x)
 	rootY := d.Find(y)
@@ -121,7 +114,6 @@ func (d *Set) Union(x, y int) bool {
 // Connected reports whether elements x and y belong to the same disjoint set.
 //
 // Panics if either x or y is out of bounds.
-// Executes in amortized O(alpha(N)) time and is zero-allocation.
 func (d *Set) Connected(x, y int) bool {
 	return d.Find(x) == d.Find(y)
 }
@@ -129,15 +121,12 @@ func (d *Set) Connected(x, y int) bool {
 // Size returns the number of elements in the disjoint set containing element x.
 //
 // Panics if x is out of bounds.
-// Executes in amortized O(alpha(N)) time and is zero-allocation.
 func (d *Set) Size(x int) int {
 	root := d.Find(x)
 	return d.size[root]
 }
 
 // Reset restores all elements into individual singleton sets.
-//
-// Executes in O(N) time and is zero-allocation.
 func (d *Set) Reset() {
 	if d == nil {
 		return

@@ -35,15 +35,11 @@ type Context struct {
 }
 
 // Background returns a non-nil, empty [Context] wrapping [context.Background].
-//
-// Executes in O(1) time and allocates memory for the new instance.
 func Background() *Context {
 	return &Context{parent: context.Background()}
 }
 
 // TODO returns a non-nil, empty [Context] wrapping [context.TODO].
-//
-// Executes in O(1) time and allocates memory for the new instance.
 func TODO() *Context {
 	return &Context{parent: context.TODO()}
 }
@@ -51,7 +47,6 @@ func TODO() *Context {
 // Wrap converts any standard [context.Context] into a [Context].
 //
 // If parent is already a [*Context], it is returned as is.
-// Executes in O(1) time and allocates memory if wrapping is required.
 func Wrap(parent context.Context) *Context {
 	if parent == nil {
 		parent = context.Background()
@@ -65,8 +60,6 @@ func Wrap(parent context.Context) *Context {
 }
 
 // Deadline returns the time when work done on behalf of this context should be canceled.
-//
-// Executes in O(1) time and is zero-allocation.
 func (c *Context) Deadline() (deadline time.Time, ok bool) {
 	if c == nil || c.parent == nil {
 		return time.Time{}, false
@@ -76,8 +69,6 @@ func (c *Context) Deadline() (deadline time.Time, ok bool) {
 }
 
 // Done returns a channel that's closed when work done on behalf of this context should be canceled.
-//
-// Executes in O(1) time and is zero-allocation.
 func (c *Context) Done() <-chan struct{} {
 	if c == nil || c.parent == nil {
 		return nil
@@ -87,8 +78,6 @@ func (c *Context) Done() <-chan struct{} {
 }
 
 // Err returns a non-nil error value after [Context.Done] is closed.
-//
-// Executes in O(1) time and is zero-allocation.
 func (c *Context) Err() error {
 	if c == nil || c.parent == nil {
 		return nil
@@ -98,8 +87,6 @@ func (c *Context) Err() error {
 }
 
 // Value returns the value associated with this context for key, or nil if no value is associated.
-//
-// Executes in O(N) time where N is the number of keys, and is zero-allocation.
 func (c *Context) Value(key any) any {
 	if c == nil || key == nil {
 		return nil
@@ -127,8 +114,6 @@ func (c *Context) Value(key any) any {
 }
 
 // Entries returns an iterator over all key-value entries stored in this [Context], yielding the most recently added entries first.
-//
-// Executes in O(N) time where N is the number of keys, and is zero-allocation.
 func (c *Context) Entries() iter.Seq2[any, any] {
 	return func(yield func(any, any) bool) {
 		if c == nil {
@@ -151,7 +136,6 @@ func (c *Context) Entries() iter.Seq2[any, any] {
 // Set attaches or updates key and val in-place within the current [Context].
 //
 // This provides true zero-allocation context enrichment in single-goroutine request pipelines.
-// Executes in O(N) time where N is the number of keys, and allocates memory if capacity exceeds the inline limit.
 func (c *Context) Set(key, val any) *Context {
 	if c == nil || key == nil {
 		return c
@@ -182,8 +166,6 @@ func (c *Context) Set(key, val any) *Context {
 }
 
 // WithValue returns a copy of parent carrying key and val in a flat structure.
-//
-// Executes in O(N) time where N is the number of keys, and allocates memory for the new context copy.
 func WithValue(parent context.Context, key, val any) *Context {
 	if parent == nil {
 		parent = context.Background()
@@ -215,8 +197,6 @@ func WithValue(parent context.Context, key, val any) *Context {
 }
 
 // WithCancel returns a copy of parent with a new Done channel.
-//
-// Executes in O(1) time and allocates memory for the new context.
 func WithCancel(parent context.Context) (*Context, context.CancelFunc) {
 	if parent == nil {
 		parent = context.Background()
@@ -227,8 +207,6 @@ func WithCancel(parent context.Context) (*Context, context.CancelFunc) {
 }
 
 // WithTimeout returns a copy of parent with a deadline set to timeout from now.
-//
-// Executes in O(1) time and allocates memory for the new context.
 func WithTimeout(parent context.Context, timeout time.Duration) (*Context, context.CancelFunc) {
 	if parent == nil {
 		parent = context.Background()
@@ -239,8 +217,6 @@ func WithTimeout(parent context.Context, timeout time.Duration) (*Context, conte
 }
 
 // WithDeadline returns a copy of parent with the deadline adjusted to be no later than d.
-//
-// Executes in O(1) time and allocates memory for the new context.
 func WithDeadline(parent context.Context, d time.Time) (*Context, context.CancelFunc) {
 	if parent == nil {
 		parent = context.Background()
@@ -253,7 +229,6 @@ func WithDeadline(parent context.Context, d time.Time) (*Context, context.Cancel
 // Value extracts a typed value from ctx using the standard Go comma-ok idiom.
 //
 // If the key is not found or cannot be safely cast to T, it returns the zero value of T and false.
-// Executes in O(N) time where N is the number of keys, and is zero-allocation.
 func Value[T any](ctx context.Context, key any) (T, bool) {
 	if ctx == nil || key == nil {
 		var zero T
@@ -276,8 +251,6 @@ func Value[T any](ctx context.Context, key any) (T, bool) {
 }
 
 // ValueOr extracts a typed value from ctx, or returns defaultVal if missing or of mismatching type.
-//
-// Executes in O(N) time where N is the number of keys, and is zero-allocation.
 func ValueOr[T any](ctx context.Context, key any, defaultVal T) T {
 	val, ok := Value[T](ctx, key)
 	if !ok {
@@ -296,8 +269,6 @@ type Pool struct {
 }
 
 // NewPool constructs a reusable [Pool] of [Context] instances.
-//
-// Executes in O(1) time and allocates memory for the pool structure.
 func NewPool() *Pool {
 	return &Pool{
 		pool: sync.Pool{
@@ -309,8 +280,6 @@ func NewPool() *Pool {
 }
 
 // Acquire gets a clean [Context] from the pool with parent set.
-//
-// Executes in amortized O(1) time and allocates memory only when the pool is empty.
 func (p *Pool) Acquire(parent context.Context) *Context {
 	if parent == nil {
 		parent = context.Background()
@@ -326,8 +295,6 @@ func (p *Pool) Acquire(parent context.Context) *Context {
 }
 
 // Release resets and returns fc back to the pool.
-//
-// Executes in O(1) time and is zero-allocation.
 func (p *Pool) Release(fc *Context) {
 	if fc == nil {
 		return

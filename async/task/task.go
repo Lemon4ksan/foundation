@@ -127,8 +127,6 @@ type Tracker[K comparable, T any] struct {
 }
 
 // NewTracker creates a new [Tracker] instance using the default in-memory storage.
-//
-// Executes in O(1) time and allocates memory.
 func NewTracker[K comparable, T any](capacity int) *Tracker[K, T] {
 	m := &Tracker[K, T]{
 		capacity: capacity,
@@ -142,8 +140,6 @@ func NewTracker[K comparable, T any](capacity int) *Tracker[K, T] {
 }
 
 // NewTrackerWithStore creates a new [Tracker] instance using a custom [Store] backend.
-//
-// Executes in O(1) time and allocates memory.
 func NewTrackerWithStore[K comparable, T any](capacity int, store Store[K, T]) *Tracker[K, T] {
 	m := &Tracker[K, T]{
 		capacity: capacity,
@@ -157,8 +153,6 @@ func NewTrackerWithStore[K comparable, T any](capacity int, store Store[K, T]) *
 }
 
 // SetStore updates the backend storage used by the tracker.
-//
-// Executes in O(1) time and is zero-allocation.
 func (m *Tracker[K, T]) SetStore(store Store[K, T]) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -169,8 +163,6 @@ func (m *Tracker[K, T]) SetStore(store Store[K, T]) {
 }
 
 // SetCallbackStrategy updates the default callback execution strategy.
-//
-// Executes in O(1) time and is zero-allocation.
 func (m *Tracker[K, T]) SetCallbackStrategy(strategy CallbackStrategy) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -181,8 +173,6 @@ func (m *Tracker[K, T]) SetCallbackStrategy(strategy CallbackStrategy) {
 }
 
 // WithTimeout sets a maximum duration the job is allowed to remain pending.
-//
-// Executes in O(1) time and allocates memory for the closure.
 func WithTimeout[T any](timeout time.Duration) Option[T] {
 	return func(c *config[T]) {
 		c.timeout = timeout
@@ -190,8 +180,6 @@ func WithTimeout[T any](timeout time.Duration) Option[T] {
 }
 
 // WithContext associates a [context.Context] with the job.
-//
-// Executes in O(1) time and allocates memory for the closure.
 func WithContext[T any](ctx context.Context) Option[T] {
 	return func(c *config[T]) {
 		c.ctx = ctx
@@ -199,8 +187,6 @@ func WithContext[T any](ctx context.Context) Option[T] {
 }
 
 // WithKeepAlive indicates that the job should persist in the storage after its first resolution.
-//
-// Executes in O(1) time and allocates memory for the closure.
 func WithKeepAlive[T any](keepAlive bool) Option[T] {
 	return func(c *config[T]) {
 		c.keepAlive = keepAlive
@@ -208,8 +194,6 @@ func WithKeepAlive[T any](keepAlive bool) Option[T] {
 }
 
 // WithWait enables synchronous waiting for this job using the [Tracker.WaitFor] method.
-//
-// Executes in O(1) time and allocates memory for the closure.
 func WithWait[T any]() Option[T] {
 	return func(c *config[T]) {
 		c.wait = true
@@ -217,8 +201,6 @@ func WithWait[T any]() Option[T] {
 }
 
 // WithCallbackStrategy sets a specific callback execution strategy for this job.
-//
-// Executes in O(1) time and allocates memory for the closure.
 func WithCallbackStrategy[T any](strategy CallbackStrategy) Option[T] {
 	return func(c *config[T]) {
 		c.strategy = strategy
@@ -226,8 +208,6 @@ func WithCallbackStrategy[T any](strategy CallbackStrategy) Option[T] {
 }
 
 // NextID generates a unique, monotonically increasing ID for a new job.
-//
-// Executes in O(1) time and is zero-allocation.
 func (m *Tracker[K, T]) NextID() K {
 	val := m.counter.Add(1)
 
@@ -253,8 +233,6 @@ func (m *Tracker[K, T]) NextID() K {
 }
 
 // Add registers a new job for tracking.
-//
-// Executes in O(1) time when using the default in-memory store and allocates memory.
 func (m *Tracker[K, T]) Add(id K, cb Callback[T], opts ...Option[T]) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -333,8 +311,6 @@ func (m *Tracker[K, T]) Add(id K, cb Callback[T], opts ...Option[T]) error {
 }
 
 // Resolve marks a job as complete by providing a response or an error using the given context.
-//
-// Executes in O(1) time when using the default in-memory store and is zero-allocation.
 func (m *Tracker[K, T]) Resolve(ctx context.Context, id K, response T, err error) bool {
 	m.mu.Lock()
 	if m.closed {
@@ -395,8 +371,6 @@ func (m *Tracker[K, T]) Resolve(ctx context.Context, id K, response T, err error
 }
 
 // Remove removes the specific job without resolving it or invoking its callback using the given context.
-//
-// Executes in O(1) time when using the default in-memory store and is zero-allocation.
 func (m *Tracker[K, T]) Remove(ctx context.Context, id K) bool {
 	m.mu.Lock()
 	if m.closed {
@@ -436,8 +410,6 @@ func (m *Tracker[K, T]) Remove(ctx context.Context, id K) bool {
 }
 
 // WaitFor blocks the current goroutine until the specific job is resolved, the provided ctx is canceled, or the tracker is closed.
-//
-// Executes in O(1) time to block and is zero-allocation.
 func (m *Tracker[K, T]) WaitFor(ctx context.Context, id K) (T, error) {
 	m.mu.Lock()
 
@@ -483,8 +455,6 @@ func (m *Tracker[K, T]) WaitFor(ctx context.Context, id K) (T, error) {
 }
 
 // CancelAll cancels all the currently pending jobs using the given context.
-//
-// Executes in O(N) time where N is the number of pending jobs, and is zero-allocation.
 func (m *Tracker[K, T]) CancelAll(ctx context.Context, err error) {
 	m.mu.Lock()
 
@@ -503,8 +473,6 @@ func (m *Tracker[K, T]) CancelAll(ctx context.Context, err error) {
 }
 
 // Close shuts down the tracker, marks it as closed, and cancels all currently pending jobs with [ErrClosed].
-//
-// Executes in O(N) time where N is the number of pending jobs, and is zero-allocation.
 func (m *Tracker[K, T]) Close() error {
 	m.mu.Lock()
 	if m.closed {
@@ -531,8 +499,6 @@ func (m *Tracker[K, T]) Close() error {
 }
 
 // Count returns the number of currently active jobs being tracked.
-//
-// Executes in O(1) time and is zero-allocation.
 func (m *Tracker[K, T]) Count() int {
 	m.mu.Lock()
 	defer m.mu.Unlock()
