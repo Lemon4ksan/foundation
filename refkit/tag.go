@@ -259,15 +259,19 @@ func parseTagUnicode(tagStr string) Tag {
 }
 
 // Has reports whether the specified directive flag is present in the tag options list.
+//
+//go:inline
 func (t Tag) Has(option string) bool {
 	return slices.Contains(t.Options, option)
 }
 
 // Value extracts the value of a key-value directive flag (e.g. `default=10` -> "10", `min=5` -> "5").
+//
+//go:inline
 func (t Tag) Value(key string) string {
 	for _, opt := range t.Options {
-		if k, v, ok := strings.Cut(opt, "="); ok && k == key {
-			return v
+		if len(opt) > len(key) && opt[len(key)] == '=' && opt[:len(key)] == key {
+			return opt[len(key)+1:]
 		}
 	}
 	return ""
@@ -322,11 +326,15 @@ func (t Tag) SplitOption(key, delim string) iter.Seq[string] {
 }
 
 // IsEmpty reports whether the tag contains no name or options.
+//
+//go:inline
 func (t Tag) IsEmpty() bool {
 	return t.Name == "" && len(t.Options) == 0
 }
 
 // IsIgnored reports whether the tag explicitly ignores the field via `"-"`.
+//
+//go:inline
 func (t Tag) IsIgnored() bool {
 	return t.Name == "-"
 }

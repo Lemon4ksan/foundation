@@ -13,6 +13,8 @@ import (
 // Unlike the standard library [reflect.Type.Implements], this helper does not panic
 // if T is a non-interface type or if t is nil; instead it safely returns false.
 // It executes with 0 heap allocations.
+//
+//go:inline
 func Implements[T any](t reflect.Type) bool {
 	if t == nil {
 		return false

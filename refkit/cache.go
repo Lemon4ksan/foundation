@@ -11,7 +11,10 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 )
+
+var errNilType = errors.New("refkit: nil type")
 
 // OffsetInvalid is assigned to [FieldSchema.Offset] when a field is accessed via
 // an embedded pointer and cannot be addressed via a single contiguous offset from the root struct.
@@ -34,15 +37,16 @@ type StructSchema struct {
 
 // SchemaCache provides a thread-safe cache for pre-computed struct layouts and parsed tags.
 type SchemaCache struct {
-	mu      sync.RWMutex
-	schemas map[reflect.Type]*StructSchema
+	mu      sync.Mutex
+	schemas atomic.Pointer[map[reflect.Type]*StructSchema]
 }
 
 // NewSchemaCache constructs an empty, concurrent-safe [SchemaCache].
 func NewSchemaCache() *SchemaCache {
-	return &SchemaCache{
-		schemas: make(map[reflect.Type]*StructSchema),
-	}
+	c := &SchemaCache{}
+	m := make(map[reflect.Type]*StructSchema)
+	c.schemas.Store(&m)
+	return c
 }
 
 // Get returns the cached [StructSchema] for struct type t.
@@ -55,7 +59,7 @@ func NewSchemaCache() *SchemaCache {
 // resolves to a non-struct type, Get returns an error.
 func (c *SchemaCache) Get(t reflect.Type) (*StructSchema, error) {
 	if t == nil {
-		return nil, errors.New("refkit: nil type")
+		return nil, errNilType
 	}
 
 	target := DerefType(t)
@@ -63,19 +67,22 @@ func (c *SchemaCache) Get(t reflect.Type) (*StructSchema, error) {
 		return nil, fmt.Errorf("refkit: %v is not a struct", t)
 	}
 
-	c.mu.RLock()
-	schema, ok := c.schemas[target]
-	c.mu.RUnlock()
-	if ok {
-		return schema, nil
+	currMap := c.schemas.Load()
+	if currMap != nil {
+		if schema, ok := (*currMap)[target]; ok {
+			return schema, nil
+		}
 	}
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	// Double-check under write lock.
-	if schema, ok = c.schemas[target]; ok {
-		return schema, nil
+	currMap = c.schemas.Load()
+	if currMap != nil {
+		if schema, ok := (*currMap)[target]; ok {
+			return schema, nil
+		}
 	}
 
 	var fields []FieldSchema
@@ -112,12 +119,24 @@ func (c *SchemaCache) Get(t reflect.Type) (*StructSchema, error) {
 		})
 	}
 
-	schema = &StructSchema{
+	schema := &StructSchema{
 		Type:   target,
 		Size:   target.Size(),
 		Fields: fields,
 	}
-	c.schemas[target] = schema
+
+	var oldLen int
+	if currMap != nil {
+		oldLen = len(*currMap)
+	}
+	newMap := make(map[reflect.Type]*StructSchema, oldLen+1)
+	if currMap != nil {
+		for k, v := range *currMap {
+			newMap[k] = v
+		}
+	}
+	newMap[target] = schema
+	c.schemas.Store(&newMap)
 
 	return schema, nil
 }

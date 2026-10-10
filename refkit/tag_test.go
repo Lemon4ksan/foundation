@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/lemon4ksan/foundation/refkit"
+	"github.com/lemon4ksan/foundation/testing/assert"
 )
 
 func TestParseTag_ASCII_FastPath(t *testing.T) {
@@ -148,4 +149,30 @@ func BenchmarkParseTag_Unicode(b *testing.B) {
 			b.Fatalf("unexpected tag name: %s", tag.Name)
 		}
 	}
+}
+
+func BenchmarkTag_Value(b *testing.B) {
+	tag := refkit.ParseTag("endpoint,route=/api/v1/users,sec=30,max=100")
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		v := tag.Value("sec")
+		if v != "30" {
+			b.Fatalf("unexpected value: %s", v)
+		}
+	}
+}
+
+func TestTag_Value_ZeroAlloc(t *testing.T) {
+	tag := refkit.ParseTag("endpoint,route=/api/v1/users,sec=30,max=100")
+
+	var sink string
+	allocs := testing.AllocsPerRun(1000, func() {
+		sink = tag.Value("sec")
+	})
+
+	assert.Equal(t, float64(0), allocs, "Tag.Value must achieve 0 allocs/op")
+	assert.Equal(t, "30", sink)
 }
