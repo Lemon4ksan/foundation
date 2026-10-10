@@ -75,9 +75,50 @@ func Sign(privKey PrivateKey, message []byte) []byte {
 	return ed25519.Sign(privKey, message)
 }
 
+// orderL is the order of the Curve25519 subgroup: 2^252 + 27742317777372353535851937790883648493 in little-endian.
+var orderL = [32]byte{
+	0xed, 0xd3, 0xf5, 0x5c, 0x1a, 0x63, 0x12, 0x58,
+	0xd6, 0x9c, 0xf7, 0xa2, 0xde, 0xf9, 0xde, 0x14,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10,
+}
+
+func isCanonicalS(s []byte) bool {
+	for i := 31; i >= 0; i-- {
+		if s[i] < orderL[i] {
+			return true
+		}
+		if s[i] > orderL[i] {
+			return false
+		}
+	}
+	return false // S == L is invalid; S must be strictly < L
+}
+
+func isCanonicalPublicKey(pub []byte) bool {
+	if len(pub) != PublicKeySize {
+		return false
+	}
+	yHigh := pub[31] & 0x7F
+	if yHigh < 0x7F {
+		return true
+	}
+	// If yHigh == 0x7F, check if y >= 2^255 - 19 (non-canonical encoding)
+	for i := 30; i >= 1; i-- {
+		if pub[i] != 0xFF {
+			return true
+		}
+	}
+	return pub[0] < 0xED
+}
+
 // Verify verifies whether signature is a valid Ed25519 signature of message by pubKey.
+// It strictly enforces non-malleability (S < L per RFC 8032) and canonical public key encodings.
 func Verify(pubKey PublicKey, message, signature []byte) bool {
 	if len(pubKey) != PublicKeySize || len(signature) != SignatureSize {
+		return false
+	}
+	if !isCanonicalPublicKey(pubKey) || !isCanonicalS(signature[32:]) {
 		return false
 	}
 	return ed25519.Verify(pubKey, message, signature)

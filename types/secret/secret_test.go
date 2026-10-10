@@ -5,8 +5,10 @@
 package secret_test
 
 import (
+	"encoding"
 	"encoding/json"
 	"fmt"
+	"sync"
 	"testing"
 
 	"github.com/lemon4ksan/foundation/testing/assert"
@@ -82,6 +84,62 @@ func TestRepro_SecretMemoryWipeVerification(t *testing.T) {
 	})
 	if allocs > 0 {
 		t.Errorf("expected 0 allocations for Wipe, got %v", allocs)
+	}
+}
+
+// Interface compliance assertions
+var (
+	_ encoding.TextMarshaler   = secret.Secret[string]{}
+	_ encoding.TextUnmarshaler = (*secret.Secret[string])(nil)
+	_ encoding.BinaryMarshaler = secret.Secret[string]{}
+	_ encoding.BinaryUnmarshaler = (*secret.Secret[string])(nil)
+)
+
+func TestRepro_Secret_SerializationLeakPrevention(t *testing.T) {
+	sec := secret.New("top-secret-api-key")
+
+	// Text marshaler must mask sensitive value
+	text, err := sec.MarshalText()
+	require.NoError(t, err)
+	assert.Equal(t, "******", string(text))
+
+	// Binary marshaler must mask sensitive value
+	bin, err := sec.MarshalBinary()
+	require.NoError(t, err)
+	assert.Equal(t, "******", string(bin))
+
+	// Text unmarshaler
+	var unmarshaledText secret.Secret[string]
+	err = unmarshaledText.UnmarshalText([]byte("recovered-secret-text"))
+	require.NoError(t, err)
+	assert.Equal(t, "recovered-secret-text", unmarshaledText.Value())
+
+	// Binary unmarshaler
+	var unmarshaledBin secret.Secret[string]
+	err = unmarshaledBin.UnmarshalBinary([]byte("recovered-secret-bin"))
+	require.NoError(t, err)
+	assert.Equal(t, "recovered-secret-bin", unmarshaledBin.Value())
+}
+
+func TestRepro_Secret_ConcurrentExposeAndWipeRace(t *testing.T) {
+	for iter := 0; iter < 100; iter++ {
+		sec := secret.New([]byte("concurrent-wipe-expose-secret"))
+		var wg sync.WaitGroup
+		wg.Add(2)
+
+		go func() {
+			defer wg.Done()
+			for i := 0; i < 50; i++ {
+				_ = sec.Expose()
+			}
+		}()
+
+		go func() {
+			defer wg.Done()
+			sec.Wipe()
+		}()
+
+		wg.Wait()
 	}
 }
 

@@ -6,12 +6,15 @@ package sign_test
 
 import (
 	"bytes"
+	"errors"
 	"strings"
 	"testing"
 
 	"golang.org/x/crypto/ssh"
 
 	"github.com/lemon4ksan/foundation/crypto/sign"
+	"github.com/lemon4ksan/foundation/testing/assert"
+	"github.com/lemon4ksan/foundation/testing/require"
 )
 
 func TestSign_Roundtrip(t *testing.T) {
@@ -262,4 +265,85 @@ func FuzzParsePublicKeyHex(f *testing.F) {
 		}
 	})
 }
+
+func TestRepro_Sign_SignatureMalleabilityAndTruncation(t *testing.T) {
+	pub, priv, err := sign.GenerateKey()
+	require.NoError(t, err)
+
+	msg := []byte("foundation-ed25519-strict-verification")
+	sig := sign.Sign(priv, msg)
+	require.Equal(t, sign.SignatureSize, len(sig))
+
+	// Valid verification
+	assert.True(t, sign.Verify(pub, msg, sig))
+
+	// Truncated signatures must return false immediately
+	assert.False(t, sign.Verify(pub, msg, nil))
+	assert.False(t, sign.Verify(pub, msg, []byte{}))
+	assert.False(t, sign.Verify(pub, msg, sig[:10]))
+	assert.False(t, sign.Verify(pub, msg, sig[:63]))
+	assert.False(t, sign.Verify(pub, msg, append(sig, 0x00))) // 65 bytes
+
+	// Truncated or invalid public keys must return false
+	assert.False(t, sign.Verify(nil, msg, sig))
+	assert.False(t, sign.Verify([]byte{}, msg, sig))
+	assert.False(t, sign.Verify(pub[:31], msg, sig))
+
+	// Malleable signature: S >= L
+	// Order L = 2^252 + 27742317777372353535851937790883648493
+	orderL := []byte{
+		0xed, 0xd3, 0xf5, 0x5c, 0x1a, 0x63, 0x12, 0x58,
+		0xd6, 0x9c, 0xf7, 0xa2, 0xde, 0xf9, 0xde, 0x14,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10,
+	}
+
+	malleableSig := append([]byte(nil), sig...)
+	copy(malleableSig[32:], orderL) // S = L (invalid, must be S < L)
+	assert.False(t, sign.Verify(pub, msg, malleableSig))
+
+	// S > L
+	malleableSig2 := append([]byte(nil), sig...)
+	malleableSig2[63] = 0xFF // high byte exceeds 0x10
+	assert.False(t, sign.Verify(pub, msg, malleableSig2))
+
+	// Non-canonical public key: y >= 2^255 - 19
+	nonCanonicalPub := make([]byte, 32)
+	for i := 1; i <= 30; i++ {
+		nonCanonicalPub[i] = 0xFF
+	}
+	nonCanonicalPub[31] = 0x7F
+	nonCanonicalPub[0] = 0xEE // 2^255 - 18 >= 2^255 - 19
+	assert.False(t, sign.Verify(nonCanonicalPub, msg, sig))
+}
+
+func TestRepro_Sign_SeedDerivationBoundaryConditions(t *testing.T) {
+	// 1. Boundary sizes: 0, 31, 33, 64 bytes
+	testCases := []int{0, 1, 16, 31, 33, 64, 128}
+	for _, size := range testCases {
+		seed := make([]byte, size)
+		_, _, err := sign.NewKeyFromSeed(seed)
+		assert.Error(t, err)
+		assert.True(t, errors.Is(err, sign.ErrInvalidKeyLength))
+	}
+
+	// 2. nil seed
+	_, _, err := sign.NewKeyFromSeed(nil)
+	assert.Error(t, err)
+
+	// 3. Exactly 32 bytes with extreme patterns: all-zeros, all-ones
+	allZero := make([]byte, sign.SeedSize)
+	pub0, priv0, err := sign.NewKeyFromSeed(allZero)
+	require.NoError(t, err)
+	assert.Equal(t, sign.PublicKeySize, len(pub0))
+	assert.Equal(t, sign.PrivateKeySize, len(priv0))
+
+	allOnes := bytes.Repeat([]byte{0xFF}, sign.SeedSize)
+	pubFF, privFF, err := sign.NewKeyFromSeed(allOnes)
+	require.NoError(t, err)
+	assert.Equal(t, sign.PublicKeySize, len(pubFF))
+	assert.Equal(t, sign.PrivateKeySize, len(privFF))
+	assert.False(t, bytes.Equal(pub0, pubFF))
+}
+
 

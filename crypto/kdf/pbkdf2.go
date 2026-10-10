@@ -11,9 +11,12 @@ import (
 	"hash"
 )
 
+// MaxPBKDF2KeyLen defines a safety limit (64 MiB) to prevent memory exhaustion attacks.
+const MaxPBKDF2KeyLen = 64 * 1024 * 1024
+
 // PBKDF2 derives a cryptographic key from a password and salt using PBKDF2 (RFC 2898 / PKCS #5 v2.0).
 func PBKDF2(h func() hash.Hash, password, salt []byte, iter, keyLen int) []byte {
-	if h == nil || keyLen < 0 || iter <= 0 {
+	if h == nil || keyLen < 0 || keyLen > MaxPBKDF2KeyLen || iter <= 0 {
 		return nil
 	}
 	if keyLen == 0 {
