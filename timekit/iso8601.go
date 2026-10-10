@@ -138,62 +138,14 @@ func ParseRFC3339(s string) (time.Time, error) {
 		return time.Time{}, ErrInvalidRFC3339
 	}
 
-	idx := 19
-	var nsec int
-
-	if idx < n && s[idx] == '.' {
-		idx++
-		if idx >= n || s[idx] < '0' || s[idx] > '9' {
-			return time.Time{}, ErrInvalidRFC3339
-		}
-		scale := 100000000 // 1e8
-		for idx < n && s[idx] >= '0' && s[idx] <= '9' {
-			digit := int(s[idx] - '0')
-			if scale > 0 {
-				nsec += digit * scale
-				scale /= 10
-			}
-			idx++
-		}
-	}
-
-	if idx >= n {
+	nsec, idx, err := parseFractionalSeconds(s, 19, n)
+	if err != nil || idx >= n {
 		return time.Time{}, ErrInvalidRFC3339
 	}
 
-	var loc *time.Location
-	switch s[idx] {
-	case 'Z', 'z':
-		if idx+1 != n {
-			return time.Time{}, ErrInvalidRFC3339
-		}
-		loc = time.UTC
-	case '+', '-':
-		sign := s[idx]
-		if idx+6 != n || s[idx+3] != ':' {
-			return time.Time{}, ErrInvalidRFC3339
-		}
-		oh0, oh1 := s[idx+1]-'0', s[idx+2]-'0'
-		om0, om1 := s[idx+4]-'0', s[idx+5]-'0'
-		if oh0 > 9 || oh1 > 9 || om0 > 9 || om1 > 9 {
-			return time.Time{}, ErrInvalidRFC3339
-		}
-		offsetHour := int(oh0)*10 + int(oh1)
-		offsetMin := int(om0)*10 + int(om1)
-		if offsetHour > 23 || offsetMin > 59 {
-			return time.Time{}, ErrInvalidRFC3339
-		}
-		offsetSec := offsetHour*3600 + offsetMin*60
-		if sign == '-' {
-			offsetSec = -offsetSec
-		}
-		if offsetSec == 0 {
-			loc = time.UTC
-		} else {
-			loc = time.FixedZone("", offsetSec)
-		}
-	default:
-		return time.Time{}, ErrInvalidRFC3339
+	loc, err := parseRFC3339Timezone(s, idx, n)
+	if err != nil {
+		return time.Time{}, err
 	}
 
 	if sec == 60 {
@@ -201,6 +153,62 @@ func ParseRFC3339(s string) (time.Time, error) {
 	}
 
 	return time.Date(year, time.Month(month), day, hour, min, sec, nsec, loc), nil
+}
+
+func parseFractionalSeconds(s string, idx, n int) (int, int, error) {
+	if idx >= n || s[idx] != '.' {
+		return 0, idx, nil
+	}
+	idx++
+	if idx >= n || s[idx] < '0' || s[idx] > '9' {
+		return 0, 0, ErrInvalidRFC3339
+	}
+	var nsec int
+	scale := 100000000 // 1e8
+	for idx < n && s[idx] >= '0' && s[idx] <= '9' {
+		digit := int(s[idx] - '0')
+		if scale > 0 {
+			nsec += digit * scale
+			scale /= 10
+		}
+		idx++
+	}
+	return nsec, idx, nil
+}
+
+func parseRFC3339Timezone(s string, idx, n int) (*time.Location, error) {
+	switch s[idx] {
+	case 'Z', 'z':
+		if idx+1 != n {
+			return nil, ErrInvalidRFC3339
+		}
+		return time.UTC, nil
+	case '+', '-':
+		sign := s[idx]
+		if idx+6 != n || s[idx+3] != ':' {
+			return nil, ErrInvalidRFC3339
+		}
+		oh0, oh1 := s[idx+1]-'0', s[idx+2]-'0'
+		om0, om1 := s[idx+4]-'0', s[idx+5]-'0'
+		if oh0 > 9 || oh1 > 9 || om0 > 9 || om1 > 9 {
+			return nil, ErrInvalidRFC3339
+		}
+		offsetHour := int(oh0)*10 + int(oh1)
+		offsetMin := int(om0)*10 + int(om1)
+		if offsetHour > 23 || offsetMin > 59 {
+			return nil, ErrInvalidRFC3339
+		}
+		offsetSec := offsetHour*3600 + offsetMin*60
+		if sign == '-' {
+			offsetSec = -offsetSec
+		}
+		if offsetSec == 0 {
+			return time.UTC, nil
+		}
+		return time.FixedZone("", offsetSec), nil
+	default:
+		return nil, ErrInvalidRFC3339
+	}
 }
 
 // ParseISO8601 parses an ISO 8601 formatted timestamp into a [time.Time] without heap allocations.

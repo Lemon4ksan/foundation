@@ -295,6 +295,48 @@ func (r *Record) IsCompatible(supportedKeys ...SvcParamKey) bool {
 	return true
 }
 
+func checkStrictIncreasing(curr, last uint16) error {
+	if curr == last {
+		return ErrDuplicateParamKey
+	}
+	return ErrUnsortedParamKeys
+}
+
+func validateMandatoryParam(paramData []byte) error {
+	valLen := len(paramData)
+	if valLen == 0 || valLen%2 != 0 {
+		return ErrMalformedParam
+	}
+	var lastMandKey uint16
+	for i := 0; i < valLen; i += 2 {
+		mk := binary.BigEndian.Uint16(paramData[i : i+2])
+		if mk == 0 {
+			return ErrMalformedParam
+		}
+		if i > 0 && mk <= lastMandKey {
+			return checkStrictIncreasing(mk, lastMandKey)
+		}
+		lastMandKey = mk
+	}
+	return nil
+}
+
+func validateALPNParam(paramData []byte) error {
+	valLen := len(paramData)
+	if valLen == 0 {
+		return ErrMalformedParam
+	}
+	idx := 0
+	for idx < valLen {
+		slen := int(paramData[idx])
+		if slen == 0 || idx+1+slen > valLen {
+			return ErrMalformedParam
+		}
+		idx += 1 + slen
+	}
+	return nil
+}
+
 // ParseRDATA parses the RDATA wire format payload into a [*Record] (RFC 9460 §2.2).
 func ParseRDATA(rdata []byte) (*Record, error) {
 	if len(rdata) < 3 {
@@ -331,46 +373,21 @@ func ParseRDATA(rdata []byte) (*Record, error) {
 
 		// RFC 9460 §2.2: SvcParamKeys SHALL appear in strictly increasing numeric order
 		if !firstKey && key <= lastKey {
-			if key == lastKey {
-				return nil, ErrDuplicateParamKey
-			}
-
-			return nil, ErrUnsortedParamKeys
+			return nil, checkStrictIncreasing(key, lastKey)
 		}
 
 		firstKey = false
 		lastKey = key
 
+		paramData := rdata[offset : offset+valLen]
 		switch SvcParamKey(key) {
 		case ParamMandatory:
-			if valLen == 0 || valLen%2 != 0 {
-				return nil, ErrMalformedParam
-			}
-			var lastMandKey uint16
-			for i := 0; i < valLen; i += 2 {
-				mk := binary.BigEndian.Uint16(rdata[offset+i : offset+i+2])
-				if mk == 0 {
-					return nil, ErrMalformedParam
-				}
-				if i > 0 && mk <= lastMandKey {
-					if mk == lastMandKey {
-						return nil, ErrDuplicateParamKey
-					}
-					return nil, ErrUnsortedParamKeys
-				}
-				lastMandKey = mk
+			if err := validateMandatoryParam(paramData); err != nil {
+				return nil, err
 			}
 		case ParamALPN:
-			if valLen == 0 {
-				return nil, ErrMalformedParam
-			}
-			idx := 0
-			for idx < valLen {
-				slen := int(rdata[offset+idx])
-				if slen == 0 || idx+1+slen > valLen {
-					return nil, ErrMalformedParam
-				}
-				idx += 1 + slen
+			if err := validateALPNParam(paramData); err != nil {
+				return nil, err
 			}
 		case ParamNoDefaultALPN:
 			if valLen != 0 {

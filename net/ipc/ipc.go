@@ -31,26 +31,50 @@ func NewUnixTransport(socketPath string) *http.Transport {
 //
 //	"unix:///var/run/docker.sock/v1.41/containers/json"
 //	 -> Socket: "/var/run/docker.sock", RequestURI: "/v1.41/containers/json"
+func parseUnixURI(path string) (string, string, bool) {
+	idx := strings.Index(path, ".sock")
+	if idx == -1 {
+		return "", "", false
+	}
+	sockEnd := idx + 5
+	return path[:sockEnd], path[sockEnd:], true
+}
+
+func parseNpipeURI(path string) (string, string, bool) {
+	idx := strings.Index(path, "/pipe/")
+	if idx == -1 {
+		return "", "", false
+	}
+	pipePrefixEnd := idx + len("/pipe/")
+	slash := strings.IndexByte(path[pipePrefixEnd:], '/')
+	if slash == -1 {
+		return path, "/", true
+	}
+	pipeEnd := pipePrefixEnd + slash
+	reqURI := path[pipeEnd:]
+	if reqURI == "" {
+		reqURI = "/"
+	}
+	return path[:pipeEnd], reqURI, true
+}
+
+// ParseIPCURI parses a URL carrying "unix://" or "npipe://" scheme,
+// extracting the target socket path and relative HTTP request URI.
+//
+// Example:
+//
+//	"unix:///var/run/docker.sock/v1.41/containers/json"
+//	 -> Socket: "/var/run/docker.sock", RequestURI: "/v1.41/containers/json"
 func ParseIPCURI(rawURL string) (socketPath, reqURI string, isIPC bool) {
 	if path, ok := strings.CutPrefix(rawURL, "unix://"); ok {
-		if idx := strings.Index(path, ".sock"); idx != -1 {
-			sockEnd := idx + 5
-			return path[:sockEnd], path[sockEnd:], true
+		if sock, req, ok := parseUnixURI(path); ok {
+			return sock, req, true
 		}
 	}
 
 	if path, ok := strings.CutPrefix(rawURL, "npipe://"); ok {
-		if idx := strings.Index(path, "/pipe/"); idx != -1 {
-			pipePrefixEnd := idx + len("/pipe/")
-			if slash := strings.IndexByte(path[pipePrefixEnd:], '/'); slash != -1 {
-				pipeEnd := pipePrefixEnd + slash
-				reqURI := path[pipeEnd:]
-				if reqURI == "" {
-					reqURI = "/"
-				}
-				return path[:pipeEnd], reqURI, true
-			}
-			return path, "/", true
+		if sock, req, ok := parseNpipeURI(path); ok {
+			return sock, req, true
 		}
 	}
 

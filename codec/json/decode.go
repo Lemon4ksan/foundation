@@ -741,14 +741,11 @@ func compileStructDecoder(t reflect.Type) (decodeFunc, error) {
 			}
 
 			if !first {
-				if cursor >= len(data) {
-					return cursor, errUnexpectedEnd
+				nextCursor, err := skipCommaOrEnd(data, cursor)
+				if err != nil {
+					return cursor, err
 				}
-				if data[cursor] != ',' {
-					return cursor, fmt.Errorf("json: expected ',', got %q", data[cursor])
-				}
-				cursor++
-				cursor = skipWhitespace(data, cursor)
+				cursor = skipWhitespace(data, nextCursor)
 			}
 			first = false
 
@@ -762,39 +759,9 @@ func compileStructDecoder(t reflect.Type) (decodeFunc, error) {
 			}
 			cursor = newCursor
 
-			var field structFieldDecoder
-			var exists bool
-			var key string
-
-			if !hasEscape {
-				field, exists = fieldMap[string(keyRaw)]
-				if !exists {
-					if len(keyRaw) <= 64 {
-						var lowerBuf [64]byte
-						for i := 0; i < len(keyRaw); i++ {
-							c := keyRaw[i]
-							if c >= 'A' && c <= 'Z' {
-								c += 32
-							}
-							lowerBuf[i] = c
-						}
-						field, exists = fieldMap[string(lowerBuf[:len(keyRaw)])]
-					}
-					if !exists {
-						key = string(keyRaw)
-						field, exists = fieldMap[strings.ToLower(key)]
-					}
-				}
-			} else {
-				unescaped, err := unescapeString(make([]byte, 0, len(keyRaw)), keyRaw)
-				if err != nil {
-					return cursor, err
-				}
-				key = string(decodeToValidUTF8(unescaped))
-				field, exists = fieldMap[key]
-				if !exists {
-					field, exists = fieldMap[strings.ToLower(key)]
-				}
+			field, exists, key, err := lookupStructField(fieldMap, keyRaw, hasEscape)
+			if err != nil {
+				return cursor, err
 			}
 
 			cursor = skipWhitespace(data, cursor)
@@ -806,34 +773,7 @@ func compileStructDecoder(t reflect.Type) (decodeFunc, error) {
 			}
 			cursor++
 
-			if exists {
-				fieldPtr := unsafe.Add(p, field.offset)
-				if field.quoted {
-					cursor = skipWhitespace(data, cursor)
-					if cursor < len(data) && data[cursor] == '"' {
-						strVal, strNewCursor, _, strErr := scanString(data, cursor)
-						if strErr != nil {
-							return cursor, strErr
-						}
-						if _, decErr := field.decode(strVal, 0, fieldPtr, cfg); decErr != nil {
-							return cursor, decErr
-						}
-						cursor = strNewCursor
-					} else {
-						newCursor, err := field.decode(data, cursor, fieldPtr, cfg)
-						if err != nil {
-							return cursor, err
-						}
-						cursor = newCursor
-					}
-				} else {
-					newCursor, err := field.decode(data, cursor, fieldPtr, cfg)
-					if err != nil {
-						return cursor, err
-					}
-					cursor = newCursor
-				}
-			} else {
+			if !exists {
 				if cfg != nil && cfg.DisallowUnknownFields {
 					if key == "" {
 						key = string(keyRaw)
@@ -846,9 +786,93 @@ func compileStructDecoder(t reflect.Type) (decodeFunc, error) {
 					return cursor, err
 				}
 				cursor = newCursor
+				continue
 			}
+
+			newCursor, err = decodeStructFieldValue(field, data, cursor, p, cfg)
+			if err != nil {
+				return cursor, err
+			}
+			cursor = newCursor
 		}
 	}, nil
+}
+
+func skipCommaOrEnd(data []byte, cursor int) (int, error) {
+	if cursor >= len(data) {
+		return cursor, errUnexpectedEnd
+	}
+	if data[cursor] != ',' {
+		return cursor, fmt.Errorf("json: expected ',', got %q", data[cursor])
+	}
+	return cursor + 1, nil
+}
+
+func decodeKeyString(keyRaw []byte, hasEscape bool) (string, error) {
+	if !hasEscape {
+		return string(decodeToValidUTF8(keyRaw)), nil
+	}
+	unescaped, err := unescapeString(make([]byte, 0, len(keyRaw)), keyRaw)
+	if err != nil {
+		return "", err
+	}
+	return string(decodeToValidUTF8(unescaped)), nil
+}
+
+func lookupStructField(fieldMap map[string]structFieldDecoder, keyRaw []byte, hasEscape bool) (field structFieldDecoder, exists bool, key string, err error) {
+	if !hasEscape {
+		if field, exists = fieldMap[string(keyRaw)]; exists {
+			return field, true, string(keyRaw), nil
+		}
+		if len(keyRaw) <= 64 {
+			var lowerBuf [64]byte
+			for i := 0; i < len(keyRaw); i++ {
+				c := keyRaw[i]
+				if c >= 'A' && c <= 'Z' {
+					c += 32
+				}
+				lowerBuf[i] = c
+			}
+			if field, exists = fieldMap[string(lowerBuf[:len(keyRaw)])]; exists {
+				return field, true, string(keyRaw), nil
+			}
+		}
+		key = string(keyRaw)
+		field, exists = fieldMap[strings.ToLower(key)]
+		return field, exists, key, nil
+	}
+
+	unescaped, err := unescapeString(make([]byte, 0, len(keyRaw)), keyRaw)
+	if err != nil {
+		return structFieldDecoder{}, false, "", err
+	}
+	key = string(decodeToValidUTF8(unescaped))
+	field, exists = fieldMap[key]
+	if !exists {
+		field, exists = fieldMap[strings.ToLower(key)]
+	}
+	return field, exists, key, nil
+}
+
+func decodeStructFieldValue(field structFieldDecoder, data []byte, cursor int, p unsafe.Pointer, cfg *DecoderConfig) (int, error) {
+	fieldPtr := unsafe.Add(p, field.offset)
+	if !field.quoted {
+		return field.decode(data, cursor, fieldPtr, cfg)
+	}
+
+	cursor = skipWhitespace(data, cursor)
+	if cursor < len(data) && data[cursor] == '"' {
+		strVal, strNewCursor, _, strErr := scanString(data, cursor)
+		if strErr != nil {
+			return cursor, strErr
+		}
+		if _, decErr := field.decode(strVal, 0, fieldPtr, cfg); decErr != nil {
+			return cursor, decErr
+		}
+		return strNewCursor, nil
+	}
+
+	return field.decode(data, cursor, fieldPtr, cfg)
 }
 
 func compilePtrDecoder(t reflect.Type) (decodeFunc, error) {
@@ -919,13 +943,11 @@ func compileSliceDecoder(t reflect.Type) (decodeFunc, error) {
 			}
 
 			if !first {
-				if cursor >= len(data) {
-					return cursor, errUnexpectedEnd
+				var err error
+				cursor, err = skipCommaOrEnd(data, cursor)
+				if err != nil {
+					return cursor, err
 				}
-				if data[cursor] != ',' {
-					return cursor, fmt.Errorf("json: expected ',', got %q", data[cursor])
-				}
-				cursor++
 			}
 			first = false
 
@@ -975,13 +997,11 @@ func compileArrayDecoder(t reflect.Type) (decodeFunc, error) {
 			}
 
 			if !first {
-				if cursor >= len(data) {
-					return cursor, errUnexpectedEnd
+				var err error
+				cursor, err = skipCommaOrEnd(data, cursor)
+				if err != nil {
+					return cursor, err
 				}
-				if data[cursor] != ',' {
-					return cursor, fmt.Errorf("json: expected ',', got %q", data[cursor])
-				}
-				cursor++
 			}
 			first = false
 
@@ -1077,13 +1097,11 @@ func compileMapDecoder(t reflect.Type) (decodeFunc, error) {
 			}
 
 			if !first {
-				if cursor >= len(data) {
-					return cursor, errUnexpectedEnd
+				var err error
+				cursor, err = skipCommaOrEnd(data, cursor)
+				if err != nil {
+					return cursor, err
 				}
-				if data[cursor] != ',' {
-					return cursor, fmt.Errorf("json: expected ',', got %q", data[cursor])
-				}
-				cursor++
 				cursor = skipWhitespace(data, cursor)
 			}
 			first = false
@@ -1098,15 +1116,9 @@ func compileMapDecoder(t reflect.Type) (decodeFunc, error) {
 			}
 			cursor = newCursor
 
-			var keyStr string
-			if hasEscape {
-				unescaped, err := unescapeString(make([]byte, 0, len(keyRaw)), keyRaw)
-				if err != nil {
-					return cursor, err
-				}
-				keyStr = string(decodeToValidUTF8(unescaped))
-			} else {
-				keyStr = string(decodeToValidUTF8(keyRaw))
+			keyStr, err := decodeKeyString(keyRaw, hasEscape)
+			if err != nil {
+				return cursor, err
 			}
 
 			cursor = skipWhitespace(data, cursor)
@@ -1185,14 +1197,11 @@ func decodeDynamicDepth(data []byte, cursor int, cfg *DecoderConfig, depth int) 
 		if err != nil {
 			return nil, cursor, err
 		}
-		if hasEscape {
-			unescaped, err := unescapeString(make([]byte, 0, len(raw)), raw)
-			if err != nil {
-				return nil, cursor, err
-			}
-			return string(decodeToValidUTF8(unescaped)), newCursor, nil
+		s, err := decodeKeyString(raw, hasEscape)
+		if err != nil {
+			return nil, cursor, err
 		}
-		return string(decodeToValidUTF8(raw)), newCursor, nil
+		return s, newCursor, nil
 
 	case '{':
 		cursor++
@@ -1209,10 +1218,11 @@ func decodeDynamicDepth(data []byte, cursor int, cfg *DecoderConfig, depth int) 
 			}
 
 			if !first {
-				if data[cursor] != ',' {
-					return nil, cursor, fmt.Errorf("json: expected ',', got %q", data[cursor])
+				var err error
+				cursor, err = skipCommaOrEnd(data, cursor)
+				if err != nil {
+					return nil, cursor, err
 				}
-				cursor++
 				cursor = skipWhitespace(data, cursor)
 			}
 			first = false
@@ -1223,15 +1233,9 @@ func decodeDynamicDepth(data []byte, cursor int, cfg *DecoderConfig, depth int) 
 			}
 			cursor = newCursor
 
-			var keyStr string
-			if hasEscape {
-				unescaped, err := unescapeString(make([]byte, 0, len(keyRaw)), keyRaw)
-				if err != nil {
-					return nil, cursor, err
-				}
-				keyStr = string(decodeToValidUTF8(unescaped))
-			} else {
-				keyStr = string(decodeToValidUTF8(keyRaw))
+			keyStr, err := decodeKeyString(keyRaw, hasEscape)
+			if err != nil {
+				return nil, cursor, err
 			}
 
 			cursor = skipWhitespace(data, cursor)
@@ -1264,10 +1268,11 @@ func decodeDynamicDepth(data []byte, cursor int, cfg *DecoderConfig, depth int) 
 			}
 
 			if !first {
-				if data[cursor] != ',' {
-					return nil, cursor, fmt.Errorf("json: expected ',', got %q", data[cursor])
+				var err error
+				cursor, err = skipCommaOrEnd(data, cursor)
+				if err != nil {
+					return nil, cursor, err
 				}
-				cursor++
 			}
 			first = false
 

@@ -469,6 +469,38 @@ func parseDNSResponseRecordsInternal(msg []byte, expectedID uint16) ([]DNSRecord
 	return records, nil
 }
 
+func validateTXTRDATA(rdata []byte) error {
+	if len(rdata) == 0 {
+		return ErrTruncatedDNSMessage
+	}
+	txtPos := 0
+	for txtPos < len(rdata) {
+		strLen := int(rdata[txtPos])
+		txtPos++
+		if txtPos+strLen > len(rdata) {
+			return ErrTruncatedDNSMessage
+		}
+		txtPos += strLen
+	}
+	return nil
+}
+
+func validateOPTRDATA(rdata []byte) error {
+	optPos := 0
+	for optPos < len(rdata) {
+		if optPos+4 > len(rdata) {
+			return ErrTruncatedDNSMessage
+		}
+		optLen := int(binary.BigEndian.Uint16(rdata[optPos+2 : optPos+4]))
+		optPos += 4
+		if optPos+optLen > len(rdata) {
+			return ErrTruncatedDNSMessage
+		}
+		optPos += optLen
+	}
+	return nil
+}
+
 // parseAnswerRecord unpacks an RFC 1035 Resource Record from msg into a DNSRecord.
 func parseAnswerRecord(msg []byte, offset int) (DNSRecord, int, error) {
 	nextOffset, err := SkipDomainName(msg, offset)
@@ -492,53 +524,30 @@ func parseAnswerRecord(msg []byte, offset int) (DNSRecord, int, error) {
 	totalConsumed := (rdataOffset + rdLength) - offset
 	rdata := msg[rdataOffset : rdataOffset+rdLength]
 
-	if rrType == TypeA {
+	switch rrType {
+	case TypeA:
 		if rdLength != 4 {
 			return DNSRecord{}, 0, ErrTruncatedDNSMessage
 		}
 		var ip4 [4]byte
 		copy(ip4[:], rdata)
 		return DNSRecord{Addr: netip.AddrFrom4(ip4), TTL: ttl}, totalConsumed, nil
-	}
-
-	if rrType == TypeAAAA {
+	case TypeAAAA:
 		if rdLength != 16 {
 			return DNSRecord{}, 0, ErrTruncatedDNSMessage
 		}
 		var ip6 [16]byte
 		copy(ip6[:], rdata)
 		return DNSRecord{Addr: netip.AddrFrom16(ip6), TTL: ttl}, totalConsumed, nil
-	}
-
-	if rrType == TypeTXT {
+	case TypeTXT:
 		// RFC 1035 §3.3.14: TXT RDATA consists of one or more <character-string>s.
-		if len(rdata) == 0 {
-			return DNSRecord{}, 0, ErrTruncatedDNSMessage
+		if err := validateTXTRDATA(rdata); err != nil {
+			return DNSRecord{}, 0, err
 		}
-		txtPos := 0
-		for txtPos < len(rdata) {
-			strLen := int(rdata[txtPos])
-			txtPos++
-			if txtPos+strLen > len(rdata) {
-				return DNSRecord{}, 0, ErrTruncatedDNSMessage
-			}
-			txtPos += strLen
-		}
-	}
-
-	if rrType == TypeOPT {
+	case TypeOPT:
 		// RFC 6891 §6.1.2: OPT RDATA consists of zero or more {OptionCode uint16, OptionLength uint16, OptionData []byte}.
-		optPos := 0
-		for optPos < len(rdata) {
-			if optPos+4 > len(rdata) {
-				return DNSRecord{}, 0, ErrTruncatedDNSMessage
-			}
-			optLen := int(binary.BigEndian.Uint16(rdata[optPos+2 : optPos+4]))
-			optPos += 4
-			if optPos+optLen > len(rdata) {
-				return DNSRecord{}, 0, ErrTruncatedDNSMessage
-			}
-			optPos += optLen
+		if err := validateOPTRDATA(rdata); err != nil {
+			return DNSRecord{}, 0, err
 		}
 	}
 

@@ -83,18 +83,18 @@ func ScanTokens(s string, delim byte) iter.Seq[string] {
 		n := len(s)
 
 		for i := range n {
-			c := s[i]
-			if c == '"' {
+			if s[i] == '"' {
 				inQuote = !inQuote
-			} else if c == delim && !inQuote {
-				token := TrimSpaceASCII(s[start:i])
-				if len(token) > 0 {
-					if !yield(token) {
-						return
-					}
-				}
+				continue
+			}
+			if s[i] != delim || inQuote {
+				continue
+			}
 
-				start = i + 1
+			token := TrimSpaceASCII(s[start:i])
+			start = i + 1
+			if len(token) > 0 && !yield(token) {
+				return
 			}
 		}
 
@@ -118,18 +118,18 @@ func ScanTokensBytes(b []byte, delim byte) iter.Seq[[]byte] {
 		n := len(b)
 
 		for i := range n {
-			c := b[i]
-			if c == '"' {
+			if b[i] == '"' {
 				inQuote = !inQuote
-			} else if c == delim && !inQuote {
-				token := TrimSpaceASCIIBytes(b[start:i])
-				if len(token) > 0 {
-					if !yield(token) {
-						return
-					}
-				}
+				continue
+			}
+			if b[i] != delim || inQuote {
+				continue
+			}
 
-				start = i + 1
+			token := TrimSpaceASCIIBytes(b[start:i])
+			start = i + 1
+			if len(token) > 0 && !yield(token) {
+				return
 			}
 		}
 

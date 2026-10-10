@@ -37,16 +37,16 @@ func ScanByteVector(data []byte, target byte) int {
 			m3 := c3.Equal(targetVec).ToBits()
 
 			if (m0 | m1 | m2 | m3) != 0 {
-				if m0 != 0 {
+				switch {
+				case m0 != 0:
 					return i + bits.TrailingZeros32(m0)
-				}
-				if m1 != 0 {
+				case m1 != 0:
 					return i + 32 + bits.TrailingZeros32(m1)
-				}
-				if m2 != 0 {
+				case m2 != 0:
 					return i + 64 + bits.TrailingZeros32(m2)
+				default:
+					return i + 96 + bits.TrailingZeros32(m3)
 				}
-				return i + 96 + bits.TrailingZeros32(m3)
 			}
 			i += 128
 		}
@@ -115,36 +115,9 @@ func IndexDoubleCRLFVector(data []byte) int {
 
 // IndexCRLFCRLFVector searches for "\r\n\r\n" in data and returns the index of the first byte after the sequence.
 func IndexCRLFCRLFVector(data []byte) int {
-	n := len(data)
-	if n < 4 {
-		return IndexCRLFCRLF(data)
-	}
-
-	if n >= 32 && hasAVX2 {
-		vecCR := archsimd.BroadcastUint8x32('\r')
-		i := 0
-
-		for i+32 <= n {
-			chunk := archsimd.LoadUint8x32(data[i : i+32])
-			maskCR := chunk.Equal(vecCR).ToBits()
-
-			for maskCR != 0 {
-				bit := bits.TrailingZeros32(maskCR)
-				pos := i + bit
-				if pos+4 <= n && *(*uint32)(unsafe.Pointer(&data[pos])) == CRLFCRLFUint32 {
-					return pos + 4
-				}
-				maskCR &= maskCR - 1
-			}
-			i += 32
-		}
-
-		// Fallback for remainder
-		if i < n {
-			tailIdx := IndexDoubleCRLF(data[i:])
-			if tailIdx != -1 {
-				return i + tailIdx + 4
-			}
+	if len(data) >= 32 && hasAVX2 {
+		if idx := IndexDoubleCRLFVector(data); idx != -1 {
+			return idx + 4
 		}
 	}
 
