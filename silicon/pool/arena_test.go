@@ -41,3 +41,16 @@ func TestRequestArena_3IndexSliceCapacityBound(t *testing.T) {
 		assert.Equal(t, size+1, len(extended))
 	}
 }
+
+func TestRequestArena_TailAlloc_ZeroAlloc(t *testing.T) {
+	allocs := testing.AllocsPerRun(100, func() {
+		a := pool.AcquireRequestArena()
+		_ = a.Alloc(4090)
+		b := a.Alloc(5)
+		if len(b) != 5 {
+			t.Fatalf("expected 5 bytes, got %d", len(b))
+		}
+		pool.ReleaseRequestArena(a)
+	})
+	assert.Equal(t, float64(0), allocs)
+}

@@ -54,7 +54,11 @@ func (a *RequestArena) Alloc(n int) []byte {
 		return a.buf[start : start+n : start+n]
 	}
 
-	return make([]byte, n)
+	// Tail allocation: when n bytes fit within remaining arena capacity but alignedN
+	// extends past len(a.buf), saturate a.off to len(a.buf) and return the slice without heap fallback.
+	start := a.off
+	a.off = len(a.buf)
+	return a.buf[start : start+n : start+n]
 }
 
 // Reset clears the arena pointer in O(1) time without clearing buffer memory.
