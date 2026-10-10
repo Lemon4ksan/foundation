@@ -47,6 +47,16 @@ func TestHTTPDate_FormatAndParse(t *testing.T) {
 	}
 }
 
+func TestParseHTTPDate_ZeroAlloc(t *testing.T) {
+	s := "Sun, 06 Nov 1994 08:49:37 GMT"
+	allocs := testing.AllocsPerRun(100, func() {
+		_, _ = ParseHTTPDate(s)
+	})
+	if allocs > 0 {
+		t.Fatalf("expected 0 allocations for ParseHTTPDate, got %v", allocs)
+	}
+}
+
 func TestFormatHTTPDate_NegativeYear(t *testing.T) {
 	dt := time.Date(-1, 1, 1, 0, 0, 0, 0, time.UTC)
 	formatted := FormatHTTPDate(dt)
@@ -224,3 +234,43 @@ func TestFormatRFC3339_NegativeYear(t *testing.T) {
 		t.Fatalf("expected '0001-01-01T00:00:00Z', got %q", formatted)
 	}
 }
+
+func BenchmarkParseHTTPDate(b *testing.B) {
+	s := "Sun, 06 Nov 1994 08:49:37 GMT"
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		_, _ = ParseHTTPDate(s)
+	}
+}
+
+func BenchmarkFormatHTTPDate(b *testing.B) {
+	tm := time.Date(1994, time.November, 6, 8, 49, 37, 0, time.UTC)
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		_ = FormatHTTPDate(tm)
+	}
+}
+
+func BenchmarkFormatRFC3339(b *testing.B) {
+	tm := time.Date(2026, time.August, 26, 16, 30, 45, 0, time.UTC)
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		_ = FormatRFC3339(tm)
+	}
+}
+
+func BenchmarkCoarseNow(b *testing.B) {
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		_ = CoarseNow()
+	}
+}
+

@@ -25,4 +25,20 @@ func TestUUID_Allocations(t *testing.T) {
 	if allocsParse > 0 {
 		t.Errorf("expected 0 allocations for Parse, got %v", allocsParse)
 	}
+
+	textBytes := []byte("018e3a2b-7c4d-7000-8000-000000000000")
+	var uText uuid.UUID
+	allocsUnmarshal := testing.AllocsPerRun(100, func() {
+		_ = uText.UnmarshalText(textBytes)
+	})
+	if allocsUnmarshal > 0 {
+		t.Errorf("expected 0 allocations for UnmarshalText, got %v", allocsUnmarshal)
+	}
+
+	allocsNilString := testing.AllocsPerRun(100, func() {
+		_ = uuid.Nil.String()
+	})
+	if allocsNilString > 0 {
+		t.Errorf("expected 0 allocations for Nil.String(), got %v", allocsNilString)
+	}
 }

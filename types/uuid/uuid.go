@@ -12,6 +12,8 @@ import (
 	"errors"
 	"fmt"
 	"time"
+
+	"github.com/lemon4ksan/foundation/silicon/bytesconv"
 )
 
 // StringLength is the character length of a standard hex-and-dash UUID string (RFC 9562 §4).
@@ -79,6 +81,7 @@ func IsValid(s string) bool {
 
 // Parse parses a standard 36-character "8-4-4-4-12" hex-and-dash UUID string (RFC 9562 §4)
 // into a 16-byte [UUID] value. It accepts lowercase, uppercase, and mixed-case hexadecimal characters.
+//go:inline
 func Parse(s string) (UUID, error) {
 	if len(s) != StringLength {
 		return Nil, ErrInvalidLength
@@ -200,12 +203,19 @@ func formatScalar(u *UUID, dst *[StringLength]byte) {
 }
 
 // Format formats the UUID into standard 36-character hex-and-dash format directly in dst.
+//go:inline
 func (u UUID) Format(dst *[StringLength]byte) {
 	formatVector(&u, dst)
 }
 
 // String returns the canonical lowercase 36-character "8-4-4-4-12" hex-and-dash string representation (RFC 9562 §4).
 func (u UUID) String() string {
+	if u.IsNil() {
+		return "00000000-0000-0000-0000-000000000000"
+	}
+	if u.IsMax() {
+		return "ffffffff-ffff-ffff-ffff-ffffffffffff"
+	}
 	var buf [StringLength]byte
 	formatVector(&u, &buf)
 	return string(buf[:])
@@ -214,6 +224,12 @@ func (u UUID) String() string {
 // Append appends the canonical lowercase 36-character hex-and-dash string representation
 // to dst with 0 heap allocations and returns the resulting slice.
 func (u UUID) Append(dst []byte) []byte {
+	n := len(dst)
+	if cap(dst)-n >= StringLength {
+		dst = dst[:n+StringLength]
+		formatVector(&u, (*[StringLength]byte)(dst[n:]))
+		return dst
+	}
 	var buf [StringLength]byte
 	formatVector(&u, &buf)
 	return append(dst, buf[:]...)
@@ -266,14 +282,19 @@ func (u UUID) IsMax() bool {
 
 // MarshalText implements [encoding.TextMarshaler] for JSON, XML, and text serialization.
 func (u UUID) MarshalText() ([]byte, error) {
-	return []byte(u.String()), nil
+	dst := make([]byte, StringLength)
+	formatVector(&u, (*[StringLength]byte)(dst))
+	return dst, nil
 }
 
 // UnmarshalText implements [encoding.TextUnmarshaler] for JSON, XML, and text deserialization.
 func (u *UUID) UnmarshalText(text []byte) error {
-	parsed, err := Parse(string(text))
-	if err != nil {
-		return err
+	if len(text) != StringLength {
+		return ErrInvalidLength
+	}
+	parsed, ok := parseVector(bytesconv.B2S(text))
+	if !ok {
+		return ErrInvalidFormat
 	}
 
 	*u = parsed
@@ -324,9 +345,9 @@ func (u *UUID) Scan(src any) error {
 			return nil
 		}
 		if len(v) == StringLength {
-			parsed, err := Parse(string(v))
-			if err != nil {
-				return err
+			parsed, ok := parseVector(bytesconv.B2S(v))
+			if !ok {
+				return ErrInvalidFormat
 			}
 			*u = parsed
 			return nil

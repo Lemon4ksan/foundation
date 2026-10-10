@@ -7,7 +7,10 @@ package bytesconv
 import (
 	"bytes"
 	"encoding/binary"
+	"reflect"
+	"runtime"
 	"slices"
+	"strconv"
 	"unsafe"
 )
 
@@ -348,4 +351,74 @@ func FastHash64(b []byte) uint64 {
 	}
 
 	return h
+}
+
+// NumberConstraint represents all signed, unsigned integer, and floating-point types.
+type NumberConstraint interface {
+	~int | ~int8 | ~int16 | ~int32 | ~int64 |
+		~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr |
+		~float32 | ~float64
+}
+
+// FormatNumber formats any integer or floating-point number into its decimal string representation
+// without interface boxing (runtime.convT) or reflection allocations.
+func FormatNumber[T NumberConstraint](v T) string {
+	switch reflect.TypeFor[T]().Kind() {
+	case reflect.Int:
+		val := *(*int)(unsafe.Pointer(&v))
+		runtime.KeepAlive(&v)
+		return strconv.FormatInt(int64(val), 10)
+	case reflect.Int8:
+		val := *(*int8)(unsafe.Pointer(&v))
+		runtime.KeepAlive(&v)
+		return strconv.FormatInt(int64(val), 10)
+	case reflect.Int16:
+		val := *(*int16)(unsafe.Pointer(&v))
+		runtime.KeepAlive(&v)
+		return strconv.FormatInt(int64(val), 10)
+	case reflect.Int32:
+		val := *(*int32)(unsafe.Pointer(&v))
+		runtime.KeepAlive(&v)
+		return strconv.FormatInt(int64(val), 10)
+	case reflect.Int64:
+		val := *(*int64)(unsafe.Pointer(&v))
+		runtime.KeepAlive(&v)
+		return strconv.FormatInt(val, 10)
+	case reflect.Uint:
+		val := *(*uint)(unsafe.Pointer(&v))
+		runtime.KeepAlive(&v)
+		return strconv.FormatUint(uint64(val), 10)
+	case reflect.Uint8:
+		val := *(*uint8)(unsafe.Pointer(&v))
+		runtime.KeepAlive(&v)
+		return strconv.FormatUint(uint64(val), 10)
+	case reflect.Uint16:
+		val := *(*uint16)(unsafe.Pointer(&v))
+		runtime.KeepAlive(&v)
+		return strconv.FormatUint(uint64(val), 10)
+	case reflect.Uint32:
+		val := *(*uint32)(unsafe.Pointer(&v))
+		runtime.KeepAlive(&v)
+		return strconv.FormatUint(uint64(val), 10)
+	case reflect.Uint64:
+		val := *(*uint64)(unsafe.Pointer(&v))
+		runtime.KeepAlive(&v)
+		return strconv.FormatUint(val, 10)
+	case reflect.Uintptr:
+		val := *(*uintptr)(unsafe.Pointer(&v))
+		runtime.KeepAlive(&v)
+		return strconv.FormatUint(uint64(val), 10)
+	case reflect.Float32:
+		val := *(*float32)(unsafe.Pointer(&v))
+		runtime.KeepAlive(&v)
+		var buf [32]byte
+		return string(strconv.AppendFloat(buf[:0], float64(val), 'f', -1, 32))
+	case reflect.Float64:
+		val := *(*float64)(unsafe.Pointer(&v))
+		runtime.KeepAlive(&v)
+		var buf [32]byte
+		return string(strconv.AppendFloat(buf[:0], val, 'f', -1, 64))
+	default:
+		return ""
+	}
 }

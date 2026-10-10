@@ -5,9 +5,7 @@
 package values
 
 import (
-	"encoding/json"
 	"errors"
-	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -96,7 +94,11 @@ func (u *Uint64String) UnmarshalJSON(b []byte) error {
 
 // MarshalJSON serializes [Uint64String] as a quoted JSON string.
 func (u Uint64String) MarshalJSON() ([]byte, error) {
-	return json.Marshal(strconv.FormatUint(uint64(u), 10))
+	buf := make([]byte, 0, 24)
+	buf = append(buf, '"')
+	buf = strconv.AppendUint(buf, uint64(u), 10)
+	buf = append(buf, '"')
+	return buf, nil
 }
 
 // Int64String parses int64 values from numeric or quoted string JSON payloads.
@@ -122,7 +124,11 @@ func (i *Int64String) UnmarshalJSON(b []byte) error {
 
 // MarshalJSON serializes [Int64String] as a quoted JSON string.
 func (i Int64String) MarshalJSON() ([]byte, error) {
-	return json.Marshal(strconv.FormatInt(int64(i), 10))
+	buf := make([]byte, 0, 24)
+	buf = append(buf, '"')
+	buf = strconv.AppendInt(buf, int64(i), 10)
+	buf = append(buf, '"')
+	return buf, nil
 }
 
 // Float64String parses float64 values from numeric or quoted string JSON payloads.
@@ -148,7 +154,11 @@ func (f *Float64String) UnmarshalJSON(b []byte) error {
 
 // MarshalJSON serializes [Float64String] as a JSON string.
 func (f Float64String) MarshalJSON() ([]byte, error) {
-	return json.Marshal(strconv.FormatFloat(float64(f), 'f', -1, 64))
+	buf := make([]byte, 0, 32)
+	buf = append(buf, '"')
+	buf = strconv.AppendFloat(buf, float64(f), 'f', -1, 64)
+	buf = append(buf, '"')
+	return buf, nil
 }
 
 // BoolInt parses boolean flags represented as numbers or strings in JSON.
@@ -207,7 +217,7 @@ func (t UnixTimestamp) MarshalJSON() ([]byte, error) {
 		return bZero, nil
 	}
 
-	return []byte(strconv.FormatInt(time.Time(t).Unix(), 10)), nil
+	return strconv.AppendInt(nil, time.Time(t).Unix(), 10), nil
 }
 
 // Time returns the underlying [time.Time].
@@ -240,7 +250,11 @@ func (t RFC3339Timestamp) MarshalJSON() ([]byte, error) {
 		return bNull, nil
 	}
 
-	return json.Marshal(time.Time(t).Format(time.RFC3339))
+	buf := make([]byte, 0, 22)
+	buf = append(buf, '"')
+	buf = time.Time(t).AppendFormat(buf, time.RFC3339)
+	buf = append(buf, '"')
+	return buf, nil
 }
 
 // Time returns the underlying [time.Time] value.
@@ -294,16 +308,6 @@ func NumberString[T NumberConstraint](v T) string {
 	case float64:
 		return strconv.FormatFloat(x, 'f', -1, 64)
 	default:
-		val := reflect.ValueOf(v)
-		switch val.Kind() {
-		case reflect.Float32:
-			return strconv.FormatFloat(val.Float(), 'f', -1, 32)
-		case reflect.Float64:
-			return strconv.FormatFloat(val.Float(), 'f', -1, 64)
-		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-			return strconv.FormatUint(val.Uint(), 10)
-		default:
-			return strconv.FormatInt(val.Int(), 10)
-		}
+		return bytesconv.FormatNumber(v)
 	}
 }

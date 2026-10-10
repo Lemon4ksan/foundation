@@ -6,10 +6,12 @@
 
 package uuid
 
+//go:inline
 func formatVector(u *UUID, dst *[36]byte) {
 	formatScalar(u, dst)
 }
 
+//go:inline
 func parseVector(s string) (UUID, bool) {
 	return parseScalar(s)
 }
