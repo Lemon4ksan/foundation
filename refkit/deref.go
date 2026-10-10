@@ -9,6 +9,8 @@ import (
 )
 
 // DerefType resolves the underlying non-pointer type, unwrapping all consecutive pointer layers (e.g. ***T -> T).
+//
+//go:inline
 func DerefType(t reflect.Type) reflect.Type {
 	if t == nil {
 		return nil
@@ -23,6 +25,8 @@ func DerefType(t reflect.Type) reflect.Type {
 
 // DerefValue unwraps consecutive pointer and interface levels until reaching the concrete value.
 // If any pointer along the chain is nil or the value is invalid, returns an invalid [reflect.Value].
+//
+//go:inline
 func DerefValue(v reflect.Value) reflect.Value {
 	for v.IsValid() && (v.Kind() == reflect.Pointer || v.Kind() == reflect.Interface) {
 		if v.Kind() == reflect.Pointer && v.IsNil() {
@@ -36,6 +40,8 @@ func DerefValue(v reflect.Value) reflect.Value {
 }
 
 // IndirectType dereferences a single pointer level if t is a pointer type.
+//
+//go:inline
 func IndirectType(t reflect.Type) reflect.Type {
 	if t != nil && t.Kind() == reflect.Pointer {
 		return t.Elem()
@@ -45,6 +51,8 @@ func IndirectType(t reflect.Type) reflect.Type {
 }
 
 // IndirectValue dereferences a single pointer level if v is a non-nil pointer.
+//
+//go:inline
 func IndirectValue(v reflect.Value) reflect.Value {
 	if v.IsValid() && v.Kind() == reflect.Pointer && !v.IsNil() {
 		return v.Elem()

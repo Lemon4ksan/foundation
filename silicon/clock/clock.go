@@ -75,22 +75,23 @@ func Cycles() uint64 {
 }
 
 // CyclesToDuration converts a delta in CPU cycles into a [time.Duration] using calibrated fixed-point arithmetic.
+//
+//go:inline
 func CyclesToDuration(cycles uint64) time.Duration {
-	scale := tscTicksPerNano.Load()
-	if scale == 0 {
-		return 0
+	if s := tscTicksPerNano.Load(); s != 0 {
+		return time.Duration((cycles << 10) / s)
 	}
-	nanos := (cycles << 10) / scale
-	return time.Duration(nanos)
+	return 0
 }
 
 // ElapsedCycles returns the elapsed duration since the recorded start CPU cycle timestamp.
+//
+//go:inline
 func ElapsedCycles(startCycles uint64) time.Duration {
-	now := rdtsc()
-	if now <= startCycles {
-		return 0
+	if now := rdtsc(); now > startCycles {
+		return CyclesToDuration(now - startCycles)
 	}
-	return CyclesToDuration(now - startCycles)
+	return 0
 }
 
 // CoarseNowNano returns the current Unix timestamp in nanoseconds with ~1ms coarse resolution.
@@ -119,6 +120,8 @@ func CoarseTime() time.Time {
 }
 
 // CoarseSince returns the elapsed duration since t calculated against the coarse clock.
+//
+//go:inline
 func CoarseSince(t time.Time) time.Duration {
 	return time.Duration(coarseUnixNano.Load() - t.UnixNano())
 }
