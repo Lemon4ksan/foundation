@@ -6,10 +6,18 @@ package base64
 
 import (
 	"encoding/base64"
+	"math"
 )
 
 // Base64URLEncodedLen returns the unpadded URL-safe Base64 encoded length for n source bytes.
 func Base64URLEncodedLen(n int) int {
+	if n <= 0 {
+		return 0
+	}
+	if n > (math.MaxInt-5)/8 {
+		panic("base64: encoded length overflows int")
+	}
+
 	return (n*8 + 5) / 6
 }
 

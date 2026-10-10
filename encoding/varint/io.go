@@ -77,6 +77,10 @@ func NewReader(r io.Reader) Reader {
 }
 
 func (r *byteReader) ReadByte() (byte, error) {
+	if r == nil || r.Reader == nil {
+		return 0, errors.New("varint: nil reader")
+	}
+
 	var (
 		b   [1]byte
 		n   int
@@ -120,6 +124,10 @@ func NewWriter(w io.Writer) Writer {
 }
 
 func (w *byteWriter) WriteByte(c byte) error {
+	if w == nil || w.Writer == nil {
+		return errors.New("varint: nil writer")
+	}
+
 	_, err := w.Write([]byte{c})
 	return err
 }

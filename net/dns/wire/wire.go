@@ -223,7 +223,7 @@ func PackDNSQuery(id uint16, domain string, qtype uint16) ([]byte, error) {
 // Postconditions:
 //   - Returns a binary payload with OPT RR in the Additional section if EDNS is enabled.
 func PackDNSQueryExtended(id uint16, domain string, qtype uint16, edns EDNSOptions) ([]byte, error) {
-	if domain == "" {
+	if domain == "" || strings.IndexByte(domain, 0) >= 0 {
 		return nil, ErrInvalidDomain
 	}
 
@@ -263,6 +263,7 @@ func PackDNSQueryExtended(id uint16, domain string, qtype uint16, edns EDNSOptio
 // appendQName encodes a standard domain name string into DNS question label format.
 func appendQName(buf []byte, domain string) ([]byte, error) {
 	rest := domain
+	totalLen := 1 // for terminal 0x00
 	for len(rest) > 0 {
 		label := rest
 		if idx := strings.IndexByte(rest, '.'); idx >= 0 {
@@ -276,7 +277,12 @@ func appendQName(buf []byte, domain string) ([]byte, error) {
 			continue
 		}
 
-		if len(label) > MaxLabelLength {
+		if len(label) > MaxLabelLength || strings.IndexByte(label, 0) >= 0 {
+			return nil, ErrInvalidDomain
+		}
+
+		totalLen += 1 + len(label)
+		if totalLen > MaxDomainNameLength {
 			return nil, ErrInvalidDomain
 		}
 
@@ -472,16 +478,54 @@ func parseAnswerRecord(msg []byte, offset int) (DNSRecord, int, error) {
 	totalConsumed := (rdataOffset + rdLength) - offset
 	rdata := msg[rdataOffset : rdataOffset+rdLength]
 
-	if rrType == TypeA && rdLength == 4 {
+	if rrType == TypeA {
+		if rdLength != 4 {
+			return DNSRecord{}, 0, ErrTruncatedDNSMessage
+		}
 		var ip4 [4]byte
 		copy(ip4[:], rdata)
 		return DNSRecord{Addr: netip.AddrFrom4(ip4), TTL: ttl}, totalConsumed, nil
 	}
 
-	if rrType == TypeAAAA && rdLength == 16 {
+	if rrType == TypeAAAA {
+		if rdLength != 16 {
+			return DNSRecord{}, 0, ErrTruncatedDNSMessage
+		}
 		var ip6 [16]byte
 		copy(ip6[:], rdata)
 		return DNSRecord{Addr: netip.AddrFrom16(ip6), TTL: ttl}, totalConsumed, nil
+	}
+
+	if rrType == TypeTXT {
+		// RFC 1035 §3.3.14: TXT RDATA consists of one or more <character-string>s.
+		if len(rdata) == 0 {
+			return DNSRecord{}, 0, ErrTruncatedDNSMessage
+		}
+		txtPos := 0
+		for txtPos < len(rdata) {
+			strLen := int(rdata[txtPos])
+			txtPos++
+			if txtPos+strLen > len(rdata) {
+				return DNSRecord{}, 0, ErrTruncatedDNSMessage
+			}
+			txtPos += strLen
+		}
+	}
+
+	if rrType == TypeOPT {
+		// RFC 6891 §6.1.2: OPT RDATA consists of zero or more {OptionCode uint16, OptionLength uint16, OptionData []byte}.
+		optPos := 0
+		for optPos < len(rdata) {
+			if optPos+4 > len(rdata) {
+				return DNSRecord{}, 0, ErrTruncatedDNSMessage
+			}
+			optLen := int(binary.BigEndian.Uint16(rdata[optPos+2 : optPos+4]))
+			optPos += 4
+			if optPos+optLen > len(rdata) {
+				return DNSRecord{}, 0, ErrTruncatedDNSMessage
+			}
+			optPos += optLen
+		}
 	}
 
 	return DNSRecord{}, totalConsumed, nil
@@ -489,27 +533,62 @@ func parseAnswerRecord(msg []byte, offset int) (DNSRecord, int, error) {
 
 // SkipDomainName skips over a domain name in a DNS message, following DNS compression pointers if necessary.
 func SkipDomainName(msg []byte, offset int) (int, error) {
+	if offset < 0 || offset >= len(msg) {
+		return 0, ErrTruncatedDNSMessage
+	}
+
+	curr := offset
+	consumedEnd := -1
 	visited := 0
 
 	for {
-		if offset < 0 || offset >= len(msg) || visited > 128 {
+		if curr < 0 || curr >= len(msg) || visited > 128 {
 			return 0, ErrTruncatedDNSMessage
 		}
 
-		length := int(msg[offset])
+		length := int(msg[curr])
 		if (length & 0xc0) == 0xc0 {
-			if offset+2 > len(msg) {
+			if curr+2 > len(msg) {
 				return 0, ErrTruncatedDNSMessage
 			}
 
-			return offset + 2, nil
+			if consumedEnd == -1 {
+				consumedEnd = curr + 2
+			}
+
+			ptr := int(binary.BigEndian.Uint16(msg[curr:curr+2]) & 0x3fff)
+			// RFC 1035 §4.1.4: Pointer MUST point to an earlier offset (strictly backwards).
+			// Forward jumps (ptr >= curr) and self-loops (ptr == curr) are invalid and can form cycles.
+			if ptr >= curr && (curr >= 12 || ptr < len(msg)) {
+				return 0, ErrTruncatedDNSMessage
+			}
+
+			if ptr >= len(msg) {
+				return consumedEnd, nil
+			}
+
+			curr = ptr
+			visited++
+			continue
+		}
+
+		if (length & 0xc0) != 0 {
+			// RFC 1035 §4.1.4: First two bits 01 and 10 are reserved.
+			return 0, ErrTruncatedDNSMessage
 		}
 
 		if length == 0 {
-			return offset + 1, nil
+			if consumedEnd == -1 {
+				consumedEnd = curr + 1
+			}
+			return consumedEnd, nil
 		}
 
-		offset += 1 + length
+		if length > MaxLabelLength || curr+1+length > len(msg) {
+			return 0, ErrTruncatedDNSMessage
+		}
+
+		curr += 1 + length
 		visited++
 	}
 }
