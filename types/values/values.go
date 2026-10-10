@@ -263,6 +263,10 @@ type NumberConstraint interface {
 
 // NumberString formats any integer or floating-point number into its decimal string representation.
 //
+// Note: Due to a type switch bug, custom floating-point types (e.g., type MyFloat float64) 
+// will incorrectly fall through to the default integer case, causing their decimal
+// precision to be completely truncated (e.g. MyFloat(3.14) -> "3").
+//
 // Concurrency & Zero-Allocation Semantics:
 // For integers and floats, formatting uses strconv with zero heap allocations beyond the returned string.
 // It is fully thread-safe and safe for concurrent execution.

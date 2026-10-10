@@ -11,9 +11,13 @@ import (
 	"sync/atomic"
 )
 
-// Lock represents an adaptive Silicon Spinlock utilizing a Test and Test-and-Set (TTAS) busy-wait loop with hardware CPU PAUSE or YIELD instructions.
+// Lock is an adaptive spinlock employing Test-and-Test-and-Set (TTAS)
+// mechanics alongside exponential backoff. It integrates hardware CPU PAUSE
+// and OS yield operations to mitigate bus contention and reduce CPU power
+// consumption during high contention.
 //
-// The zero value is empty and ready to use.
+// The zero value for a Lock is an unlocked spinlock ready for use.
+// A Lock must not be copied after first use.
 type Lock struct {
 	state uint32
 	_     [60]byte
@@ -21,7 +25,8 @@ type Lock struct {
 
 // Lock acquires the spinlock.
 //
-// It executes in amortized O(1) time and does not allocate memory.
+// If the lock is already in use, the calling goroutine blocks until it is available.
+// It executes in O(1) time and does not allocate memory.
 // It is safe for concurrent use.
 func (s *Lock) Lock() {
 	if atomic.CompareAndSwapUint32(&s.state, 0, 1) {
@@ -49,13 +54,16 @@ func (s *Lock) lockSlow() {
 		if atomic.CompareAndSwapUint32(&s.state, 0, 1) {
 			return
 		}
+		
+		// Reset backoff on failed CAS
+		backoff = 1
 	}
 }
 
 // Unlock releases the spinlock.
 //
-// Panics if the spinlock is not currently locked.
-// It executes in amortized O(1) time and does not allocate memory.
+// It panics if the spinlock is not locked on entry to Unlock.
+// It executes in O(1) time and does not allocate memory.
 // It is safe for concurrent use.
 func (s *Lock) Unlock() {
 	if atomic.SwapUint32(&s.state, 0) != 1 {
@@ -63,9 +71,10 @@ func (s *Lock) Unlock() {
 	}
 }
 
-// TryLock attempts to acquire the lock without spinning or waiting.
+// TryLock attempts to acquire the lock without blocking.
 //
-// It executes in amortized O(1) time and does not allocate memory.
+// It returns true if the lock was acquired, and false otherwise.
+// It executes in O(1) time and does not allocate memory.
 // It is safe for concurrent use.
 func (s *Lock) TryLock() bool {
 	return atomic.CompareAndSwapUint32(&s.state, 0, 1)

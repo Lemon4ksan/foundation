@@ -140,6 +140,13 @@ func (u URLView) QueryValue(key string) (string, bool) {
 			continue
 		}
 		k, val, found := strings.Cut(pair, "=")
+		
+		if strings.IndexByte(k, '%') >= 0 || strings.IndexByte(k, '+') >= 0 {
+			if unescK, err := QueryUnescape(k); err == nil {
+				k = unescK
+			}
+		}
+
 		if !found {
 			if k == key {
 				return "", true

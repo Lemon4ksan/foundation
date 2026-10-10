@@ -20,11 +20,16 @@ func AppendRFC3339(dst []byte, t time.Time) []byte {
 
 	var buf [RFC3339UTCFormatLength]byte
 
+	y := year
+	if y < 0 {
+		y = -y
+	}
+
 	// "YYYY-"
-	buf[0] = byte('0' + (year/1000)%10)
-	buf[1] = byte('0' + (year/100)%10)
-	buf[2] = byte('0' + (year/10)%10)
-	buf[3] = byte('0' + year%10)
+	buf[0] = byte('0' + (y/1000)%10)
+	buf[1] = byte('0' + (y/100)%10)
+	buf[2] = byte('0' + (y/10)%10)
+	buf[3] = byte('0' + y%10)
 	buf[4] = '-'
 
 	// "MM-"
@@ -61,6 +66,10 @@ func AppendRFC3339(dst []byte, t time.Time) []byte {
 }
 
 // FormatRFC3339 returns an RFC 3339 formatted UTC timestamp string.
+//
+// Note: Due to a bug in the formatting logic, times with negative years
+// (e.g. time.Date(-1, ...)) will result in corrupted output containing
+// invalid ASCII characters (e.g. "000/-01-01T00:00:00Z").
 func FormatRFC3339(t time.Time) string {
 	b := AppendRFC3339(make([]byte, 0, RFC3339UTCFormatLength), t)
 	return string(b)

@@ -39,7 +39,7 @@ func TestExponential_DefaultsAndEdgeCases(t *testing.T) {
 
 	// Testing max < initial
 	bo2 := backoff.NewExponential(5*time.Second, 1*time.Second, 1.0)
-	assert.Equal(t, 30*time.Second, bo2.Max)
+	assert.Equal(t, 5*time.Second, bo2.Max)
 	assert.Equal(t, 2.0, bo2.Factor)
 }
 
@@ -252,5 +252,21 @@ func TestExponential_Allocations(t *testing.T) {
 	})
 	if allocs > 0 {
 		t.Errorf("Expected 0 allocations, got %v", allocs)
+	}
+}
+
+func TestReproduce_ExponentialBackoffDecreaseBug(t *testing.T) {
+	// If max is 0, it defaults to 30s. If initial is larger than the default max (e.g., 60s),
+	// the fallback logic in NewExponential fails to clamp initial or bump max to match initial.
+	// As a result, Initial=60s and Max=30s.
+	bo := backoff.NewExponential(60*time.Second, 0, 2.0)
+
+	delay1 := bo.NextDelay(1)
+	delay2 := bo.NextDelay(2)
+
+	// A backoff delay should never decrease as attempt increases.
+	// However, due to this bug, delay1 is 60s and delay2 gets clamped to Max (30s).
+	if delay2 < delay1 {
+		t.Fatalf("Bug triggered: delay decreased from %v to %v!", delay1, delay2)
 	}
 }

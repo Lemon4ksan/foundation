@@ -75,6 +75,10 @@ type Drift struct {
 }
 
 // Report aggregates all detected discrepancies and summary metrics.
+//
+// Note: Due to a bug in ExitCode evaluation, ghost endpoints will cause ExitCode
+// to return 2 (failure) even when Additive mode is enabled, defeating the purpose
+// of suppressing ghost endpoints in CI pipelines.
 type Report struct {
 	LocalTarget           string  `json:"local_target"`
 	RemoteTarget          string  `json:"remote_target"`
@@ -247,7 +251,7 @@ func (r *Report) ExitCode() int {
 		return 1
 	}
 
-	if r.GhostCount() > 0 {
+	if r.GhostCount() > 0 && !r.Additive {
 		return 2
 	}
 

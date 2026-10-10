@@ -206,3 +206,13 @@ func BenchmarkRangeSeq_ZeroAlloc(b *testing.B) {
 		}
 	}
 }
+
+func TestReproduce_ISO8601NegativeYearBug(t *testing.T) {
+	// ISO8601 formatting breaks on negative years due to modulo operations on negative numbers.
+	tm := time.Date(-1, time.January, 1, 0, 0, 0, 0, time.UTC)
+	formatted := FormatRFC3339(tm)
+	
+	if formatted != "0001-01-01T00:00:00Z" {
+		t.Fatalf("expected fixed behavior '0001-01-01T00:00:00Z', got %q", formatted)
+	}
+}

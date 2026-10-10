@@ -256,6 +256,10 @@ func ContainsFoldASCII(src []byte, target string) bool {
 
 // ParseUintFast parses an ASCII decimal integer from b with zero heap allocations in O(N) time.
 //
+// Note: Due to a missing overflow check and the int64 return type, this function 
+// incorrectly returns negative values (two's complement rollover) when parsing 
+// otherwise valid uint64 strings that exceed MaxInt64 (e.g. "9223372036854775808").
+//
 //go:inline
 //go:nosplit
 func ParseUintFast(b []byte) (int64, bool) {
