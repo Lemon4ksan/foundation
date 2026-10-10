@@ -167,6 +167,9 @@ func (r *Record) ALPN() []string {
 	idx := 0
 	for idx < len(val) {
 		l := int(val[idx])
+		if l == 0 {
+			break
+		}
 
 		idx++
 		if idx+l > len(val) {
@@ -337,6 +340,55 @@ func ParseRDATA(rdata []byte) (*Record, error) {
 
 		firstKey = false
 		lastKey = key
+
+		switch SvcParamKey(key) {
+		case ParamMandatory:
+			if valLen == 0 || valLen%2 != 0 {
+				return nil, ErrMalformedParam
+			}
+			var lastMandKey uint16
+			for i := 0; i < valLen; i += 2 {
+				mk := binary.BigEndian.Uint16(rdata[offset+i : offset+i+2])
+				if mk == 0 {
+					return nil, ErrMalformedParam
+				}
+				if i > 0 && mk <= lastMandKey {
+					if mk == lastMandKey {
+						return nil, ErrDuplicateParamKey
+					}
+					return nil, ErrUnsortedParamKeys
+				}
+				lastMandKey = mk
+			}
+		case ParamALPN:
+			if valLen == 0 {
+				return nil, ErrMalformedParam
+			}
+			idx := 0
+			for idx < valLen {
+				slen := int(rdata[offset+idx])
+				if slen == 0 || idx+1+slen > valLen {
+					return nil, ErrMalformedParam
+				}
+				idx += 1 + slen
+			}
+		case ParamNoDefaultALPN:
+			if valLen != 0 {
+				return nil, ErrMalformedParam
+			}
+		case ParamPort:
+			if valLen != 2 {
+				return nil, ErrMalformedParam
+			}
+		case ParamIPv4Hint:
+			if valLen == 0 || valLen%4 != 0 {
+				return nil, ErrMalformedParam
+			}
+		case ParamIPv6Hint:
+			if valLen == 0 || valLen%16 != 0 {
+				return nil, ErrMalformedParam
+			}
+		}
 
 		val := slices.Clone(rdata[offset : offset+valLen])
 		params[SvcParamKey(key)] = val

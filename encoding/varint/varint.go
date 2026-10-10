@@ -37,6 +37,10 @@ func (e *varintLengthError) Error() string {
 
 // Read reads a number in the QUIC varint format from r.
 func Read(r io.ByteReader) (uint64, error) {
+	if r == nil {
+		return 0, errors.New("varint: nil reader")
+	}
+
 	firstByte, err := r.ReadByte()
 	if err != nil {
 		return 0, err

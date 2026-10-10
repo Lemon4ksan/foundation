@@ -35,3 +35,33 @@ func TestRepro_Peek_ShortReadOrNil(t *testing.T) {
 		assert.ErrorIs(t, err, io.ErrUnexpectedEOF)
 	})
 }
+
+func TestRepro_Read_NilReader(t *testing.T) {
+	t.Run("nil ByteReader in Read returns error instead of panic", func(t *testing.T) {
+		_, err := varint.Read(nil)
+		require.Error(t, err)
+	})
+
+	t.Run("nil ByteReader in ReadSeq terminates cleanly", func(t *testing.T) {
+		for _, err := range varint.ReadSeq(nil) {
+			require.Error(t, err)
+			break
+		}
+	})
+
+	t.Run("nil reader in byteReader ReadByte", func(t *testing.T) {
+		br := varint.NewReader(nil)
+		require.NotNil(t, br)
+		_, err := br.ReadByte()
+		require.Error(t, err)
+	})
+
+	t.Run("nil writer in byteWriter WriteByte", func(t *testing.T) {
+		bw := varint.NewWriter(nil)
+		require.NotNil(t, bw)
+		err := bw.WriteByte(0)
+		require.Error(t, err)
+	})
+}
+
+
