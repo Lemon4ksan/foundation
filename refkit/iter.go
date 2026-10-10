@@ -150,7 +150,6 @@ func (w *visibleWalker) walk(t reflect.Type) {
 // shadowing and depth rules using pooled walker buffers.
 //
 // If t is nil or resolves to a non-struct type, VisibleFields returns an empty sequence.
-// It executes in O(N) time where N is the number of visible fields and is safe for concurrent use.
 func VisibleFields(t reflect.Type) iter.Seq[reflect.StructField] {
 	return func(yield func(reflect.StructField) bool) {
 		if t == nil {

@@ -13,10 +13,7 @@ import (
 	"time"
 )
 
-// NewUnixTransport creates an [net/http.RoundTripper] bound to a local Unix domain socket path.
-// It executes in O(1) time.
-// It allocates memory for the returned transport and dialer configuration.
-// It is safe for concurrent use.
+// NewUnixTransport creates an [http.RoundTripper] bound to a local Unix domain socket path.
 func NewUnixTransport(socketPath string) *http.Transport {
 	return &http.Transport{
 		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
@@ -29,9 +26,6 @@ func NewUnixTransport(socketPath string) *http.Transport {
 
 // ParseIPCURI parses a URL carrying "unix://" or "npipe://" scheme,
 // extracting the target socket path and relative HTTP request URI.
-// It executes in O(N) time where N is the length of rawURL.
-// It performs zero allocations and operates strictly on the input string slices.
-// It is safe for concurrent use.
 //
 // Example:
 //

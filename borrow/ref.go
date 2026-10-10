@@ -5,9 +5,7 @@
 package borrow
 
 // Ref represents a shared, immutable borrowed reference to a value of type T.
-//
 // Multiple Ref instances to the same resource can coexist safely across goroutines.
-// The zero value is empty and not ready to use.
 type Ref[T any] struct {
 	ptr  *T
 	slot *Slot
@@ -15,8 +13,6 @@ type Ref[T any] struct {
 }
 
 // NewRef constructs a new immutable reference bound to a generational slot.
-//
-// It executes in O(1) time and is safe for concurrent use.
 func NewRef[T any](ptr *T, slot *Slot) Ref[T] {
 	var gen uint32
 	if slot != nil {
@@ -32,10 +28,8 @@ func NewRef[T any](ptr *T, slot *Slot) Ref[T] {
 	}
 }
 
-// Get returns the underlying pointer to T after verifying that the reference has not expired.
-//
-// If the resource has been recycled, Get panics immediately.
-// It executes in O(1) time and is safe for concurrent use.
+// Get returns the underlying pointer to T after verifying that the reference
+// has not expired. If the resource has been recycled, Get panics immediately.
 func (r Ref[T]) Get() *T {
 	if r.slot != nil {
 		r.slot.CheckValid(r.gen)
@@ -44,8 +38,6 @@ func (r Ref[T]) Get() *T {
 }
 
 // Val returns a shallow copy of the underlying value of T.
-//
-// It executes in O(1) time and is safe for concurrent use.
 func (r Ref[T]) Val() T {
 	p := r.Get()
 	if p == nil {
@@ -56,8 +48,6 @@ func (r Ref[T]) Val() T {
 }
 
 // IsValid checks whether this reference is still active and valid without panicking.
-//
-// It executes in O(1) time and is safe for concurrent use.
 func (r Ref[T]) IsValid() bool {
 	if r.ptr == nil {
 		return false
@@ -69,16 +59,12 @@ func (r Ref[T]) IsValid() bool {
 }
 
 // Generation returns the generation at which this reference was created.
-//
-// It executes in O(1) time and is safe for concurrent use.
 func (r Ref[T]) Generation() uint32 {
 	return r.gen
 }
 
 // Release safely releases the shared immutable borrow on the slot.
-//
 // Calling Release multiple times is safe and idempotent.
-// It executes in O(1) time and is safe for concurrent use.
 func (r *Ref[T]) Release() {
 	if r == nil || r.ptr == nil {
 		return
@@ -91,9 +77,7 @@ func (r *Ref[T]) Release() {
 }
 
 // Mut represents an exclusive, mutable borrowed reference to a value of type T.
-//
 // Only one Mut can exist per resource at any given moment.
-// The zero value is empty and not ready to use.
 type Mut[T any] struct {
 	ptr  *T
 	slot *Slot
@@ -101,8 +85,6 @@ type Mut[T any] struct {
 }
 
 // NewMut constructs a new exclusive mutable reference bound to a generational slot.
-//
-// It executes in O(1) time and is safe for concurrent use.
 func NewMut[T any](ptr *T, slot *Slot) Mut[T] {
 	var gen uint32
 	if slot != nil {
@@ -119,9 +101,7 @@ func NewMut[T any](ptr *T, slot *Slot) Mut[T] {
 }
 
 // Get returns the mutable pointer to T after verifying generation validity.
-//
 // If the underlying memory has been recycled or invalidated, Get panics immediately.
-// It executes in O(1) time and is safe for concurrent use.
 func (m Mut[T]) Get() *T {
 	if m.slot != nil {
 		m.slot.CheckValid(m.gen)
@@ -130,8 +110,6 @@ func (m Mut[T]) Get() *T {
 }
 
 // Write mutates the underlying value in-place after generation validation.
-//
-// It executes in O(1) time and is safe for concurrent use.
 func (m Mut[T]) Write(val T) {
 	p := m.Get()
 	if p != nil {
@@ -140,8 +118,6 @@ func (m Mut[T]) Write(val T) {
 }
 
 // Freeze downgrades this exclusive mutable borrow into a shared immutable reference.
-//
-// It executes in O(1) time and is safe for concurrent use.
 func (m *Mut[T]) Freeze() Ref[T] {
 	if m == nil || m.ptr == nil {
 		return Ref[T]{}
@@ -161,9 +137,7 @@ func (m *Mut[T]) Freeze() Ref[T] {
 }
 
 // Release safely releases the exclusive mutable borrow on the slot.
-//
 // Calling Release multiple times is safe and idempotent.
-// It executes in O(1) time and is safe for concurrent use.
 func (m *Mut[T]) Release() {
 	if m == nil || m.ptr == nil {
 		return
@@ -176,8 +150,6 @@ func (m *Mut[T]) Release() {
 }
 
 // IsValid checks whether this mutable reference is still active and valid.
-//
-// It executes in O(1) time and is safe for concurrent use.
 func (m Mut[T]) IsValid() bool {
 	if m.ptr == nil {
 		return false
@@ -189,8 +161,6 @@ func (m Mut[T]) IsValid() bool {
 }
 
 // Generation returns the generation at which this reference was created.
-//
-// It executes in O(1) time and is safe for concurrent use.
 func (m Mut[T]) Generation() uint32 {
 	return m.gen
 }

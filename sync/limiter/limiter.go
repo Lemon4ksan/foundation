@@ -17,7 +17,6 @@ import (
 // Adaptive dynamically regulates concurrency utilizing a Vegas-style congestion avoidance algorithm.
 //
 // Its zero value is not valid; use [NewAdaptive] to initialize.
-// It is safe for concurrent use.
 type Adaptive struct {
 	mu          sync.Mutex
 	limit       float64
@@ -31,11 +30,7 @@ type Adaptive struct {
 	lastReset   time.Time
 }
 
-// NewAdaptive initializes a new [Adaptive] instance with default parameters and the specified initial limit.
-//
-// It does not panic.
-//
-// Complexity: O(1) time.
+// NewAdaptive returns an [Adaptive] concurrency limiter initialized with initialLimit.
 func NewAdaptive(initialLimit float64) *Adaptive {
 	return &Adaptive{
 		limit:     initialLimit,
@@ -47,14 +42,9 @@ func NewAdaptive(initialLimit float64) *Adaptive {
 	}
 }
 
-// Acquire blocks until a concurrent execution slot becomes available or the provided context expires.
-//
-// It returns nil upon successful acquisition. If the context expires prior to slot availability,
-// it returns the corresponding context error (e.g., [context.Canceled] or [context.DeadlineExceeded]).
-// It panics if the provided context is nil.
-// It is safe for concurrent use.
-//
-// Complexity: O(1) time under low contention; allocates a channel when blocking is required.
+// Acquire blocks until a concurrency slot becomes available or ctx expires.
+// It returns nil on success, or ctx.Err() if the context expires before a slot is available.
+// Acquire panics if ctx is nil.
 func (l *Adaptive) Acquire(ctx context.Context) error {
 	l.mu.Lock()
 	if l.active < int(l.limit) {
@@ -97,14 +87,7 @@ func (l *Adaptive) Acquire(ctx context.Context) error {
 	}
 }
 
-// Release registers request completion, updates observed round-trip time (RTT) metrics, and recalculates capacity limits.
-//
-// It adjusts the active concurrency limit evaluating the estimated queue size against predefined alpha and beta thresholds.
-// It proceeds to unblock queued goroutines if new execution slots become available.
-// It does not panic.
-// It is safe for concurrent use.
-//
-// Complexity: Amortized O(W) time where W is the number of woken waiters; zero-allocation.
+// Release returns a concurrency slot and updates the Vegas congestion control window with the observed rtt.
 func (l *Adaptive) Release(rtt time.Duration) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -151,11 +134,6 @@ func (l *Adaptive) Release(rtt time.Duration) {
 }
 
 // Limit returns the currently active dynamic concurrency limit.
-//
-// It does not panic.
-// It is safe for concurrent use.
-//
-// Complexity: O(1) time; zero-allocation.
 func (l *Adaptive) Limit() float64 {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -173,13 +151,7 @@ type limiterEntry struct {
 // Keyed manages dynamic rate limiters per key, automatically evicting inactive limiters from memory after a configured TTL duration.
 //
 // Its zero value is not valid; use [NewKeyed] to initialize.
-// It is safe for concurrent use.
-//
-// Note: Eviction relies exclusively on a 'last touch' timestamp updated prior to evaluation.
-// If a request blocks in [Keyed.Wait] for a duration exceeding the configured TTL, the background sweeper
-// may evict the limiter while it is blocking requests. Subsequent
-// requests for the same key will allocate a new limiter, bypassing
-// the wait queue and violating the specified rate limits.
+// The background sweeper may prematurely evict a limiter if a request blocks in [Keyed.Wait] longer than the configured TTL, causing subsequent requests for the same key to allocate a new limiter and temporarily violate specified rate limits.
 type Keyed[K comparable] struct {
 	mu       sync.Mutex
 	r        rate.Limit
@@ -191,13 +163,8 @@ type Keyed[K comparable] struct {
 	closed   bool
 }
 
-// NewKeyed creates a [Keyed] limiter maintaining the specified [rate.Limit] and burst size per key.
-//
-// It enforces the given TTL duration to automatically sweep and discard inactive limiters.
-// A background goroutine is spawned to periodically evict expired entries.
-// It does not panic.
-//
-// Complexity: O(1) time. Allocates memory for the internal map and starts the sweeper goroutine.
+// NewKeyed returns a [Keyed] limiter maintaining rate limit r and burst b per key,
+// evicting inactive limiters after ttl.
 func NewKeyed[K comparable](r rate.Limit, b int, ttl time.Duration) *Keyed[K] {
 	kl := &Keyed[K]{
 		r:        r,
@@ -263,13 +230,7 @@ func (kl *Keyed[K]) getLimiter(key K) (*rate.Limiter, error) {
 	return entry.limiter, nil
 }
 
-// Allow evaluates whether an event for the specified key is permitted immediately.
-//
-// It returns [ErrClosed] if the limiter has been closed.
-// It does not panic.
-// It is safe for concurrent use.
-//
-// Complexity: Amortized O(1) time. Allocates memory strictly when encountering an untracked key.
+// Allow reports whether an event for key is permitted immediately, returning [ErrClosed] if closed.
 func (kl *Keyed[K]) Allow(key K) (bool, error) {
 	lim, err := kl.getLimiter(key)
 	if err != nil {
@@ -279,13 +240,8 @@ func (kl *Keyed[K]) Allow(key K) (bool, error) {
 	return lim.Allow(), nil
 }
 
-// Wait blocks execution until an event is permitted for the specified key or the provided context expires.
-//
-// It returns [ErrClosed] if the limiter has been closed.
-// It panics if the provided context is nil.
-// It is safe for concurrent use.
-//
-// Complexity: Amortized O(1) time. Allocates memory strictly when encountering an untracked key.
+// Wait blocks until an event for key is permitted or ctx expires.
+// It returns [ErrClosed] if closed. Wait panics if ctx is nil.
 func (kl *Keyed[K]) Wait(ctx context.Context, key K) error {
 	lim, err := kl.getLimiter(key)
 	if err != nil {
@@ -295,12 +251,7 @@ func (kl *Keyed[K]) Wait(ctx context.Context, key K) error {
 	return lim.Wait(ctx)
 }
 
-// Close signals the background sweeper to terminate and marks the limiter as permanently closed.
-//
-// Subsequent operations will return [ErrClosed]. It is idempotent and safe for concurrent invocation.
-// It does not panic.
-//
-// Complexity: O(1) time (excluding background eviction synchronization); zero-allocation.
+// Close stops the background sweeper and marks the limiter as permanently closed.
 func (kl *Keyed[K]) Close() error {
 	kl.mu.Lock()
 	if kl.closed {
@@ -318,22 +269,16 @@ func (kl *Keyed[K]) Close() error {
 	return nil
 }
 
-// Len returns the count of active, unexpired key limiters currently residing in memory.
-//
-// It does not panic.
-// It is safe for concurrent use.
-//
-// Complexity: O(1) time; zero-allocation.
+// Len returns the count of active, unexpired key limiters currently in memory.
 func (kl *Keyed[K]) Len() int {
 	kl.mu.Lock()
 	defer kl.mu.Unlock()
 	return len(kl.limiters)
 }
 
-// SlidingWindow implements a thread-safe sliding window log rate limiter.
+// SlidingWindow implements a sliding window log rate limiter.
 //
 // Its zero value is not valid; use [NewSlidingWindow] to initialize.
-// It is safe for concurrent use.
 type SlidingWindow struct {
 	mu         sync.Mutex
 	timestamps []time.Time
@@ -341,11 +286,7 @@ type SlidingWindow struct {
 	window     time.Duration
 }
 
-// NewSlidingWindow constructs a new [SlidingWindow] rate limiter bound by the provided limit and window duration.
-//
-// It does not panic.
-//
-// Complexity: O(1) time. Allocates memory for tracking the internal timestamp log.
+// NewSlidingWindow returns a [SlidingWindow] rate limiter for limit events per window duration.
 func NewSlidingWindow(limit int, window time.Duration) *SlidingWindow {
 	if limit < 0 {
 		limit = 0
@@ -358,14 +299,8 @@ func NewSlidingWindow(limit int, window time.Duration) *SlidingWindow {
 	}
 }
 
-// Allow evaluates whether a request occurring at the specified time is permitted within the sliding window interval.
-//
-// It returns true and a zero duration if allowed. If the rate limit is exceeded, it returns false alongside
-// the minimal wait duration required before a subsequent request may be permitted.
-// It does not panic.
-// It is safe for concurrent use.
-//
-// Complexity: O(N) time where N is the current limit window size.
+// Allow reports whether an event at time now is permitted within the sliding window,
+// returning (true, 0) if allowed or (false, retryAfter) if rate-limited.
 func (l *SlidingWindow) Allow(now time.Time) (bool, time.Duration) {
 	l.mu.Lock()
 	defer l.mu.Unlock()

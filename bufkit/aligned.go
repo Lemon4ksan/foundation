@@ -9,15 +9,18 @@ import (
 	"unsafe"
 )
 
-// CacheLineSize represents standard CPU cacheline size (64 bytes on x86/ARM64).
+// CacheLineSize is the standard CPU cache line size (64 bytes on x86/ARM64),
+// used as an alignment boundary to prevent false sharing across cores.
 const CacheLineSize = 64
 
-// PageSize represents standard OS memory page size (4096 bytes).
+// PageSize is the standard OS memory page size (4096 bytes).
+// Aligning bulk allocations to this boundary minimizes TLB misses
+// and enables hardware-level memory mapping optimizations.
 const PageSize = 4096
 
-// AlignedBytes allocates a byte slice whose first element is aligned to the given boundary.
-// The alignment must be a power of 2 (typically [CacheLineSize] or [PageSize]).
-// This operation executes in O(1) time, is safe for concurrent use, and returns nil if size is zero or negative.
+// AlignedBytes allocates a byte slice of length size whose first element is aligned
+// to the given boundary (typically [CacheLineSize] or [PageSize]) for DMA or SIMD operations.
+// Non-power-of-two alignments are rounded up to the next power of two; returns nil if size <= 0.
 func AlignedBytes(size, alignment int) []byte {
 	if size <= 0 {
 		return nil
@@ -40,9 +43,8 @@ func AlignedBytes(size, alignment int) []byte {
 	return raw[offset : offset+size : offset+size]
 }
 
-// IsAligned checks whether the given byte slice is aligned to the specified byte boundary.
-// This operation executes in O(1) time and is safe for concurrent use.
-// A nil or empty slice evaluates to true.
+// IsAligned reports whether the first element of b is aligned to the specified byte boundary.
+// Empty slices and alignments <= 1 always return true.
 func IsAligned(b []byte, alignment int) bool {
 	if len(b) == 0 {
 		return true

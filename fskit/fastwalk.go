@@ -173,10 +173,6 @@ type WalkConfig struct {
 type WalkOption func(*WalkConfig)
 
 // WithWorkers sets the number of concurrent worker goroutines.
-//
-// It does not panic.
-//
-// Complexity: O(1) time.
 func WithWorkers(n int) WalkOption {
 	return func(c *WalkConfig) {
 		if n > 0 {
@@ -186,10 +182,6 @@ func WithWorkers(n int) WalkOption {
 }
 
 // WithBufferSize sets the buffer capacity of the entry channel.
-//
-// It does not panic.
-//
-// Complexity: O(1) time.
 func WithBufferSize(n int) WalkOption {
 	return func(c *WalkConfig) {
 		if n > 0 {
@@ -199,10 +191,6 @@ func WithBufferSize(n int) WalkOption {
 }
 
 // WithFollowSymlinks configures whether symbolic links should be followed.
-//
-// It does not panic.
-//
-// Complexity: O(1) time.
 func WithFollowSymlinks(follow bool) WalkOption {
 	return func(c *WalkConfig) {
 		c.FollowSymlinks = follow
@@ -211,10 +199,6 @@ func WithFollowSymlinks(follow bool) WalkOption {
 
 // WithFilter sets a callback to filter encountered filesystem paths.
 // If the callback returns false, the file or directory is ignored and not entered.
-//
-// It does not panic.
-//
-// Complexity: O(1) time.
 func WithFilter(filter func(path string, isDir bool) bool) WalkOption {
 	return func(c *WalkConfig) {
 		c.Filter = filter
@@ -250,12 +234,9 @@ func fastRelPath(basePrefix, fullPath string) string {
 	return filepath.ToSlash(rel)
 }
 
-// WalkContext traverses targetRoot concurrently using a worker pool and emits entries to outChan.
-// It closes outChan when traversal completes or when ctx is cancelled.
-//
-// It panics if ctx is nil. It is safe for concurrent use.
-//
-// Complexity: O(N) time where N is the number of files. Allocates memory for queues.
+// WalkContext traverses targetRoot concurrently using a worker pool and emits entries to outChan,
+// closing outChan when traversal completes or when ctx is cancelled.
+// WalkContext panics if ctx is nil.
 func WalkContext(ctx context.Context, targetRoot string, outChan chan<- Entry, opts ...WalkOption) {
 	cfg := WalkConfig{
 		NumWorkers:     max(runtime.GOMAXPROCS(0)*2, 8),
@@ -401,24 +382,15 @@ func WalkContext(ctx context.Context, targetRoot string, outChan chan<- Entry, o
 	close(outChan)
 }
 
-// Walk traverses targetRoot concurrently using a worker pool and emits entries to outChan.
-// It closes outChan when traversal is complete.
-//
-// It does not panic. It is safe for concurrent use.
-//
-// Complexity: O(N) time where N is the number of files. Allocates memory for queues.
+// Walk traverses targetRoot concurrently using a worker pool and emits entries to outChan,
+// closing outChan when traversal completes.
 func Walk(targetRoot string, outChan chan<- Entry) {
 	WalkContext(context.Background(), targetRoot, outChan)
 }
 
-// FastWalk traverses the directory tree rooted at root, calling walkFn for each file or directory.
-// It executes traversal concurrently using a worker pool.
-// If walkFn returns [filepath.SkipAll], it terminates traversal immediately and returns nil.
-// If walkFn returns any other non-nil error, it terminates traversal immediately and returns that error.
-//
-// It does not panic. It is safe for concurrent use.
-//
-// Complexity: O(N) time where N is the number of files.
+// FastWalk traverses the directory tree rooted at root using a worker pool, calling walkFn for each entry.
+// If walkFn returns [filepath.SkipAll], it terminates traversal immediately and returns nil;
+// any other non-nil error terminates traversal and is returned.
 func FastWalk(root string, walkFn func(path string, d fs.DirEntry, err error) error, opts ...WalkOption) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -488,11 +460,7 @@ func FastWalk(root string, walkFn func(path string, d fs.DirEntry, err error) er
 }
 
 // FastWalkSeq returns an iterator over the directory tree rooted at root using concurrent workers.
-// Traversal ceases immediately if yield returns false, and all worker goroutines terminate cleanly without leaking.
-//
-// It does not panic. It is safe for concurrent use.
-//
-// Complexity: O(N) time where N is the number of files.
+// Traversal ceases immediately if yield returns false.
 func FastWalkSeq(root string, opts ...WalkOption) iter.Seq2[string, fs.DirEntry] {
 	return func(yield func(string, fs.DirEntry) bool) {
 		ctx, cancel := context.WithCancel(context.Background())
@@ -527,17 +495,8 @@ func FastWalkSeq(root string, opts ...WalkOption) iter.Seq2[string, fs.DirEntry]
 	}
 }
 
-// WalkSeq returns an iterator over the directory tree rooted at root,
-// yielding each encountered path and its corresponding [os.DirEntry].
+// WalkSeq returns an iterator yielding paths and directory entries sequentially via [filepath.WalkDir].
 // Traversal ceases immediately if yield returns false.
-//
-// Concurrency & Allocation Semantics:
-// It executes sequentially in the calling goroutine and performs zero
-// channel allocations. It is safe for concurrent use across distinct root paths.
-//
-// It does not panic.
-//
-// Complexity: O(N) time where N is the number of files.
 func WalkSeq(root string) iter.Seq2[string, os.DirEntry] {
 	return func(yield func(string, os.DirEntry) bool) {
 		_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {

@@ -21,12 +21,15 @@ type Algorithm uint8
 
 const (
 	// AES256GCM represents AES-256 in Galois/Counter Mode (RFC 5116).
+	// Standard nonce size: 12 bytes.
 	AES256GCM Algorithm = 1
 
 	// ChaCha20Poly1305 represents ChaCha20-Poly1305 AEAD (RFC 8439).
+	// Standard nonce size: 12 bytes.
 	ChaCha20Poly1305 Algorithm = 2
 
 	// XChaCha20Poly1305 represents extended-nonce ChaCha20-Poly1305.
+	// Standard nonce size: 24 bytes (safe for random nonce generation).
 	XChaCha20Poly1305 Algorithm = 3
 )
 
@@ -42,8 +45,6 @@ var (
 )
 
 // String returns a human-readable name of the AEAD algorithm.
-//
-// Executes in O(1) time and allocates memory if the algorithm is unknown.
 func (a Algorithm) String() string {
 	switch a {
 	case AES256GCM:
@@ -58,8 +59,6 @@ func (a Algorithm) String() string {
 }
 
 // NonceSize returns the standard nonce length in bytes for the specified algorithm.
-//
-// Executes in O(1) time and allocates memory if the algorithm is unsupported.
 func (a Algorithm) NonceSize() (int, error) {
 	switch a {
 	case AES256GCM:
@@ -73,9 +72,7 @@ func (a Algorithm) NonceSize() (int, error) {
 	}
 }
 
-// New instantiates a [crypto/cipher.AEAD] for the specified algorithm and 256-bit (32-byte) key.
-//
-// Executes in O(1) time and allocates memory for the AEAD instance.
+// New instantiates a cipher.AEAD for the specified algorithm and 256-bit (32-byte) key.
 func New(algo Algorithm, key []byte) (cipher.AEAD, error) {
 	if len(key) != KeySize {
 		return nil, fmt.Errorf("%w: got %d bytes, expected %d", ErrInvalidKeyLength, len(key), KeySize)
@@ -101,8 +98,6 @@ func New(algo Algorithm, key []byte) (cipher.AEAD, error) {
 }
 
 // Seal encrypts and authenticates plaintext along with additionalData using the specified algorithm and key.
-//
-// Executes in O(N) time where N is the length of the plaintext, and allocates memory for the AEAD instance and ciphertext.
 func Seal(algo Algorithm, key, nonce, plaintext, additionalData []byte) ([]byte, error) {
 	aead, err := New(algo, key)
 	if err != nil {
@@ -115,8 +110,6 @@ func Seal(algo Algorithm, key, nonce, plaintext, additionalData []byte) ([]byte,
 }
 
 // Open authenticates and decrypts ciphertext along with additionalData using the specified algorithm and key.
-//
-// Executes in O(N) time where N is the length of the ciphertext, and allocates memory for the AEAD instance and decrypted plaintext.
 func Open(algo Algorithm, key, nonce, ciphertext, additionalData []byte) ([]byte, error) {
 	aead, err := New(algo, key)
 	if err != nil {

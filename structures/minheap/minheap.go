@@ -14,43 +14,30 @@ type entry[K, V any] struct {
 	value V
 }
 
-// Heap represents a minimum heap priority queue ordered by key.
-//
-// The zero value for Heap is an empty heap ready for use.
-// It is not safe for concurrent use.
+// A Heap is a minimum heap ordered by key.
 type Heap[K cmp.Ordered, V any] []entry[K, V]
 
-// Len returns the current number of elements residing in the heap.
-//
-// Complexity: O(1) time; zero-allocation.
+// Len returns the number of elements currently in the heap.
 func (h Heap[K, V]) Len() int { return len(h) }
 
-// Empty reports whether the heap is currently devoid of elements.
-//
-// Complexity: O(1) time; zero-allocation.
+// Empty reports whether the heap contains zero elements.
 func (h Heap[K, V]) Empty() bool { return len(h) == 0 }
 
-// Peek retrieves the smallest element in the heap without removing it.
-//
-// It panics if invoked on an empty heap.
-// Complexity: O(1) time; zero-allocation.
+// Peek returns the smallest element in the heap.
+// It must not be called when the heap is empty.
 func (h Heap[K, V]) Peek() (K, V) {
 	v := h[0]
 	return v.key, v.value
 }
 
-// Push adds a new element to the heap, maintaining the minimum heap property.
-//
-// Complexity: O(log N) time. Allocates memory exclusively during storage expansion.
+// Push adds an element to the heap.
 func (h *Heap[K, V]) Push(key K, value V) {
 	*h = append(*h, entry[K, V]{key: key, value: value})
 	h.up(len(*h) - 1)
 }
 
 // Pop removes and returns the smallest element in the heap.
-//
-// It panics if invoked on an empty heap.
-// Complexity: O(log N) time; zero-allocation.
+// It must not be called when the heap is empty.
 func (h *Heap[K, V]) Pop() (K, V) {
 	values := *h
 	last := len(values) - 1
@@ -71,18 +58,13 @@ func (h *Heap[K, V]) Pop() (K, V) {
 	return v.key, v.value
 }
 
-// Clear forcefully purges all elements from the heap while retaining the underlying allocated storage.
-//
-// Complexity: O(N) time where N is the heap capacity; zero-allocation.
+// Clear removes all elements from the heap.
 func (h *Heap[K, V]) Clear() {
 	clear(*h)
 	*h = (*h)[:0]
 }
 
-// All provides a sequence iterator traversing all key-value entries stored in the heap without consuming them.
-//
-// The order of elements is undefined.
-// Complexity: O(1) time to instantiate the iterator; zero-allocation.
+// All yields all key-value entries stored in the heap without consuming elements.
 func (h Heap[K, V]) All() iter.Seq2[K, V] {
 	return func(yield func(K, V) bool) {
 		for i := range h {
@@ -93,10 +75,7 @@ func (h Heap[K, V]) All() iter.Seq2[K, V] {
 	}
 }
 
-// Values provides a sequence iterator traversing all values stored in the heap without consuming them.
-//
-// The order of elements is undefined.
-// Complexity: O(1) time to instantiate the iterator; zero-allocation.
+// Values yields all values stored in the heap without consuming elements.
 func (h Heap[K, V]) Values() iter.Seq[V] {
 	return func(yield func(V) bool) {
 		for i := range h {
@@ -107,9 +86,7 @@ func (h Heap[K, V]) Values() iter.Seq[V] {
 	}
 }
 
-// Drain provides a mutating sequence iterator that sequentially pops and yields key-value entries in ascending key priority order until the heap is exhausted.
-//
-// Complexity: O(log N) time per yielded element; zero-allocation.
+// Drain pops and yields elements in ascending key priority order until the heap is empty.
 func (h *Heap[K, V]) Drain() iter.Seq2[K, V] {
 	return func(yield func(K, V) bool) {
 		for !h.Empty() {
@@ -121,9 +98,7 @@ func (h *Heap[K, V]) Drain() iter.Seq2[K, V] {
 	}
 }
 
-// DrainValues provides a mutating sequence iterator that sequentially pops and yields values in ascending key priority order until the heap is exhausted.
-//
-// Complexity: O(log N) time per yielded element; zero-allocation.
+// DrainValues pops and yields values in ascending key priority order until the heap is empty.
 func (h *Heap[K, V]) DrainValues() iter.Seq[V] {
 	return func(yield func(V) bool) {
 		for !h.Empty() {

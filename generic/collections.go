@@ -108,7 +108,6 @@ func stopCacheJanitor(s cacheJanitorCleanupState) {
 
 // Cache implements a thread-safe, in-memory key-value store with Time-To-Live (TTL) expiration
 // and automatic background memory reclamation.
-// It is safe for concurrent use by multiple goroutines.
 type Cache[K comparable, V any] struct {
 	impl    *cacheImpl[K, V]
 	cleanup runtime.Cleanup

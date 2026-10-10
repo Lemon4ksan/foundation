@@ -15,9 +15,7 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-// NewNamedPipeTransport creates an [net/http.RoundTripper] bound to a Windows Named Pipe.
-// It executes in O(1) time and allocates memory for the returned transport structure.
-// It is safe for concurrent use.
+// NewNamedPipeTransport creates an [http.RoundTripper] bound to a Windows Named Pipe (e.g. "\\.\pipe\docker_engine").
 func NewNamedPipeTransport(pipePath string) *http.Transport {
 	return &http.Transport{
 		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {

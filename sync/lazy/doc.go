@@ -17,7 +17,7 @@
 //
 // Rejected compromise: sync.Once does not support resetting and re-initialization.
 //
-// Accepted cost: Get operations require an uncontended mutex lock instead of an atomic load.
+// Accepted cost: extra 8 bytes of memory overhead for the lockless atomic pointer.
 //
 // Allocations: zero
 package lazy

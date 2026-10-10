@@ -45,15 +45,12 @@ type call[V any] struct {
 // Group coordinates concurrent executions and suppresses duplicate calls for identical keys.
 //
 // The zero value is valid and ready for use.
-// All exported methods are safe for concurrent use and manage their own internal synchronization.
 type Group[K comparable, V any] struct {
 	mu    sync.Mutex
 	calls map[K]*call[V]
 }
 
 // KeysSeq returns an iterator yielding the keys of currently active deduplication calls.
-//
-// Complexity: O(N) time where N is the number of active calls to initialize the sequence; allocates memory for the snapshot.
 func (g *Group[K, V]) KeysSeq() iter.Seq[K] {
 	return func(yield func(K) bool) {
 		if g == nil {
@@ -79,8 +76,6 @@ func (g *Group[K, V]) KeysSeq() iter.Seq[K] {
 }
 
 // InFlight returns the number of currently active deduplication calls.
-//
-// Complexity: O(1) time; zero-allocation.
 func (g *Group[K, V]) InFlight() int {
 	if g == nil {
 		return 0
@@ -92,8 +87,6 @@ func (g *Group[K, V]) InFlight() int {
 }
 
 // Len returns the number of currently active deduplication calls.
-//
-// Complexity: O(1) time; zero-allocation.
 func (g *Group[K, V]) Len() int {
 	return g.InFlight()
 }
@@ -107,8 +100,6 @@ type CallFn[V any] func(ctx context.Context) (V, error)
 // If the provided context is canceled while waiting, it returns immediately with the context error.
 // If all concurrent contexts waiting on the same call are canceled, the underlying worker's context is canceled.
 // If callFn panics, the panic is propagated to the initiating caller, while secondary waiting callers receive [ErrWorkerPanicked].
-//
-// Complexity: O(1) time excluding callFn execution; allocates memory when initiating or joining a call.
 func (g *Group[K, V]) Do(ctx context.Context, key K, callFn CallFn[V]) (V, error) {
 	if g == nil {
 		var zero V
@@ -162,9 +153,8 @@ func (g *Group[K, V]) Do(ctx context.Context, key K, callFn CallFn[V]) (V, error
 	return g.wait(ctx, key, c, ch)
 }
 
-// DoChan executes callFn and suppresses duplicate concurrent calls for the specified key, returning a channel that yields the [Result].
-//
-// Complexity: O(1) time excluding callFn execution; allocates memory for channels and call tracking.
+// DoChan executes callFn and suppresses duplicate concurrent calls for the specified key,
+// returning a channel that yields the [Result].
 func (g *Group[K, V]) DoChan(ctx context.Context, key K, callFn CallFn[V]) <-chan Result[V] {
 	ch := make(chan Result[V], 1)
 

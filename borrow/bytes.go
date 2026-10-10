@@ -12,7 +12,6 @@ import (
 // Bytes represents a zero-copy byte slice handle bound to a generational lifetime.
 // It allows sub-nanosecond access to network buffers, decompression ring windows,
 // and parser outputs while preventing Use-After-Free in asynchronous contexts.
-// The zero value is empty and not ready to use.
 type Bytes struct {
 	ptr   unsafe.Pointer
 	len   int
@@ -23,8 +22,6 @@ type Bytes struct {
 }
 
 // NewBytes creates a new Bytes handle wrapping a Go byte slice.
-//
-// It executes in O(1) time and is safe for concurrent use.
 func NewBytes(b []byte, slot *Slot) Bytes {
 	if len(b) == 0 {
 		var gen uint32
@@ -52,8 +49,6 @@ func NewBytes(b []byte, slot *Slot) Bytes {
 }
 
 // NewBytesRaw creates a new Bytes handle wrapping a raw memory pointer and length.
-//
-// It executes in O(1) time and is safe for concurrent use.
 func NewBytesRaw(ptr unsafe.Pointer, length, capacity int, slot *Slot) Bytes {
 	var gen uint32
 	bound := false
@@ -71,10 +66,8 @@ func NewBytesRaw(ptr unsafe.Pointer, length, capacity int, slot *Slot) Bytes {
 	}
 }
 
-// AsSlice returns a []byte view of the underlying memory after verifying that the buffer has not been recycled.
-//
-// If the generation is expired, AsSlice panics.
-// It executes in O(1) time and is safe for concurrent use.
+// AsSlice returns a []byte view of the underlying memory after verifying
+// that the buffer has not been recycled. If the generation is expired, AsSlice panics.
 func (b Bytes) AsSlice() []byte {
 	if b.len == 0 || b.ptr == nil {
 		return nil
@@ -86,16 +79,12 @@ func (b Bytes) AsSlice() []byte {
 }
 
 // Bytes returns a []byte view of the underlying memory (alias for [AsSlice]).
-//
-// It executes in O(1) time and is safe for concurrent use.
 func (b Bytes) Bytes() []byte {
 	return b.AsSlice()
 }
 
-// Clone creates an independent, GC-heap copy of the data that safely outlives the current borrow scope.
-//
-// It executes in O(N) time where N is the length of the slice and allocates memory.
-// It is safe for concurrent use.
+// Clone creates an independent, GC-heap copy of the data that safely outlives
+// the current borrow scope.
 func (b Bytes) Clone() []byte {
 	s := b.AsSlice()
 	if len(s) == 0 {
@@ -105,22 +94,16 @@ func (b Bytes) Clone() []byte {
 }
 
 // Len returns the byte length of the buffer.
-//
-// It executes in O(1) time and is safe for concurrent use.
 func (b Bytes) Len() int {
 	return b.len
 }
 
 // Cap returns the byte capacity of the buffer.
-//
-// It executes in O(1) time and is safe for concurrent use.
 func (b Bytes) Cap() int {
 	return b.cap
 }
 
 // IsValid checks whether this buffer handle is still valid without panicking.
-//
-// It executes in O(1) time and is safe for concurrent use.
 func (b Bytes) IsValid() bool {
 	if b.ptr == nil && b.len != 0 {
 		return false
@@ -135,15 +118,11 @@ func (b Bytes) IsValid() bool {
 }
 
 // IsBound reports whether this buffer is bound to an enclosing scope arena.
-//
-// It executes in O(1) time and is safe for concurrent use.
 func (b Bytes) IsBound() bool {
 	return b.bound || (b.slot != nil && b.slot.IsBound())
 }
 
 // Slice returns a sub-slice of Bytes within [low:high] bound to the same generational slot.
-//
-// It executes in O(1) time and is safe for concurrent use.
 func (b Bytes) Slice(low, high int) Bytes {
 	if b.slot != nil {
 		b.slot.CheckValid(b.gen)
@@ -172,11 +151,10 @@ func (b Bytes) Slice(low, high int) Bytes {
 	}
 }
 
-// Release invalidates this Bytes handle.
-//
-// If the underlying slot is an owning slot, it also invalidates the slot. If the slot is bound to an enclosing scope arena, the slot is preserved for other scope allocations.
+// Release invalidates this Bytes handle. If the underlying slot is an owning slot,
+// it also invalidates the slot. If the slot is bound to an enclosing scope arena,
+// the slot is preserved for other scope allocations.
 // Calling Release multiple times is safe and idempotent.
-// It executes in O(1) time and is safe for concurrent use.
 func (b *Bytes) Release() {
 	if b == nil || (b.ptr == nil && b.len == 0) {
 		return

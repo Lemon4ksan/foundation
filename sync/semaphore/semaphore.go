@@ -9,11 +9,8 @@ import (
 	"sync"
 )
 
-// Semaphore coordinates access to a shared pool of concurrent slots.
-//
-// It is a dynamically resizable counting semaphore.
+// Semaphore is a dynamically resizable counting semaphore coordinating access to concurrent slots.
 // The zero value is ready for use with a limit of 0.
-// All exported methods are safe for concurrent use.
 type Semaphore struct {
 	mu      sync.Mutex
 	limit   int
@@ -21,10 +18,7 @@ type Semaphore struct {
 	waiters []chan struct{}
 }
 
-// New creates a [Semaphore] initialized with the specified limit.
-//
-// It returns a pointer to the instance.
-// Complexity: O(1) time.
+// New creates a [Semaphore] initialized with initialLimit slots.
 func New(initialLimit int) *Semaphore {
 	if initialLimit < 0 {
 		initialLimit = 0
@@ -35,11 +29,8 @@ func New(initialLimit int) *Semaphore {
 	}
 }
 
-// Acquire requests a slot from the pool, blocking until one is available or the context is canceled.
-//
-// It allocates memory for a waiter channel if blocking is required.
-// This operation panics if the provided context is nil.
-// Complexity: O(1) time if uncontended, or O(N) time during cancellation where N is the number of waiters.
+// Acquire requests a slot from the semaphore, blocking until one is available or ctx is canceled.
+// Acquire panics if ctx is nil.
 func (s *Semaphore) Acquire(ctx context.Context) error {
 	if err := ctx.Err(); err != nil {
 		return err
@@ -86,9 +77,8 @@ func (s *Semaphore) Acquire(ctx context.Context) error {
 	}
 }
 
-// Release returns an acquired slot to the pool, waking the next blocked goroutine if one exists.
-//
-// Complexity: O(1) time.
+// Release returns an acquired slot to the semaphore, waking the next waiting goroutine.
+// Release panics if called more times than successful acquires.
 func (s *Semaphore) Release() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -101,9 +91,7 @@ func (s *Semaphore) Release() {
 	s.notifyWaiters()
 }
 
-// Resize updates the maximum allowed limit of the pool.
-//
-// Complexity: O(W) time where W is the number of waiting goroutines woken by the increased limit.
+// Resize updates the maximum allowed capacity of the semaphore.
 func (s *Semaphore) Resize(newLimit int) {
 	if newLimit < 0 {
 		newLimit = 0
@@ -117,9 +105,7 @@ func (s *Semaphore) Resize(newLimit int) {
 }
 
 // notifyWaiters wakes up blocked waiters as long as free slots are available.
-//
-// It requires the caller to hold the mutex.
-// Complexity: O(W) time where W is the number of woken goroutines.
+// The caller must hold s.mu.
 func (s *Semaphore) notifyWaiters() {
 	for s.active < s.limit && len(s.waiters) > 0 {
 		ch := s.waiters[0]

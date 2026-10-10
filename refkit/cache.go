@@ -14,8 +14,6 @@ import (
 )
 
 // FieldSchema represents the cached layout and tag metadata of a struct field.
-//
-// The zero value is empty and ready to use.
 type FieldSchema struct {
 	Field  reflect.StructField // StructField descriptor
 	Offset uintptr             // Cumulative byte offset from the root struct
@@ -23,8 +21,6 @@ type FieldSchema struct {
 }
 
 // StructSchema represents the cached memory layout of a struct type.
-//
-// The zero value is empty and ready to use.
 type StructSchema struct {
 	Type   reflect.Type  // The struct reflect.Type
 	Size   uintptr       // Total struct byte size
@@ -32,16 +28,12 @@ type StructSchema struct {
 }
 
 // SchemaCache provides a thread-safe cache for pre-computed struct layouts and parsed tags.
-//
-// The zero value is empty and not ready to use.
 type SchemaCache struct {
 	mu      sync.RWMutex
 	schemas map[reflect.Type]*StructSchema
 }
 
 // NewSchemaCache constructs an empty, concurrent-safe [SchemaCache].
-//
-// It executes in O(1) time and allocates memory for the cache.
 func NewSchemaCache() *SchemaCache {
 	return &SchemaCache{
 		schemas: make(map[reflect.Type]*StructSchema),
@@ -56,8 +48,6 @@ func NewSchemaCache() *SchemaCache {
 //
 // If t is a pointer to a struct, Get dereferences the pointer. If t is nil or
 // resolves to a non-struct type, Get returns an error.
-// It executes in amortized O(1) time and allocates memory on a cache miss.
-// It is safe for concurrent use.
 func (c *SchemaCache) Get(t reflect.Type) (*StructSchema, error) {
 	if t == nil {
 		return nil, errors.New("refkit: nil type")

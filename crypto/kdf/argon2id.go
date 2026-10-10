@@ -9,8 +9,6 @@ import (
 )
 
 // Argon2idProfile defines memory hardness, iteration count, and parallelism for Argon2id.
-//
-// The zero value is empty and not ready to use.
 type Argon2idProfile struct {
 	MemoryKiB   uint32
 	Iterations  uint32
@@ -35,8 +33,6 @@ var (
 )
 
 // Argon2id derives a cryptographic key from password and salt using the specified profile parameters.
-//
-// Executes in O(N*M) time where N is the iteration count and M is memory size, and allocates memory for the derived key and Argon2 working arrays.
 func Argon2id(password, salt []byte, profile Argon2idProfile, keyLen uint32) []byte {
 	return argon2.IDKey(password, salt, profile.Iterations, profile.MemoryKiB, profile.Parallelism, keyLen)
 }

@@ -7,8 +7,6 @@ package fskit
 import "io"
 
 // MmapFile represents a memory-mapped file supporting random-access reads and zero-copy slicing.
-//
-// It is safe for concurrent use.
 type MmapFile interface {
 	io.ReaderAt
 	io.Closer

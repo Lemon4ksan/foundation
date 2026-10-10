@@ -2,8 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package casing provides string case conversion algorithms
-// (snake_case, camelCase, PascalCase, kebab-case, SCREAMING_SNAKE_CASE).
+// Package casing provides string case conversion algorithms (snake_case, camelCase, PascalCase, kebab-case, SCREAMING_SNAKE_CASE).
 //
 // # Compared to the standard library
 //
