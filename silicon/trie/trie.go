@@ -147,23 +147,32 @@ func (t *RadixTree[V]) Get(key string) (V, bool) {
 			}
 
 			var zero V
-
 			return zero, false
 		}
 
-		idx := curr.findEdge(search[0])
-		if idx == -1 {
+		next := curr.findEdgeNode(search[0])
+		if next == nil {
 			var zero V
 			return zero, false
 		}
 
-		next := curr.edges[idx].node
-		if !strings.HasPrefix(search, next.prefix) {
+		np := next.prefix
+		npLen := len(np)
+		if len(search) < npLen {
 			var zero V
 			return zero, false
 		}
 
-		search = search[len(next.prefix):]
+		if npLen > 1 {
+			_ = search[npLen-1]
+			_ = np[npLen-1]
+			if search[:npLen] != np {
+				var zero V
+				return zero, false
+			}
+		}
+
+		search = search[npLen:]
 		curr = next
 	}
 }
@@ -193,18 +202,27 @@ func (t *RadixTree[V]) LongestPrefix(key string) (string, V, bool) {
 			break
 		}
 
-		idx := curr.findEdge(search[0])
-		if idx == -1 {
+		next := curr.findEdgeNode(search[0])
+		if next == nil {
 			break
 		}
 
-		next := curr.edges[idx].node
-		if !strings.HasPrefix(search, next.prefix) {
+		np := next.prefix
+		npLen := len(np)
+		if len(search) < npLen {
 			break
 		}
 
-		matchedLen += len(next.prefix)
-		search = search[len(next.prefix):]
+		if npLen > 1 {
+			_ = search[npLen-1]
+			_ = np[npLen-1]
+			if search[:npLen] != np {
+				break
+			}
+		}
+
+		matchedLen += npLen
+		search = search[npLen:]
 		curr = next
 	}
 
@@ -400,6 +418,24 @@ func (n *node[V]) findEdge(b byte) int {
 	return -1
 }
 
+func (n *node[V]) findEdgeNode(b byte) *node[V] {
+	edges := n.edges
+	numEdges := len(edges)
+	if numEdges == 0 {
+		return nil
+	}
+
+	_ = edges[numEdges-1]
+
+	for i := range numEdges {
+		if edges[i].label == b {
+			return edges[i].node
+		}
+	}
+
+	return nil
+}
+
 func (n *node[V]) addEdge(b byte, child *node[V]) {
 	n.edges = append(n.edges, edge[V]{label: b, node: child})
 }
@@ -414,10 +450,13 @@ func commonPrefixLength(a, b string) int {
 	_ = a[maxLen-1]
 	_ = b[maxLen-1]
 
+	pa := unsafe.StringData(a)
+	pb := unsafe.StringData(b)
+
 	i := 0
 	for i+8 <= maxLen {
-		wa := *(*uint64)(unsafe.Add(unsafe.Pointer(unsafe.StringData(a)), i))
-		wb := *(*uint64)(unsafe.Add(unsafe.Pointer(unsafe.StringData(b)), i))
+		wa := *(*uint64)(unsafe.Add(unsafe.Pointer(pa), i))
+		wb := *(*uint64)(unsafe.Add(unsafe.Pointer(pb), i))
 		if wa != wb {
 			diff := wa ^ wb
 			return i + (bits.TrailingZeros64(diff) >> 3)
@@ -426,7 +465,7 @@ func commonPrefixLength(a, b string) int {
 	}
 
 	for ; i < maxLen; i++ {
-		if a[i] != b[i] {
+		if *(*byte)(unsafe.Add(unsafe.Pointer(pa), i)) != *(*byte)(unsafe.Add(unsafe.Pointer(pb), i)) {
 			return i
 		}
 	}

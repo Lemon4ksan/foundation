@@ -114,6 +114,7 @@ func StoreLE64[I Indexer](b []byte, i I, v uint64) {
 //
 //go:inline
 func Uint16(b []byte) uint16 {
+	_ = b[1]
 	return binary.LittleEndian.Uint16(b)
 }
 
@@ -121,6 +122,7 @@ func Uint16(b []byte) uint16 {
 //
 //go:inline
 func Uint16LE(b []byte) uint16 {
+	_ = b[1]
 	return binary.LittleEndian.Uint16(b)
 }
 
@@ -128,6 +130,7 @@ func Uint16LE(b []byte) uint16 {
 //
 //go:inline
 func Uint32(b []byte) uint32 {
+	_ = b[3]
 	return binary.LittleEndian.Uint32(b)
 }
 
@@ -135,6 +138,7 @@ func Uint32(b []byte) uint32 {
 //
 //go:inline
 func Uint32LE(b []byte) uint32 {
+	_ = b[3]
 	return binary.LittleEndian.Uint32(b)
 }
 
@@ -142,6 +146,7 @@ func Uint32LE(b []byte) uint32 {
 //
 //go:inline
 func Uint64(b []byte) uint64 {
+	_ = b[7]
 	return binary.LittleEndian.Uint64(b)
 }
 
@@ -149,6 +154,7 @@ func Uint64(b []byte) uint64 {
 //
 //go:inline
 func Uint64LE(b []byte) uint64 {
+	_ = b[7]
 	return binary.LittleEndian.Uint64(b)
 }
 
@@ -156,6 +162,7 @@ func Uint64LE(b []byte) uint64 {
 //
 //go:inline
 func PutUint16(b []byte, v uint16) {
+	_ = b[1]
 	binary.LittleEndian.PutUint16(b, v)
 }
 
@@ -163,6 +170,7 @@ func PutUint16(b []byte, v uint16) {
 //
 //go:inline
 func PutUint16LE(b []byte, v uint16) {
+	_ = b[1]
 	binary.LittleEndian.PutUint16(b, v)
 }
 
@@ -170,6 +178,7 @@ func PutUint16LE(b []byte, v uint16) {
 //
 //go:inline
 func PutUint32(b []byte, v uint32) {
+	_ = b[3]
 	binary.LittleEndian.PutUint32(b, v)
 }
 
@@ -177,6 +186,7 @@ func PutUint32(b []byte, v uint32) {
 //
 //go:inline
 func PutUint32LE(b []byte, v uint32) {
+	_ = b[3]
 	binary.LittleEndian.PutUint32(b, v)
 }
 
@@ -184,6 +194,7 @@ func PutUint32LE(b []byte, v uint32) {
 //
 //go:inline
 func PutUint64(b []byte, v uint64) {
+	_ = b[7]
 	binary.LittleEndian.PutUint64(b, v)
 }
 
@@ -191,6 +202,7 @@ func PutUint64(b []byte, v uint64) {
 //
 //go:inline
 func PutUint64LE(b []byte, v uint64) {
+	_ = b[7]
 	binary.LittleEndian.PutUint64(b, v)
 }
 
@@ -209,6 +221,7 @@ func LoadBE16[I Indexer](b []byte, i I) uint16 {
 //
 //go:inline
 func LoadBE24[I Indexer](b []byte, i I) uint32 {
+	_ = b[int(i)+2]
 	ptr := unsafe.Add(unsafe.Pointer(unsafe.SliceData(b)), i)
 	b0 := uint32(*(*byte)(ptr))
 	b1 := uint32(*(*byte)(unsafe.Add(ptr, 1)))
@@ -242,6 +255,7 @@ func StoreBE16(b []byte, v uint16) {
 //
 //go:inline
 func StoreBE24(b []byte, v uint32) {
+	_ = b[2]
 	ptr := unsafe.Pointer(unsafe.SliceData(b))
 	*(*byte)(ptr) = byte(v >> 16)
 	*(*byte)(unsafe.Add(ptr, 1)) = byte(v >> 8)
@@ -266,6 +280,7 @@ func StoreBE64[I Indexer](b []byte, i I, v uint64) {
 //
 //go:inline
 func Uint16BE(b []byte) uint16 {
+	_ = b[1]
 	return binary.BigEndian.Uint16(b)
 }
 
@@ -273,6 +288,7 @@ func Uint16BE(b []byte) uint16 {
 //
 //go:inline
 func Uint24BE(b []byte) uint32 {
+	_ = b[2]
 	return (uint32(b[0]) << 16) | (uint32(b[1]) << 8) | uint32(b[2])
 }
 
@@ -280,6 +296,7 @@ func Uint24BE(b []byte) uint32 {
 //
 //go:inline
 func Uint32BE(b []byte) uint32 {
+	_ = b[3]
 	return binary.BigEndian.Uint32(b)
 }
 
@@ -287,6 +304,7 @@ func Uint32BE(b []byte) uint32 {
 //
 //go:inline
 func Uint64BE(b []byte) uint64 {
+	_ = b[7]
 	return binary.BigEndian.Uint64(b)
 }
 
@@ -294,6 +312,7 @@ func Uint64BE(b []byte) uint64 {
 //
 //go:inline
 func PutUint16BE(b []byte, v uint16) {
+	_ = b[1]
 	binary.BigEndian.PutUint16(b, v)
 }
 
@@ -301,6 +320,7 @@ func PutUint16BE(b []byte, v uint16) {
 //
 //go:inline
 func PutUint24BE(b []byte, v uint32) {
+	_ = b[2]
 	b[0] = byte(v >> 16)
 	b[1] = byte(v >> 8)
 	b[2] = byte(v)
@@ -310,6 +330,7 @@ func PutUint24BE(b []byte, v uint32) {
 //
 //go:inline
 func PutUint32BE(b []byte, v uint32) {
+	_ = b[3]
 	binary.BigEndian.PutUint32(b, v)
 }
 
@@ -317,5 +338,6 @@ func PutUint32BE(b []byte, v uint32) {
 //
 //go:inline
 func PutUint64BE(b []byte, v uint64) {
+	_ = b[7]
 	binary.BigEndian.PutUint64(b, v)
 }
