@@ -41,6 +41,30 @@ func ToKebab(s string) string {
 
 // ToCamel converts s into camelCase (e.g. "user_id" -> "userId", "API_KEY" -> "apiKey").
 func ToCamel(s string) string {
+	if s == "" {
+		return ""
+	}
+	if isASCII(s) {
+		var sb strings.Builder
+		sb.Grow(len(s))
+		first := true
+		forEachWordASCII(s, func(w string) {
+			if first {
+				for i := 0; i < len(w); i++ {
+					c := w[i]
+					if c >= 'A' && c <= 'Z' {
+						c += 32
+					}
+					sb.WriteByte(c)
+				}
+				first = false
+			} else {
+				writeTitleWordASCII(&sb, w)
+			}
+		})
+		return sb.String()
+	}
+
 	words := SplitWords(s)
 	if len(words) == 0 {
 		return ""
@@ -62,6 +86,18 @@ func ToCamel(s string) string {
 
 // ToPascal converts s into PascalCase (e.g. "user_id" -> "UserId", "http_server" -> "HttpServer").
 func ToPascal(s string) string {
+	if s == "" {
+		return ""
+	}
+	if isASCII(s) {
+		var sb strings.Builder
+		sb.Grow(len(s))
+		forEachWordASCII(s, func(w string) {
+			writeTitleWordASCII(&sb, w)
+		})
+		return sb.String()
+	}
+
 	words := SplitWords(s)
 	if len(words) == 0 {
 		return ""
@@ -83,19 +119,70 @@ func SplitWords(s string) []string {
 		return nil
 	}
 
-	var words []string
+	if isASCII(s) {
+		words := make([]string, 0, 8)
+		forEachWordASCII(s, func(w string) {
+			words = append(words, w)
+		})
+		return words
+	}
+
+	words := make([]string, 0, 8)
+	forEachWordUnicode(s, func(w string) {
+		words = append(words, w)
+	})
+	return words
+}
+
+func isASCII(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if s[i] >= 0x80 {
+			return false
+		}
+	}
+	return true
+}
+
+func forEachWordASCII(s string, yield func(word string)) {
+	n := len(s)
+	start := 0
+	for i := 0; i < n; i++ {
+		c := s[i]
+		if c == '_' || c == '-' || c == ' ' || c == '.' || c == '/' {
+			if i > start {
+				yield(s[start:i])
+			}
+			start = i + 1
+			continue
+		}
+
+		if i > start && c >= 'A' && c <= 'Z' {
+			prev := s[i-1]
+			prevIsUpper := prev >= 'A' && prev <= 'Z'
+			if !prevIsUpper {
+				yield(s[start:i])
+				start = i
+			} else if i+1 < n && s[i+1] >= 'a' && s[i+1] <= 'z' {
+				yield(s[start:i])
+				start = i
+			}
+		}
+	}
+	if start < n {
+		yield(s[start:])
+	}
+}
+
+func forEachWordUnicode(s string, yield func(word string)) {
 	runes := []rune(s)
 	n := len(runes)
-
 	start := 0
-	for i := range n {
+	for i := 0; i < n; i++ {
 		r := runes[i]
-
 		if r == '_' || r == '-' || r == ' ' || r == '.' || r == '/' {
 			if i > start {
-				words = append(words, string(runes[start:i]))
+				yield(string(runes[start:i]))
 			}
-
 			start = i + 1
 			continue
 		}
@@ -103,23 +190,72 @@ func SplitWords(s string) []string {
 		if i > start && unicode.IsUpper(r) {
 			prevIsUpper := unicode.IsUpper(runes[i-1])
 			if !prevIsUpper {
-				words = append(words, string(runes[start:i]))
+				yield(string(runes[start:i]))
 				start = i
 			} else if i+1 < n && unicode.IsLower(runes[i+1]) {
-				words = append(words, string(runes[start:i]))
+				yield(string(runes[start:i]))
 				start = i
 			}
 		}
 	}
-
 	if start < n {
-		words = append(words, string(runes[start:]))
+		yield(string(runes[start:]))
 	}
+}
 
-	return words
+func writeTitleWordASCII(sb *strings.Builder, w string) {
+	if len(w) == 0 {
+		return
+	}
+	c := w[0]
+	if c >= 'a' && c <= 'z' {
+		c -= 32
+	}
+	sb.WriteByte(c)
+	for i := 1; i < len(w); i++ {
+		c = w[i]
+		if c >= 'A' && c <= 'Z' {
+			c += 32
+		}
+		sb.WriteByte(c)
+	}
 }
 
 func convertDelimited(s string, delimiter byte, screaming bool) string {
+	if s == "" {
+		return ""
+	}
+
+	if isASCII(s) {
+		var sb strings.Builder
+		sb.Grow(len(s) + 4)
+		first := true
+		forEachWordASCII(s, func(w string) {
+			if !first {
+				sb.WriteByte(delimiter)
+			}
+			first = false
+			if screaming {
+				for i := 0; i < len(w); i++ {
+					c := w[i]
+					if c >= 'a' && c <= 'z' {
+						c -= 32
+					}
+					sb.WriteByte(c)
+				}
+			} else {
+				for i := 0; i < len(w); i++ {
+					c := w[i]
+					if c >= 'A' && c <= 'Z' {
+						c += 32
+					}
+					sb.WriteByte(c)
+				}
+			}
+		})
+		return sb.String()
+	}
+
 	words := SplitWords(s)
 	if len(words) == 0 {
 		return ""
@@ -156,3 +292,4 @@ func titleWord(w string) string {
 
 	return string(runes)
 }
+

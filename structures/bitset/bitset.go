@@ -7,6 +7,7 @@ package bitset
 import (
 	"iter"
 	"math/bits"
+	"slices"
 )
 
 const (
@@ -141,10 +142,15 @@ func (b *Set) Count() int {
 	if b == nil || b.length == 0 {
 		return 0
 	}
-	cnt := 0
 	n := numWords(b.length)
-	for i := range n {
-		cnt += bits.OnesCount64(b.words[i])
+	w := b.words[:n]
+	cnt := 0
+	for len(w) >= 4 {
+		cnt += bits.OnesCount64(w[0]) + bits.OnesCount64(w[1]) + bits.OnesCount64(w[2]) + bits.OnesCount64(w[3])
+		w = w[4:]
+	}
+	for i := range w {
+		cnt += bits.OnesCount64(w[i])
 	}
 	return cnt
 }
@@ -155,8 +161,9 @@ func (b *Set) Any() bool {
 		return false
 	}
 	n := numWords(b.length)
-	for i := range n {
-		if b.words[i] != 0 {
+	w := b.words[:n]
+	for i := range w {
+		if w[i] != 0 {
 			return true
 		}
 	}
@@ -175,8 +182,9 @@ func (b *Set) AllSet() bool {
 		return true
 	}
 	fullWords := b.length >> wordShift
-	for i := range fullWords {
-		if b.words[i] != ^uint64(0) {
+	w := b.words[:fullWords]
+	for i := range w {
+		if w[i] != ^uint64(0) {
 			return false
 		}
 	}
@@ -202,12 +210,7 @@ func (b *Set) Equal(other *Set) bool {
 		return false
 	}
 	n := numWords(b.length)
-	for i := range n {
-		if b.words[i] != other.words[i] {
-			return false
-		}
-	}
-	return true
+	return slices.Equal(b.words[:n], other.words[:n])
 }
 
 // Test reports the boolean value of bit i.
@@ -283,8 +286,16 @@ func (b *Set) SetAll() *Set {
 		return b
 	}
 	n := numWords(b.length)
-	for i := range n {
-		b.words[i] = ^uint64(0)
+	w := b.words[:n]
+	for len(w) >= 4 {
+		w[0] = ^uint64(0)
+		w[1] = ^uint64(0)
+		w[2] = ^uint64(0)
+		w[3] = ^uint64(0)
+		w = w[4:]
+	}
+	for i := range w {
+		w[i] = ^uint64(0)
 	}
 	b.cleanTrailing()
 	return b
@@ -305,8 +316,16 @@ func (b *Set) Not() *Set {
 		return b
 	}
 	n := numWords(b.length)
-	for i := range n {
-		b.words[i] = ^b.words[i]
+	w := b.words[:n]
+	for len(w) >= 4 {
+		w[0] = ^w[0]
+		w[1] = ^w[1]
+		w[2] = ^w[2]
+		w[3] = ^w[3]
+		w = w[4:]
+	}
+	for i := range w {
+		w[i] = ^w[i]
 	}
 	b.cleanTrailing()
 	return b
@@ -416,8 +435,20 @@ func (b *Set) And(other *Set) *Set {
 		return b
 	}
 	common := min(numWords(b.length), numWords(other.length))
-	for i := range common {
-		b.words[i] &= other.words[i]
+	if common > 0 {
+		bw := b.words[:common]
+		ow := other.words[:common]
+		for len(bw) >= 4 {
+			bw[0] &= ow[0]
+			bw[1] &= ow[1]
+			bw[2] &= ow[2]
+			bw[3] &= ow[3]
+			bw = bw[4:]
+			ow = ow[4:]
+		}
+		for i := range bw {
+			bw[i] &= ow[i]
+		}
 	}
 	n := numWords(b.length)
 	if common < n {
@@ -441,8 +472,20 @@ func (b *Set) Or(other *Set) *Set {
 		b.length = other.length
 	}
 	common := min(numWords(b.length), numWords(other.length))
-	for i := range common {
-		b.words[i] |= other.words[i]
+	if common > 0 {
+		bw := b.words[:common]
+		ow := other.words[:common]
+		for len(bw) >= 4 {
+			bw[0] |= ow[0]
+			bw[1] |= ow[1]
+			bw[2] |= ow[2]
+			bw[3] |= ow[3]
+			bw = bw[4:]
+			ow = ow[4:]
+		}
+		for i := range bw {
+			bw[i] |= ow[i]
+		}
 	}
 	b.cleanTrailing()
 	return b
@@ -465,8 +508,20 @@ func (b *Set) Xor(other *Set) *Set {
 		b.length = other.length
 	}
 	common := min(numWords(b.length), numWords(other.length))
-	for i := range common {
-		b.words[i] ^= other.words[i]
+	if common > 0 {
+		bw := b.words[:common]
+		ow := other.words[:common]
+		for len(bw) >= 4 {
+			bw[0] ^= ow[0]
+			bw[1] ^= ow[1]
+			bw[2] ^= ow[2]
+			bw[3] ^= ow[3]
+			bw = bw[4:]
+			ow = ow[4:]
+		}
+		for i := range bw {
+			bw[i] ^= ow[i]
+		}
 	}
 	b.cleanTrailing()
 	return b
@@ -484,8 +539,20 @@ func (b *Set) AndNot(other *Set) *Set {
 		return b.ClearAll()
 	}
 	common := min(numWords(b.length), numWords(other.length))
-	for i := range common {
-		b.words[i] &^= other.words[i]
+	if common > 0 {
+		bw := b.words[:common]
+		ow := other.words[:common]
+		for len(bw) >= 4 {
+			bw[0] &^= ow[0]
+			bw[1] &^= ow[1]
+			bw[2] &^= ow[2]
+			bw[3] &^= ow[3]
+			bw = bw[4:]
+			ow = ow[4:]
+		}
+		for i := range bw {
+			bw[i] &^= ow[i]
+		}
 	}
 	b.cleanTrailing()
 	return b
