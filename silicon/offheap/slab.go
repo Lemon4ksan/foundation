@@ -247,11 +247,12 @@ func (s *SlabAllocator[T]) Chunks() iter.Seq[unsafe.Pointer] {
 			wordIdx := idx / 64
 			bit := uint(idx % 64)
 			// A bit of 0 indicates the slot is currently allocated/in-use.
-			if (s.bitmap[wordIdx] & (1 << bit)) == 0 {
-				ptr := unsafe.Add(s.page, idx*s.stride)
-				if !yield(ptr) {
-					return
-				}
+			if (s.bitmap[wordIdx] & (1 << bit)) != 0 {
+				continue
+			}
+			ptr := unsafe.Add(s.page, idx*s.stride)
+			if !yield(ptr) {
+				return
 			}
 		}
 	}

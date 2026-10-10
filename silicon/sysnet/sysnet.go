@@ -86,66 +86,53 @@ func (c *BatchUDPConn) WriteVector(buffers [][]byte) (int64, error) {
 }
 
 func (c *BatchUDPConn) writeVector(buffers [][]byte) (int64, error) {
-	if sysConn, ok := c.PacketConn.(interface {
-		SyscallConn() (syscallConn, error)
-	}); ok {
-		raw, err := sysConn.SyscallConn()
-		if err == nil {
-			var (
-				totalWritten int64
-				sysErr       error
-			)
-
-			remaining := buffers
-			errCtrl := raw.Write(func(fd uintptr) bool {
-				for len(remaining) > 0 {
-					var written int64
-					written, sysErr = writeVectorBuffersFD(fd, remaining)
-					if written > 0 {
-						totalWritten += written
-						for len(remaining) > 0 && written > 0 {
-							if int64(len(remaining[0])) <= written {
-								written -= int64(len(remaining[0]))
-								remaining = remaining[1:]
-							} else {
-								remaining[0] = remaining[0][written:]
-								written = 0
-							}
-						}
-					}
-					if sysErr != nil {
-						if errors.Is(sysErr, syscall.EAGAIN) || errors.Is(sysErr, syscall.EWOULDBLOCK) {
-							return false
-						}
-						return true
-					}
-				}
-				return true
-			})
-			if errCtrl == nil && sysErr == nil {
-				return totalWritten, nil
-			}
-		}
-	}
-
-	var total int64
-	for _, buf := range buffers {
-		if len(buf) > 0 {
-			n, err := c.WriteTo(buf, nil)
-
-			total += int64(n)
-			if err != nil {
-				return total, err
-			}
-		}
-	}
-
-	return total, nil
+	return c.writeVectorTo(buffers, nil)
 }
 
 // SyscallConnector wraps the standard SyscallConn method allowing access to underlying OS file descriptors.
 type SyscallConnector interface {
 	SyscallConn() (syscallConn, error)
+}
+
+func advanceBuffers(buffers [][]byte, written int64) [][]byte {
+	for len(buffers) > 0 && written > 0 {
+		headLen := int64(len(buffers[0]))
+		if headLen <= written {
+			written -= headLen
+			buffers = buffers[1:]
+		} else {
+			buffers[0] = buffers[0][written:]
+			break
+		}
+	}
+	return buffers
+}
+
+func writeVectorBuffersLoop(raw syscallConn, buffers [][]byte) (int64, error) {
+	var (
+		totalWritten int64
+		sysErr       error
+	)
+
+	remaining := buffers
+	errCtrl := raw.Write(func(fd uintptr) bool {
+		for len(remaining) > 0 {
+			var written int64
+			written, sysErr = writeVectorBuffersFD(fd, remaining)
+			if written > 0 {
+				totalWritten += written
+				remaining = advanceBuffers(remaining, written)
+			}
+			if sysErr != nil {
+				return !errors.Is(sysErr, syscall.EAGAIN) && !errors.Is(sysErr, syscall.EWOULDBLOCK)
+			}
+		}
+		return true
+	})
+	if errCtrl != nil {
+		return totalWritten, errCtrl
+	}
+	return totalWritten, sysErr
 }
 
 // WriteVectorTo writes multiple UDP datagram payload buffers to a target destination address in a single vectorized syscall.
@@ -161,40 +148,9 @@ func (c *BatchUDPConn) WriteVectorTo(buffers [][]byte, addr net.Addr) (int64, er
 
 func (c *BatchUDPConn) writeVectorTo(buffers [][]byte, addr net.Addr) (int64, error) {
 	if sysConn, ok := c.PacketConn.(SyscallConnector); ok {
-		raw, err := sysConn.SyscallConn()
-		if err == nil {
-			var (
-				totalWritten int64
-				sysErr       error
-			)
-
-			remaining := buffers
-			errCtrl := raw.Write(func(fd uintptr) bool {
-				for len(remaining) > 0 {
-					var written int64
-					written, sysErr = writeVectorBuffersFD(fd, remaining)
-					if written > 0 {
-						totalWritten += written
-						for len(remaining) > 0 && written > 0 {
-							if int64(len(remaining[0])) <= written {
-								written -= int64(len(remaining[0]))
-								remaining = remaining[1:]
-							} else {
-								remaining[0] = remaining[0][written:]
-								written = 0
-							}
-						}
-					}
-					if sysErr != nil {
-						if errors.Is(sysErr, syscall.EAGAIN) || errors.Is(sysErr, syscall.EWOULDBLOCK) {
-							return false
-						}
-						return true
-					}
-				}
-				return true
-			})
-			if errCtrl == nil && sysErr == nil {
+		if raw, err := sysConn.SyscallConn(); err == nil {
+			totalWritten, err := writeVectorBuffersLoop(raw, buffers)
+			if err == nil {
 				return totalWritten, nil
 			}
 		}
@@ -202,13 +158,13 @@ func (c *BatchUDPConn) writeVectorTo(buffers [][]byte, addr net.Addr) (int64, er
 
 	var total int64
 	for _, buf := range buffers {
-		if len(buf) > 0 {
-			n, err := c.WriteTo(buf, addr)
-
-			total += int64(n)
-			if err != nil {
-				return total, err
-			}
+		if len(buf) == 0 {
+			continue
+		}
+		n, err := c.WriteTo(buf, addr)
+		total += int64(n)
+		if err != nil {
+			return total, err
 		}
 	}
 
@@ -235,38 +191,38 @@ func (c *BatchUDPConn) SetWriteBuffer(bytes int) error {
 
 // SetGSO configures UDP Generic Segmentation Offload (GSO) segment size on the underlying socket.
 func (c *BatchUDPConn) SetGSO(segmentSize int) error {
-	if sysConn, ok := c.PacketConn.(SyscallConnector); ok {
-		raw, err := sysConn.SyscallConn()
-		if err == nil {
-			var sysErr error
-
-			_ = raw.Control(func(fd uintptr) {
-				sysErr = setUDPSegmentFD(fd, segmentSize)
-			})
-
-			return sysErr
-		}
+	sysConn, ok := c.PacketConn.(SyscallConnector)
+	if !ok {
+		return nil
+	}
+	raw, err := sysConn.SyscallConn()
+	if err != nil {
+		return nil
 	}
 
-	return nil
+	var sysErr error
+	_ = raw.Control(func(fd uintptr) {
+		sysErr = setUDPSegmentFD(fd, segmentSize)
+	})
+	return sysErr
 }
 
 // SetGRO enables or disables UDP Generic Receive Offload (GRO) on the underlying socket.
 func (c *BatchUDPConn) SetGRO(enable bool) error {
-	if sysConn, ok := c.PacketConn.(SyscallConnector); ok {
-		raw, err := sysConn.SyscallConn()
-		if err == nil {
-			var sysErr error
-
-			_ = raw.Control(func(fd uintptr) {
-				sysErr = setUDPGROFD(fd, enable)
-			})
-
-			return sysErr
-		}
+	sysConn, ok := c.PacketConn.(SyscallConnector)
+	if !ok {
+		return nil
+	}
+	raw, err := sysConn.SyscallConn()
+	if err != nil {
+		return nil
 	}
 
-	return nil
+	var sysErr error
+	_ = raw.Control(func(fd uintptr) {
+		sysErr = setUDPGROFD(fd, enable)
+	})
+	return sysErr
 }
 
 // SyscallConn returns a raw network connection for OS syscall access.

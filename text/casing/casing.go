@@ -50,13 +50,7 @@ func ToCamel(s string) string {
 		first := true
 		forEachWordASCII(s, func(w string) {
 			if first {
-				for i := 0; i < len(w); i++ {
-					c := w[i]
-					if c >= 'A' && c <= 'Z' {
-						c += 32
-					}
-					sb.WriteByte(c)
-				}
+				writeLowerWordASCII(&sb, w)
 				first = false
 			} else {
 				writeTitleWordASCII(&sb, w)
@@ -221,6 +215,26 @@ func writeTitleWordASCII(sb *strings.Builder, w string) {
 	}
 }
 
+func writeLowerWordASCII(sb *strings.Builder, w string) {
+	for i := 0; i < len(w); i++ {
+		c := w[i]
+		if c >= 'A' && c <= 'Z' {
+			c += 32
+		}
+		sb.WriteByte(c)
+	}
+}
+
+func writeUpperWordASCII(sb *strings.Builder, w string) {
+	for i := 0; i < len(w); i++ {
+		c := w[i]
+		if c >= 'a' && c <= 'z' {
+			c -= 32
+		}
+		sb.WriteByte(c)
+	}
+}
+
 func convertDelimited(s string, delimiter byte, screaming bool) string {
 	if s == "" {
 		return ""
@@ -236,21 +250,9 @@ func convertDelimited(s string, delimiter byte, screaming bool) string {
 			}
 			first = false
 			if screaming {
-				for i := 0; i < len(w); i++ {
-					c := w[i]
-					if c >= 'a' && c <= 'z' {
-						c -= 32
-					}
-					sb.WriteByte(c)
-				}
+				writeUpperWordASCII(&sb, w)
 			} else {
-				for i := 0; i < len(w); i++ {
-					c := w[i]
-					if c >= 'A' && c <= 'Z' {
-						c += 32
-					}
-					sb.WriteByte(c)
-				}
+				writeLowerWordASCII(&sb, w)
 			}
 		})
 		return sb.String()

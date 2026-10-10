@@ -131,6 +131,18 @@ func (u URLView) IsAbs() bool {
 // QueryValue returns the first value associated with the given key in the raw query, or an empty string and false.
 //
 // If the key exists without percent encoding, it returns a slice directly.
+func unescapeQueryComponent(s string) string {
+	if strings.IndexByte(s, '%') >= 0 || strings.IndexByte(s, '+') >= 0 {
+		if unesc, err := QueryUnescape(s); err == nil {
+			return unesc
+		}
+	}
+	return s
+}
+
+// QueryValue returns the first value associated with the given key in the raw query, or an empty string and false.
+//
+// If the key exists without percent encoding, it returns a slice directly.
 func (u URLView) QueryValue(key string) (string, bool) {
 	q := u.RawQuery
 	for len(q) > 0 {
@@ -146,28 +158,14 @@ func (u URLView) QueryValue(key string) (string, bool) {
 			continue
 		}
 		k, val, found := strings.Cut(pair, "=")
-		
-		if strings.IndexByte(k, '%') >= 0 || strings.IndexByte(k, '+') >= 0 {
-			if unescK, err := QueryUnescape(k); err == nil {
-				k = unescK
-			}
-		}
-
-		if !found {
-			if k == key {
-				return "", true
-			}
+		k = unescapeQueryComponent(k)
+		if k != key {
 			continue
 		}
-		if k == key {
-			if strings.IndexByte(val, '%') >= 0 || strings.IndexByte(val, '+') >= 0 {
-				unesc, err := QueryUnescape(val)
-				if err == nil {
-					return unesc, true
-				}
-			}
-			return val, true
+		if !found {
+			return "", true
 		}
+		return unescapeQueryComponent(val), true
 	}
 	return "", false
 }
@@ -194,16 +192,8 @@ func (u URLView) QuerySeq() iter.Seq2[string, string] {
 			if !found {
 				val = ""
 			}
-			if strings.IndexByte(k, '%') >= 0 || strings.IndexByte(k, '+') >= 0 {
-				if unescK, err := QueryUnescape(k); err == nil {
-					k = unescK
-				}
-			}
-			if strings.IndexByte(val, '%') >= 0 || strings.IndexByte(val, '+') >= 0 {
-				if unescVal, err := QueryUnescape(val); err == nil {
-					val = unescVal
-				}
-			}
+			k = unescapeQueryComponent(k)
+			val = unescapeQueryComponent(val)
 			if !yield(k, val) {
 				return
 			}
@@ -247,17 +237,27 @@ func (u URLView) String() string {
 }
 
 // ToURL converts the view to a standard [*url.URL].
-func (u URLView) ToURL() *url.URL {
-	host := u.Host
-	if start := strings.Index(host, "["); start >= 0 {
-		if end := strings.Index(host[start:], "]"); end >= 0 {
-			ipv6 := host[start : start+end+1]
-			if pct := strings.Index(ipv6, "%"); pct >= 0 && !strings.HasPrefix(ipv6[pct:], "%25") {
-				normalizedIPv6 := ipv6[:pct] + "%25" + ipv6[pct+1:]
-				host = host[:start] + normalizedIPv6 + host[start+end+1:]
-			}
-		}
+func normalizeIPv6Zone(s string) string {
+	start := strings.Index(s, "[")
+	if start < 0 {
+		return s
 	}
+	end := strings.Index(s[start:], "]")
+	if end < 0 {
+		return s
+	}
+	ipv6 := s[start : start+end+1]
+	pct := strings.Index(ipv6, "%")
+	if pct < 0 || strings.HasPrefix(ipv6[pct:], "%25") {
+		return s
+	}
+	normalizedIPv6 := ipv6[:pct] + "%25" + ipv6[pct+1:]
+	return s[:start] + normalizedIPv6 + s[start+end+1:]
+}
+
+// ToURL converts the view to a standard [*url.URL].
+func (u URLView) ToURL() *url.URL {
+	host := normalizeIPv6Zone(u.Host)
 	res := &url.URL{
 		Scheme:   u.Scheme,
 		Host:     host,
@@ -283,6 +283,35 @@ func isAlpha(c byte) bool {
 //go:inline
 func isSchemeChar(c byte) bool {
 	return isAlpha(c) || (c >= '0' && c <= '9') || c == '+' || c == '-' || c == '.'
+}
+
+func isValidScheme(scheme string) bool {
+	if len(scheme) == 0 || !isAlpha(scheme[0]) {
+		return false
+	}
+	for i := 1; i < len(scheme); i++ {
+		if !isSchemeChar(scheme[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+func normalizeScheme(s string) string {
+	switch s {
+	case "http", "https", "ws", "wss", "ftp", "file", "tcp", "udp":
+		return s
+	case "HTTP":
+		return "http"
+	case "HTTPS":
+		return "https"
+	case "WS":
+		return "ws"
+	case "WSS":
+		return "wss"
+	default:
+		return strings.ToLower(s)
+	}
 }
 
 // ParseView parses rawURL into a zero-allocation [URLView] backed directly by the rawURL string memory.
@@ -315,30 +344,8 @@ func ParseView(rawURL string) (URLView, error) {
 		slashIdx := strings.IndexByte(rawURL, '/')
 		if slashIdx < 0 || colonIdx < slashIdx {
 			schemeCandidate := rawURL[:colonIdx]
-			validScheme := isAlpha(schemeCandidate[0])
-			if validScheme {
-				for i := 1; i < len(schemeCandidate); i++ {
-					if !isSchemeChar(schemeCandidate[i]) {
-						validScheme = false
-						break
-					}
-				}
-			}
-			if validScheme {
-				switch schemeCandidate {
-				case "http", "https", "ws", "wss", "ftp", "file", "tcp", "udp":
-					view.Scheme = schemeCandidate
-				case "HTTP":
-					view.Scheme = "http"
-				case "HTTPS":
-					view.Scheme = "https"
-				case "WS":
-					view.Scheme = "ws"
-				case "WSS":
-					view.Scheme = "wss"
-				default:
-					view.Scheme = strings.ToLower(schemeCandidate)
-				}
+			if isValidScheme(schemeCandidate) {
+				view.Scheme = normalizeScheme(schemeCandidate)
 				rest = rawURL[colonIdx+1:]
 			}
 		}
@@ -408,16 +415,7 @@ func Parse(rawURL string) (*url.URL, error) {
 		return CloneURL(u), nil
 	}
 
-	normalizedURL := rawURL
-	if start := strings.Index(rawURL, "["); start >= 0 {
-		if end := strings.Index(rawURL[start:], "]"); end >= 0 {
-			ipv6 := rawURL[start : start+end+1]
-			if pct := strings.Index(ipv6, "%"); pct >= 0 && !strings.HasPrefix(ipv6[pct:], "%25") {
-				normalizedIPv6 := ipv6[:pct] + "%25" + ipv6[pct+1:]
-				normalizedURL = rawURL[:start] + normalizedIPv6 + rawURL[start+end+1:]
-			}
-		}
-	}
+	normalizedURL := normalizeIPv6Zone(rawURL)
 
 	parsed, err := url.Parse(normalizedURL)
 	if err != nil {

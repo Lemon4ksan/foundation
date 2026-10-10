@@ -81,24 +81,24 @@ func (p *PerCorePool[T]) Get() T {
 				continue
 			}
 
-			if shard.mu.CompareAndSwap(0, 1) {
-				head := shard.head.Load()
-				if head > 0 {
-					item := shard.items[head-1]
-
-					var zero T
-
-					shard.items[head-1] = zero
-					shard.head.Store(head - 1)
-					shard.mu.Store(0)
-
-					return item
-				}
-
-				shard.mu.Store(0)
-			} else {
+			if !shard.mu.CompareAndSwap(0, 1) {
 				contended = true
+				continue
 			}
+
+			head := shard.head.Load()
+			if head == 0 {
+				shard.mu.Store(0)
+				continue
+			}
+
+			item := shard.items[head-1]
+			var zero T
+			shard.items[head-1] = zero
+			shard.head.Store(head - 1)
+			shard.mu.Store(0)
+
+			return item
 		}
 
 		if !contended {
@@ -133,20 +133,22 @@ func (p *PerCorePool[T]) Put(item T) {
 				continue
 			}
 
-			if shard.mu.CompareAndSwap(0, 1) {
-				head := shard.head.Load()
-				if head < shardCapacity {
-					shard.items[head] = item
-					shard.head.Store(head + 1)
-					shard.mu.Store(0)
-
-					return
-				}
-
-				shard.mu.Store(0)
-			} else {
+			if !shard.mu.CompareAndSwap(0, 1) {
 				contended = true
+				continue
 			}
+
+			head := shard.head.Load()
+			if head >= shardCapacity {
+				shard.mu.Store(0)
+				continue
+			}
+
+			shard.items[head] = item
+			shard.head.Store(head + 1)
+			shard.mu.Store(0)
+
+			return
 		}
 
 		if !contended {

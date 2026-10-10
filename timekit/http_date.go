@@ -100,6 +100,37 @@ func FormatHTTPDate(t time.Time) string {
 	return string(buf[:])
 }
 
+func parseHTTPMonth(s string) time.Month {
+	switch s {
+	case "Jan":
+		return time.January
+	case "Feb":
+		return time.February
+	case "Mar":
+		return time.March
+	case "Apr":
+		return time.April
+	case "May":
+		return time.May
+	case "Jun":
+		return time.June
+	case "Jul":
+		return time.July
+	case "Aug":
+		return time.August
+	case "Sep":
+		return time.September
+	case "Oct":
+		return time.October
+	case "Nov":
+		return time.November
+	case "Dec":
+		return time.December
+	default:
+		return 0
+	}
+}
+
 // ParseHTTPDate parses an RFC 7231 / RFC 9110 HTTP-date string into a [time.Time].
 func ParseHTTPDate(s string) (time.Time, error) {
 	if len(s) != HTTPDateLength {
@@ -107,80 +138,53 @@ func ParseHTTPDate(s string) (time.Time, error) {
 	}
 
 	// Strictly validated RFC 7231 / RFC 1123 fast-path: "Sun, 06 Nov 1994 08:49:37 GMT"
-	if s[3] == ',' && s[4] == ' ' && s[7] == ' ' && s[11] == ' ' && s[16] == ' ' &&
-		s[19] == ':' && s[22] == ':' && s[25] == ' ' && s[26] == 'G' && s[27] == 'M' && s[28] == 'T' {
-
-		d0 := s[5] - '0'
-		d1 := s[6] - '0'
-		if d0 <= 9 && d1 <= 9 {
-			var m time.Month
-			switch s[8:11] {
-			case "Jan":
-				m = time.January
-			case "Feb":
-				m = time.February
-			case "Mar":
-				m = time.March
-			case "Apr":
-				m = time.April
-			case "May":
-				m = time.May
-			case "Jun":
-				m = time.June
-			case "Jul":
-				m = time.July
-			case "Aug":
-				m = time.August
-			case "Sep":
-				m = time.September
-			case "Oct":
-				m = time.October
-			case "Nov":
-				m = time.November
-			case "Dec":
-				m = time.December
-			}
-
-			switch s[:3] {
-			case "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat":
-			default:
-				return time.Parse(time.RFC1123, s)
-			}
-
-			if m != 0 {
-				y0 := s[12] - '0'
-				y1 := s[13] - '0'
-				y2 := s[14] - '0'
-				y3 := s[15] - '0'
-				h0 := s[17] - '0'
-				h1 := s[18] - '0'
-				min0 := s[20] - '0'
-				min1 := s[21] - '0'
-				sec0 := s[23] - '0'
-				sec1 := s[24] - '0'
-
-				if y0 <= 9 && y1 <= 9 && y2 <= 9 && y3 <= 9 &&
-					h0 <= 9 && h1 <= 9 && min0 <= 9 && min1 <= 9 && sec0 <= 9 && sec1 <= 9 {
-					day := int(d0)*10 + int(d1)
-					year := int(y0)*1000 + int(y1)*100 + int(y2)*10 + int(y3)
-					hour := int(h0)*10 + int(h1)
-					min := int(min0)*10 + int(min1)
-					sec := int(sec0)*10 + int(sec1)
-					if hour < 24 && min < 60 && sec <= 60 && day >= 1 && day <= 31 {
-						d := time.Date(year, m, day, hour, min, 0, 0, time.UTC)
-						if d.Day() == day && d.Month() == m {
-							if sec != 0 {
-								d = d.Add(time.Duration(sec) * time.Second)
-							}
-							return d, nil
-						}
-						return time.Time{}, errInvalidHTTPDateValue
-					}
-					return time.Time{}, errInvalidHTTPDateValue
-				}
-			}
-		}
+	if s[3] != ',' || s[4] != ' ' || s[7] != ' ' || s[11] != ' ' || s[16] != ' ' ||
+		s[19] != ':' || s[22] != ':' || s[25] != ' ' || s[26] != 'G' || s[27] != 'M' || s[28] != 'T' {
+		return time.Parse(time.RFC1123, s)
 	}
 
-	return time.Parse(time.RFC1123, s)
+	switch s[:3] {
+	case "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat":
+	default:
+		return time.Parse(time.RFC1123, s)
+	}
+
+	d0, d1 := s[5]-'0', s[6]-'0'
+	if d0 > 9 || d1 > 9 {
+		return time.Parse(time.RFC1123, s)
+	}
+
+	m := parseHTTPMonth(s[8:11])
+	if m == 0 {
+		return time.Parse(time.RFC1123, s)
+	}
+
+	y0, y1, y2, y3 := s[12]-'0', s[13]-'0', s[14]-'0', s[15]-'0'
+	h0, h1 := s[17]-'0', s[18]-'0'
+	min0, min1 := s[20]-'0', s[21]-'0'
+	sec0, sec1 := s[23]-'0', s[24]-'0'
+
+	if y0 > 9 || y1 > 9 || y2 > 9 || y3 > 9 ||
+		h0 > 9 || h1 > 9 || min0 > 9 || min1 > 9 || sec0 > 9 || sec1 > 9 {
+		return time.Parse(time.RFC1123, s)
+	}
+
+	day := int(d0)*10 + int(d1)
+	year := int(y0)*1000 + int(y1)*100 + int(y2)*10 + int(y3)
+	hour := int(h0)*10 + int(h1)
+	min := int(min0)*10 + int(min1)
+	sec := int(sec0)*10 + int(sec1)
+
+	if hour >= 24 || min >= 60 || sec > 60 || day < 1 || day > 31 {
+		return time.Time{}, errInvalidHTTPDateValue
+	}
+
+	d := time.Date(year, m, day, hour, min, 0, 0, time.UTC)
+	if d.Day() != day || d.Month() != m {
+		return time.Time{}, errInvalidHTTPDateValue
+	}
+	if sec != 0 {
+		d = d.Add(time.Duration(sec) * time.Second)
+	}
+	return d, nil
 }

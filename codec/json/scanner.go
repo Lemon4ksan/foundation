@@ -147,21 +147,12 @@ func unescapeString(dst, src []byte) ([]byte, error) {
 
 			// Check for UTF-16 surrogate pair
 			if utf16.IsSurrogate(r) {
-				if i+5 < n && src[i] == '\\' && src[i+1] == 'u' {
-					r2, err := parseHex4(src[i+2 : i+6])
-					if err == nil {
-						combined := utf16.DecodeRune(r, r2)
-						if combined != utf8.RuneError {
-							var buf [utf8.UTFMax]byte
-							written := utf8.EncodeRune(buf[:], combined)
-							dst = append(dst, buf[:written]...)
-							i += 6
-							continue
-						}
-					}
+				if combined, skip := decodeSurrogatePair(src, i, n, r); skip > 0 {
+					r = combined
+					i += skip
+				} else {
+					r = utf8.RuneError
 				}
-
-				r = utf8.RuneError
 			}
 
 			var buf [utf8.UTFMax]byte
@@ -173,6 +164,21 @@ func unescapeString(dst, src []byte) ([]byte, error) {
 	}
 
 	return dst, nil
+}
+
+func decodeSurrogatePair(src []byte, i, n int, r rune) (rune, int) {
+	if i+5 >= n || src[i] != '\\' || src[i+1] != 'u' {
+		return utf8.RuneError, 0
+	}
+	r2, err := parseHex4(src[i+2 : i+6])
+	if err != nil {
+		return utf8.RuneError, 0
+	}
+	combined := utf16.DecodeRune(r, r2)
+	if combined == utf8.RuneError {
+		return utf8.RuneError, 0
+	}
+	return combined, 6
 }
 
 // parseHex4 decodes a 4-digit hexadecimal integer.
