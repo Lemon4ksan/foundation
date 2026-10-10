@@ -41,11 +41,17 @@ func TuneSocketConnWithFlags(conn net.Conn, flags uint64) {
 }
 
 // WriteVectorBuffers writes multiple byte slice buffers to conn in a single OS vectorized syscall (WSASend on Windows, writev on Linux).
+//
+//go:inline
 func WriteVectorBuffers(conn net.Conn, buffers [][]byte) (int64, error) {
 	if conn == nil || len(buffers) == 0 {
 		return 0, nil
 	}
 
+	return writeVectorBuffers(conn, buffers)
+}
+
+func writeVectorBuffers(conn net.Conn, buffers [][]byte) (int64, error) {
 	netBufs := make(net.Buffers, len(buffers))
 	copy(netBufs, buffers)
 
@@ -69,11 +75,17 @@ func NewBatchUDPConn(pconn net.PacketConn) *BatchUDPConn {
 }
 
 // WriteVector writes multiple UDP datagram payload buffers in a single vectorized syscall.
+//
+//go:inline
 func (c *BatchUDPConn) WriteVector(buffers [][]byte) (int64, error) {
 	if c == nil || c.PacketConn == nil || len(buffers) == 0 {
 		return 0, nil
 	}
 
+	return c.writeVector(buffers)
+}
+
+func (c *BatchUDPConn) writeVector(buffers [][]byte) (int64, error) {
 	if sysConn, ok := c.PacketConn.(interface {
 		SyscallConn() (syscallConn, error)
 	}); ok {
@@ -84,18 +96,19 @@ func (c *BatchUDPConn) WriteVector(buffers [][]byte) (int64, error) {
 				sysErr       error
 			)
 
+			remaining := buffers
 			errCtrl := raw.Write(func(fd uintptr) bool {
-				for len(buffers) > 0 {
+				for len(remaining) > 0 {
 					var written int64
-					written, sysErr = writeVectorBuffersFD(fd, buffers)
+					written, sysErr = writeVectorBuffersFD(fd, remaining)
 					if written > 0 {
 						totalWritten += written
-						for len(buffers) > 0 && written > 0 {
-							if int64(len(buffers[0])) <= written {
-								written -= int64(len(buffers[0]))
-								buffers = buffers[1:]
+						for len(remaining) > 0 && written > 0 {
+							if int64(len(remaining[0])) <= written {
+								written -= int64(len(remaining[0]))
+								remaining = remaining[1:]
 							} else {
-								buffers[0] = buffers[0][written:]
+								remaining[0] = remaining[0][written:]
 								written = 0
 							}
 						}
@@ -136,11 +149,17 @@ type SyscallConnector interface {
 }
 
 // WriteVectorTo writes multiple UDP datagram payload buffers to a target destination address in a single vectorized syscall.
+//
+//go:inline
 func (c *BatchUDPConn) WriteVectorTo(buffers [][]byte, addr net.Addr) (int64, error) {
 	if c == nil || c.PacketConn == nil || len(buffers) == 0 {
 		return 0, nil
 	}
 
+	return c.writeVectorTo(buffers, addr)
+}
+
+func (c *BatchUDPConn) writeVectorTo(buffers [][]byte, addr net.Addr) (int64, error) {
 	if sysConn, ok := c.PacketConn.(SyscallConnector); ok {
 		raw, err := sysConn.SyscallConn()
 		if err == nil {
@@ -149,18 +168,19 @@ func (c *BatchUDPConn) WriteVectorTo(buffers [][]byte, addr net.Addr) (int64, er
 				sysErr       error
 			)
 
+			remaining := buffers
 			errCtrl := raw.Write(func(fd uintptr) bool {
-				for len(buffers) > 0 {
+				for len(remaining) > 0 {
 					var written int64
-					written, sysErr = writeVectorBuffersFD(fd, buffers)
+					written, sysErr = writeVectorBuffersFD(fd, remaining)
 					if written > 0 {
 						totalWritten += written
-						for len(buffers) > 0 && written > 0 {
-							if int64(len(buffers[0])) <= written {
-								written -= int64(len(buffers[0]))
-								buffers = buffers[1:]
+						for len(remaining) > 0 && written > 0 {
+							if int64(len(remaining[0])) <= written {
+								written -= int64(len(remaining[0]))
+								remaining = remaining[1:]
 							} else {
-								buffers[0] = buffers[0][written:]
+								remaining[0] = remaining[0][written:]
 								written = 0
 							}
 						}

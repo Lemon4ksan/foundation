@@ -9,8 +9,14 @@ import (
 	stdjson "encoding/json"
 	"fmt"
 	"reflect"
+	"runtime"
 	"unsafe"
 )
+
+type emptyInterface struct {
+	typ  unsafe.Pointer
+	word unsafe.Pointer
+}
 
 // Marshaler is the interface implemented by types that can marshal themselves into valid JSON.
 type Marshaler = stdjson.Marshaler
@@ -43,14 +49,19 @@ func Marshal(v any) ([]byte, error) {
 		return nil, err
 	}
 
-	val := reflect.ValueOf(v)
-	valCopy := reflect.New(t)
-	valCopy.Elem().Set(val)
-	ptr := unsafe.Pointer(valCopy.Pointer())
+	e := (*emptyInterface)(unsafe.Pointer(&v))
+	var ptr unsafe.Pointer
+	switch t.Kind() {
+	case reflect.Pointer, reflect.Map, reflect.Chan, reflect.Func:
+		ptr = unsafe.Pointer(&e.word)
+	default:
+		ptr = e.word
+	}
 
 	if err := enc(state, ptr); err != nil {
 		return nil, err
 	}
+	runtime.KeepAlive(v)
 
 	out := make([]byte, len(state.buf))
 	copy(out, state.buf)
@@ -68,24 +79,32 @@ func MarshalTo(dst []byte, v any) ([]byte, error) {
 	state.buf = state.buf[:0]
 	state.escapeHTML = true
 
-	defer encPool.Put(state)
-
 	t := reflect.TypeOf(v)
 	enc, err := getEncoder(t)
 	if err != nil {
+		encPool.Put(state)
 		return nil, err
 	}
 
-	val := reflect.ValueOf(v)
-	valCopy := reflect.New(t)
-	valCopy.Elem().Set(val)
-	ptr := unsafe.Pointer(valCopy.Pointer())
+	e := (*emptyInterface)(unsafe.Pointer(&v))
+	var ptr unsafe.Pointer
+	switch t.Kind() {
+	case reflect.Pointer, reflect.Map, reflect.Chan, reflect.Func:
+		ptr = unsafe.Pointer(&e.word)
+	default:
+		ptr = e.word
+	}
 
-	if err := enc(state, ptr); err != nil {
+	err = enc(state, ptr)
+	runtime.KeepAlive(v)
+	if err != nil {
+		encPool.Put(state)
 		return nil, err
 	}
 
-	return append(dst, state.buf...), nil
+	dst = append(dst, state.buf...)
+	encPool.Put(state)
+	return dst, nil
 }
 
 // MarshalIndent is like Marshal but applies Indent to format the output.

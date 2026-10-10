@@ -10,7 +10,33 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync/atomic"
 )
+
+type tagCacheEntry struct {
+	key string
+	tag Tag
+}
+
+const tagCacheSize = 256
+
+var (
+	tagCache [tagCacheSize]atomic.Pointer[tagCacheEntry]
+
+	optOmitempty       = []string{"omitempty"}
+	optInline          = []string{"inline"}
+	optString          = []string{"string"}
+	optOmitemptyInline = []string{"omitempty", "inline"}
+	optInlineOmitempty = []string{"inline", "omitempty"}
+)
+
+func hashString(s string) uint64 {
+	var h uint64 = 14695981039346656037
+	for i := 0; i < len(s); i++ {
+		h = (h ^ uint64(s[i])) * 1099511628211
+	}
+	return h
+}
 
 // Tag represents a parsed struct tag value (e.g. `json:"user_id,omitempty,inline"`).
 type Tag struct {
@@ -28,6 +54,19 @@ func ParseTag(tagStr string) Tag {
 		return Tag{}
 	}
 
+	h := hashString(tagStr)
+	slot := h % tagCacheSize
+	entry := tagCache[slot].Load()
+	if entry != nil && entry.key == tagStr {
+		return entry.tag
+	}
+
+	tag := parseTagSlow(tagStr)
+	tagCache[slot].Store(&tagCacheEntry{key: tagStr, tag: tag})
+	return tag
+}
+
+func parseTagSlow(tagStr string) Tag {
 	for i := 0; i < len(tagStr); i++ {
 		if tagStr[i] >= 0x80 {
 			return parseTagUnicode(tagStr)
@@ -117,7 +156,41 @@ func parseTagASCII(tagStr string) Tag {
 				optCount++
 			}
 		}
-		if optCount > 0 {
+		if optCount == 1 {
+			for _, opt := range allParts[1:] {
+				if opt = strings.TrimSpace(opt); opt != "" {
+					switch opt {
+					case "omitempty":
+						options = optOmitempty
+					case "inline":
+						options = optInline
+					case "string":
+						options = optString
+					default:
+						options = []string{opt}
+					}
+					break
+				}
+			}
+		} else if optCount == 2 {
+			var opts [2]string
+			idx := 0
+			for _, opt := range allParts[1:] {
+				if opt = strings.TrimSpace(opt); opt != "" {
+					if idx < 2 {
+						opts[idx] = opt
+						idx++
+					}
+				}
+			}
+			if opts[0] == "omitempty" && opts[1] == "inline" {
+				options = optOmitemptyInline
+			} else if opts[0] == "inline" && opts[1] == "omitempty" {
+				options = optInlineOmitempty
+			} else {
+				options = []string{opts[0], opts[1]}
+			}
+		} else if optCount > 0 {
 			options = make([]string, 0, optCount)
 			for _, opt := range allParts[1:] {
 				if opt = strings.TrimSpace(opt); opt != "" {

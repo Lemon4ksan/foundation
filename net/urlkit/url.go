@@ -6,7 +6,6 @@ package urlkit
 
 import (
 	"errors"
-	"hash/crc32"
 	"iter"
 	"net/url"
 	"strings"
@@ -25,11 +24,11 @@ const (
 // ErrInvalidHost indicates that a host name contains forbidden or invalid ASCII characters.
 var ErrInvalidHost = errors.New("url: invalid character in host name")
 
-// fastHash computes a hardware CRC32 hash of string s to select a cache shard index.
+// fastHash computes a hardware fast hash of string s to select a cache shard index.
 //
 //go:inline
 func fastHash(s string) uint32 {
-	return crc32.ChecksumIEEE(bytesconv.S2B(s))
+	return uint32(bytesconv.FastHash64(bytesconv.S2B(s)))
 }
 
 // cacheShard protects an isolated hash map partition with an RWMutex to minimize lock contention.
@@ -700,19 +699,21 @@ func BuildPath(basePath string, pathParams map[string]string, queryParams url.Va
 
 const hexDigits = "0123456789ABCDEF"
 
+var noEscapeTable = [256]bool{
+	'-': true, '.': true, '_': true, '~': true,
+	'0': true, '1': true, '2': true, '3': true, '4': true, '5': true, '6': true, '7': true, '8': true, '9': true,
+	'A': true, 'B': true, 'C': true, 'D': true, 'E': true, 'F': true, 'G': true, 'H': true, 'I': true, 'J': true,
+	'K': true, 'L': true, 'M': true, 'N': true, 'O': true, 'P': true, 'Q': true, 'R': true, 'S': true, 'T': true,
+	'U': true, 'V': true, 'W': true, 'X': true, 'Y': true, 'Z': true,
+	'a': true, 'b': true, 'c': true, 'd': true, 'e': true, 'f': true, 'g': true, 'h': true, 'i': true, 'j': true,
+	'k': true, 'l': true, 'm': true, 'n': true, 'o': true, 'p': true, 'q': true, 'r': true, 's': true, 't': true,
+	'u': true, 'v': true, 'w': true, 'x': true, 'y': true, 'z': true,
+}
+
 //go:inline
 //go:nosplit
 func shouldEscape(c byte) bool {
-	if 'a' <= c && c <= 'z' || 'A' <= c && c <= 'Z' || '0' <= c && c <= '9' {
-		return false
-	}
-
-	switch c {
-	case '-', '_', '.', '~':
-		return false
-	}
-
-	return true
+	return !noEscapeTable[c]
 }
 
 // AppendQueryEscape appends percent-encoded bytes of src to dst without heap allocations.
@@ -729,27 +730,24 @@ func AppendQueryEscape(dst, src []byte) []byte {
 }
 
 // AppendQueryEscapeString appends percent-encoded bytes of string src to dst without heap allocations.
+//
+//go:inline
 func AppendQueryEscapeString(dst []byte, src string) []byte {
-	for i := 0; i < len(src); i++ {
-		b := src[i]
-		if !shouldEscape(b) {
-			dst = append(dst, b)
-		} else {
-			dst = append(dst, '%', hexDigits[b>>4], hexDigits[b&15])
-		}
-	}
-
-	return dst
+	return AppendQueryEscape(dst, bytesconv.S2B(src))
 }
 
 // AppendPathEscape appends percent-encoded bytes of src to dst according to RFC 3986 §3.3.
+//
+//go:inline
 func AppendPathEscape(dst, src []byte) []byte {
 	return AppendQueryEscape(dst, src)
 }
 
 // AppendPathEscapeString appends percent-encoded bytes of string src to dst.
+//
+//go:inline
 func AppendPathEscapeString(dst []byte, src string) []byte {
-	return AppendQueryEscapeString(dst, src)
+	return AppendQueryEscape(dst, bytesconv.S2B(src))
 }
 
 // QueryUnescape unescapes URL percent-encoded characters (%XX) and replaces '+' with ' '.
