@@ -180,7 +180,8 @@ func BenchmarkRingBufferWrapped(b *testing.B) {
 // do not remain referenced in the backing slice, preventing memory leaks.
 func TestChallenge_GCLeakVerification(t *testing.T) {
 	type trackedObj struct {
-		id int
+		payload [64]byte
+		id      int
 	}
 
 	testCases := []struct {
