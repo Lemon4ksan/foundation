@@ -10,40 +10,44 @@ import (
 	"time"
 )
 
-var cachedUnixNano atomic.Int64
+var cachedTime atomic.Pointer[time.Time]
 
 func init() {
-	cachedUnixNano.Store(time.Now().UnixNano())
+	t := time.Now()
+	cachedTime.Store(&t)
 
-	// Background ticker updates atomic timestamp with high frequency (~1ms)
+	// Background ticker updates atomic timestamp at a frequency of ~1ms
 	go func() {
 		ticker := time.NewTicker(time.Millisecond)
 		defer ticker.Stop()
 		for now := range ticker.C {
-			cachedUnixNano.Store(now.UnixNano())
+			// A small heap allocation every 1ms in the background is acceptable
+			// to provide zero-allocation, monotonic lock-free time to callers.
+			n := now
+			cachedTime.Store(&n)
 		}
 	}()
 }
 
 // CoarseNow returns the approximate current [time.Time] with millisecond resolution
-// without triggering OS clock system calls.
+// without triggering OS clock system calls. It retains monotonic clock readings.
 func CoarseNow() time.Time {
-	return time.Unix(0, cachedUnixNano.Load())
+	return *cachedTime.Load()
 }
 
 // CoarseUnix returns the approximate Unix timestamp in seconds.
 func CoarseUnix() int64 {
-	return cachedUnixNano.Load() / int64(time.Second)
+	return cachedTime.Load().Unix()
 }
 
 // CoarseUnixMilli returns the approximate Unix timestamp in milliseconds.
 func CoarseUnixMilli() int64 {
-	return cachedUnixNano.Load() / int64(time.Millisecond)
+	return cachedTime.Load().UnixMilli()
 }
 
 // CoarseUnixNano returns the approximate Unix timestamp in nanoseconds.
 func CoarseUnixNano() int64 {
-	return cachedUnixNano.Load()
+	return cachedTime.Load().UnixNano()
 }
 
 // RangeSeq returns an iterator yielding timestamps from start up to end (inclusive if exact match),

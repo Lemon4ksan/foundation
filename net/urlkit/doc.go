@@ -4,7 +4,7 @@
 
 // Package urlkit provides high-speed URL parsing, serialization, and path variable expansion.
 //
-// This package is designed for extreme throughput. It offers [ParseView] for parsing URLs directly
+// It is designed for extreme throughput. It offers [ParseView] for parsing URLs directly
 // from string slices without allocations, and relies on SIMD instructions and CRC32 sharded caches
 // to accelerate query parameter unescaping and URL string assembly.
 //

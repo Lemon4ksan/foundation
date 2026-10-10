@@ -9,9 +9,9 @@
 // and a maximum burst capacity. The [Sometimes] sampler controls execution frequency across
 // hotpath loops or telemetry emission using interval or event-count decimation.
 //
-// The token-bucket algorithm naturally accommodates legitimate traffic bursts while
+// The token-bucket algorithm accommodates legitimate traffic bursts while
 // guaranteeing an upper bound on sustained frequency. Both primitives are safe for
-// concurrent invocation across multiple goroutines. Fast paths, such as checking
+// concurrent invocation across multiple goroutines. Execution paths, such as checking
 // [Limiter.Allow] or waiting on an available token via [Limiter.Wait] without blocking,
 // are allocation-free. If [Limiter.Wait] is forced to block for a future token, it
 // allocates an internal timer.

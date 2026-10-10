@@ -4,10 +4,10 @@
 
 // Package semaphore provides a dynamically resizable counting semaphore.
 //
-// The package coordinates access to a shared pool of limited concurrent slots
-// allowing the limit to be safely changed at runtime without restarting or
+// It coordinates access to a shared pool of limited concurrent slots
+// allowing the limit to be changed at runtime without restarting or
 // rebuilding the coordinator. Context-aware acquisition ensures that waiting
-// goroutines unblock immediately when their context is cancelled or expires,
+// goroutines unblock when their context is cancelled or expires,
 // preventing resource leaks.
 //
 // # Compared to the standard library
@@ -15,7 +15,7 @@
 // Stdlib counterpart: golang.org/x/sync/semaphore
 //
 // Rejected compromise: using a fixed-size buffered channel which cannot be resized
-// dynamically, or standard library weighted semaphore which allocates under high contention.
+// dynamically, or standard library weighted semaphore which allocates under contention.
 //
 // Accepted cost: each blocked goroutine requires allocating a channel in the waiter queue
 // when the capacity limit is exceeded.

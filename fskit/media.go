@@ -41,7 +41,7 @@ func findExtBytes(path []byte) []byte {
 
 // IsIncompressibleExt reports whether a file extension corresponds to already compressed or encrypted media.
 // It accepts extensions with or without a leading dot (e.g. ".zip" or "zip") in a case-insensitive manner.
-// This function executes with zero heap allocations.
+// It executes with zero heap allocations.
 func IsIncompressibleExt(ext string) bool {
 	if len(ext) > 0 && ext[0] == '.' {
 		ext = ext[1:]
@@ -107,7 +107,7 @@ func IsIncompressibleExt(ext string) bool {
 
 // IsIncompressibleExtBytes reports whether a byte slice file extension corresponds to already compressed or encrypted media.
 // It accepts extensions with or without a leading dot in a case-insensitive manner.
-// This function executes with zero heap allocations.
+// It executes with zero heap allocations.
 func IsIncompressibleExtBytes(ext []byte) bool {
 	if len(ext) > 0 && ext[0] == '.' {
 		ext = ext[1:]

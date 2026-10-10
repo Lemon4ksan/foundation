@@ -13,9 +13,9 @@
 //
 // Stdlib counterpart: io/fs, path/filepath, and os
 //
-// Rejected compromise: filepath.Walk and filepath.WalkDir traverse directories sequentially.
+// Rejected compromise: [filepath.Walk] and [filepath.WalkDir] traverse directories sequentially.
 //
-// Accepted cost: FastWalk yields paths out of order and spawns goroutines.
+// Accepted cost: [FastWalk] yields paths out of order and spawns goroutines.
 //
 // Allocations: unconstrained
 package fskit

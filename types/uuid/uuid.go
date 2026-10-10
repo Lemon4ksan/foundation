@@ -48,7 +48,7 @@ var (
 	// ErrInvalidFormat is returned when a UUID string does not conform to 8-4-4-4-12 hex format (RFC 9562 §4).
 	ErrInvalidFormat = errors.New("foundation/uuid: invalid UUID hex-and-dash format")
 
-	// ErrScanType is returned when an unsupported type is passed to Scan.
+	// ErrScanType is returned when an unsupported type is passed to [UUID.Scan].
 	ErrScanType = errors.New("foundation/uuid: cannot scan type into UUID")
 )
 
@@ -226,7 +226,7 @@ func (u UUID) Version() int {
 }
 
 // Variant extracts the variant number from the UUID (RFC 9562 §4.1).
-// For the RFC 9562 standard variant (10xx), returns 2.
+// For the RFC 9562 standard variant (10xx), it returns 2.
 func (u UUID) Variant() int {
 	switch {
 	case (u[8] & 0x80) == 0x00:
@@ -241,7 +241,7 @@ func (u UUID) Variant() int {
 }
 
 // Time extracts the embedded UTC timestamp from a UUIDv7 (RFC 9562 §5.7).
-// Returns zero time if the UUID version is not 7.
+// It returns zero time if the UUID version is not 7.
 func (u UUID) Time() time.Time {
 	if u.Version() != 7 {
 		return time.Time{}

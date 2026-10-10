@@ -103,10 +103,10 @@ type CallFn[V any] func(ctx context.Context) (V, error)
 
 // Do executes callFn and suppresses duplicate concurrent calls for the specified key.
 //
-// If an execution for the key is already in progress, Do blocks until it completes and returns the shared result.
-// If the provided context is canceled while waiting, Do returns immediately with the context error.
+// If an execution for the key is already in progress, it blocks until completion and returns the shared result.
+// If the provided context is canceled while waiting, it returns immediately with the context error.
 // If all concurrent contexts waiting on the same call are canceled, the underlying worker's context is canceled.
-// If callFn panics, the panic is propagated to the initiating caller, while secondary waiting callers receive ErrWorkerPanicked.
+// If callFn panics, the panic is propagated to the initiating caller, while secondary waiting callers receive [ErrWorkerPanicked].
 //
 // Complexity: O(1) time excluding callFn execution; allocates memory when initiating or joining a call.
 func (g *Group[K, V]) Do(ctx context.Context, key K, callFn CallFn[V]) (V, error) {
@@ -162,7 +162,7 @@ func (g *Group[K, V]) Do(ctx context.Context, key K, callFn CallFn[V]) (V, error
 	return g.wait(ctx, key, c, ch)
 }
 
-// DoChan executes callFn and suppresses duplicate concurrent calls for the specified key, returning a channel that yields the result.
+// DoChan executes callFn and suppresses duplicate concurrent calls for the specified key, returning a channel that yields the [Result].
 //
 // Complexity: O(1) time excluding callFn execution; allocates memory for channels and call tracking.
 func (g *Group[K, V]) DoChan(ctx context.Context, key K, callFn CallFn[V]) <-chan Result[V] {

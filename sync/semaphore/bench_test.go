@@ -60,19 +60,11 @@ func TestRepro_Semaphore_ReleaseUnderflowGuard(t *testing.T) {
 
 	sem := semaphore.New(1)
 
-	// Calling Release on an unacquired semaphore must not underflow active slots
-	sem.Release()
-	sem.Release()
-
-	// Capacity was 1, so only 1 Acquire should succeed
-	require.NoError(t, sem.Acquire(context.Background()))
-
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
-	defer cancel()
-
-	// Second acquire must block and time out (not succeed due to negative active count)
-	err := sem.Acquire(ctx)
-	assert.ErrorIs(t, err, context.DeadlineExceeded)
+	defer func() {
+		if r := recover(); r == nil {
+			t.Fatal("expected Release to panic on unacquired semaphore")
+		}
+	}()
 
 	sem.Release()
 }

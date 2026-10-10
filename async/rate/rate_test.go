@@ -510,7 +510,7 @@ func waitDelayOk(wantD int, got time.Duration) bool {
 
 	// The actual time spent waiting will be REDUCED by the amount of time spent
 	// since the last call to the limiter. We expect the time in between calls to
-	// be executing simple, straight-line, non-blocking code, so it should reduce
+	// be executing straight-line, non-blocking code, so it should reduce
 	// the wait time by no more than half a d, which would round to exactly wantD.
 	if gotD < wantD {
 		return false

@@ -27,12 +27,13 @@ const (
 
 // ToSnake converts s into snake_case (e.g. "HTTPServerURL" -> "http_server_url", "userName" -> "user_name").
 //
-// Note: This function currently does not strip consecutive, leading, or trailing delimiters
+// Note: It currently does not strip consecutive, leading, or trailing delimiters
 // (e.g. ToSnake("  hello  ") results in "hello__" instead of "hello").
 func ToSnake(s string) string {
 	return convertDelimited(s, '_', false)
 }
 
+// ToScreamingSnake converts s into SCREAMING_SNAKE_CASE (e.g. "HTTPServerURL" -> "HTTP_SERVER_URL").
 func ToScreamingSnake(s string) string {
 	return convertDelimited(s, '_', true)
 }
