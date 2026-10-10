@@ -115,10 +115,18 @@ func Encode16[T ~[16]byte](dst *[32]byte, src T) {
 	s := (*[16]byte)(unsafe.Pointer(&src))
 	_ = dst[31]
 	_ = hexLUT16[255]
-	w0 := uint64(hexLUT16[s[0]]) | (uint64(hexLUT16[s[1]]) << 16) | (uint64(hexLUT16[s[2]]) << 32) | (uint64(hexLUT16[s[3]]) << 48)
-	w1 := uint64(hexLUT16[s[4]]) | (uint64(hexLUT16[s[5]]) << 16) | (uint64(hexLUT16[s[6]]) << 32) | (uint64(hexLUT16[s[7]]) << 48)
-	w2 := uint64(hexLUT16[s[8]]) | (uint64(hexLUT16[s[9]]) << 16) | (uint64(hexLUT16[s[10]]) << 32) | (uint64(hexLUT16[s[11]]) << 48)
-	w3 := uint64(hexLUT16[s[12]]) | (uint64(hexLUT16[s[13]]) << 16) | (uint64(hexLUT16[s[14]]) << 32) | (uint64(hexLUT16[s[15]]) << 48)
+	w0 := uint64(
+		hexLUT16[s[0]],
+	) | (uint64(hexLUT16[s[1]]) << 16) | (uint64(hexLUT16[s[2]]) << 32) | (uint64(hexLUT16[s[3]]) << 48)
+	w1 := uint64(
+		hexLUT16[s[4]],
+	) | (uint64(hexLUT16[s[5]]) << 16) | (uint64(hexLUT16[s[6]]) << 32) | (uint64(hexLUT16[s[7]]) << 48)
+	w2 := uint64(
+		hexLUT16[s[8]],
+	) | (uint64(hexLUT16[s[9]]) << 16) | (uint64(hexLUT16[s[10]]) << 32) | (uint64(hexLUT16[s[11]]) << 48)
+	w3 := uint64(
+		hexLUT16[s[12]],
+	) | (uint64(hexLUT16[s[13]]) << 16) | (uint64(hexLUT16[s[14]]) << 32) | (uint64(hexLUT16[s[15]]) << 48)
 	*(*uint64)(unsafe.Pointer(&dst[0])) = w0
 	*(*uint64)(unsafe.Pointer(&dst[8])) = w1
 	*(*uint64)(unsafe.Pointer(&dst[16])) = w2
@@ -132,8 +140,12 @@ func Encode8[T ~[8]byte](dst *[16]byte, src T) {
 	s := (*[8]byte)(unsafe.Pointer(&src))
 	_ = dst[15]
 	_ = hexLUT16[255]
-	w0 := uint64(hexLUT16[s[0]]) | (uint64(hexLUT16[s[1]]) << 16) | (uint64(hexLUT16[s[2]]) << 32) | (uint64(hexLUT16[s[3]]) << 48)
-	w1 := uint64(hexLUT16[s[4]]) | (uint64(hexLUT16[s[5]]) << 16) | (uint64(hexLUT16[s[6]]) << 32) | (uint64(hexLUT16[s[7]]) << 48)
+	w0 := uint64(
+		hexLUT16[s[0]],
+	) | (uint64(hexLUT16[s[1]]) << 16) | (uint64(hexLUT16[s[2]]) << 32) | (uint64(hexLUT16[s[3]]) << 48)
+	w1 := uint64(
+		hexLUT16[s[4]],
+	) | (uint64(hexLUT16[s[5]]) << 16) | (uint64(hexLUT16[s[6]]) << 32) | (uint64(hexLUT16[s[7]]) << 48)
 	*(*uint64)(unsafe.Pointer(&dst[0])) = w0
 	*(*uint64)(unsafe.Pointer(&dst[8])) = w1
 }

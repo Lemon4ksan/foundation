@@ -56,7 +56,7 @@ func NewExponential(initial, max time.Duration, factor float64) *Exponential {
 	if max <= 0 {
 		max = 30 * time.Second
 	}
-	
+
 	if max < initial {
 		max = initial
 	}
@@ -176,7 +176,7 @@ func NewLinear(initial, max, step time.Duration) *Linear {
 	if max <= 0 {
 		max = 10 * time.Second
 	}
-	
+
 	if max < initial {
 		max = initial
 	}

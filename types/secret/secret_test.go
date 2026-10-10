@@ -89,9 +89,9 @@ func TestRepro_SecretMemoryWipeVerification(t *testing.T) {
 
 // Interface compliance assertions
 var (
-	_ encoding.TextMarshaler   = secret.Secret[string]{}
-	_ encoding.TextUnmarshaler = (*secret.Secret[string])(nil)
-	_ encoding.BinaryMarshaler = secret.Secret[string]{}
+	_ encoding.TextMarshaler     = secret.Secret[string]{}
+	_ encoding.TextUnmarshaler   = (*secret.Secret[string])(nil)
+	_ encoding.BinaryMarshaler   = secret.Secret[string]{}
 	_ encoding.BinaryUnmarshaler = (*secret.Secret[string])(nil)
 )
 
@@ -142,5 +142,3 @@ func TestRepro_Secret_ConcurrentExposeAndWipeRace(t *testing.T) {
 		wg.Wait()
 	}
 }
-
-

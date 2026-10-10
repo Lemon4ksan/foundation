@@ -188,7 +188,11 @@ func TestNextForFamily_Concurrent(t *testing.T) {
 		wg.Wait()
 
 		if missed.Load() > 0 {
-			t.Fatalf("CRITICAL BUG: NextForFamily returned nil %d times despite having IPv4 address in pool (iteration %d)", missed.Load(), iter)
+			t.Fatalf(
+				"CRITICAL BUG: NextForFamily returned nil %d times despite having IPv4 address in pool (iteration %d)",
+				missed.Load(),
+				iter,
+			)
 		}
 	}
 }

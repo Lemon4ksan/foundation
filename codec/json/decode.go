@@ -819,7 +819,11 @@ func decodeKeyString(keyRaw []byte, hasEscape bool) (string, error) {
 	return string(decodeToValidUTF8(unescaped)), nil
 }
 
-func lookupStructField(fieldMap map[string]structFieldDecoder, keyRaw []byte, hasEscape bool) (field structFieldDecoder, exists bool, key string, err error) {
+func lookupStructField(
+	fieldMap map[string]structFieldDecoder,
+	keyRaw []byte,
+	hasEscape bool,
+) (field structFieldDecoder, exists bool, key string, err error) {
 	if !hasEscape {
 		if field, exists = fieldMap[string(keyRaw)]; exists {
 			return field, true, string(keyRaw), nil
@@ -854,7 +858,13 @@ func lookupStructField(fieldMap map[string]structFieldDecoder, keyRaw []byte, ha
 	return field, exists, key, nil
 }
 
-func decodeStructFieldValue(field structFieldDecoder, data []byte, cursor int, p unsafe.Pointer, cfg *DecoderConfig) (int, error) {
+func decodeStructFieldValue(
+	field structFieldDecoder,
+	data []byte,
+	cursor int,
+	p unsafe.Pointer,
+	cfg *DecoderConfig,
+) (int, error) {
 	fieldPtr := unsafe.Add(p, field.offset)
 	if !field.quoted {
 		return field.decode(data, cursor, fieldPtr, cfg)

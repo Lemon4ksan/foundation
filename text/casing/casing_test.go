@@ -116,4 +116,3 @@ func BenchmarkSplitWords(b *testing.B) {
 		_ = casing.SplitWords(input)
 	}
 }
-

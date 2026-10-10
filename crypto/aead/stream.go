@@ -91,7 +91,12 @@ func NewStreamWriter(
 		return nil, errors.New("aead: nil cipher provided")
 	}
 	if len(nonceBase) != aead.NonceSize() || len(nonceBase) < 8 {
-		return nil, fmt.Errorf("%w: expected %d bytes (minimum 8), got %d", ErrInvalidNonceLength, aead.NonceSize(), len(nonceBase))
+		return nil, fmt.Errorf(
+			"%w: expected %d bytes (minimum 8), got %d",
+			ErrInvalidNonceLength,
+			aead.NonceSize(),
+			len(nonceBase),
+		)
 	}
 	switch {
 	case chunkSize <= 0:
@@ -221,7 +226,12 @@ func NewStreamReader(r io.Reader, aead cipher.AEAD, nonceBase, streamAAD []byte)
 		return nil, errors.New("aead: nil cipher provided")
 	}
 	if len(nonceBase) != aead.NonceSize() || len(nonceBase) < 8 {
-		return nil, fmt.Errorf("%w: expected %d bytes (minimum 8), got %d", ErrInvalidNonceLength, aead.NonceSize(), len(nonceBase))
+		return nil, fmt.Errorf(
+			"%w: expected %d bytes (minimum 8), got %d",
+			ErrInvalidNonceLength,
+			aead.NonceSize(),
+			len(nonceBase),
+		)
 	}
 
 	return &StreamReader{
@@ -400,7 +410,12 @@ func EncryptChunks(
 		return nil, errors.New("aead: nil cipher provided")
 	}
 	if len(nonceBase) != aead.NonceSize() || len(nonceBase) < 8 {
-		return nil, fmt.Errorf("%w: expected %d bytes (minimum 8), got %d", ErrInvalidNonceLength, aead.NonceSize(), len(nonceBase))
+		return nil, fmt.Errorf(
+			"%w: expected %d bytes (minimum 8), got %d",
+			ErrInvalidNonceLength,
+			aead.NonceSize(),
+			len(nonceBase),
+		)
 	}
 	switch {
 	case chunkSize <= 0:

@@ -313,4 +313,3 @@ func TestSchemaCache_PointerEmbeddedOffset(t *testing.T) {
 		}
 	}
 }
-

@@ -53,3 +53,23 @@ func ExampleBuildPath() {
 	// Output:
 	// /users/42/details
 }
+
+func ExampleCleanHost() {
+	// Strips IPv6 zone IDs and converts IDNs.
+	fmt.Println(urlkit.CleanHost("fe80::1%eth0"))
+	fmt.Println(urlkit.CleanHost("президент.рф"))
+
+	// Output:
+	// fe80::1
+	// xn--d1abbgf6aiiy.xn--p1ai
+}
+
+func ExampleCleanHostPort() {
+	host, port := urlkit.CleanHostPort("[fe80::1%eth0]:8080")
+	fmt.Println("Host:", host)
+	fmt.Println("Port:", port)
+
+	// Output:
+	// Host: fe80::1
+	// Port: 8080
+}

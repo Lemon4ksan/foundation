@@ -309,7 +309,7 @@ func WalkContext(ctx context.Context, targetRoot string, outChan chan<- Entry, o
 					// Check if this exact dir, or any of its parents, are in skipMap
 					// For performance, we can just check the exact dir if we assume
 					// parents were already skipped, but since concurrency allows
-					// parents to be marked later, let's just check the exact dir 
+					// parents to be marked later, let's just check the exact dir
 					// and rely on consumer filtering for the rest.
 					if _, skipped := cfg.skipMap.Load(dir); skipped {
 						q.done()
@@ -411,7 +411,9 @@ func FastWalk(root string, walkFn func(path string, d fs.DirEntry, err error) er
 	go func() {
 		defer close(done)
 		// We pass a custom option to ensure skipMap is passed to WalkContext
-		optsWithSkip := append(opts, func(c *WalkConfig) {
+		optsWithSkip := make([]WalkOption, len(opts), len(opts)+1)
+		copy(optsWithSkip, opts)
+		optsWithSkip = append(optsWithSkip, func(c *WalkConfig) {
 			c.skipMap = skipMap
 		})
 		WalkContext(ctx, root, ch, optsWithSkip...)
@@ -419,7 +421,7 @@ func FastWalk(root string, walkFn func(path string, d fs.DirEntry, err error) er
 
 	var walkErr error
 	var skippedPrefixes []string
-	
+
 	for e := range ch {
 		if walkErr != nil {
 			continue

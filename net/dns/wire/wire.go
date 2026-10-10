@@ -417,7 +417,6 @@ func ParseResponseRecords(msg []byte, expectedID uint16) ([]Record, error) {
 }
 
 func parseDNSResponseRecordsInternal(msg []byte, expectedID uint16) ([]DNSRecord, error) {
-
 	flags := binary.BigEndian.Uint16(msg[2:4])
 	if flags&0x000f != 0 {
 		return nil, fmt.Errorf("%w: rcode=%d", ErrDNSResponseCode, flags&0x000f)

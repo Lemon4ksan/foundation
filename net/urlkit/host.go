@@ -2,8 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package netutil provides network address normalization and host sanitization utilities.
-package netutil
+package urlkit
 
 import (
 	"net"

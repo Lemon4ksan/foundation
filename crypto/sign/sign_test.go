@@ -345,5 +345,3 @@ func TestRepro_Sign_SeedDerivationBoundaryConditions(t *testing.T) {
 	assert.Equal(t, sign.PrivateKeySize, len(privFF))
 	assert.False(t, bytes.Equal(pub0, pubFF))
 }
-
-

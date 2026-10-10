@@ -9,7 +9,7 @@ arch:
 
 ratchet:
 	go test -coverprofile=coverage.out ./...
-	go run ./scripts/coverage_ratchet -profile=coverage.out -baseline=scripts/coverage_baseline.txt -check
+	go run ./scripts/coverage_ratchet/main.go -profile=coverage.out -baseline=scripts/coverage_baseline.txt -check
 
 test:
 	go test ./...

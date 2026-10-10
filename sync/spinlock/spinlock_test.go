@@ -106,8 +106,6 @@ func TestLock_TryLockConcurrent(t *testing.T) {
 	}
 }
 
-
-
 func BenchmarkLock_Sequential(b *testing.B) {
 	var mu Lock
 	b.ReportAllocs()

@@ -39,7 +39,7 @@ func getPackageLayer(pkgPath string) (int, string) {
 		return 3, "Layer 3: Codecs & Cryptography"
 	case "net":
 		return 4, "Layer 4: Wire & Transport"
-	case "types", "timekit", "argkit", "fskit", "pathkit", "tuikit", "testing", "cmd", "test", "scripts":
+	case "types", "timekit", "fskit", "pathkit", "testing", "cmd", "test", "scripts":
 		return 5, "Layer 5: Tooling & Utilities"
 	default:
 		return 99, "Unknown"

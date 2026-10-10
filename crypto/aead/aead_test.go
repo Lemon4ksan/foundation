@@ -772,4 +772,3 @@ func FuzzAEAD_SealOpenTamper(f *testing.F) {
 		}
 	})
 }
-

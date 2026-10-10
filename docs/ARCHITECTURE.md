@@ -13,7 +13,7 @@ Some of the code is written for the CPU and not for the reader. Three habits rec
 ## Keeping allocations out of the hot path
 
 - **Flat storage instead of pointers.** `structures/linkedlist.List[T]` keeps its elements in one slice and links them by index, with a free list for reused slots. `container/list` allocates a node per element and chases pointers on every step.
-- **Push iterators instead of result slices.** Collections and parsers hand out `iter.Seq` and `iter.Seq2` (`linkedlist.List.Values`, `net/quic/varint.DecodeSeq`). The loop body runs in the caller's frame, `break` stops the producer straight away, and nothing is allocated for the result.
+- **Push iterators instead of result slices.** Collections and parsers hand out `iter.Seq` and `iter.Seq2` (`linkedlist.List.Values`, `encoding/varint.ReadSeq`). The loop body runs in the caller's frame, `break` stops the producer straight away, and nothing is allocated for the result.
 - **Caller-supplied destinations.** Encoders expose `Append*` or slice-filling forms next to any form that returns a new slice. When you compare secrets, use `silicon/randkit.ConstantTimeEqual(a, b)`, not `subtle.ConstantTimeCompare([]byte(a), []byte(b))`, which allocates twice.
 
 ## Ownership and `borrow`
@@ -42,14 +42,14 @@ Use `PerCorePool` under heavy multi-core load (over roughly 100k operations a se
 
 ## Habits that keep code allocation-free
 
-Encode in place (shown with `net/quic/varint`):
+Encode in place (shown with `encoding/varint`):
 
 ```go
 // allocates a []byte
-buf := varint.EncodeVarint(val)
+buf := varint.Append(nil, val)
 
 // fills the caller's buffer, no allocation
-n := varint.EncodeVarintSlice(val, scratch[offset:])
+buf = varint.Append(scratch[:0], val)
 ```
 
 Iterate without building slices:

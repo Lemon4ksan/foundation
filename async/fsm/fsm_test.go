@@ -882,5 +882,3 @@ func FuzzFSM(f *testing.F) {
 		}
 	})
 }
-
-

@@ -835,4 +835,3 @@ func TestList_IteratorZeroAllocs(t *testing.T) {
 		t.Errorf("All() had %f allocs, expected 0", allocsAll)
 	}
 }
-

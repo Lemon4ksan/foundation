@@ -34,30 +34,43 @@ Development in `foundation` follows strict Architecture Decision Records ([ADRs]
 Autonomous packages with zero internal dependencies.
 * `simd`: AVX2/BMI2 vector processing for frame scanning and match lengths.
 * `hexkit`, `bytesconv`: SIMD codecs (13 GB/s hex, 31 GB/s Base64).
-* `pool`, `ringbuf`: Multi-tiered memory arenas, lock-free object pools.
+* `pool`, `ringbuf`, `offheap`: Multi-tiered memory arenas, lock-free object pools, off-heap buffers.
 * `clock`, `randkit`: Syscall-free monotonic clocks, lock-free PRNG.
 
-### Layer 1: Memory & Base Primitives
-* `sync`: Adaptive Vegas limiters, strip locks, circuit breakers.
-* `bufkit`, `borrow`: Cacheline-aligned (64B) buffers and generational ownership arenas.
+### Layer 1: Memory & Structures
+* `borrow`: Generational affine ownership and borrow checkers (`Box`, `Ref`, `Mut`).
+* `structures`: Zero-allocation typed data structures (`minheap`, `deque`, `ringbuffer`, `bitset`, `linkedlist`).
+* `bufkit`, `refkit`: Cacheline-aligned (64B) buffers and allocation-free struct tag parsers.
 
-### Layer 2: Structures & Formats
-* `structures`: Zero-allocation typed data structures (`minheap`, `deque`, `ringbuffer`).
-* `codec`: Streaming `brotli`, `zstd`, `gzip`, `lz4`, `lzma`, `fse`, `huff0`, and SIMD `json`.
-* `crypto`: Hardware-accelerated AEAD ciphers and KDFs.
-
-### Layer 3: Networking & Concurrency
+### Layer 2: Concurrency
+* `sync`: Adaptive Vegas limiters, strip locks, circuit breakers, spinlocks.
 * `async`: Zero-alloc `ctxkit`, topologically sorted `lifecycle`, `fsm`, `dedup`, and `logkit`.
-* `net`: Zero-alloc `ip` / `ipc` manipulation, `quic` transport, and proxy dialers.
 
-### Layer 4 & 5: Ecosystem & Userland
-* `generic`: Monadic types (`Optional`), thread-safe `LRU`, lazy `Stream`.
-* `argkit`, `tuikit`: Terminal UI frameworks and POSIX flag parsing.
+### Layer 3: Codecs & Cryptography
+* `codec/json`: Streaming SIMD JSON decoder and encoder.
+* `crypto`: Hardware-accelerated AEAD ciphers (`aead`), KDFs (`kdf`), and digital signatures (`sign`).
+* `encoding`: QUIC `varint`, `base64`, `bin` binary serialisation.
+* `text`: Unicode `casing`, SIMD string transformation (`transform`).
+* `iokit`: Vectored and zero-copy I/O helpers.
+
+### Layer 4: Wire & Transport (`net/`)
+* `urlkit`: High-throughput SIMD URL view parsing, query unescaping, and host sanitisation (`CleanHost`).
+* `dns/wire`, `dns/svcb`: Layer 4 DNS wire codecs and RFC 9460 SVCB/HTTPS service discovery.
+* `tls/cert`: X.509 certificate parsing and chain validation.
+* `ip`: Lock-free IP address rotation (`SourceRotator`) and IPv6 subnet generation.
+
+### Layer 5: Tooling & Utilities
+* `types`: High-entropy `uuid`, zero-leak `secret`, lenient JSON `values`.
+* `timekit`: Zero-alloc HTTP dates and timestamp formatting.
 * `fskit`, `pathkit`: Multi-threaded walkers and immutable URIs.
+* `testing`: Zero-alloc assertion helpers (`assert`, `require`, `mock`).
+
+### External: Consumer Helpers
+* `generic`: Monadic types (`Optional`), thread-safe `LRU`, lazy `Stream` (outside the layer graph, for external consumers).
 
 ## SIMD Kernels (`c2plan9`)
 
-CGO overhead is avoided by compiling C/LLVM kernels directly into Plan 9 Go Assembler via [`c2plan9`](cmd/c2plan9/doc.go).
+CGO overhead is avoided by compiling C/LLVM kernels directly into Plan 9 Go Assembler via `c2plan9`.
 
 | Kernel | Description | Latency | Throughput | Allocations |
 | :--- | :--- | :--- | :--- | :--- |

@@ -305,7 +305,11 @@ func TestChallenge_Cache_JanitorGoroutineGCReclamation(t *testing.T) {
 		}
 	}
 
-	assert.True(t, success, fmt.Sprintf("expected goroutines to return to baseline %d, got %d", baseGoroutines, finalGoroutines))
+	assert.True(
+		t,
+		success,
+		fmt.Sprintf("expected goroutines to return to baseline %d, got %d", baseGoroutines, finalGoroutines),
+	)
 }
 
 func TestChallenge_Cache_ExplicitCloseThenGC(t *testing.T) {
@@ -553,5 +557,14 @@ func TestChallenge_ExtremePressure_MixedAllocatorsAndGC(t *testing.T) {
 		}
 	}
 
-	assert.True(t, clean, fmt.Sprintf("expected goroutines to settle near baseline %d, got %d (gc iterations: %d)", baseGoroutines, settledGoroutines, gcCount.Load()))
+	assert.True(
+		t,
+		clean,
+		fmt.Sprintf(
+			"expected goroutines to settle near baseline %d, got %d (gc iterations: %d)",
+			baseGoroutines,
+			settledGoroutines,
+			gcCount.Load(),
+		),
+	)
 }

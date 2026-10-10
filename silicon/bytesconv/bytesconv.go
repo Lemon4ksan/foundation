@@ -114,32 +114,6 @@ var toUpperTable = func() [256]byte {
 	return tbl
 }()
 
-func toLowerScalar(dst, src []byte) {
-	n := min(len(dst), len(src))
-	if n == 0 {
-		return
-	}
-	_ = dst[n-1]
-	_ = src[n-1]
-	_ = toLowerTable[255]
-	for i := 0; i < n; i++ {
-		dst[i] = toLowerTable[src[i]]
-	}
-}
-
-func toUpperScalar(dst, src []byte) {
-	n := min(len(dst), len(src))
-	if n == 0 {
-		return
-	}
-	_ = dst[n-1]
-	_ = src[n-1]
-	_ = toUpperTable[255]
-	for i := 0; i < n; i++ {
-		dst[i] = toUpperTable[src[i]]
-	}
-}
-
 //go:noinline
 func growSlice(s []byte, n int) []byte {
 	return slices.Grow(s, n)

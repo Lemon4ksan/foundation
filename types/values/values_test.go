@@ -303,9 +303,11 @@ func TestValues_Unmarshaling_NumericAndString(t *testing.T) {
 	assert.True(t, bool(s2.Bool))
 }
 
-type myCustomFloat float64
-type myCustomFloat32 float32
-type myCustomUint uint64
+type (
+	myCustomFloat   float64
+	myCustomFloat32 float32
+	myCustomUint    uint64
+)
 
 func TestNumberString_CustomTypes(t *testing.T) {
 	t.Parallel()

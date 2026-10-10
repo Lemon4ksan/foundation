@@ -352,7 +352,7 @@ func validateValue(data []byte, cursor int) (int, error) {
 	return validateValueDepth(data, cursor, 0)
 }
 
-func validateValueDepth(data []byte, cursor int, depth int) (int, error) {
+func validateValueDepth(data []byte, cursor, depth int) (int, error) {
 	if depth >= maxDecodeDepth {
 		return cursor, errMaxDepth
 	}
