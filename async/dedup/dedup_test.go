@@ -616,7 +616,6 @@ func TestGroup_NilReceiver(t *testing.T) {
 func BenchmarkKeysSeq_Empty(b *testing.B) {
 	g := &Group[string, int]{}
 
-	b.ResetTimer()
 	b.ReportAllocs()
 
 	for b.Loop() {

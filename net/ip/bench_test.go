@@ -20,7 +20,6 @@ func BenchmarkSourceRotator_Next_Serial(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	b.ResetTimer()
 	b.ReportAllocs()
 
 	for b.Loop() {

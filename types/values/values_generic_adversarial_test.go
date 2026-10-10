@@ -94,7 +94,6 @@ func TestEmpirical_Values_NumberString_Concurrent(t *testing.T) {
 func BenchmarkNumberString_Int(b *testing.B) {
 	val := 42
 
-	b.ResetTimer()
 	b.ReportAllocs()
 
 	for b.Loop() {
@@ -105,7 +104,6 @@ func BenchmarkNumberString_Int(b *testing.B) {
 func BenchmarkNumberString_Float(b *testing.B) {
 	val := 3.14159
 
-	b.ResetTimer()
 	b.ReportAllocs()
 
 	for b.Loop() {

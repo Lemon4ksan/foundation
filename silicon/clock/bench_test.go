@@ -12,7 +12,7 @@ func TestRDTSC_MonotonicProgression(t *testing.T) {
 	defer runtime.UnlockOSThread()
 
 	prev := rdtsc()
-	for i := 0; i < 100_000; i++ {
+	for i := range 100_000 {
 		curr := rdtsc()
 		if curr < prev {
 			t.Fatalf("RDTSC monotonic progression violated: prev=%d, curr=%d at iteration %d", prev, curr, i)
@@ -28,14 +28,14 @@ func TestRDTSC_MonotonicProgression_Concurrent(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(goroutines)
 
-	for g := 0; g < goroutines; g++ {
+	for g := range goroutines {
 		go func(id int) {
 			defer wg.Done()
 			runtime.LockOSThread()
 			defer runtime.UnlockOSThread()
 
 			prev := rdtsc()
-			for i := 0; i < iters; i++ {
+			for i := range iters {
 				curr := rdtsc()
 				if curr < prev {
 					t.Errorf("goroutine %d: RDTSC decreased: prev=%d, curr=%d (iter %d)", id, prev, curr, i)
@@ -68,7 +68,7 @@ func TestRDTSC_CalibrationStability(t *testing.T) {
 	samples := make([]float64, 0, runs+1)
 	samples = append(samples, freqGHz)
 
-	for i := 0; i < runs; i++ {
+	for i := range runs {
 		calibrateRDTSC()
 		s := tscTicksPerNano.Load()
 		sampleGHz := float64(s) / 1024.0
@@ -99,7 +99,7 @@ func TestRDTSC_CalibrationStability(t *testing.T) {
 
 func TestElapsedCycles_Positive(t *testing.T) {
 	// Verify that serialized RDTSC via LFENCE guarantees positive elapsed cycle measurement
-	for i := 0; i < 100_000; i++ {
+	for i := range 100_000 {
 		start := rdtsc()
 		dur := ElapsedCycles(start)
 		if dur <= 0 {
@@ -109,11 +109,11 @@ func TestElapsedCycles_Positive(t *testing.T) {
 }
 
 func TestElapsedCycles_SmallWorkload(t *testing.T) {
-	for i := 0; i < 10_000; i++ {
+	for i := range 10_000 {
 		start := rdtsc()
 		// Micro-workload: 10 nanosleep or simple arithmetic
 		var x uint64
-		for j := 0; j < 100; j++ {
+		for j := range 100 {
 			x += uint64(j)
 		}
 		dur := ElapsedCycles(start)

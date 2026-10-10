@@ -323,7 +323,7 @@ func TestChain_Next_MemorySafety_CrossChunkBoundaryAndRecycle(t *testing.T) {
 	// 5. Aggressively churn sync.Pool by allocating new chains and overwriting pooled chunks
 	// with a dirty pattern (0xAA). If heldSlice1 or heldSlice2 point into pooled memory,
 	// their contents would be overwritten and corrupted.
-	for cycle := 0; cycle < 50; cycle++ {
+	for range 50 {
 		churnChain := bufkit.NewChain()
 		dirty := bytes.Repeat([]byte{0xAA}, bufkit.DefaultChunkSize*2)
 		_, _ = churnChain.Write(dirty)
@@ -890,19 +890,23 @@ func BenchmarkRing_PushPop_Batch(b *testing.B) {
 
 func BenchmarkRing_SPSC_Pipeline(b *testing.B) {
 	ring := bufkit.NewRing[int](4096)
+	var active atomic.Bool
+	active.Store(true)
 	var wg sync.WaitGroup
 
 	b.ReportAllocs()
 	b.ResetTimer()
 
 	wg.Go(func() {
-		for i := 0; i < b.N; i++ {
-			for !ring.Push(i) {
+		i := 0
+		for active.Load() {
+			if ring.Push(i) {
+				i++
 			}
 		}
 	})
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		for {
 			if _, ok := ring.Pop(); ok {
 				break
@@ -910,6 +914,8 @@ func BenchmarkRing_SPSC_Pipeline(b *testing.B) {
 		}
 	}
 
+	b.StopTimer()
+	active.Store(false)
 	wg.Wait()
 }
 

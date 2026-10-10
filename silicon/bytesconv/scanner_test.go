@@ -124,7 +124,7 @@ func BenchmarkScanTokens_ZeroAlloc(t *testing.B) {
 	t.ReportAllocs()
 	t.ResetTimer()
 
-	for i := 0; i < t.N; i++ {
+	for t.Loop() {
 		count := 0
 		for tok := range bytesconv.ScanTokens(raw, ',') {
 			if len(tok) > 0 {
@@ -144,7 +144,7 @@ func BenchmarkScanPairs_ZeroAlloc(t *testing.B) {
 	t.ReportAllocs()
 	t.ResetTimer()
 
-	for i := 0; i < t.N; i++ {
+	for t.Loop() {
 		count := 0
 		for k, v := range bytesconv.ScanPairs(raw, ';', '=') {
 			if len(k) > 0 || len(v) > 0 {

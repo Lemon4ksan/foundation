@@ -348,7 +348,7 @@ func TestRequestArena_AllocationBoundaries(t *testing.T) {
 	// 3. Reset and allocate small chunks that add up to 4096
 	arena.Reset()
 	totalAlloc := 0
-	for i := 0; i < 64; i++ {
+	for range 64 {
 		chunk := arena.Alloc(64)
 		assert.Len(t, chunk, 64)
 		totalAlloc += len(chunk)

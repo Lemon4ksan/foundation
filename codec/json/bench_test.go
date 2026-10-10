@@ -29,7 +29,7 @@ var (
 
 func BenchmarkMarshal_StdJSON(b *testing.B) {
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		data, _ := stdjson.Marshal(benchUser)
 		benchSinkBytes = data
 	}
@@ -37,7 +37,7 @@ func BenchmarkMarshal_StdJSON(b *testing.B) {
 
 func BenchmarkMarshal_SiliconJSON(b *testing.B) {
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		data, _ := json.Marshal(benchUser)
 		benchSinkBytes = data
 	}
@@ -46,7 +46,7 @@ func BenchmarkMarshal_SiliconJSON(b *testing.B) {
 func BenchmarkMarshalTo_SiliconJSON(b *testing.B) {
 	dst := make([]byte, 0, 512)
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		dst, _ = json.MarshalTo(dst[:0], benchUser)
 		benchSinkBytes = dst
 	}
@@ -54,7 +54,7 @@ func BenchmarkMarshalTo_SiliconJSON(b *testing.B) {
 
 func BenchmarkUnmarshal_StdJSON(b *testing.B) {
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		var u User
 		_ = stdjson.Unmarshal(benchUserData, &u)
 		benchSinkUser = u
@@ -63,7 +63,7 @@ func BenchmarkUnmarshal_StdJSON(b *testing.B) {
 
 func BenchmarkUnmarshal_SiliconJSON(b *testing.B) {
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		var u User
 		_ = json.Unmarshal(benchUserData, &u)
 		benchSinkUser = u
@@ -72,7 +72,7 @@ func BenchmarkUnmarshal_SiliconJSON(b *testing.B) {
 
 func BenchmarkUnmarshalNoCopy_SiliconJSON(b *testing.B) {
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		var u User
 		_ = json.UnmarshalNoCopy(benchUserData, &u)
 		benchSinkUser = u

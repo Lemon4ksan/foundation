@@ -175,7 +175,6 @@ func BenchmarkValue_Get_Initialized(b *testing.B) {
 		b.Fatalf("unexpected error: %v", err)
 	}
 
-	b.ResetTimer()
 	b.ReportAllocs()
 
 	for b.Loop() {

@@ -25,11 +25,21 @@ var (
 //
 // Lifetime: memory is valid until [Buffer.Release] is called.
 // [Buffer.Bytes] returns a volatile slice that becomes invalid after Release.
+type kernelPageCleanupState struct {
+	ptr  unsafe.Pointer
+	size int
+}
+
+func freeKernelPageCleanup(s kernelPageCleanupState) {
+	_ = freeKernelPage(s.ptr, s.size)
+}
+
 type Buffer struct {
 	ptr     unsafe.Pointer // Points into OS kernel-managed memory (mmap / VirtualAlloc)
 	readPos int32          // Current read cursor position within [0, len)
 	len     int32          // Number of bytes written
 	cap     int32          // Total allocated capacity in bytes
+	cleanup runtime.Cleanup
 }
 
 // NewBuffer allocates a new Buffer of designated capacity directly from OS kernel.
@@ -48,7 +58,10 @@ func NewBuffer(capacity int) (*Buffer, error) {
 		cap: int32(capacity),
 	}
 
-	runtime.SetFinalizer(buf, (*Buffer).Release)
+	buf.cleanup = runtime.AddCleanup(buf, freeKernelPageCleanup, kernelPageCleanupState{
+		ptr:  ptr,
+		size: capacity,
+	})
 
 	return buf, nil
 }
@@ -200,7 +213,7 @@ func (b *Buffer) RewindRead() {
 // After Release, all slice views obtained via [Buffer.Bytes] are invalid.
 func (b *Buffer) Release() {
 	if b != nil && b.ptr != nil {
-		runtime.SetFinalizer(b, nil)
+		b.cleanup.Stop()
 		_ = freeKernelPage(b.ptr, int(b.cap))
 		b.ptr = nil
 		b.len = 0

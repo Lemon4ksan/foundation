@@ -202,7 +202,7 @@ func (b *Set) Equal(other *Set) bool {
 		return false
 	}
 	n := numWords(b.length)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		if b.words[i] != other.words[i] {
 			return false
 		}

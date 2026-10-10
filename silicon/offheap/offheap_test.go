@@ -362,11 +362,11 @@ func TestAllocStruct_ConcurrentAtomicSafety_Race(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(goroutines)
 
-	for g := 0; g < goroutines; g++ {
+	for g := range goroutines {
 		go func(gid int) {
 			defer wg.Done()
 
-			for i := 0; i < iterations; i++ {
+			for i := range iterations {
 				arena := pool.Acquire()
 
 				// Allocate 1 byte to purposefully unalign offset

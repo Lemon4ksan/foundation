@@ -79,26 +79,22 @@ func TestSchemaCache_CumulativeOffsets(t *testing.T) {
 	require.NoError(t, err)
 
 	instance := EmbeddedComplex{
-		MidLevel: MidLevel{
-			BaseLevel: BaseLevel{
-				BaseID: 101,
-			},
-			MidID: 202,
-		},
-		TopID: 303,
+		BaseID: 101,
+		MidID:  202,
+		TopID:  303,
 	}
 
 	ptr := unsafe.Pointer(&instance)
 	for _, f := range schema.Fields {
 		switch f.Field.Name {
 		case "TopID":
-			val := *(*int)(unsafe.Pointer(uintptr(ptr) + f.Offset))
+			val := *(*int)(unsafe.Add(ptr, f.Offset))
 			assert.Equal(t, 303, val)
 		case "MidID":
-			val := *(*int)(unsafe.Pointer(uintptr(ptr) + f.Offset))
+			val := *(*int)(unsafe.Add(ptr, f.Offset))
 			assert.Equal(t, 202, val)
 		case "BaseID":
-			val := *(*int)(unsafe.Pointer(uintptr(ptr) + f.Offset))
+			val := *(*int)(unsafe.Add(ptr, f.Offset))
 			assert.Equal(t, 101, val)
 		}
 	}
@@ -197,10 +193,10 @@ func TestSchemaCache_Concurrency(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(goroutines)
 
-	for g := 0; g < goroutines; g++ {
+	for g := range goroutines {
 		go func(gIdx int) {
 			defer wg.Done()
-			for i := 0; i < iterations; i++ {
+			for i := range iterations {
 				targetTyp := types[(gIdx+i)%len(types)]
 				schema, err := cache.Get(targetTyp)
 				if err != nil {

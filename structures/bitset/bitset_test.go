@@ -652,11 +652,11 @@ func TestConcurrentReaders(t *testing.T) {
 	}
 
 	var wg sync.WaitGroup
-	for g := 0; g < 32; g++ {
+	for g := range 32 {
 		wg.Add(1)
 		go func(gId int) {
 			defer wg.Done()
-			for i := 0; i < 500; i++ {
+			for i := range 500 {
 				_ = b.Len()
 				_ = b.Cap()
 				_ = b.Empty()
@@ -684,25 +684,23 @@ func TestConcurrentSynchronizedWriters(t *testing.T) {
 	var wg sync.WaitGroup
 
 	// Readers
-	for r := 0; r < 16; r++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for i := 0; i < 200; i++ {
+	for range 16 {
+		wg.Go(func() {
+			for i := range 200 {
 				mu.RLock()
 				_ = b.Count()
 				_ = b.Test(i % 1000)
 				mu.RUnlock()
 			}
-		}()
+		})
 	}
 
 	// Writers
-	for w := 0; w < 8; w++ {
+	for w := range 8 {
 		wg.Add(1)
 		go func(wId int) {
 			defer wg.Done()
-			for i := 0; i < 100; i++ {
+			for i := range 100 {
 				mu.Lock()
 				idx := (wId*100 + i) % 1000
 				b.Toggle(idx)
@@ -1176,7 +1174,7 @@ func TestChallenge_DifferentialFuzz(t *testing.T) {
 		refs[i] = newRef(initLen)
 	}
 
-	for step := 0; step < numSteps; step++ {
+	for range numSteps {
 		idx := rng.IntN(numPool)
 		bs := bitsets[idx]
 		ref := refs[idx]
@@ -1262,7 +1260,7 @@ func TestChallenge_AlgebraicLaws(t *testing.T) {
 
 	randomBitSet := func(n int) *Set {
 		b := New(n)
-		for i := 0; i < n; i++ {
+		for i := range n {
 			if rng.IntN(2) == 1 {
 				b.Set(i)
 			}
@@ -1271,7 +1269,7 @@ func TestChallenge_AlgebraicLaws(t *testing.T) {
 	}
 
 	for _, n := range lengths {
-		for trial := 0; trial < 10; trial++ {
+		for range 10 {
 			a := randomBitSet(n)
 			b := randomBitSet(n)
 			c := randomBitSet(n)
@@ -1380,7 +1378,7 @@ func TestChallenge_BigIntDifferential(t *testing.T) {
 		b1 := New(sz)
 		b2 := New(sz)
 
-		for i := 0; i < sz; i++ {
+		for i := range sz {
 			if rng.IntN(2) == 1 {
 				b1.Set(i)
 			}
@@ -1594,11 +1592,11 @@ func TestChallenge_FullTruthTableSmall(t *testing.T) {
 	const n = 8
 	const total = 1 << n // 256 combinations
 
-	for i := 0; i < total; i++ {
-		for j := 0; j < total; j++ {
+	for i := range total {
+		for j := range total {
 			bA := New(n)
 			bB := New(n)
-			for bit := 0; bit < n; bit++ {
+			for bit := range n {
 				if (i & (1 << bit)) != 0 {
 					bA.Set(bit)
 				}
@@ -1609,28 +1607,28 @@ func TestChallenge_FullTruthTableSmall(t *testing.T) {
 
 			// Verify AND truth table
 			bAnd := bA.Clone().And(bB)
-			for bit := 0; bit < n; bit++ {
+			for bit := range n {
 				expected := (i&(1<<bit) != 0) && (j&(1<<bit) != 0)
 				require.Equalf(t, expected, bAnd.Test(bit), "Truth table AND bit %d for (%d, %d)", bit, i, j)
 			}
 
 			// Verify OR truth table
 			bOr := bA.Clone().Or(bB)
-			for bit := 0; bit < n; bit++ {
+			for bit := range n {
 				expected := (i&(1<<bit) != 0) || (j&(1<<bit) != 0)
 				require.Equalf(t, expected, bOr.Test(bit), "Truth table OR bit %d for (%d, %d)", bit, i, j)
 			}
 
 			// Verify XOR truth table
 			bXor := bA.Clone().Xor(bB)
-			for bit := 0; bit < n; bit++ {
+			for bit := range n {
 				expected := (i&(1<<bit) != 0) != (j&(1<<bit) != 0)
 				require.Equalf(t, expected, bXor.Test(bit), "Truth table XOR bit %d for (%d, %d)", bit, i, j)
 			}
 
 			// Verify AND NOT truth table
 			bAndNot := bA.Clone().AndNot(bB)
-			for bit := 0; bit < n; bit++ {
+			for bit := range n {
 				expected := (i&(1<<bit) != 0) && !(j&(1<<bit) != 0)
 				require.Equalf(t, expected, bAndNot.Test(bit), "Truth table AND NOT bit %d for (%d, %d)", bit, i, j)
 			}
@@ -1785,13 +1783,13 @@ func TestUnequalLengthOperationsExhaustive(t *testing.T) {
 		o2 := newOracle(len2)
 
 		// Populate pseudorandom pattern
-		for i := 0; i < len1; i++ {
+		for i := range len1 {
 			if (i*7+3)%5 == 0 {
 				b1.Set(i)
 				o1.set(i)
 			}
 		}
-		for i := 0; i < len2; i++ {
+		for i := range len2 {
 			if (i*11+5)%3 == 0 {
 				b2.Set(i)
 				o2.set(i)
@@ -1803,7 +1801,7 @@ func TestUnequalLengthOperationsExhaustive(t *testing.T) {
 			res := b1.Clone().And(b2)
 			// AND length must remain b1.Len()
 			require.Equal(t, len1, res.Len())
-			for i := 0; i < len1; i++ {
+			for i := range len1 {
 				expected := o1.test(i) && o2.test(i)
 				require.Equal(t, expected, res.Test(i))
 			}
@@ -1816,7 +1814,7 @@ func TestUnequalLengthOperationsExhaustive(t *testing.T) {
 			res := b1.Clone().Or(b2)
 			expectedLen := max(len1, len2)
 			require.Equal(t, expectedLen, res.Len())
-			for i := 0; i < expectedLen; i++ {
+			for i := range expectedLen {
 				expected := o1.test(i) || o2.test(i)
 				require.Equal(t, expected, res.Test(i))
 			}
@@ -1828,7 +1826,7 @@ func TestUnequalLengthOperationsExhaustive(t *testing.T) {
 			res := b1.Clone().Xor(b2)
 			expectedLen := max(len1, len2)
 			require.Equal(t, expectedLen, res.Len())
-			for i := 0; i < expectedLen; i++ {
+			for i := range expectedLen {
 				expected := o1.test(i) != o2.test(i)
 				require.Equal(t, expected, res.Test(i))
 			}
@@ -1840,7 +1838,7 @@ func TestUnequalLengthOperationsExhaustive(t *testing.T) {
 			res := b1.Clone().AndNot(b2)
 			// AND NOT length must remain b1.Len()
 			require.Equal(t, len1, res.Len())
-			for i := 0; i < len1; i++ {
+			for i := range len1 {
 				expected := o1.test(i) && !o2.test(i)
 				require.Equal(t, expected, res.Test(i))
 			}
@@ -1856,7 +1854,7 @@ func TestRapidResizeGrowShrinkStress(t *testing.T) {
 
 	rnd := rand.New(rand.NewPCG(42, 99))
 
-	for step := 0; step < 1000; step++ {
+	for step := range 1000 {
 		action := rnd.IntN(5)
 		switch action {
 		case 0:
@@ -1911,7 +1909,7 @@ func TestRapidResizeGrowShrinkStress(t *testing.T) {
 			require.Equal(t, len(oracle.bits), b.Len())
 			require.Equal(t, oracle.count(), b.Count())
 			if b.Len() > 0 {
-				for check := 0; check < 20; check++ {
+				for range 20 {
 					chkIdx := rnd.IntN(b.Len())
 					require.Equal(t, oracle.test(chkIdx), b.Test(chkIdx))
 				}
@@ -1987,7 +1985,7 @@ func TestConcurrentContentionAndSynchronizedWritesStress(t *testing.T) {
 	stopCh := make(chan struct{})
 
 	// 50 concurrent reader goroutines
-	for r := 0; r < 50; r++ {
+	for r := range 50 {
 		wg.Add(1)
 		go func(readerId int) {
 			defer wg.Done()
@@ -2024,11 +2022,11 @@ func TestConcurrentContentionAndSynchronizedWritesStress(t *testing.T) {
 	}
 
 	var writersWg sync.WaitGroup
-	for w := 0; w < 10; w++ {
+	for w := range 10 {
 		writersWg.Add(1)
 		go func(writerId int) {
 			defer writersWg.Done()
-			for iter := 0; iter < 100; iter++ {
+			for iter := range 100 {
 				mu.Lock()
 				switch iter % 6 {
 				case 0:

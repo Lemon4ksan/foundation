@@ -11,9 +11,10 @@ import (
 
 // Arena provides O(1) single-cycle pointer bump allocation over a direct OS kernel memory page.
 type Arena struct {
-	page   unsafe.Pointer
-	offset int32
-	size   int32
+	page    unsafe.Pointer
+	offset  int32
+	size    int32
+	cleanup runtime.Cleanup
 }
 
 // NewArena allocates an off-heap memory arena of specified byte capacity directly from OS kernel.
@@ -33,7 +34,10 @@ func NewArena(size int) (*Arena, error) {
 		size:   int32(size),
 	}
 
-	runtime.SetFinalizer(arena, (*Arena).Release)
+	arena.cleanup = runtime.AddCleanup(arena, freeKernelPageCleanup, kernelPageCleanupState{
+		ptr:  page,
+		size: size,
+	})
 
 	return arena, nil
 }
@@ -138,7 +142,7 @@ func (a *Arena) Reset() {
 // Release returns the raw physical memory page back to OS kernel.
 func (a *Arena) Release() {
 	if a != nil && a.page != nil {
-		runtime.SetFinalizer(a, nil)
+		a.cleanup.Stop()
 		_ = freeKernelPage(a.page, int(a.size))
 		a.page = nil
 		a.offset = 0

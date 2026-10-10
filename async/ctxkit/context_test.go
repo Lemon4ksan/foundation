@@ -230,10 +230,9 @@ func BenchmarkStdContext_Lookup_Hit(b *testing.B) {
 		ctx = context.WithValue(ctx, i, i*10)
 	}
 
-	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = ctx.Value(0)
 	}
 }
@@ -244,10 +243,9 @@ func BenchmarkFastContext_Lookup_Hit(b *testing.B) {
 		ctx = ctxkit.WithValue(ctx, i, i*10)
 	}
 
-	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = ctx.Value(0)
 	}
 }
@@ -258,10 +256,9 @@ func BenchmarkStdContext_Lookup_Miss(b *testing.B) {
 		ctx = context.WithValue(ctx, i, i*10)
 	}
 
-	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = ctx.Value(999)
 	}
 }
@@ -272,10 +269,9 @@ func BenchmarkFastContext_Lookup_Miss(b *testing.B) {
 		ctx = ctxkit.WithValue(ctx, i, i*10)
 	}
 
-	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = ctx.Value(999)
 	}
 }
@@ -338,7 +334,6 @@ func BenchmarkContext_Entries(b *testing.B) {
 		ctx.Set(i, i*10)
 	}
 
-	b.ResetTimer()
 	b.ReportAllocs()
 
 	for b.Loop() {

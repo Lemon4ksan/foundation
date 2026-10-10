@@ -425,7 +425,7 @@ func TestAdversarial_VisibleFields_EarlyBreakReentrancy(t *testing.T) {
 	// Ensures early break properly returns the walker to pool in a clean state
 	typ := reflect.TypeFor[DiamondStruct]()
 
-	for i := 0; i < 50; i++ {
+	for range 50 {
 		step := 0
 		for range refkit.VisibleFields(typ) {
 			step++
@@ -578,10 +578,10 @@ func TestAdversarial_SchemaCache_Stress(t *testing.T) {
 	wg.Add(goroutines)
 	var errCount atomic.Int64
 
-	for g := 0; g < goroutines; g++ {
+	for g := range goroutines {
 		go func(id int) {
 			defer wg.Done()
-			for i := 0; i < iterations; i++ {
+			for i := range iterations {
 				typ := types[(id+i)%len(types)]
 				schema, err := cache.Get(typ)
 				if err != nil || schema == nil || schema.Type != typ {
@@ -1431,10 +1431,10 @@ func TestChallenge_SchemaCache_HeavyConcurrency(t *testing.T) {
 
 	var ops atomic.Int64
 
-	for g := 0; g < goroutines; g++ {
+	for g := range goroutines {
 		go func(gIdx int) {
 			defer wg.Done()
-			for i := 0; i < iterations; i++ {
+			for i := range iterations {
 				typ := types[(gIdx+i)%len(types)]
 				schema, err := cache.Get(typ)
 				if err != nil {
@@ -1551,10 +1551,10 @@ func TestRegression_HighConcurrencyWalkerPool(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(goroutines)
 
-	for g := 0; g < goroutines; g++ {
+	for g := range goroutines {
 		go func(gIdx int) {
 			defer wg.Done()
-			for i := 0; i < iterations; i++ {
+			for i := range iterations {
 				target := types[(gIdx+i)%len(types)]
 				fieldCount := 0
 				for f := range refkit.VisibleFields(target) {

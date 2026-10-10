@@ -170,7 +170,7 @@ func VisibleFields(t reflect.Type) iter.Seq[reflect.StructField] {
 		}
 
 		if !hasAnonymous {
-			for i := 0; i < n; i++ {
+			for i := range n {
 				if !yield(target.Field(i)) {
 					return
 				}

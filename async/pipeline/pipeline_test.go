@@ -452,10 +452,9 @@ func BenchmarkPipeline_Transform(b *testing.B) {
 		return in * 2, nil
 	}
 
-	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _ = p.Transform(context.Background(), inputs, mapper)
 	}
 }
@@ -608,7 +607,6 @@ func BenchmarkTransformSeq(b *testing.B) {
 		return in * 2, nil
 	}
 
-	b.ResetTimer()
 	b.ReportAllocs()
 
 	for b.Loop() {

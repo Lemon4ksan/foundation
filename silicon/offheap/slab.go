@@ -25,12 +25,13 @@ import (
 // CRITICAL GC RULE: T MUST be a Plain Old Data (POD) structure.
 // See package documentation for the full constraint list.
 type SlabAllocator[T any] struct {
-	page   unsafe.Pointer // OS kernel-managed memory slab
-	bitmap []uint64       // packed bit array: 1=free slot, 0=used slot
-	stride int            // bytes between adjacent slots: sizeof(T) rounded up to alignof(T)
-	size   int            // sizeof(T) - bytes to zero on alloc/free
-	cap    int            // total number of T slots in the slab
-	free   int            // number of currently free slots
+	page    unsafe.Pointer // OS kernel-managed memory slab
+	bitmap  []uint64       // packed bit array: 1=free slot, 0=used slot
+	stride  int            // bytes between adjacent slots: sizeof(T) rounded up to alignof(T)
+	size    int            // sizeof(T) - bytes to zero on alloc/free
+	cap     int            // total number of T slots in the slab
+	free    int            // number of currently free slots
+	cleanup runtime.Cleanup
 }
 
 // NewSlabAllocator allocates an off-heap slab that can hold slotCount objects of type T.
@@ -84,7 +85,10 @@ func NewSlabAllocator[T any](slotCount int) (*SlabAllocator[T], error) {
 		free:   slotCount,
 	}
 
-	runtime.SetFinalizer(s, (*SlabAllocator[T]).Release)
+	s.cleanup = runtime.AddCleanup(s, freeKernelPageCleanup, kernelPageCleanupState{
+		ptr:  page,
+		size: stride * slotCount,
+	})
 
 	return s, nil
 }
@@ -204,7 +208,7 @@ func (s *SlabAllocator[T]) Available() int {
 // All previously returned slot pointers are invalidated.
 func (s *SlabAllocator[T]) Release() {
 	if s != nil && s.page != nil {
-		runtime.SetFinalizer(s, nil)
+		s.cleanup.Stop()
 		_ = freeKernelPage(s.page, s.stride*s.cap)
 		s.page = nil
 		s.bitmap = nil

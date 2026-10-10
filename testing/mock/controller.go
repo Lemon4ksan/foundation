@@ -73,21 +73,21 @@ func NewController(t any) *Controller {
 }
 
 // Finish verifies all expected calls were made.
-func (ctrl *Controller) Finish() {
-	ctrl.mu.Lock()
-	defer ctrl.mu.Unlock()
+func (c *Controller) Finish() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
-	if ctrl.finished {
+	if c.finished {
 		return
 	}
 
-	ctrl.finished = true
+	c.finished = true
 
-	for _, call := range ctrl.expected {
+	for _, call := range c.expected {
 		if !call.satisfied() {
-			if ctrl.T != nil {
-				ctrl.T.Helper()
-				ctrl.T.Errorf(
+			if c.T != nil {
+				c.T.Helper()
+				c.T.Errorf(
 					"missing expected call: %v (expected %d times, actual %d times)",
 					call,
 					call.minCalls,
@@ -99,11 +99,11 @@ func (ctrl *Controller) Finish() {
 }
 
 // Satisfied returns true if all recorded expectations have been satisfied.
-func (ctrl *Controller) Satisfied() bool {
-	ctrl.mu.Lock()
-	defer ctrl.mu.Unlock()
+func (c *Controller) Satisfied() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
-	for _, call := range ctrl.expected {
+	for _, call := range c.expected {
 		if !call.satisfied() {
 			return false
 		}
@@ -113,39 +113,39 @@ func (ctrl *Controller) Satisfied() bool {
 }
 
 // RecordCall registers an expected method invocation.
-func (ctrl *Controller) RecordCall(receiver any, method string, args ...any) *Call {
-	ctrl.mu.Lock()
-	defer ctrl.mu.Unlock()
+func (c *Controller) RecordCall(receiver any, method string, args ...any) *Call {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
-	call := newCall(ctrl, receiver, method, nil, args...)
-	ctrl.expected = append(ctrl.expected, call)
+	call := newCall(c, receiver, method, nil, args...)
+	c.expected = append(c.expected, call)
 
 	return call
 }
 
 // RecordCallWithMethodType registers an expected method invocation with reflection type info.
-func (ctrl *Controller) RecordCallWithMethodType(
+func (c *Controller) RecordCallWithMethodType(
 	receiver any,
 	method string,
 	methodType reflect.Type,
 	args ...any,
 ) *Call {
-	ctrl.mu.Lock()
-	defer ctrl.mu.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
-	call := newCall(ctrl, receiver, method, methodType, args...)
-	ctrl.expected = append(ctrl.expected, call)
+	call := newCall(c, receiver, method, methodType, args...)
+	c.expected = append(c.expected, call)
 
 	return call
 }
 
 // Call executes an invoked mock method against registered expectations.
-func (ctrl *Controller) Call(receiver any, method string, args ...any) []any {
+func (c *Controller) Call(receiver any, method string, args ...any) []any {
 	var targetCall *Call
 
-	ctrl.mu.Lock()
+	c.mu.Lock()
 
-	for _, call := range ctrl.expected {
+	for _, call := range c.expected {
 		if call.matches(receiver, method, args) {
 			targetCall = call
 			targetCall.actualCalls++
@@ -153,15 +153,15 @@ func (ctrl *Controller) Call(receiver any, method string, args ...any) []any {
 		}
 	}
 
-	ctrl.mu.Unlock()
+	c.mu.Unlock()
 
 	if targetCall != nil {
 		return targetCall.execute(args)
 	}
 
-	if ctrl.T != nil {
-		ctrl.T.Helper()
-		ctrl.T.Fatalf("unexpected call: %T.%s(%v)", receiver, method, args)
+	if c.T != nil {
+		c.T.Helper()
+		c.T.Fatalf("unexpected call: %T.%s(%v)", receiver, method, args)
 	}
 
 	return []any{nil, nil, nil, nil}

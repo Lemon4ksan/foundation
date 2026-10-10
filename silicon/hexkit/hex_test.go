@@ -171,7 +171,7 @@ func BenchmarkSiliconHexDecode32(b *testing.B) {
 	var out [16]byte
 	b.ResetTimer()
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		hexkit.Decode32(&out, s)
 	}
 }
@@ -181,7 +181,7 @@ func BenchmarkStdHexDecode32(b *testing.B) {
 	var out [16]byte
 	b.ResetTimer()
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		stdhex.Decode(out[:], []byte(s))
 	}
 }
@@ -192,7 +192,7 @@ func BenchmarkSiliconHexEncode1KB(b *testing.B) {
 	b.SetBytes(1024)
 	b.ResetTimer()
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		hexkit.Encode(out, data)
 	}
 }
@@ -203,7 +203,7 @@ func BenchmarkStdHexEncode1KB(b *testing.B) {
 	b.SetBytes(1024)
 	b.ResetTimer()
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		stdhex.Encode(out, data)
 	}
 }

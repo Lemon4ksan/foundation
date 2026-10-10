@@ -93,7 +93,7 @@ func ExampleImplements() {
 }
 
 func ExampleTagOf() {
-	field, _ := reflect.TypeOf(User{}).FieldByName("Age")
+	field, _ := reflect.TypeFor[User]().FieldByName("Age")
 
 	tag := refkit.TagOf(field, "validate")
 	minAge, ok := tag.Int("min")

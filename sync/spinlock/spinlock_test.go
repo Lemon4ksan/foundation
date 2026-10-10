@@ -278,7 +278,7 @@ func TestSpinlock_MixedLockAndTryLock(t *testing.T) {
 		go func(id int) {
 			defer wg.Done()
 
-			for j := 0; j < iterations; j++ {
+			for j := range iterations {
 				if (id+j)%2 == 0 {
 					mu.Lock()
 				} else {

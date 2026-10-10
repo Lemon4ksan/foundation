@@ -4,6 +4,8 @@
 
 package fskit
 
+import "slices"
+
 func toLowerByte(b byte) byte {
 	if b >= 'A' && b <= 'Z' {
 		return b + ('a' - 'A')
@@ -25,8 +27,8 @@ func findExt(path string) string {
 }
 
 func findExtBytes(path []byte) []byte {
-	for i := len(path) - 1; i >= 0; i-- {
-		b := path[i]
+	for i, b := range slices.Backward(path) {
+
 		if b == '/' || b == '\\' {
 			return nil
 		}

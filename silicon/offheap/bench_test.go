@@ -28,10 +28,12 @@ func BenchmarkAllocStruct_Heap(b *testing.B) {
 
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	var i uint32
+	for b.Loop() {
 		hdr := new(testFrameHeader)
-		hdr.StreamID = uint32(i)
+		hdr.StreamID = i
 		sum += uint64(hdr.StreamID)
+		i++
 	}
 
 	benchSum = sum
@@ -42,11 +44,13 @@ func BenchmarkAllocStruct_SyncPool(b *testing.B) {
 
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	var i uint32
+	for b.Loop() {
 		hdr := framePool.Get().(*testFrameHeader)
-		hdr.StreamID = uint32(i)
+		hdr.StreamID = i
 		sum += uint64(hdr.StreamID)
 		framePool.Put(hdr)
+		i++
 	}
 
 	benchSum = sum
@@ -65,12 +69,14 @@ func BenchmarkAllocStruct_OffHeap(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	var i uint32
+	for b.Loop() {
 		hdr := offheap.AllocStruct[testFrameHeader](arena)
-		hdr.StreamID = uint32(i)
+		hdr.StreamID = i
 		sum += uint64(hdr.StreamID)
 
 		arena.Reset()
+		i++
 	}
 
 	benchSum = sum
@@ -110,10 +116,9 @@ func BenchmarkBuffer_WriteString_OffHeap(b *testing.B) {
 
 	defer buf.Release()
 
-	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		buf.Reset()
 		_, _ = buf.WriteString(benchPayload)
 	}
@@ -126,10 +131,9 @@ func BenchmarkBuffer_WriteString_BytesBuffer(b *testing.B) {
 
 	buf.Grow(64 * 1024)
 
-	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		buf.Reset()
 		_, _ = buf.WriteString(benchPayload)
 	}
@@ -147,10 +151,9 @@ func BenchmarkBuffer_Write_OffHeap(b *testing.B) {
 
 	payload := []byte(benchPayload)
 
-	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		buf.Reset()
 		_, _ = buf.Write(payload)
 	}
@@ -165,10 +168,9 @@ func BenchmarkBuffer_Write_BytesBuffer(b *testing.B) {
 
 	payload := []byte(benchPayload)
 
-	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		buf.Reset()
 		_, _ = buf.Write(payload)
 	}
@@ -184,7 +186,7 @@ func BenchmarkArenaPool_AcquireRelease(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		a := pool.Acquire()
 		pool.Release(a)
 	}
@@ -215,12 +217,14 @@ func BenchmarkSlabAllocator_AllocFree(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	var i uint32
+	for b.Loop() {
 		p := slab.Alloc()
 		if p != nil {
-			p.StreamID = uint32(i)
+			p.StreamID = i
 			slab.Free(p)
 		}
+		i++
 	}
 }
 
@@ -228,20 +232,24 @@ func BenchmarkSlabAllocator_AllocFree_vs_Heap(b *testing.B) {
 	b.Run("Heap", func(b *testing.B) {
 		b.ReportAllocs()
 
-		for i := 0; i < b.N; i++ {
+		var i uint32
+		for b.Loop() {
 			p := new(testFrameHeader)
-			p.StreamID = uint32(i)
+			p.StreamID = i
 			_ = p
+			i++
 		}
 	})
 
 	b.Run("SyncPool", func(b *testing.B) {
 		b.ReportAllocs()
 
-		for i := 0; i < b.N; i++ {
+		var i uint32
+		for b.Loop() {
 			p := framePool.Get().(*testFrameHeader)
-			p.StreamID = uint32(i)
+			p.StreamID = i
 			framePool.Put(p)
+			i++
 		}
 	})
 
@@ -256,12 +264,14 @@ func BenchmarkSlabAllocator_AllocFree_vs_Heap(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
 
-		for i := 0; i < b.N; i++ {
+		var i uint32
+		for b.Loop() {
 			p := slab.Alloc()
 			if p != nil {
-				p.StreamID = uint32(i)
+				p.StreamID = i
 				slab.Free(p)
 			}
+			i++
 		}
 	})
 }
@@ -281,7 +291,7 @@ func BenchmarkWriteStruct_OffHeap(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		buf.Reset()
 		_, _ = offheap.WriteStruct(buf, hdr)
 	}

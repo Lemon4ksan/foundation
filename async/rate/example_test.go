@@ -31,7 +31,7 @@ func ExampleSometimes() {
 	sometimes := rate.Sometimes{First: 3, Interval: 10 * time.Second}
 	var count int
 
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		sometimes.Do(func() {
 			count++
 		})

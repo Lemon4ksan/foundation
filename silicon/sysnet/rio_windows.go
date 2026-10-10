@@ -98,11 +98,30 @@ func initRIOFunctionTable() error {
 	return nil
 }
 
+type rioCleanupState struct {
+	bufferID uintptr
+	addr     uintptr
+	length   uintptr
+	isRIO    bool
+}
+
+func deregisterRIOBufferCleanup(s rioCleanupState) {
+	if s.bufferID == 0 || s.bufferID == ^uintptr(0) {
+		return
+	}
+	if s.isRIO && rioDeregisterBufFn != 0 {
+		_, _, _ = syscall.SyscallN(rioDeregisterBufFn, s.bufferID)
+	} else if s.length > 0 && s.addr != 0 {
+		_, _, _ = procVirtualUnlock.Call(s.addr, s.length)
+	}
+}
+
 // BufferRegistration tracks a memory slice locked in physical RAM or registered with Windows RIO.
 type BufferRegistration struct {
 	BufferID uintptr
 	Data     []byte
 	IsRIO    bool
+	cleanup  runtime.Cleanup
 }
 
 // IsRIOSupported reports whether Windows Registered I/O (RIO) extensions or VirtualLock are available.
@@ -133,7 +152,12 @@ func RegisterBuffer(data []byte) (*BufferRegistration, error) {
 				Data:     data,
 				IsRIO:    true,
 			}
-			runtime.SetFinalizer(reg, (*BufferRegistration).Deregister)
+			reg.cleanup = runtime.AddCleanup(reg, deregisterRIOBufferCleanup, rioCleanupState{
+				bufferID: r1,
+				addr:     uintptr(unsafe.Pointer(&data[0])),
+				length:   uintptr(len(data)),
+				isRIO:    true,
+			})
 			return reg, nil
 		}
 
@@ -157,7 +181,12 @@ func RegisterBuffer(data []byte) (*BufferRegistration, error) {
 		Data:     data,
 		IsRIO:    false,
 	}
-	runtime.SetFinalizer(reg, (*BufferRegistration).Deregister)
+	reg.cleanup = runtime.AddCleanup(reg, deregisterRIOBufferCleanup, rioCleanupState{
+		bufferID: reg.BufferID,
+		addr:     uintptr(unsafe.Pointer(&data[0])),
+		length:   uintptr(len(data)),
+		isRIO:    false,
+	})
 	return reg, nil
 }
 
@@ -166,6 +195,8 @@ func (b *BufferRegistration) Deregister() {
 	if b == nil || b.BufferID == 0 || b.BufferID == ^uintptr(0) {
 		return
 	}
+
+	b.cleanup.Stop()
 
 	if b.IsRIO && rioDeregisterBufFn != 0 {
 		_, _, _ = syscall.SyscallN(rioDeregisterBufFn, b.BufferID)

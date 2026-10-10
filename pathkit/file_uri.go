@@ -170,7 +170,7 @@ func AppendURIToPath(dst []byte, uriStr string) ([]byte, error) {
 			dst = dst[:unescapedStart]
 			dst = append(dst, '\\', '\\')
 			dst = append(dst, host...)
-			for i := 0; i < len(temp); i++ {
+			for i := range temp {
 				if temp[i] == '/' {
 					dst = append(dst, '\\')
 				} else {

@@ -74,7 +74,7 @@ func BenchmarkAppendHTTPDate(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = AppendHTTPDate(buf[:0], tm)
 	}
 }
@@ -85,7 +85,7 @@ func BenchmarkStdTimeFormat_RFC1123(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = tm.Format(time.RFC1123)
 	}
 }
@@ -198,7 +198,6 @@ func BenchmarkRangeSeq_ZeroAlloc(b *testing.B) {
 	end := start.Add(100 * time.Minute)
 	step := time.Minute
 
-	b.ResetTimer()
 	b.ReportAllocs()
 
 	for b.Loop() {

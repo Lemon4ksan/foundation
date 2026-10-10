@@ -91,12 +91,12 @@ func TestChallenger2_DifferentialFuzzing_Concurrent(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(numGoroutines)
 
-	for g := 0; g < numGoroutines; g++ {
+	for g := range numGoroutines {
 		go func(gID int) {
 			defer wg.Done()
 			rng := rand.New(rand.NewPCG(uint64(gID+999), uint64(time.Now().UnixNano())))
 
-			for it := 0; it < itersPerGoroutine; it++ {
+			for it := range itersPerGoroutine {
 				l := rng.IntN(2048)
 				buf := make([]byte, l)
 

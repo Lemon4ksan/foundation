@@ -15,7 +15,7 @@ We group packages into layers and enforce acyclic, unidirectional dependencies.
 - Layer 2: `sync/*`, `async/*`
 - Layer 3: `codec/*`, `crypto/*`, `encoding/*`, `text/*`, `iokit`
 - Layer 4: `net/*`
-- Layer 5: `types/*`, `timekit`, `argkit`, `fskit`, `pathkit`, `tuikit`, `testing/*`, `cmd/*`
+- Layer 5: `types/*`, `timekit`, `fskit`, `pathkit`, `testing/*`
 - External: `generic` (outside the graph: public for outside consumers, never imported by foundation packages).
 
 Four laws govern imports:

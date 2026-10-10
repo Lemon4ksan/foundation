@@ -101,7 +101,6 @@ func TestParseTag_Unicode(t *testing.T) {
 func BenchmarkParseTag_ASCII_Simple(b *testing.B) {
 	tagStr := "user_id"
 
-	b.ResetTimer()
 	b.ReportAllocs()
 
 	for b.Loop() {
@@ -115,7 +114,6 @@ func BenchmarkParseTag_ASCII_Simple(b *testing.B) {
 func BenchmarkParseTag_ASCII_Ignored(b *testing.B) {
 	tagStr := "-"
 
-	b.ResetTimer()
 	b.ReportAllocs()
 
 	for b.Loop() {
@@ -129,7 +127,6 @@ func BenchmarkParseTag_ASCII_Ignored(b *testing.B) {
 func BenchmarkParseTag_ASCII_WithOptions(b *testing.B) {
 	tagStr := "name,omitempty,inline"
 
-	b.ResetTimer()
 	b.ReportAllocs()
 
 	for b.Loop() {
@@ -143,7 +140,6 @@ func BenchmarkParseTag_ASCII_WithOptions(b *testing.B) {
 func BenchmarkParseTag_Unicode(b *testing.B) {
 	tagStr := "имя,omitempty,inline"
 
-	b.ResetTimer()
 	b.ReportAllocs()
 
 	for b.Loop() {

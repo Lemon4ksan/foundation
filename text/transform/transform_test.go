@@ -1295,19 +1295,19 @@ func TestStringAllocation(t *testing.T) {
 }
 
 func BenchmarkStringLowerEmpty(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		String(&lowerCaseASCIILookahead{}, "")
 	}
 }
 
 func BenchmarkStringLowerIdentical(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		String(&lowerCaseASCIILookahead{}, aaa[:4096])
 	}
 }
 
 func BenchmarkStringLowerChanged(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		String(&lowerCaseASCIILookahead{}, AAA[:4096])
 	}
 }

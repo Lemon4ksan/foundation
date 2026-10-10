@@ -30,62 +30,62 @@ func NewDecoder(r io.Reader) *Decoder {
 // DisallowUnknownFields causes the Decoder to return an error when the destination
 // is a struct and the input contains object keys which do not match any
 // non-ignored, exported fields in the destination.
-func (dec *Decoder) DisallowUnknownFields() {
-	dec.cfg.DisallowUnknownFields = true
+func (d *Decoder) DisallowUnknownFields() {
+	d.cfg.DisallowUnknownFields = true
 }
 
 // UseNumber causes the Decoder to unmarshal a number into an interface{} as a
 // Number instead of as a float64.
-func (dec *Decoder) UseNumber() {
-	dec.cfg.UseNumber = true
+func (d *Decoder) UseNumber() {
+	d.cfg.UseNumber = true
 }
 
 // Decode reads the next JSON-encoded value from its input and stores it in the value pointed to by v.
-func (dec *Decoder) Decode(v any) error {
-	if dec.err != nil {
-		return dec.err
+func (d *Decoder) Decode(v any) error {
+	if d.err != nil {
+		return d.err
 	}
 
-	if len(dec.buf) == 0 || dec.cursor >= len(dec.buf) {
-		data, err := io.ReadAll(dec.r)
+	if len(d.buf) == 0 || d.cursor >= len(d.buf) {
+		data, err := io.ReadAll(d.r)
 		if err != nil && !errors.Is(err, io.EOF) {
-			dec.err = err
+			d.err = err
 			return err
 		}
 
-		dec.buf = data
-		dec.cursor = 0
+		d.buf = data
+		d.cursor = 0
 	}
 
-	dec.cursor = skipWhitespace(dec.buf, dec.cursor)
-	if dec.cursor >= len(dec.buf) {
+	d.cursor = skipWhitespace(d.buf, d.cursor)
+	if d.cursor >= len(d.buf) {
 		return io.EOF
 	}
 
-	err := UnmarshalWithConfig(dec.buf[dec.cursor:], v, dec.cfg)
+	err := UnmarshalWithConfig(d.buf[d.cursor:], v, d.cfg)
 	if err != nil {
 		return err
 	}
 
-	newCursor, _ := skipValue(dec.buf, dec.cursor)
-	dec.cursor = newCursor
+	newCursor, _ := skipValue(d.buf, d.cursor)
+	d.cursor = newCursor
 
 	return nil
 }
 
 // InputOffset returns the input stream byte offset of the current decoder position.
-func (dec *Decoder) InputOffset() int64 {
-	return int64(dec.cursor)
+func (d *Decoder) InputOffset() int64 {
+	return int64(d.cursor)
 }
 
 // More reports whether there is another element in the current array or object being parsed.
-func (dec *Decoder) More() bool {
-	dec.cursor = skipWhitespace(dec.buf, dec.cursor)
-	if dec.cursor >= len(dec.buf) {
+func (d *Decoder) More() bool {
+	d.cursor = skipWhitespace(d.buf, d.cursor)
+	if d.cursor >= len(d.buf) {
 		return false
 	}
 
-	c := dec.buf[dec.cursor]
+	c := d.buf[d.cursor]
 	return c != ']' && c != '}'
 }
 
@@ -107,26 +107,26 @@ func NewEncoder(w io.Writer) *Encoder {
 
 // SetEscapeHTML specifies whether problematic HTML characters
 // should be escaped inside JSON quoted strings.
-func (enc *Encoder) SetEscapeHTML(on bool) {
-	enc.escapeHTML = on
+func (e *Encoder) SetEscapeHTML(on bool) {
+	e.escapeHTML = on
 }
 
 // SetIndent instructs the encoder to format each subsequent encoded
 // value as if indented by the package-level function Indent.
-func (enc *Encoder) SetIndent(prefix, indent string) {
-	enc.prefix = prefix
-	enc.indent = indent
+func (e *Encoder) SetIndent(prefix, indent string) {
+	e.prefix = prefix
+	e.indent = indent
 }
 
 // Encode writes the JSON encoding of v to the stream, followed by a newline character.
 //
 //nolint:prealloc
-func (enc *Encoder) Encode(v any) error {
+func (e *Encoder) Encode(v any) error {
 	var data []byte
 	var err error
 
-	if enc.indent != "" || enc.prefix != "" {
-		data, err = MarshalIndent(v, enc.prefix, enc.indent)
+	if e.indent != "" || e.prefix != "" {
+		data, err = MarshalIndent(v, e.prefix, e.indent)
 	} else {
 		data, err = Marshal(v)
 	}
@@ -136,7 +136,7 @@ func (enc *Encoder) Encode(v any) error {
 	}
 
 	data = append(data, '\n')
-	_, err = enc.w.Write(data)
+	_, err = e.w.Write(data)
 
 	return err
 }

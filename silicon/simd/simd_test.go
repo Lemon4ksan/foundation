@@ -570,7 +570,7 @@ func TestMaskCRLF_AllBytes(t *testing.T) {
 	// 256 bytes covering the entire byte range [0x00 .. 0xFF]
 	data := make([]byte, 256)
 	expected := make([]byte, 256)
-	for i := 0; i < 256; i++ {
+	for i := range 256 {
 		b := byte(i)
 		data[i] = b
 		if b == '\r' || b == '\n' {
@@ -600,7 +600,7 @@ func TestMaskCRLF_LengthsAndBoundaries(t *testing.T) {
 	for _, l := range lengths {
 		src := make([]byte, l)
 		exp := make([]byte, l)
-		for i := 0; i < l; i++ {
+		for i := range l {
 			b := byte('a' + (i % 26))
 			src[i] = b
 			exp[i] = b
@@ -647,7 +647,7 @@ func TestIndexByteSWAR_UnalignedOffsets(t *testing.T) {
 		base[i] = 'X'
 	}
 
-	for offset := 0; offset < 8; offset++ {
+	for offset := range 8 {
 		for length := 0; length <= 128; length++ {
 			sub := make([]byte, length)
 			copy(sub, base[offset:offset+length])
@@ -688,7 +688,7 @@ func BenchmarkMaskCRLF_Short(b *testing.B) {
 
 	b.SetBytes(int64(len(data)))
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		simd.MaskCRLF(data)
 	}
 }
@@ -705,7 +705,7 @@ func BenchmarkMaskCRLF_Medium(b *testing.B) {
 
 	b.SetBytes(int64(len(data)))
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		simd.MaskCRLF(data)
 	}
 }
@@ -722,7 +722,7 @@ func BenchmarkMaskCRLF_Large(b *testing.B) {
 
 	b.SetBytes(int64(len(data)))
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		simd.MaskCRLF(data)
 	}
 }
@@ -736,7 +736,7 @@ func BenchmarkIndexByteSWAR_Aligned(b *testing.B) {
 
 	b.SetBytes(int64(len(data)))
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = simd.IndexByteSWAR(data, 'Z')
 	}
 }
@@ -751,7 +751,7 @@ func BenchmarkIndexByteSWAR_Unaligned(b *testing.B) {
 
 	b.SetBytes(int64(len(data)))
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = simd.IndexByteSWAR(data, 'Z')
 	}
 }
@@ -827,12 +827,12 @@ func TestChallenge_MaskCRLF_DifferentialFuzzing_Concurrent(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(numGoroutines)
 
-	for g := 0; g < numGoroutines; g++ {
+	for g := range numGoroutines {
 		go func(gID int) {
 			defer wg.Done()
 
 			r := rand.New(rand.NewPCG(uint64(gID+1), uint64(time.Now().UnixNano())))
-			for it := 0; it < itersPerGoroutine; it++ {
+			for it := range itersPerGoroutine {
 				length := r.IntN(2049)
 
 				probChoice := r.IntN(4)
@@ -852,7 +852,7 @@ func TestChallenge_MaskCRLF_DifferentialFuzzing_Concurrent(t *testing.T) {
 				rawTest := make([]byte, length+canaryPad)
 				rawRef := make([]byte, length+canaryPad)
 
-				for i := 0; i < length; i++ {
+				for i := range length {
 					var b byte
 					if r.Float64() < crlfProb {
 						if r.IntN(2) == 0 {
@@ -999,7 +999,7 @@ func TestChallenge_IndexByteSWAR_UnalignedMemorySafety(t *testing.T) {
 		65, 127, 128, 129, 255, 256, 512, 1024,
 	}
 
-	for offset := 0; offset < 64; offset++ {
+	for offset := range 64 {
 		for _, length := range lengthsToTest {
 			if offset+length > bufferSize {
 				continue
@@ -1077,13 +1077,13 @@ func TestChallenge_IndexByteSWAR_UnalignedMemorySafety(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(numGoroutines)
 
-	for g := 0; g < numGoroutines; g++ {
+	for g := range numGoroutines {
 		go func(gID int) {
 			defer wg.Done()
 			r := rand.New(rand.NewPCG(uint64(gID+100), uint64(time.Now().UnixNano())))
 
 			buf := make([]byte, 2048)
-			for it := 0; it < iters; it++ {
+			for it := range iters {
 				for i := range buf {
 					buf[i] = byte(r.IntN(256))
 				}

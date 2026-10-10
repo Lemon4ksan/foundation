@@ -5,6 +5,7 @@
 package urlkit_test
 
 import (
+	"maps"
 	stdurl "net/url"
 	"sync"
 	"testing"
@@ -160,10 +161,7 @@ func TestURLView_QuerySeq(t *testing.T) {
 	v, err := urlkit.ParseView("https://example.com/search?q=hello+world&lang=en&flag&encoded=a%20b%21")
 	require.NoError(t, err)
 
-	pairs := make(map[string]string)
-	for k, val := range v.QuerySeq() {
-		pairs[k] = val
-	}
+	pairs := maps.Collect(v.QuerySeq())
 
 	assert.Equal(t, "hello world", pairs["q"])
 	assert.Equal(t, "en", pairs["lang"])
@@ -529,10 +527,10 @@ func TestURLCache_Concurrent_And_CloneIsolation(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(workers)
 
-	for w := 0; w < workers; w++ {
+	for w := range workers {
 		go func(workerID int) {
 			defer wg.Done()
-			for i := 0; i < iters; i++ {
+			for range iters {
 				raw := "https://service-user:pass@api.internal:8080/v1/query?q=item"
 				u, err := urlkit.Parse(raw)
 				if err != nil {
@@ -695,40 +693,36 @@ func BenchmarkUnescape1KB(b *testing.B) {
 	s = s[:1024]
 
 	b.SetBytes(1024)
-	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _ = urlkit.QueryUnescape(s)
 	}
 }
 
 func BenchmarkQueryUnescape_FastPath(b *testing.B) {
 	clean := "alphanumeric_clean_component_identifier_with_no_escapes"
-	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _ = urlkit.QueryUnescape(clean)
 	}
 }
 
 func BenchmarkPathUnescape_FastPath(b *testing.B) {
 	clean := "alphanumeric_clean_component_identifier_with_no_escapes"
-	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _ = urlkit.PathUnescape(clean)
 	}
 }
 
 func BenchmarkParseView(b *testing.B) {
 	raw := "https://user:secret@api.gateway.internal:8443/v2/telemetry/events?session_id=9876543210&region=eu-central-1#heading"
-	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		v, err := urlkit.ParseView(raw)
 		if err != nil || v.Host == "" {
 			b.Fatal(err)
@@ -740,10 +734,9 @@ func BenchmarkURLView_AppendTo(b *testing.B) {
 	raw := "https://user:secret@api.gateway.internal:8443/v2/telemetry/events?session_id=9876543210&region=eu-central-1#heading"
 	v, _ := urlkit.ParseView(raw)
 	buf := make([]byte, 0, 256)
-	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = v.AppendTo(buf[:0])
 	}
 }
@@ -751,10 +744,9 @@ func BenchmarkURLView_AppendTo(b *testing.B) {
 func BenchmarkURLView_QuerySeq(b *testing.B) {
 	raw := "https://api.example.com/v1/search?q=golang&sort=asc&limit=100&offset=200"
 	v, _ := urlkit.ParseView(raw)
-	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		for range v.QuerySeq() {
 		}
 	}
@@ -762,10 +754,9 @@ func BenchmarkURLView_QuerySeq(b *testing.B) {
 
 func BenchmarkReplaceVar(b *testing.B) {
 	path := "/api/v1/organizations/{org_id}/teams/{team_id}/members"
-	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = urlkit.ReplaceVar(path, "team_id", "eng-core")
 	}
 }
@@ -773,10 +764,9 @@ func BenchmarkReplaceVar(b *testing.B) {
 func BenchmarkMatchDomainPattern(b *testing.B) {
 	host := "api.internal.production.example.com"
 	pattern := "*.example.com"
-	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = urlkit.MatchDomainPattern(host, pattern)
 	}
 }
@@ -784,10 +774,9 @@ func BenchmarkMatchDomainPattern(b *testing.B) {
 func BenchmarkIsSameDomainOrSubdomain(b *testing.B) {
 	h1 := "api.service.internal"
 	h2 := "service.internal"
-	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = urlkit.IsSameDomainOrSubdomain(h1, h2)
 	}
 }

@@ -6,6 +6,7 @@ package ringbuf_test
 
 import (
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/lemon4ksan/foundation/silicon/ringbuf"
@@ -189,10 +190,9 @@ func BenchmarkSPSCRingBuffer_PushPop(b *testing.B) {
 	buf := ringbuf.NewSPSCRingBuffer[int](1024)
 	val := 42
 
-	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		buf.Push(&val)
 		_ = buf.Pop()
 	}
@@ -202,28 +202,25 @@ func BenchmarkSPSCRingBuffer_Concurrent(b *testing.B) {
 	buf := ringbuf.NewSPSCRingBuffer[int](1024)
 	val := 42
 
-	b.ResetTimer()
+	var active atomic.Bool
+	active.Store(true)
+	var wg sync.WaitGroup
+
+	wg.Go(func() {
+		for active.Load() {
+			buf.Push(&val)
+		}
+	})
+
 	b.ReportAllocs()
 
-	var wg sync.WaitGroup
-	wg.Add(2)
-
-	go func() {
-		defer wg.Done()
-		for i := 0; i < b.N; i++ {
-			for !buf.Push(&val) {
-			}
+	for b.Loop() {
+		for buf.Pop() == nil {
 		}
-	}()
+	}
 
-	go func() {
-		defer wg.Done()
-		for i := 0; i < b.N; i++ {
-			for buf.Pop() == nil {
-			}
-		}
-	}()
-
+	b.StopTimer()
+	active.Store(false)
 	wg.Wait()
 }
 
@@ -231,28 +228,25 @@ func BenchmarkSPSCRingBuffer_Concurrent_Cap64(b *testing.B) {
 	buf := ringbuf.NewSPSCRingBuffer[int](64)
 	val := 42
 
-	b.ResetTimer()
+	var active atomic.Bool
+	active.Store(true)
+	var wg sync.WaitGroup
+
+	wg.Go(func() {
+		for active.Load() {
+			buf.Push(&val)
+		}
+	})
+
 	b.ReportAllocs()
 
-	var wg sync.WaitGroup
-	wg.Add(2)
-
-	go func() {
-		defer wg.Done()
-		for i := 0; i < b.N; i++ {
-			for !buf.Push(&val) {
-			}
+	for b.Loop() {
+		for buf.Pop() == nil {
 		}
-	}()
+	}
 
-	go func() {
-		defer wg.Done()
-		for i := 0; i < b.N; i++ {
-			for buf.Pop() == nil {
-			}
-		}
-	}()
-
+	b.StopTimer()
+	active.Store(false)
 	wg.Wait()
 }
 
@@ -260,27 +254,24 @@ func BenchmarkSPSCRingBuffer_Concurrent_Cap65536(b *testing.B) {
 	buf := ringbuf.NewSPSCRingBuffer[int](65536)
 	val := 42
 
-	b.ResetTimer()
+	var active atomic.Bool
+	active.Store(true)
+	var wg sync.WaitGroup
+
+	wg.Go(func() {
+		for active.Load() {
+			buf.Push(&val)
+		}
+	})
+
 	b.ReportAllocs()
 
-	var wg sync.WaitGroup
-	wg.Add(2)
-
-	go func() {
-		defer wg.Done()
-		for i := 0; i < b.N; i++ {
-			for !buf.Push(&val) {
-			}
+	for b.Loop() {
+		for buf.Pop() == nil {
 		}
-	}()
+	}
 
-	go func() {
-		defer wg.Done()
-		for i := 0; i < b.N; i++ {
-			for buf.Pop() == nil {
-			}
-		}
-	}()
-
+	b.StopTimer()
+	active.Store(false)
 	wg.Wait()
 }

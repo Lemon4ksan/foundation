@@ -14,11 +14,11 @@ func ExampleGroup_Do() {
 	g := &dedup.Group[string, string]{}
 	ctx := context.Background()
 
-	var callCounter int32
+	var callCounter atomic.Int32
 	var wg sync.WaitGroup
 
 	fn := func(workerCtx context.Context) (string, error) {
-		atomic.AddInt32(&callCounter, 1)
+		callCounter.Add(1)
 		time.Sleep(50 * time.Millisecond)
 		return "shared-value", nil
 	}
@@ -39,7 +39,7 @@ func ExampleGroup_Do() {
 	}
 
 	wg.Wait()
-	fmt.Printf("Total executions: %d\n", atomic.LoadInt32(&callCounter))
+	fmt.Printf("Total executions: %d\n", callCounter.Load())
 
 	// Output:
 	// Worker 0 got: shared-value
