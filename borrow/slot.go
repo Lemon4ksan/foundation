@@ -23,6 +23,8 @@ var (
 )
 
 // SlotKind defines whether a slot uniquely owns its lifetime or is bound to an enclosing scope.
+//
+// The zero value is empty and ready to use.
 type SlotKind uint8
 
 const (
@@ -33,6 +35,8 @@ const (
 )
 
 // Slot manages the generational lifecycle and borrow counts for an owned or borrowed resource.
+//
+// The zero value is empty and not ready to use.
 type Slot struct {
 	gen     atomic.Uint32
 	readers atomic.Int32
@@ -41,6 +45,8 @@ type Slot struct {
 }
 
 // NewSlot creates and initializes a new owning generational slot with generation 1.
+//
+// It executes in O(1) time and allocates memory.
 func NewSlot() *Slot {
 	s := &Slot{kind: SlotOwning}
 	s.gen.Store(1)
@@ -48,7 +54,9 @@ func NewSlot() *Slot {
 }
 
 // NewBoundSlot creates and initializes a new bound generational slot with generation 1.
+//
 // Bound slots are tied to an enclosing scope and cannot be invalidated by sub-allocated resources.
+// It executes in O(1) time and allocates memory.
 func NewBoundSlot() *Slot {
 	s := &Slot{kind: SlotBound}
 	s.gen.Store(1)
@@ -56,6 +64,8 @@ func NewBoundSlot() *Slot {
 }
 
 // Kind returns whether this slot is owning or bound.
+//
+// It executes in O(1) time and is safe for concurrent use.
 func (s *Slot) Kind() SlotKind {
 	if s == nil {
 		return SlotOwning
@@ -64,6 +74,8 @@ func (s *Slot) Kind() SlotKind {
 }
 
 // IsBound reports whether this slot is bound to an enclosing scope.
+//
+// It executes in O(1) time and is safe for concurrent use.
 func (s *Slot) IsBound() bool {
 	if s == nil {
 		return false
@@ -72,6 +84,8 @@ func (s *Slot) IsBound() bool {
 }
 
 // Generation returns the current generation counter of the slot.
+//
+// It executes in O(1) time and is safe for concurrent use.
 func (s *Slot) Generation() uint32 {
 	if s == nil {
 		return 0
@@ -80,6 +94,8 @@ func (s *Slot) Generation() uint32 {
 }
 
 // IsValid checks if the provided gen matches the current slot generation.
+//
+// It executes in O(1) time and is safe for concurrent use.
 func (s *Slot) IsValid(gen uint32) bool {
 	if s == nil {
 		return false
@@ -87,10 +103,11 @@ func (s *Slot) IsValid(gen uint32) bool {
 	return s.gen.Load() == gen
 }
 
-// Invalidate increments the generation counter if the slot is an owning slot,
-// immediately revoking all active and outstanding borrows.
+// Invalidate increments the generation counter if the slot is an owning slot, immediately revoking all active and outstanding borrows.
+//
 // If the slot is bound to an enclosing scope, Invalidate is a safe no-op.
 // Use [Slot.ForceInvalidate] or scope lifecycle methods to invalidate a bound slot.
+// It executes in O(1) time and is safe for concurrent use.
 func (s *Slot) Invalidate() {
 	if s == nil || s.kind == SlotBound {
 		return
@@ -98,8 +115,9 @@ func (s *Slot) Invalidate() {
 	s.ForceInvalidate()
 }
 
-// ForceInvalidate unconditionally increments the generation counter and revokes
-// all active borrows regardless of whether the slot is owning or bound.
+// ForceInvalidate unconditionally increments the generation counter and revokes all active borrows regardless of whether the slot is owning or bound.
+//
+// It executes in O(1) time and is safe for concurrent use.
 func (s *Slot) ForceInvalidate() {
 	if s == nil {
 		return
@@ -109,9 +127,10 @@ func (s *Slot) ForceInvalidate() {
 	s.readers.Store(0)
 }
 
-// AdvanceGeneration increments the generation counter and resets active borrows,
-// returning the new generation. This revokes prior borrows while keeping the slot
-// active for a moved owner.
+// AdvanceGeneration increments the generation counter and resets active borrows, returning the new generation.
+//
+// This revokes prior borrows while keeping the slot active for a moved owner.
+// It executes in O(1) time and is safe for concurrent use.
 func (s *Slot) AdvanceGeneration() uint32 {
 	if s == nil {
 		return 0
@@ -123,6 +142,8 @@ func (s *Slot) AdvanceGeneration() uint32 {
 }
 
 // TryAcquireShared attempts to acquire an immutable shared borrow.
+//
+// It executes in O(1) time and is safe for concurrent use.
 func (s *Slot) TryAcquireShared(gen uint32) error {
 	if s == nil || s.gen.Load() != gen {
 		return ErrExpiredGeneration
@@ -143,6 +164,8 @@ func (s *Slot) TryAcquireShared(gen uint32) error {
 }
 
 // ReleaseShared releases one active immutable shared borrow.
+//
+// It executes in O(1) time and is safe for concurrent use.
 func (s *Slot) ReleaseShared() {
 	if s == nil {
 		return
@@ -159,6 +182,8 @@ func (s *Slot) ReleaseShared() {
 }
 
 // TryAcquireExclusive attempts to acquire an exclusive mutable borrow.
+//
+// It executes in O(1) time and is safe for concurrent use.
 func (s *Slot) TryAcquireExclusive(gen uint32) error {
 	if s == nil || s.gen.Load() != gen {
 		return ErrExpiredGeneration
@@ -178,6 +203,8 @@ func (s *Slot) TryAcquireExclusive(gen uint32) error {
 }
 
 // ReleaseExclusive releases an exclusive mutable borrow.
+//
+// It executes in O(1) time and is safe for concurrent use.
 func (s *Slot) ReleaseExclusive() {
 	if s == nil {
 		return
@@ -186,6 +213,8 @@ func (s *Slot) ReleaseExclusive() {
 }
 
 // Freeze transitions an active exclusive mutable borrow to a single shared immutable borrow.
+//
+// It executes in O(1) time and is safe for concurrent use.
 func (s *Slot) Freeze() {
 	if s == nil {
 		return
@@ -195,6 +224,8 @@ func (s *Slot) Freeze() {
 }
 
 // CheckValid verifies the generation and panics with a descriptive message if invalid.
+//
+// It executes in O(1) time and is safe for concurrent use.
 func (s *Slot) CheckValid(expectedGen uint32) {
 	if s == nil {
 		panic("borrow: nil slot reference")

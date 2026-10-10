@@ -11,21 +11,18 @@ import (
 	"sync/atomic"
 )
 
-// Lock implements an adaptive Silicon Spinlock utilizing a Test and Test-and-Set (TTAS)
-// busy-wait loop with hardware CPU PAUSE / YIELD instructions.
+// Lock represents an adaptive Silicon Spinlock utilizing a Test and Test-and-Set (TTAS) busy-wait loop with hardware CPU PAUSE or YIELD instructions.
 //
-// Zero value of Lock is ready to use and represents an unlocked state.
-// Aligned to 64 bytes to eliminate False Sharing across CPU L1/L2 cache lines.
+// The zero value is empty and ready to use.
 type Lock struct {
 	state uint32
 	_     [60]byte
 }
 
-// Lock acquires the lock.
+// Lock acquires the spinlock.
 //
-// It first attempts an immediate Compare-And-Swap (CAS) operation. If contested,
-// it enters a TTAS loop using cheap read-only atomic loads and hardware CPU PAUSE instructions,
-// falling back to [runtime.Gosched] under prolonged contention to prevent starvation.
+// It executes in amortized O(1) time and does not allocate memory.
+// It is safe for concurrent use.
 func (s *Lock) Lock() {
 	if atomic.CompareAndSwapUint32(&s.state, 0, 1) {
 		return
@@ -55,8 +52,11 @@ func (s *Lock) lockSlow() {
 	}
 }
 
-// Unlock releases the lock.
+// Unlock releases the spinlock.
+//
 // Panics if the spinlock is not currently locked.
+// It executes in amortized O(1) time and does not allocate memory.
+// It is safe for concurrent use.
 func (s *Lock) Unlock() {
 	if atomic.SwapUint32(&s.state, 0) != 1 {
 		panic("spinlock: unlock of unlocked spinlock")
@@ -65,7 +65,8 @@ func (s *Lock) Unlock() {
 
 // TryLock attempts to acquire the lock without spinning or waiting.
 //
-// It returns true if the lock was successfully acquired, and false otherwise.
+// It executes in amortized O(1) time and does not allocate memory.
+// It is safe for concurrent use.
 func (s *Lock) TryLock() bool {
 	return atomic.CompareAndSwapUint32(&s.state, 0, 1)
 }

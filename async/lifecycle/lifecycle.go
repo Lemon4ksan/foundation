@@ -13,11 +13,10 @@ import (
 )
 
 var (
-	// ErrAlreadyStarted is returned when attempting to initialize or register
-	// new services on an orchestrator that is already active.
+	// ErrAlreadyStarted is returned when attempting to initialize or register new services on an orchestrator that is already active.
 	ErrAlreadyStarted = errors.New("lifecycle: orchestrator is already active")
 
-	// ErrNotInitialized is returned by [Orchestrator.StartAll] if there're no services to start.
+	// ErrNotInitialized is returned by [Orchestrator.StartAll] if there are no services to start.
 	ErrNotInitialized = errors.New("lifecycle: orchestrator must be initialized before starting")
 )
 
@@ -27,43 +26,30 @@ var (
 // for initialization, startup, and shutdown.
 type Service interface {
 	// Name returns the unique identifier for the service.
-	// This name is used as the key for dependency resolution.
 	Name() string
 
-	// Init performs early, synchronous, and non-blocking setup (e.g., allocating
-	// local buffers, parsing configs).
+	// Init performs early, synchronous, and non-blocking setup.
 	Init(ctx context.Context) error
 
 	// Start executes the main business logic of the service.
-	// Long-running background processes must spawn their own goroutines inside Start
-	// and return nil immediately.
 	Start(ctx context.Context) error
 
-	// Stop gracefully terminates any running background goroutines and releases
-	// all allocated system resources (such as file handles or network sockets).
+	// Stop gracefully terminates any running background goroutines and releases resources.
 	Stop(ctx context.Context) error
 }
 
-// Dependent defines an optional interface extension for services that declare
-// explicit, structural dependencies on other services.
-//
-// Implementing this interface enables [Orchestrator] to perform topological
-// dependency sorting during the initialization phase.
+// Dependent defines an optional interface extension for services that declare explicit, structural dependencies on other services.
 type Dependent interface {
 	Service
-	// Dependencies returns a slice containing the unique names of the services
-	// that this service depends on.
+	// Dependencies returns a slice containing the unique names of the services that this service depends on.
 	Dependencies() []string
 }
 
-// Orchestrator coordinates the initialization, startup, and graceful shutdown
-// of registered [Service] instances.
+// Orchestrator coordinates the initialization, startup, and graceful shutdown of registered [Service] instances.
 //
-// It resolves dependencies topologically, ensuring that parent services are
-// online before dependent services start, and dependent services are shut down
-// before their parents go offline.
-//
-// An Orchestrator is safe for concurrent use by multiple goroutines.
+// The zero value is empty and not ready to use.
+// Read-only operations are safe for concurrent use; mutations require external synchronization unless stated otherwise.
+// Note that methods on [Orchestrator] manage their own internal locks.
 type Orchestrator struct {
 	mu       sync.RWMutex
 	services map[string]Service
@@ -73,21 +59,17 @@ type Orchestrator struct {
 }
 
 // NewOrchestrator initializes and returns a new [Orchestrator] instance.
+//
+// Executes in O(1) time and allocates memory for internal maps.
 func NewOrchestrator() *Orchestrator {
 	return &Orchestrator{
 		services: make(map[string]Service),
 	}
 }
 
-// All returns a newly allocated slice containing a shallow copy of all currently
-// registered services in the orchestrator.
+// All returns a newly allocated slice containing a shallow copy of all currently registered services in the orchestrator.
 //
-// It is non-blocking and safe to call concurrently while the orchestrator is running.
-//
-// # Complexity
-//
-// Time Complexity: O(N), where N is the number of registered services.
-// Space Complexity: O(N) allocation for the returned slice.
+// Executes in O(N) time where N is the number of registered services, and allocates memory for the returned slice.
 func (o *Orchestrator) All() []Service {
 	o.mu.RLock()
 	defer o.mu.RUnlock()
@@ -102,10 +84,7 @@ func (o *Orchestrator) All() []Service {
 
 // Register adds a [Service] to the orchestrator's managed set.
 //
-// # Preconditions
-//
-// The orchestrator must not have been started yet. Attempting to register
-// a service on an already running orchestrator is ignored and logs a warning.
+// Executes in O(1) time and allocates memory to store the service in the internal map.
 func (o *Orchestrator) Register(s Service) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
@@ -117,24 +96,9 @@ func (o *Orchestrator) Register(s Service) {
 	o.services[s.Name()] = s
 }
 
-// InitAll performs topological sorting of all registered services and executes
-// their [Service.Init] routines in order.
+// InitAll performs topological sorting of all registered services and executes their [Service.Init] routines in order.
 //
-// # Preconditions
-//
-// All dependent services must be registered. If circular dependencies are detected,
-// or if any required dependency is missing, InitAll aborts and returns an error
-// before invoking any initialization.
-//
-// # Postconditions
-//
-// If successful, the orchestrator's internal execution path is locked to the
-// resolved topological order.
-//
-// # Complexity
-//
-// Time Complexity: O(V + E) for dependency resolution, where V is the number
-// of services and E is the number of dependency links.
+// Executes in O(V + E) time where V is the number of services and E is the number of dependency links, and allocates memory for the sorted slice.
 func (o *Orchestrator) InitAll(ctx context.Context) error {
 	o.mu.Lock()
 	defer o.mu.Unlock()
@@ -159,20 +123,9 @@ func (o *Orchestrator) InitAll(ctx context.Context) error {
 	return nil
 }
 
-// StartAll executes the startup routine for all initialized services sequentially
-// in topological order.
+// StartAll executes the startup routine for all initialized services sequentially in topological order.
 //
-// If starting any service fails, StartAll automatically triggers a rollback,
-// gracefully stopping all previously started services in reverse topological
-// order before returning the error.
-//
-// Returns ErrNotInitialized if there're no services to start.
-//
-// # Preconditions
-//
-// [Orchestrator.InitAll] must have been successfully invoked first. Calling
-// StartAll on an already running orchestrator is a safe, idempotent no-op
-// and returns nil.
+// Executes in O(N) time where N is the number of services, and allocates memory for the running slice.
 func (o *Orchestrator) StartAll(ctx context.Context) error {
 	o.mu.Lock()
 	defer o.mu.Unlock()
@@ -201,9 +154,7 @@ func (o *Orchestrator) StartAll(ctx context.Context) error {
 
 // StopAll gracefully terminates all active services in reverse topological order.
 //
-// This ensures that dependent high-level modules are offline before their
-// underlying low-level parent dependencies are stopped. Calling StopAll on
-// an inactive orchestrator is a safe, idempotent no-op.
+// Executes in O(N) time where N is the number of running services, and is zero-allocation.
 func (o *Orchestrator) StopAll(ctx context.Context) error {
 	o.mu.Lock()
 	defer o.mu.Unlock()

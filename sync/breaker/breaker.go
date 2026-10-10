@@ -16,6 +16,8 @@ import (
 var ErrOpen = errors.New("breaker: circuit breaker is open")
 
 // State represents the operational state of a [Breaker].
+//
+// The zero value is [StateClosed].
 type State int
 
 const (
@@ -27,6 +29,9 @@ const (
 	StateHalfOpen
 )
 
+// String returns the string representation of the breaker State.
+// It executes in O(1) time and performs zero allocations.
+// It is safe for concurrent use.
 func (s State) String() string {
 	switch s {
 	case StateClosed:
@@ -70,6 +75,8 @@ type Config struct {
 }
 
 // ResolveDefaults validates the configuration and applies safe default fallback boundaries.
+// It executes in O(1) time and performs zero allocations.
+// It is not safe for concurrent use.
 func (c *Config) ResolveDefaults() {
 	if c.FailureThreshold <= 0 || c.FailureThreshold > 1.0 {
 		c.FailureThreshold = 0.5
@@ -88,10 +95,11 @@ func (c *Config) ResolveDefaults() {
 	}
 }
 
-// Breaker wraps synchronous operations with a fail-fast state machine
-// to protect upstream services from cascading failures.
+// Breaker wraps synchronous operations with a fail-fast state machine to protect upstream services from cascading failures.
 //
-// A Breaker is safe for concurrent use by multiple goroutines.
+// The zero value is empty and ready to use.
+// Read-only operations are safe for concurrent use; mutations require external synchronization unless stated otherwise.
+// Note that methods on [Breaker] manage their own internal locks.
 type Breaker[T any] struct {
 	mu       sync.Mutex
 	cfg      Config
@@ -102,7 +110,9 @@ type Breaker[T any] struct {
 	halfOpenExecuting bool
 }
 
-// New creates and returns a new [Breaker] instance with the given [Config].
+// New creates a [Breaker] with the given [Config].
+// It executes in O(1) time and allocates memory for tracking structures.
+// It is safe for concurrent use.
 func New[T any](cfg Config) *Breaker[T] {
 	cfg.ResolveDefaults()
 
@@ -112,8 +122,8 @@ func New[T any](cfg Config) *Breaker[T] {
 	}
 }
 
-// State returns the current operational [State] of the Breaker.
-//
+// State returns the current operational [State] of the breaker.
+// It executes in O(1) time and performs zero allocations.
 // It is safe for concurrent use and dynamically evaluates cooldown expirations.
 func (cb *Breaker[T]) State() State {
 	cb.mu.Lock()
@@ -125,13 +135,11 @@ func (cb *Breaker[T]) State() State {
 }
 
 // Do wraps the execution of the provided function fn, monitoring its outcome.
-//
 // If the breaker is in [StateOpen], or if the breaker is in [StateHalfOpen] and
-// another trial request is already executing, Do returns [ErrOpen]
-// immediately without running fn.
-//
-// If the execution of fn returns an error, it is recorded as a failure.
-// Otherwise, it is recorded as a success.
+// another trial request is already executing, it returns [ErrOpen] immediately without running fn.
+// If the execution of fn returns an error, it is recorded as a failure. Otherwise, it is recorded as a success.
+// It executes in O(1) time excluding the execution of fn and allocates memory when growing the tracking window.
+// It is safe for concurrent use.
 func (cb *Breaker[T]) Do(ctx context.Context, fn func(ctx context.Context) (T, error)) (T, error) {
 	cb.mu.Lock()
 

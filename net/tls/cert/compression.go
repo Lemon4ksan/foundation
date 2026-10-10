@@ -37,6 +37,8 @@ const (
 )
 
 // String returns the standard name of the certificate compression algorithm (RFC 8879 §7.3).
+// It executes in O(1) time and allocates memory if the algorithm is unknown.
+// It is safe for concurrent use.
 func (a CompressionAlgorithm) String() string {
 	switch a {
 	case CertCompressionZlib:
@@ -51,11 +53,16 @@ func (a CompressionAlgorithm) String() string {
 }
 
 // IsValid reports whether the compression algorithm is a standard RFC 8879 algorithm.
+// It executes in O(1) time and performs zero allocations.
+// It is safe for concurrent use.
 func (a CompressionAlgorithm) IsValid() bool {
 	return a == CertCompressionZlib || a == CertCompressionBrotli || a == CertCompressionZstd
 }
 
 // ParseCompressionAlgorithm parses a string identifier ("zlib", "brotli", "zstd") into [CompressionAlgorithm].
+// It executes in O(N) time where N is the length of the string name.
+// It allocates memory for string processing.
+// It is safe for concurrent use.
 func ParseCompressionAlgorithm(name string) (CompressionAlgorithm, error) {
 	switch strings.ToLower(strings.TrimSpace(name)) {
 	case "zlib":

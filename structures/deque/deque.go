@@ -7,23 +7,24 @@ package deque
 import "iter"
 
 // Deque represents a generic double-ended circular queue backed by a contiguous slice.
-// The zero value is empty and ready to use.
 //
-// Read-only operations are safe for concurrent access across multiple goroutines.
-// Concurrent mutations or concurrent read/writes must be externally synchronized.
+// The zero value is empty and ready to use.
+// Read-only operations are safe for concurrent use; mutations require external synchronization.
 type Deque[T any] struct {
 	buf  []T
 	head int // physical index in buf of the front element
 	len  int // number of queued elements
 }
 
-// New creates and returns an empty Deque in O(1) time.
+// New creates a [Deque] in amortized O(1) time.
+//
 // Backing storage is lazily allocated on the first push operation.
 func New[T any]() *Deque[T] {
 	return &Deque[T]{}
 }
 
-// NewWithCapacity creates and returns an empty Deque with preallocated backing capacity in O(n) time.
+// NewWithCapacity creates a [Deque] with preallocated backing capacity in O(N) time.
+//
 // Panics if capacity < 0.
 func NewWithCapacity[T any](capacity int) *Deque[T] {
 	if capacity < 0 {
@@ -38,7 +39,9 @@ func NewWithCapacity[T any](capacity int) *Deque[T] {
 	}
 }
 
-// Len returns the number of elements currently stored in the deque in O(1) time.
+// Len returns the number of elements currently stored in the deque.
+//
+// Executes in O(1) time.
 func (d *Deque[T]) Len() int {
 	if d == nil {
 		return 0
@@ -47,6 +50,8 @@ func (d *Deque[T]) Len() int {
 }
 
 // Cap returns the total capacity of the backing slice without reallocating.
+//
+// Executes in O(1) time.
 func (d *Deque[T]) Cap() int {
 	if d == nil {
 		return 0
@@ -55,11 +60,14 @@ func (d *Deque[T]) Cap() int {
 }
 
 // Empty reports whether the deque contains zero elements.
+//
+// Executes in O(1) time.
 func (d *Deque[T]) Empty() bool {
 	return d == nil || d.len == 0
 }
 
 // Clear removes all elements from the deque while retaining the allocated storage.
+//
 // All evacuated slots are cleared to allow garbage collection of referenced objects.
 func (d *Deque[T]) Clear() {
 	if d == nil {
@@ -70,7 +78,9 @@ func (d *Deque[T]) Clear() {
 	d.len = 0
 }
 
-// PushBack appends elem to the back of the deque in amortized O(1) time.
+// PushBack appends elem to the back of the deque.
+//
+// Executes in amortized O(1) time.
 func (d *Deque[T]) PushBack(elem T) {
 	if d.len == len(d.buf) {
 		d.grow()
@@ -83,7 +93,9 @@ func (d *Deque[T]) PushBack(elem T) {
 	d.len++
 }
 
-// PushFront prepends elem to the front of the deque in amortized O(1) time.
+// PushFront prepends elem to the front of the deque.
+//
+// Executes in amortized O(1) time.
 func (d *Deque[T]) PushFront(elem T) {
 	if d.len == len(d.buf) {
 		d.grow()
@@ -98,7 +110,9 @@ func (d *Deque[T]) PushFront(elem T) {
 }
 
 // PopFront removes and returns the front element from the deque.
+//
 // If the deque is empty, it returns the zero value of T and false.
+// Executes in O(1) time.
 func (d *Deque[T]) PopFront() (T, bool) {
 	if d == nil || d.len == 0 {
 		var zero T
@@ -117,7 +131,9 @@ func (d *Deque[T]) PopFront() (T, bool) {
 }
 
 // PopBack removes and returns the back element from the deque.
+//
 // If the deque is empty, it returns the zero value of T and false.
+// Executes in O(1) time.
 func (d *Deque[T]) PopBack() (T, bool) {
 	if d == nil || d.len == 0 {
 		var zero T
@@ -135,7 +151,9 @@ func (d *Deque[T]) PopBack() (T, bool) {
 }
 
 // MustPopFront removes and returns the front element.
+//
 // Panics if the deque is empty.
+// Executes in O(1) time.
 func (d *Deque[T]) MustPopFront() T {
 	elem, ok := d.PopFront()
 	if !ok {
@@ -145,7 +163,9 @@ func (d *Deque[T]) MustPopFront() T {
 }
 
 // MustPopBack removes and returns the back element.
+//
 // Panics if the deque is empty.
+// Executes in O(1) time.
 func (d *Deque[T]) MustPopBack() T {
 	elem, ok := d.PopBack()
 	if !ok {
@@ -155,7 +175,9 @@ func (d *Deque[T]) MustPopBack() T {
 }
 
 // Front returns the front element without removing it.
+//
 // If the deque is empty, it returns the zero value of T and false.
+// Executes in O(1) time.
 func (d *Deque[T]) Front() (T, bool) {
 	if d == nil || d.len == 0 {
 		var zero T
@@ -165,7 +187,9 @@ func (d *Deque[T]) Front() (T, bool) {
 }
 
 // Back returns the back element without removing it.
+//
 // If the deque is empty, it returns the zero value of T and false.
+// Executes in O(1) time.
 func (d *Deque[T]) Back() (T, bool) {
 	if d == nil || d.len == 0 {
 		var zero T
@@ -179,9 +203,11 @@ func (d *Deque[T]) Back() (T, bool) {
 }
 
 // At returns the element at logical index i.
+//
 // Index 0 represents the front; len-1 represents the back.
 // Negative indices index from the back: -1 represents the back element, -len represents the front.
 // Panics if i < -len or i >= len.
+// Executes in O(1) time.
 func (d *Deque[T]) At(i int) T {
 	if d == nil || i < -d.len || i >= d.len {
 		panic("deque: index out of range")
@@ -197,8 +223,10 @@ func (d *Deque[T]) At(i int) T {
 }
 
 // Set replaces the element at logical index i with elem.
+//
 // Supports negative indices (-1 is back, -len is front).
 // Panics if i < -len or i >= len.
+// Executes in O(1) time.
 func (d *Deque[T]) Set(i int, elem T) {
 	if d == nil || i < -d.len || i >= d.len {
 		panic("deque: index out of range")
@@ -214,6 +242,8 @@ func (d *Deque[T]) Set(i int, elem T) {
 }
 
 // Values returns an inlined push iterator over queued elements from front to back without mutating the deque.
+//
+// Executes in O(N) time where N is the number of elements.
 func (d *Deque[T]) Values() iter.Seq[T] {
 	return func(yield func(T) bool) {
 		if d == nil || d.len == 0 {
@@ -233,6 +263,8 @@ func (d *Deque[T]) Values() iter.Seq[T] {
 }
 
 // All returns an inlined push iterator over queued elements yielding logical index (0 to len-1) and element.
+//
+// Executes in O(N) time where N is the number of elements.
 func (d *Deque[T]) All() iter.Seq2[int, T] {
 	return func(yield func(int, T) bool) {
 		if d == nil || d.len == 0 {
@@ -252,6 +284,8 @@ func (d *Deque[T]) All() iter.Seq2[int, T] {
 }
 
 // Backward returns an inlined push iterator over queued elements from back to front without mutating the deque.
+//
+// Executes in O(N) time where N is the number of elements.
 func (d *Deque[T]) Backward() iter.Seq[T] {
 	return func(yield func(T) bool) {
 		if d == nil || d.len == 0 {
@@ -271,6 +305,8 @@ func (d *Deque[T]) Backward() iter.Seq[T] {
 }
 
 // Drain returns a consuming iterator that pops elements from front to back until the deque is empty or early break.
+//
+// Executes in O(N) time where N is the number of elements consumed.
 func (d *Deque[T]) Drain() iter.Seq[T] {
 	return func(yield func(T) bool) {
 		for d != nil && d.len > 0 {

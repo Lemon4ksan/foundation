@@ -59,6 +59,9 @@ func deriveChunkAAD(streamAAD []byte, chunkIdx uint64, flag uint8) []byte {
 }
 
 // StreamWriter wraps an io.Writer and provides streaming AEAD authenticated chunk encryption.
+//
+// The zero value is empty and not ready to use.
+// Read-only operations are safe for concurrent use; mutations require external synchronization.
 type StreamWriter struct {
 	w         io.Writer
 	aead      cipher.AEAD
@@ -71,7 +74,9 @@ type StreamWriter struct {
 }
 
 // NewStreamWriter creates a new authenticated streaming writer.
+//
 // If chunkSize <= 0, DefaultChunkSize (64 KiB) is used.
+// Executes in O(1) time and allocates memory for internal structures.
 func NewStreamWriter(
 	w io.Writer,
 	aead cipher.AEAD,
@@ -105,6 +110,8 @@ func NewStreamWriter(
 }
 
 // Write buffers data and writes out intermediate authenticated chunks.
+//
+// Executes in O(N) time where N is the length of p, and may allocate memory if the internal buffer resizes.
 func (sw *StreamWriter) Write(p []byte) (int, error) {
 	if sw.closed {
 		return 0, errors.New("aead: write to closed StreamWriter")
@@ -131,6 +138,8 @@ func (sw *StreamWriter) Write(p []byte) (int, error) {
 }
 
 // Close flushes any remaining buffered plaintext as the authenticated terminal chunk.
+//
+// Executes in O(1) time and is zero-allocation.
 func (sw *StreamWriter) Close() error {
 	if sw.closed {
 		return nil
@@ -172,6 +181,9 @@ func (sw *StreamWriter) writeChunk(plaintext []byte, flag uint8) error {
 }
 
 // StreamReader wraps an io.Reader and decrypts/authenticates streaming AEAD chunks.
+//
+// The zero value is empty and not ready to use.
+// Read-only operations are safe for concurrent use; mutations require external synchronization.
 type StreamReader struct {
 	r          io.Reader
 	aead       cipher.AEAD
@@ -183,6 +195,8 @@ type StreamReader struct {
 }
 
 // NewStreamReader creates a new authenticated streaming reader.
+//
+// Executes in O(1) time and allocates memory for internal structures.
 func NewStreamReader(r io.Reader, aead cipher.AEAD, nonceBase, streamAAD []byte) (*StreamReader, error) {
 	if aead == nil {
 		return nil, errors.New("aead: nil cipher provided")
@@ -200,6 +214,8 @@ func NewStreamReader(r io.Reader, aead cipher.AEAD, nonceBase, streamAAD []byte)
 }
 
 // Read decrypts chunks on demand and returns the authenticated plaintext.
+//
+// Executes in O(N) time where N is the length of p, and allocates memory for chunk decryption.
 func (sr *StreamReader) Read(p []byte) (int, error) {
 	if len(p) == 0 {
 		return 0, nil
@@ -260,8 +276,10 @@ func (sr *StreamReader) Read(p []byte) (int, error) {
 }
 
 // Chunks returns a push iterator yielding authenticated decrypted plaintext chunks from sr.
+//
 // Iteration terminates after yielding the terminal chunk (flagLastChunk), when an error is encountered,
 // or when yield returns false.
+// Executes in O(N) time where N is the total plaintext length, and allocates memory for chunks.
 func (sr *StreamReader) Chunks() iter.Seq2[[]byte, error] {
 	return func(yield func([]byte, error) bool) {
 		for {
@@ -336,6 +354,8 @@ func (sr *StreamReader) Chunks() iter.Seq2[[]byte, error] {
 }
 
 // DecryptChunks returns a push iterator yielding decrypted chunks from r using the specified AEAD cipher.
+//
+// Executes in O(1) time and allocates memory for the StreamReader.
 func DecryptChunks(r io.Reader, aead cipher.AEAD, nonceBase, streamAAD []byte) (iter.Seq2[[]byte, error], error) {
 	sr, err := NewStreamReader(r, aead, nonceBase, streamAAD)
 	if err != nil {
@@ -344,8 +364,9 @@ func DecryptChunks(r io.Reader, aead cipher.AEAD, nonceBase, streamAAD []byte) (
 	return sr.Chunks(), nil
 }
 
-// EncryptChunks returns a push iterator that reads plaintext from r in chunkSize increments and
-// yields framed, sealed ciphertext chunks ready for network transmission.
+// EncryptChunks returns a push iterator that reads plaintext from r in chunkSize increments and yields framed, sealed ciphertext chunks ready for network transmission.
+//
+// Executes in O(1) time and allocates memory for the closure.
 func EncryptChunks(
 	r io.Reader,
 	aead cipher.AEAD,

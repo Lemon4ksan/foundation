@@ -4,23 +4,22 @@
 
 package disjointset
 
-// Set implements an array-backed Disjoint Set Union data structure.
+// Set represents an array-backed Disjoint Set Union data structure.
 //
-// Read-only queries such as Len and Count (when not concurrently mutated) are safe
-// for concurrent access. Because Find performs internal path compression (mutating parent pointers),
-// all operations involving Find, Union, Connected, Size, and Reset must be externally
-// synchronized (e.g. using sync.Mutex) in concurrent environments.
+// The zero value is empty and ready to use.
+// Read-only operations are safe for concurrent use; mutations require external synchronization.
+// Note that [Set.Find] mutates internal state for path compression and requires synchronization.
 type Set struct {
 	parent []int // parent[i] is the parent of element i; if parent[i] == i, i is the set root
 	size   []int // size[i] is the number of elements in the component rooted at i
 	count  int   // count is the current number of disjoint sets / connected components
 }
 
-// New creates and initializes a new Set tracking n elements (0 to n-1).
-// Each element initially belongs to its own singleton set with size 1.
+// New creates and initializes a [Set] tracking n elements.
 //
-// Panics with "disjointset: negative element count" if n < 0.
-// If n == 0, returns an empty Set.
+// Each element initially belongs to its own singleton set with size 1.
+// Panics if n < 0.
+// Executes in O(N) time and allocates memory for the tracking structures.
 func New(n int) *Set {
 	if n < 0 {
 		panic("disjointset: negative element count")
@@ -44,6 +43,8 @@ func New(n int) *Set {
 }
 
 // Len returns the total number of elements tracked by the disjoint set.
+//
+// Executes in O(1) time and is zero-allocation.
 func (d *Set) Len() int {
 	if d == nil {
 		return 0
@@ -51,7 +52,9 @@ func (d *Set) Len() int {
 	return len(d.parent)
 }
 
-// Count returns the number of disjoint sets (connected components) currently tracked.
+// Count returns the number of disjoint sets currently tracked.
+//
+// Executes in O(1) time and is zero-allocation.
 func (d *Set) Count() int {
 	if d == nil {
 		return 0
@@ -60,10 +63,10 @@ func (d *Set) Count() int {
 }
 
 // Find returns the representative root of the set containing element x.
-// It executes full two-pass iterative path compression, pointing all traversed
-// elements directly to the root for optimal amortized O(alpha(N)) performance.
 //
-// Panics with "disjointset: index out of range" if x is out of bounds [0, Len()).
+// It executes full two-pass iterative path compression.
+// Panics if x is out of bounds.
+// Executes in amortized O(alpha(N)) time, where alpha is the inverse Ackermann function, and is zero-allocation.
 func (d *Set) Find(x int) int {
 	if d == nil || x < 0 || x >= len(d.parent) {
 		panic("disjointset: index out of range")
@@ -92,13 +95,10 @@ func (d *Set) Find(x int) int {
 }
 
 // Union merges the disjoint sets containing elements x and y using the union-by-size heuristic.
-// The root of the smaller set is attached as a child of the root of the larger set.
-// If both sets have equal size, y's root is attached under x's root.
 //
-// Returns true if x and y belonged to different sets and were successfully merged,
-// or false if they were already in the same set.
-//
-// Panics with "disjointset: index out of range" if either x or y is out of bounds [0, Len()).
+// Returns true if x and y belonged to different sets and were successfully merged, or false if they were already in the same set.
+// Panics if either x or y is out of bounds.
+// Executes in amortized O(alpha(N)) time and is zero-allocation.
 func (d *Set) Union(x, y int) bool {
 	rootX := d.Find(x)
 	rootY := d.Find(y)
@@ -120,21 +120,24 @@ func (d *Set) Union(x, y int) bool {
 
 // Connected reports whether elements x and y belong to the same disjoint set.
 //
-// Panics with "disjointset: index out of range" if either x or y is out of bounds [0, Len()).
+// Panics if either x or y is out of bounds.
+// Executes in amortized O(alpha(N)) time and is zero-allocation.
 func (d *Set) Connected(x, y int) bool {
 	return d.Find(x) == d.Find(y)
 }
 
 // Size returns the number of elements in the disjoint set containing element x.
 //
-// Panics with "disjointset: index out of range" if x is out of bounds [0, Len()).
+// Panics if x is out of bounds.
+// Executes in amortized O(alpha(N)) time and is zero-allocation.
 func (d *Set) Size(x int) int {
 	root := d.Find(x)
 	return d.size[root]
 }
 
-// Reset restores all elements into individual singleton sets (parent[i] = i, size[i] = 1, count = Len()).
-// Backing slices are reused in place without allocating new heap memory.
+// Reset restores all elements into individual singleton sets.
+//
+// Executes in O(N) time and is zero-allocation.
 func (d *Set) Reset() {
 	if d == nil {
 		return

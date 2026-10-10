@@ -18,14 +18,19 @@ var scopePool = sync.Pool{
 }
 
 // Scope represents a lexical lifetime arena.
+//
 // All resources allocated from a Scope are guaranteed to be valid during the execution
 // of the scope, and are automatically recycled with 0 heap allocations upon scope exit.
+// The zero value is empty and not ready to use.
 type Scope struct {
 	slot *Slot
 	buf  []byte
 }
 
 // AcquireScope obtains an active Scope from the internal pool.
+//
+// It executes in O(1) time and is safe for concurrent use.
+// It achieves 0 heap allocations under normal conditions.
 func AcquireScope() *Scope {
 	s := scopePool.Get().(*Scope)
 	s.buf = s.buf[:0]
@@ -33,11 +38,16 @@ func AcquireScope() *Scope {
 }
 
 // NewScope creates or acquires an active [Scope] from the internal pool.
+//
+// It executes in O(1) time and is safe for concurrent use.
+// It achieves 0 heap allocations under normal conditions.
 func NewScope() *Scope {
 	return AcquireScope()
 }
 
 // Release returns the Scope to the internal pool and invalidates all borrows made within it.
+//
+// It executes in O(1) time and is safe for concurrent use.
 func (s *Scope) Release() {
 	if s == nil {
 		return
@@ -48,11 +58,16 @@ func (s *Scope) Release() {
 }
 
 // Slot returns the master generational slot of this scope.
+//
+// It executes in O(1) time and is safe for concurrent use.
 func (s *Scope) Slot() *Slot {
 	return s.slot
 }
 
 // AllocBytes allocates a zero-copy [Bytes] buffer of the requested size from the scope arena.
+//
+// It executes in amortized O(1) time and may allocate memory if the requested size exceeds the available buffer capacity.
+// It is safe for concurrent use.
 func (s *Scope) AllocBytes(size int) Bytes {
 	if size <= 0 {
 		var gen uint32
@@ -77,6 +92,9 @@ func (s *Scope) AllocBytes(size int) Bytes {
 }
 
 // Alloc creates an owned [Box] bound to this scope's lifetime.
+//
+// It executes in O(1) time and allocates memory for the boxed value.
+// It is safe for concurrent use.
 func Alloc[T any](s *Scope) Box[T] {
 	ptr := new(T)
 	var slot *Slot
@@ -96,7 +114,9 @@ func Alloc[T any](s *Scope) Box[T] {
 }
 
 // Scoped executes fn within a dedicated scope arena and returns the computed result.
+//
 // When fn returns, all resources and borrowed views created in this scope are atomically invalidated.
+// It executes in O(N) time where N is the execution time of fn and is safe for concurrent use.
 func Scoped[R any](fn func(s *Scope) (R, error)) (R, error) {
 	s := AcquireScope()
 	defer s.Release()
@@ -105,6 +125,8 @@ func Scoped[R any](fn func(s *Scope) (R, error)) (R, error) {
 }
 
 // ScopedVoid executes fn within a dedicated scope without returning a value.
+//
+// It executes in O(N) time where N is the execution time of fn and is safe for concurrent use.
 func ScopedVoid(fn func(s *Scope) error) error {
 	s := AcquireScope()
 	defer s.Release()

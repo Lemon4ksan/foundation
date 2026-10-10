@@ -9,7 +9,10 @@ import (
 )
 
 // EnsureAlloc ensures that a pointer value is allocated, initializing it with a new zero value if nil and settable.
+//
 // Returns the dereferenced element value and a boolean indicating whether a new instance was allocated.
+// It executes in O(1) time and is safe for concurrent use.
+// It may allocate memory for the new zero value using reflection.
 func EnsureAlloc(v reflect.Value) (elem reflect.Value, allocated bool) {
 	if !v.IsValid() {
 		return reflect.Value{}, false

@@ -12,7 +12,7 @@ import (
 //
 // Unlike the standard library [reflect.Type.Implements], this helper does not panic
 // if T is a non-interface type or if t is nil; instead it safely returns false.
-// It executes with 0 heap allocations.
+// It executes in O(1) time with 0 heap allocations and is safe for concurrent use.
 func Implements[T any](t reflect.Type) bool {
 	if t == nil {
 		return false

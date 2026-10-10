@@ -25,6 +25,7 @@ type Event interface {
 //
 // By embedding Envelope, custom event structs automatically satisfy the [Event]
 // interface and gain request-scoped context propagation capabilities.
+// The zero value is empty and ready to use.
 type Envelope struct {
 	// Ctx represents the request context associated with the event execution.
 	Ctx context.Context
@@ -33,6 +34,8 @@ type Envelope struct {
 func (Envelope) isEvent() {}
 
 // Context returns the event's execution context, defaulting to [context.Background] if nil.
+//
+// Executes in O(1) time and is zero-allocation.
 func (b *Envelope) Context() context.Context {
 	if b.Ctx == nil {
 		b.Ctx = context.Background()
@@ -42,6 +45,8 @@ func (b *Envelope) Context() context.Context {
 }
 
 // SetContext binds the provided request-scoped context to the event.
+//
+// Executes in O(1) time and is zero-allocation.
 func (b *Envelope) SetContext(ctx context.Context) {
 	b.Ctx = ctx
 }
@@ -51,8 +56,9 @@ func (b *Envelope) SetContext(ctx context.Context) {
 // It manages the lifecycle of an internal buffered event channel. Subscriptions
 // are created via [Bus.Subscribe] or [Bus.SubscribeAll] and must be cleaned up
 // using [Subscription.Unsubscribe] to prevent resource and memory leaks.
-//
-// All methods on Subscription are safe for concurrent use by multiple goroutines.
+// The zero value is empty and not ready to use.
+// Read-only operations are safe for concurrent use; mutations require external synchronization unless stated otherwise.
+// Note that methods on [Subscription] manage their own internal locks.
 type Subscription struct {
 	id     uint64
 	types  []reflect.Type
@@ -65,23 +71,22 @@ type Subscription struct {
 //
 // The channel is closed and drained when [Subscription.Unsubscribe] is called
 // or when the associated [Bus] is closed.
+// Executes in O(1) time and is zero-allocation.
 func (s *Subscription) C() <-chan Event { return s.ch }
 
 // Unsubscribe deregisters the subscription from its associated [Bus] and closes its channel.
 //
-// It is safe to call Unsubscribe concurrently from multiple goroutines, and
-// subsequent invocations are safe no-ops.
+// Executes in amortized O(1) time and is zero-allocation.
 func (s *Subscription) Unsubscribe() {
 	if s.closed.CompareAndSwap(false, true) {
 		s.bus.unsubscribe(s)
 	}
 }
 
-// EventsSeq returns an iterator over events received on this subscription until ctx is cancelled
-// or the subscription is closed. Iteration ceases immediately if yield returns false.
+// EventsSeq returns an iterator over events received on this subscription until ctx is cancelled or the subscription is closed.
 //
-// Concurrency Guarantees:
-// EventsSeq is safe for concurrent use, though typically consumed by a single goroutine per subscription.
+// Iteration ceases immediately if yield returns false.
+// Executes in O(1) time to yield each element and is zero-allocation.
 func (s *Subscription) EventsSeq(ctx context.Context) iter.Seq[Event] {
 	return func(yield func(Event) bool) {
 		for {
@@ -101,6 +106,10 @@ func (s *Subscription) EventsSeq(ctx context.Context) iter.Seq[Event] {
 }
 
 // TypedSubscription provides a type-safe subscription wrapper for event type E.
+//
+// The zero value is empty and not ready to use.
+// Read-only operations are safe for concurrent use; mutations require external synchronization unless stated otherwise.
+// Note that methods on [TypedSubscription] manage their own internal locks.
 type TypedSubscription[E any] struct {
 	sub    *Subscription
 	ch     chan E
@@ -108,11 +117,15 @@ type TypedSubscription[E any] struct {
 }
 
 // C returns the read-only channel for typed events.
+//
+// Executes in O(1) time and is zero-allocation.
 func (ts *TypedSubscription[E]) C() <-chan E {
 	return ts.ch
 }
 
 // Unsubscribe deregisters the subscription from its bus and closes its channel.
+//
+// Executes in amortized O(1) time and is zero-allocation.
 func (ts *TypedSubscription[E]) Unsubscribe() {
 	if ts.closed.CompareAndSwap(false, true) {
 		ts.sub.Unsubscribe()
@@ -120,6 +133,8 @@ func (ts *TypedSubscription[E]) Unsubscribe() {
 }
 
 // EventsSeq returns an iterator over typed events received on this subscription.
+//
+// Executes in O(1) time to yield each element and is zero-allocation.
 func (ts *TypedSubscription[E]) EventsSeq(ctx context.Context) iter.Seq[E] {
 	return func(yield func(E) bool) {
 		for {
@@ -143,8 +158,9 @@ func (ts *TypedSubscription[E]) EventsSeq(ctx context.Context) iter.Seq[E] {
 // It routes published events to subscriptions based on their [reflect.Type].
 // Thread safety is internally managed using a [sync.RWMutex] protecting maps
 // of active subscriptions.
-//
-// New instances of Bus must be created using the [New] constructor function.
+// The zero value is empty and not ready to use.
+// Read-only operations are safe for concurrent use; mutations require external synchronization unless stated otherwise.
+// Note that methods on [Bus] manage their own internal locks.
 type Bus struct {
 	mu        sync.RWMutex
 	subs      map[reflect.Type]map[uint64]*Subscription
@@ -155,6 +171,8 @@ type Bus struct {
 }
 
 // New returns a new, initialized [Bus] instance ready to route events.
+//
+// Executes in O(1) time and allocates memory for internal structures.
 func New() *Bus {
 	return &Bus{
 		subs: make(map[reflect.Type]map[uint64]*Subscription),
@@ -163,6 +181,8 @@ func New() *Bus {
 }
 
 // SetOnDropped sets a callback function to be called when packets are dropped.
+//
+// Executes in O(1) time and is zero-allocation.
 func (b *Bus) SetOnDropped(fn func(event Event, subID uint64)) {
 	b.mu.Lock()
 	b.onDropped = fn
@@ -174,11 +194,14 @@ func (b *Bus) SetOnDropped(fn func(event Event, subID uint64)) {
 // If no event types are provided or if an event is nil, those entries are ignored.
 // Duplicate event types within a single Subscribe call are automatically deduplicated.
 // If the Bus is closed, Subscribe returns a subscription with an already closed channel.
+// Executes in O(N) time where N is the number of event types, and allocates memory for the new subscription.
 func (b *Bus) Subscribe(evs ...Event) *Subscription {
 	return b.SubscribeBuffer(128, evs...)
 }
 
 // SubscribeBuffer registers a subscription to receive events with a custom channel buffer capacity.
+//
+// Executes in O(N) time where N is the number of event types, and allocates memory for the new subscription.
 func (b *Bus) SubscribeBuffer(bufferSize int, evs ...Event) *Subscription {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -220,9 +243,11 @@ func (b *Bus) SubscribeBuffer(bufferSize int, evs ...Event) *Subscription {
 	return sub
 }
 
-// SubscribeTyped registers a type-safe subscription on b for events of type E.
+// SubscribeTyped registers a type-safe subscription on the bus for events of type E.
+//
 // E can be a value or pointer type that satisfies [Event].
 // An optional custom bufferSize can be provided (default 128).
+// Executes in amortized O(1) time and allocates memory.
 func (b *Bus) SubscribeTyped[E any](bufSize ...int) *TypedSubscription[E] {
 	size := 128
 	if len(bufSize) > 0 && bufSize[0] > 0 {
@@ -282,6 +307,7 @@ func (b *Bus) SubscribeTyped[E any](bufSize ...int) *TypedSubscription[E] {
 // SubscribeAll registers a subscription to receive every event published on the [Bus].
 //
 // If the Bus is closed, SubscribeAll returns a subscription with an already closed channel.
+// Executes in amortized O(1) time and allocates memory.
 func (b *Bus) SubscribeAll() *Subscription {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -309,11 +335,7 @@ func (b *Bus) SubscribeAll() *Subscription {
 // Publish is strictly non-blocking. If a matched subscriber's channel buffer
 // is full, the event is silently dropped for that subscriber.
 // If the event is nil, or the Bus is closed, Publish returns immediately.
-//
-// # Complexity
-//
-// Time Complexity: O(N + M), where N is the number of active subscriptions registered
-// for the given event type plus the M number of "subscribe-all" subscriptions.
+// Executes in O(N + M) time where N is the number of active subscriptions registered for the given event type plus the M number of "subscribe-all" subscriptions, and is zero-allocation.
 func (b *Bus) Publish(event Event) {
 	if event == nil {
 		return
@@ -341,6 +363,7 @@ func (b *Bus) Publish(event Event) {
 //
 // It returns nil to satisfy standard Closer interfaces. Subsequent calls to Close
 // are safe, idempotent no-ops and return nil immediately.
+// Executes in O(S) time where S is the total number of subscriptions, and is zero-allocation.
 func (b *Bus) Close() error {
 	b.mu.Lock()
 	defer b.mu.Unlock()

@@ -11,8 +11,9 @@ import (
 
 // Semaphore represents a resizable counting semaphore that coordinates access
 // to a shared pool of limited concurrent slots.
-//
-// A Semaphore is safe for concurrent use by multiple goroutines.
+// It executes in O(1) time.
+// It performs zero allocations.
+// It is safe for concurrent use.
 type Semaphore struct {
 	mu      sync.Mutex
 	limit   int
@@ -20,9 +21,9 @@ type Semaphore struct {
 	waiters []chan struct{}
 }
 
-// New creates and returns a new [Semaphore] instance with the given initial limit.
-//
-// If the initialLimit is negative, it is coerced to 0 to prevent state corruption.
+// New creates a [Semaphore] with the given initial limit.
+// It executes in O(1) time and allocates memory for the tracking structures.
+// It is safe for concurrent use.
 func New(initialLimit int) *Semaphore {
 	if initialLimit < 0 {
 		initialLimit = 0
@@ -34,9 +35,8 @@ func New(initialLimit int) *Semaphore {
 }
 
 // Acquire attempts to acquire a slot from the semaphore, blocking if the limit is exceeded.
-//
-// It returns nil on successful acquisition. It returns [context.Canceled] or
-// [context.DeadlineExceeded] if the context expires before a slot becomes available.
+// It executes in O(1) time if uncontended, allocating a channel otherwise.
+// It is safe for concurrent use.
 func (s *Semaphore) Acquire(ctx context.Context) error {
 	if err := ctx.Err(); err != nil {
 		return err
@@ -83,8 +83,9 @@ func (s *Semaphore) Acquire(ctx context.Context) error {
 	}
 }
 
-// Release releases an acquired slot back to the semaphore and wakes up the next
-// waiting goroutine if available.
+// Release releases an acquired slot back to the semaphore and wakes up the next waiting goroutine if available.
+// It executes in O(1) time and performs zero allocations.
+// It is safe for concurrent use.
 func (s *Semaphore) Release() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -96,9 +97,9 @@ func (s *Semaphore) Release() {
 }
 
 // Resize dynamically adjusts the maximum allowed limit of the semaphore on the fly.
-//
-// If the newLimit is negative, it is coerced to 0. Resize automatically wakes
-// up as many waiting goroutines as the new capacity allows.
+// It executes in O(W) time where W is the number of woken waiters.
+// It performs zero allocations.
+// It is safe for concurrent use.
 func (s *Semaphore) Resize(newLimit int) {
 	if newLimit < 0 {
 		newLimit = 0

@@ -13,6 +13,7 @@ import (
 	"golang.org/x/sys/cpu"
 )
 
+// ErrInvalidEscape indicates that an invalid URL escape sequence was encountered during unescaping.
 var ErrInvalidEscape = errors.New("url: invalid URL escape sequence")
 
 var hasAVX2 = cpu.X86.HasAVX2
