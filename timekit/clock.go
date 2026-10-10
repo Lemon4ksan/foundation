@@ -30,26 +30,36 @@ func init() {
 }
 
 // CoarseNow returns the approximate current [time.Time] with millisecond resolution, retaining monotonic clock readings without triggering OS clock system calls.
+//
+//go:inline
 func CoarseNow() time.Time {
 	return *cachedTime.Load()
 }
 
 // CoarseUnix returns the approximate Unix timestamp in seconds.
+//
+//go:inline
 func CoarseUnix() int64 {
 	return cachedTime.Load().Unix()
 }
 
 // CoarseUnixMilli returns the approximate Unix timestamp in milliseconds.
+//
+//go:inline
 func CoarseUnixMilli() int64 {
 	return cachedTime.Load().UnixMilli()
 }
 
 // CoarseUnixNano returns the approximate Unix timestamp in nanoseconds.
+//
+//go:inline
 func CoarseUnixNano() int64 {
 	return cachedTime.Load().UnixNano()
 }
 
 // RangeSeq returns an iterator yielding timestamps from start up to end (inclusive if exact match), advancing by step on each iteration.
+//
+//go:inline
 func RangeSeq(start, end time.Time, step time.Duration) iter.Seq[time.Time] {
 	return func(yield func(time.Time) bool) {
 		if step <= 0 {

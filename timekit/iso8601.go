@@ -18,8 +18,19 @@ func AppendRFC3339(dst []byte, t time.Time) []byte {
 	year, month, day := t.Date()
 	hour, min, sec := t.Clock()
 
-	var buf [RFC3339UTCFormatLength]byte
+	n := len(dst)
+	if cap(dst)-n >= RFC3339UTCFormatLength {
+		dst = dst[:n+RFC3339UTCFormatLength]
+		formatRFC3339Into(dst[n:], year, month, day, hour, min, sec)
+		return dst
+	}
 
+	var buf [RFC3339UTCFormatLength]byte
+	formatRFC3339Into(buf[:], year, month, day, hour, min, sec)
+	return append(dst, buf[:]...)
+}
+
+func formatRFC3339Into(buf []byte, year int, month time.Month, day, hour, min, sec int) {
 	y := year
 	if y < 0 {
 		y = -y
@@ -61,12 +72,11 @@ func AppendRFC3339(dst []byte, t time.Time) []byte {
 
 	// "Z"
 	buf[19] = 'Z'
-
-	return append(dst, buf[:]...)
 }
 
 // FormatRFC3339 returns an RFC 3339 formatted UTC timestamp string.
 func FormatRFC3339(t time.Time) string {
-	b := AppendRFC3339(make([]byte, 0, RFC3339UTCFormatLength), t)
-	return string(b)
+	var buf [RFC3339UTCFormatLength]byte
+	_ = AppendRFC3339(buf[:0], t)
+	return string(buf[:])
 }

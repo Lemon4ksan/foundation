@@ -17,4 +17,20 @@ func TestValues_Allocations(t *testing.T) {
 	if allocs > 0 {
 		t.Errorf("expected 0 allocations, got %v", allocs)
 	}
+
+	var bi values.BoolInt = true
+	allocsBool := testing.AllocsPerRun(100, func() {
+		_, _ = bi.MarshalJSON()
+	})
+	if allocsBool > 0 {
+		t.Errorf("expected 0 allocations for BoolInt.MarshalJSON, got %v", allocsBool)
+	}
+
+	var i values.Int64String
+	allocsInt := testing.AllocsPerRun(100, func() {
+		_ = i.UnmarshalJSON(data)
+	})
+	if allocsInt > 0 {
+		t.Errorf("expected 0 allocations for Int64String.UnmarshalJSON, got %v", allocsInt)
+	}
 }

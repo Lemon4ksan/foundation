@@ -14,6 +14,7 @@ import (
 
 var hasAVX2 = cpu.X86.HasAVX2
 
+//go:inline
 func formatVector(u *UUID, dst *[36]byte) {
 	if hasAVX2 {
 		uuid_format_avx2(
@@ -26,6 +27,7 @@ func formatVector(u *UUID, dst *[36]byte) {
 	formatScalar(u, dst)
 }
 
+//go:inline
 func parseVector(s string) (UUID, bool) {
 	var u UUID
 	if len(s) == 36 && hasAVX2 {
