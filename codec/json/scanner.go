@@ -81,10 +81,16 @@ func scanString(data []byte, cursor int) (raw []byte, newCursor int, hasEscape b
 		}
 
 		if data[pos] == 'u' {
-			pos += 4 // \uXXXX has 4 hex digits
-			if pos >= n {
-				return nil, n, true, errUnexpectedEnd
+			for k := 1; k <= 4; k++ {
+				if pos+k >= n {
+					return nil, n, true, errUnexpectedEnd
+				}
+				c := data[pos+k]
+				if (c < '0' || c > '9') && (c < 'a' || c > 'f') && (c < 'A' || c > 'F') {
+					return nil, pos + k, true, errInvalidEscape
+				}
 			}
+			pos += 4
 		}
 
 		i = pos + 1

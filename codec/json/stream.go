@@ -7,7 +7,10 @@ package json
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
+	"reflect"
+	"unsafe"
 )
 
 // Decoder reads and decodes JSON values from an input stream.
@@ -62,14 +65,24 @@ func (d *Decoder) Decode(v any) error {
 		return io.EOF
 	}
 
-	err := UnmarshalWithConfig(d.buf[d.cursor:], v, d.cfg)
+	rv := reflect.ValueOf(v)
+	if rv.Kind() != reflect.Pointer || rv.IsNil() {
+		return fmt.Errorf("json: Unmarshal(non-pointer %s)", reflect.TypeOf(v).String())
+	}
+
+	elemType := rv.Type().Elem()
+	dec, err := getDecoder(elemType)
 	if err != nil {
 		return err
 	}
 
-	newCursor, _ := skipValue(d.buf, d.cursor)
-	d.cursor = newCursor
+	ptr := unsafe.Pointer(rv.Pointer())
+	newCursor, err := dec(d.buf, d.cursor, ptr, &d.cfg)
+	if err != nil {
+		return err
+	}
 
+	d.cursor = newCursor
 	return nil
 }
 

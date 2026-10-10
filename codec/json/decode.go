@@ -1298,23 +1298,13 @@ func decodeDynamicDepth(data []byte, cursor int, cfg *DecoderConfig, depth int) 
 		return nil, cursor, errInvalidChar
 
 	default:
-		numBytes, newCursor, isFloat, err := scanNumber(data, cursor)
+		numBytes, newCursor, _, err := scanNumber(data, cursor)
 		if err != nil {
 			return nil, cursor, err
 		}
 
 		if cfg != nil && cfg.UseNumber {
 			return Number(string(numBytes)), newCursor, nil
-		}
-
-		if isFloat {
-			f, err := parseFloat(numBytes)
-			return f, newCursor, err
-		}
-
-		n, err := parseInt(numBytes)
-		if err == nil {
-			return float64(n), newCursor, nil
 		}
 
 		f, err := parseFloat(numBytes)
