@@ -7,7 +7,7 @@ package deque
 import "iter"
 
 // Deque represents a generic double-ended circular queue backed by a contiguous slice.
-// The zero value of Deque is empty and ready to use.
+// The zero value is empty and ready to use.
 //
 // Read-only operations are safe for concurrent access across multiple goroutines.
 // Concurrent mutations or concurrent read/writes must be externally synchronized.
@@ -17,13 +17,13 @@ type Deque[T any] struct {
 	len  int // number of queued elements
 }
 
-// New creates and returns an empty Deque.
+// New creates and returns an empty Deque in O(1) time.
 // Backing storage is lazily allocated on the first push operation.
 func New[T any]() *Deque[T] {
 	return &Deque[T]{}
 }
 
-// NewWithCapacity creates and returns an empty Deque with preallocated backing capacity.
+// NewWithCapacity creates and returns an empty Deque with preallocated backing capacity in O(n) time.
 // Panics if capacity < 0.
 func NewWithCapacity[T any](capacity int) *Deque[T] {
 	if capacity < 0 {
@@ -38,7 +38,7 @@ func NewWithCapacity[T any](capacity int) *Deque[T] {
 	}
 }
 
-// Len returns the number of elements currently stored in the deque.
+// Len returns the number of elements currently stored in the deque in O(1) time.
 func (d *Deque[T]) Len() int {
 	if d == nil {
 		return 0

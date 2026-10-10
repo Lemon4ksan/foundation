@@ -14,12 +14,10 @@ import (
 )
 
 var (
-	// ErrClosed is returned by [Pool.Submit] when attempting to enqueue
-	// a task to a pool that has already been closed.
+	// ErrClosed is returned by [Pool.Submit] when attempting to enqueue a task to a pool that has already been closed.
 	ErrClosed = errors.New("worker pool is closed")
 
-	// ErrQueueFull is returned by [Pool.Submit] when the task queue reaches
-	// its configured capacity limit and cannot accept more tasks.
+	// ErrQueueFull is returned by [Pool.Submit] when the task queue reaches its configured capacity limit and cannot accept more tasks.
 	ErrQueueFull = errors.New("worker pool queue is full")
 )
 
@@ -31,12 +29,10 @@ type task[T any] struct {
 	future *Future[T]
 }
 
-// Config defines the scaling boundaries, queue limits, and idle timeouts
-// for a [Pool].
+// Config defines the scaling boundaries, queue limits, and idle timeouts for a [Pool].
 //
-// The zero value of Config is not directly usable. Call [Config.ResolveDefaults]
-// to apply safe fallback values, or instantiate the pool via [New], which
-// resolves defaults automatically.
+// The zero value is empty and not directly usable.
+// Call [Config.ResolveDefaults] to apply safe fallback values, or instantiate the pool via [New].
 type Config struct {
 	// MinWorkers is the baseline number of workers that always remain active.
 	MinWorkers int
@@ -79,8 +75,8 @@ func (c *Config) ResolveDefaults() {
 // It maintains a minimum number of idle workers, scales up to a maximum limit
 // when tasks accumulate in the queue, and automatically prunes idle workers
 // after a configured timeout.
-//
-// A Pool is safe for concurrent use by multiple goroutines.
+// Methods on [Pool] are safe for concurrent use.
+// It allocates memory for tracking workers and tasks.
 type Pool[T any] struct {
 	mu             sync.Mutex
 	cfg            Config
@@ -91,11 +87,11 @@ type Pool[T any] struct {
 	wg             sync.WaitGroup
 }
 
-// New creates, initializes, and starts a worker Pool with the provided configuration.
+// New creates, initializes, and starts a worker [Pool] with the provided configuration.
 //
-// It immediately spawns the configured minimum number of worker goroutines (MinWorkers).
-// New automatically resolves any zero or invalid configuration fields by calling
-// [Config.ResolveDefaults].
+// It immediately spawns the configured minimum number of worker goroutines.
+// It automatically resolves any zero or invalid configuration fields by calling [Config.ResolveDefaults].
+// It allocates memory for the pool and its internal channels.
 func New[T any](cfg Config) *Pool[T] {
 	cfg.ResolveDefaults()
 
@@ -235,10 +231,10 @@ func (p *Pool[T]) Submit(ctx context.Context, fn func(context.Context) (T, error
 }
 
 // ItemsSeq executes a sequence of tasks using the pool and yields results as they complete.
-// Iteration stops immediately if yield returns false or if ctx is cancelled.
 //
-// Concurrency Guarantees:
-// ItemsSeq is safe for concurrent use.
+// Iteration stops immediately if the yield function returns false or if the context is cancelled.
+// It is safe for concurrent use.
+// It allocates memory for internal tracking and channels.
 func (p *Pool[T]) ItemsSeq(
 	ctx context.Context,
 	tasks iter.Seq[func(context.Context) (T, error)],
@@ -302,7 +298,9 @@ func (p *Pool[T]) ItemsSeq(
 	}
 }
 
-// ItemsSeq submits tasks from the input iterator to pool and yields results as they complete.
+// ItemsSeq submits tasks from the input iterator to the provided [Pool] and yields results as they complete.
+//
+// It is safe for concurrent use.
 func ItemsSeq[T any](
 	ctx context.Context,
 	pool *Pool[T],
@@ -335,8 +333,10 @@ func (p *Pool[T]) Close() error {
 	return nil
 }
 
-// Future represents an asynchronous, deferred execution (a Promise pattern).
-// It is safe for concurrent use by multiple goroutines.
+// Future represents an asynchronous, deferred execution.
+//
+// The zero value is empty and not ready to use.
+// It is safe for concurrent use.
 type Future[T any] struct {
 	ch   chan struct{}
 	val  T
@@ -345,16 +345,17 @@ type Future[T any] struct {
 }
 
 // NewFuture returns a new, uncompleted [Future] instance.
+// It allocates memory for the channel.
 func NewFuture[T any]() *Future[T] {
 	return &Future[T]{
 		ch: make(chan struct{}),
 	}
 }
 
-// Get blocks the calling goroutine until the associated task completes execution,
-// or until the provided context is cancelled or expires.
+// Get blocks the calling goroutine until the associated task completes execution, or until the provided context is cancelled.
 //
-// If the context expires, Get returns the zero value of type T and the context error.
+// It returns the zero value and the context error if the context expires.
+// It is safe for concurrent use.
 func (f *Future[T]) Get(ctx context.Context) (T, error) {
 	select {
 	case <-ctx.Done():
@@ -365,10 +366,9 @@ func (f *Future[T]) Get(ctx context.Context) (T, error) {
 	}
 }
 
-// Set completes the [Future] by storing the computed value and error,
-// and unblocks any goroutines waiting on Get.
+// Set completes the [Future] by storing the computed value and error, and unblocks any goroutines waiting on Get.
 //
-// Set is thread-safe and idempotent; only the first call is executed.
+// It is safe for concurrent use.
 func (f *Future[T]) Set(val T, err error) {
 	f.once.Do(func() {
 		f.val = val

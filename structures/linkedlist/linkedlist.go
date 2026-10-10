@@ -6,7 +6,7 @@ package list
 
 import "iter"
 
-// Element is an element of a linked list.
+// Element represents an element of a linked list.
 type Element[T any] struct {
 	next, prev int
 	idx        int
@@ -38,7 +38,7 @@ func (e *Element[T]) List() *List[T] {
 }
 
 // List represents a doubly linked list.
-// The zero value for List is an empty list ready to use.
+// The zero value is empty and ready to use.
 type List[T any] struct {
 	chunks []*listChunk[T]
 	allocs int
@@ -47,7 +47,7 @@ type List[T any] struct {
 	len    int // current list length excluding sentinel
 }
 
-// Init initializes or clears list l.
+// Init initializes or clears the list in O(1) time.
 func (l *List[T]) Init() *List[T] {
 	if len(l.chunks) == 0 {
 		l.chunks = append(l.chunks, new(listChunk[T]))
@@ -68,7 +68,7 @@ func (l *List[T]) Init() *List[T] {
 	return l
 }
 
-// New returns an initialized list.
+// New returns an initialized list in O(1) time.
 func New[T any]() *List[T] { return new(List[T]).Init() }
 
 // NewCapacity returns an initialized list with preallocated capacity.
@@ -94,11 +94,10 @@ func NewCapacity[T any](capacity int) *List[T] {
 	return l
 }
 
-// Len returns the number of elements of list l.
-// The complexity is O(1).
+// Len returns the number of elements of the list in O(1) time.
 func (l *List[T]) Len() int { return l.len }
 
-// Front returns the first element of list l or nil if the list is empty.
+// Front returns the first element of the list in O(1) time, or nil if the list is empty.
 func (l *List[T]) Front() *Element[T] {
 	if l.len == 0 {
 		return nil
@@ -107,7 +106,7 @@ func (l *List[T]) Front() *Element[T] {
 	return l.elem(l.elem(l.root).next)
 }
 
-// Back returns the last element of list l or nil if the list is empty.
+// Back returns the last element of the list in O(1) time, or nil if the list is empty.
 func (l *List[T]) Back() *Element[T] {
 	if l.len == 0 {
 		return nil
@@ -218,13 +217,13 @@ func (l *List[T]) Remove(e *Element[T]) T {
 	return v
 }
 
-// PushFront inserts a new element e with value v at the front of list l and returns e.
+// PushFront inserts a new element with value v at the front of the list in O(1) time and returns the new element.
 func (l *List[T]) PushFront(v T) *Element[T] {
 	l.lazyInit()
 	return l.insertValue(v, l.root)
 }
 
-// PushBack inserts a new element e with value v at the back of list l and returns e.
+// PushBack inserts a new element with value v at the back of the list in O(1) time and returns the new element.
 func (l *List[T]) PushBack(v T) *Element[T] {
 	l.lazyInit()
 	return l.insertValue(v, l.elem(l.root).prev)

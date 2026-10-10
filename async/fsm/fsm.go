@@ -14,8 +14,7 @@ import (
 // TransitionCallback represents the function signature for transition hooks.
 //
 // It receives the execution context, source state, triggering event, and target state.
-// If a before-hook returns a non-nil error, the transition is cancelled,
-// subsequent hooks are skipped, and the state remains unchanged.
+// If a before-hook returns a non-nil error, the transition is cancelled, subsequent hooks are skipped, and the state remains unchanged.
 type TransitionCallback[State comparable, Event comparable] func(
 	ctx context.Context,
 	from State,
@@ -33,12 +32,13 @@ type TransitionRule[State comparable, Event comparable] struct {
 	To State
 }
 
-// Machine is a strictly typed, thread-safe finite state machine parameterized
-// over State and Event comparable types.
+// Machine is a strictly typed, thread-safe finite state machine parameterized over State and Event comparable types.
 //
-// It enforces transactional transition safety using a dual-mutex coordination model,
-// separating transition serialization from fast, concurrent state reads.
-// New instances of Machine must be created using the [New] constructor function.
+// It enforces transactional transition safety using a dual-mutex coordination model, separating transition serialization from fast, concurrent state reads.
+// New instances of [Machine] must be created using the [New] constructor function.
+// The zero value is empty and not ready to use.
+// Methods on [Machine] are safe for concurrent use.
+// It allocates memory for rules and hooks.
 type Machine[State, Event comparable] struct {
 	transMu     sync.Mutex
 	mu          sync.RWMutex
@@ -49,6 +49,8 @@ type Machine[State, Event comparable] struct {
 }
 
 // New instantiates and returns a new finite state machine with the given initial state.
+//
+// It allocates memory for the internal maps tracking rules and hooks.
 func New[State, Event comparable](initial State) *Machine[State, Event] {
 	return &Machine[State, Event]{
 		current:     initial,
@@ -60,8 +62,9 @@ func New[State, Event comparable](initial State) *Machine[State, Event] {
 
 // AddRules registers one or more valid transition rules in the state machine.
 //
-// If a duplicate rule for the same (From, Event) pair is registered, it is
-// overwritten by the last entry. AddRules is safe for concurrent use.
+// If a duplicate rule for the same (From, Event) pair is registered, it is overwritten by the last entry.
+// It is safe for concurrent use.
+// It may allocate memory to store new rules.
 func (f *Machine[State, Event]) AddRules(rules ...TransitionRule[State, Event]) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -77,7 +80,7 @@ func (f *Machine[State, Event]) AddRules(rules ...TransitionRule[State, Event]) 
 
 // CurrentState returns the current state of the machine.
 //
-// It is non-blocking and safe to call concurrently while transitions are in progress.
+// It is non-blocking, operates in O(1) time, and is safe for concurrent use.
 func (f *Machine[State, Event]) CurrentState() State {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
@@ -87,8 +90,7 @@ func (f *Machine[State, Event]) CurrentState() State {
 
 // ForceSet bypasses the transition rules and sets the current state directly.
 //
-// This is intended primarily for test setup where placing the machine into a specific
-// precondition state is required. Using ForceSet in production code is strongly discouraged.
+// It operates in O(1) time and is safe for concurrent use.
 func (f *Machine[State, Event]) ForceSet(state State) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -96,11 +98,10 @@ func (f *Machine[State, Event]) ForceSet(state State) {
 	f.current = state
 }
 
-// OnBefore registers a callback that is invoked before a transition
-// for the given event is applied.
+// OnBefore registers a callback that is invoked before a transition for the given event is applied.
 //
-// If any before-callback returns an error, the transition is cancelled,
-// subsequent callbacks are skipped, and the state remains unchanged.
+// If any before-callback returns an error, the transition is cancelled, subsequent callbacks are skipped, and the state remains unchanged.
+// It is safe for concurrent use and allocates memory for appending the hook.
 func (f *Machine[State, Event]) OnBefore(event Event, cb TransitionCallback[State, Event]) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -108,11 +109,10 @@ func (f *Machine[State, Event]) OnBefore(event Event, cb TransitionCallback[Stat
 	f.beforeHooks[event] = append(f.beforeHooks[event], cb)
 }
 
-// OnAfter registers a callback that is invoked after a transition
-// for the given event has been applied.
+// OnAfter registers a callback that is invoked after a transition for the given event has been applied.
 //
-// Errors returned by after-hooks are ignored since the state change has already
-// been committed.
+// Errors returned by after-hooks are ignored since the state change has already been committed.
+// It is safe for concurrent use and allocates memory for appending the hook.
 func (f *Machine[State, Event]) OnAfter(event Event, cb TransitionCallback[State, Event]) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -120,16 +120,10 @@ func (f *Machine[State, Event]) OnAfter(event Event, cb TransitionCallback[State
 	f.afterHooks[event] = append(f.afterHooks[event], cb)
 }
 
-// Validate checks whether a transition from the current state on the
-// given event is defined in the registered rules.
+// Validate checks whether a transition from the current state on the given event is defined in the registered rules.
 //
-// It returns the target state and true if a rule exists, or the zero value
-// of State and false if no such transition is defined. Validate is safe
-// for concurrent use and does not mutate the state machine.
-//
-// # Complexity
-//
-// Time Complexity: O(1)
+// It returns the target state and true if a rule exists, or the zero value of State and false if no such transition is defined.
+// It operates in O(1) time and is safe for concurrent use.
 func (f *Machine[State, Event]) Validate(event Event) (State, bool) {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
@@ -145,18 +139,12 @@ func (f *Machine[State, Event]) Validate(event Event) (State, bool) {
 	return to, ok
 }
 
-// Transition atomically moves the machine from its current state to the next
-// state determined by the given event.
+// Transition atomically moves the machine from its current state to the next state determined by the given event.
 //
-// Transition is fully thread-safe and serialized. If a transition is already
-// in progress, subsequent calls to Transition will block until the active
-// transition completes, protecting before-hooks from executing on an outdated
-// state context.
-//
-// # Complexity
-//
-// Time Complexity: O(N+1) for transition validation, where N is the
-// number of registered before/after hooks for the given event.
+// It blocks if a transition is already in progress.
+// It returns an error if no valid transition is defined or if a before-hook fails.
+// It operates in O(N) time, where N is the number of registered hooks for the event.
+// It is safe for concurrent use and allocates memory to snapshot the hooks.
 func (f *Machine[State, Event]) Transition(ctx context.Context, event Event) error {
 	f.transMu.Lock()
 	defer f.transMu.Unlock()
@@ -213,9 +201,9 @@ func (f *Machine[State, Event]) Transition(ctx context.Context, event Event) err
 
 // ToDOT exports the state machine's transition graph as a Graphviz DOT representation.
 //
-// The resulting string can be rendered using the `dot` command-line utility
-// (e.g., `dot -Tsvg`) or any online Graphviz viewer to visualize the state diagram.
-// It is non-blocking and safe to call concurrently while transitions are in progress.
+// It is safe for concurrent use.
+// It operates in O(R) time, where R is the total number of transition rules.
+// It allocates memory for building the output string.
 func (f *Machine[State, Event]) ToDOT() string {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
@@ -240,6 +228,9 @@ func (f *Machine[State, Event]) ToDOT() string {
 }
 
 // String returns a human-readable representation of the machine for debugging.
+//
+// It operates in O(R) time, where R is the number of registered states.
+// It allocates memory for the returned string and is safe for concurrent use.
 func (f *Machine[State, Event]) String() string {
 	f.mu.RLock()
 	defer f.mu.RUnlock()

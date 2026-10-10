@@ -7,29 +7,32 @@ package ringbuffer
 import "iter"
 
 // Buffer is a growable FIFO queue that reuses its backing storage.
+// The zero value is empty and ready to use.
+//
+// Read-only operations are safe for concurrent use; mutations require external synchronization.
 // The slice length stores the queue length, so wrapped positions are accessed by reslicing to capacity.
 type Buffer[T any] struct {
 	ring    []T // len is the number of queued elements; cap is the storage size
 	headPos int // index of the first element in the full backing storage
 }
 
-// Init preallocates a buffer with a certain size.
+// Init preallocates a buffer with the specified capacity size in O(n) time.
 func (r *Buffer[T]) Init(size int) {
 	r.ring = make([]T, 0, size)
 	r.headPos = 0
 }
 
-// Len returns the number of elements in the ring buffer.
+// Len returns the number of elements in the ring buffer in O(1) time.
 func (r *Buffer[T]) Len() int {
 	return len(r.ring)
 }
 
-// Empty says if the ring buffer is empty.
+// Empty reports whether the ring buffer contains zero elements in O(1) time.
 func (r *Buffer[T]) Empty() bool {
 	return len(r.ring) == 0
 }
 
-// PushBack adds a new element.
+// PushBack appends a new element to the back of the queue in amortized O(1) time.
 // If the ring buffer is full, its capacity is increased first.
 func (r *Buffer[T]) PushBack(t T) {
 	if len(r.ring) == cap(r.ring) {
@@ -49,9 +52,8 @@ func (r *Buffer[T]) PushBack(t T) {
 	r.ring[:cap(r.ring)][tailPos] = t
 }
 
-// PopFront returns the next element.
-// It must not be called when the buffer is empty, that means that
-// callers might need to check if there are elements in the buffer first.
+// PopFront removes and returns the next element from the front of the queue in O(1) time.
+// Panics if the buffer is empty.
 func (r *Buffer[T]) PopFront() T {
 	if r.Empty() {
 		panic("ringbuffer: pop from an empty queue")
@@ -71,9 +73,8 @@ func (r *Buffer[T]) PopFront() T {
 	return t
 }
 
-// PeekFront returns the next element.
-// It must not be called when the buffer is empty, that means that
-// callers might need to check if there are elements in the buffer first.
+// PeekFront returns the next element from the front of the queue without removing it in O(1) time.
+// Panics if the buffer is empty.
 func (r *Buffer[T]) PeekFront() T {
 	if r.Empty() {
 		panic("ringbuffer: peek from an empty queue")
