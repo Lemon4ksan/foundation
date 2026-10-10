@@ -26,11 +26,19 @@ type Peeker interface {
 
 // Peek reads a number in the QUIC varint format without consuming bytes.
 func Peek(p Peeker) (uint64, error) {
+	if p == nil {
+		return 0, errors.New("varint: nil peeker")
+	}
+
 	var b [8]byte
 
 	// first peek 1 byte to determine the varint length
-	if _, err := p.Peek(b[:1]); err != nil {
+	n, err := p.Peek(b[:1])
+	if err != nil {
 		return 0, err
+	}
+	if n < 1 {
+		return 0, io.ErrUnexpectedEOF
 	}
 
 	l := 1 << (b[0] >> 6) // 1, 2, 4, or 8 bytes
@@ -38,8 +46,12 @@ func Peek(p Peeker) (uint64, error) {
 		return uint64(b[0] & 0b00111111), nil
 	}
 
-	if _, err := p.Peek(b[:l]); err != nil {
+	n, err = p.Peek(b[:l])
+	if err != nil {
 		return 0, err
+	}
+	if n < l {
+		return 0, io.ErrUnexpectedEOF
 	}
 
 	val, _, err := Parse(b[:l])

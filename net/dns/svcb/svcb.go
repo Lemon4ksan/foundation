@@ -380,6 +380,9 @@ func (r *Record) MarshalRDATA() ([]byte, error) {
 
 	for _, k := range keys {
 		val := r.Params[k]
+		if len(val) > 65535 {
+			return nil, fmt.Errorf("svcb: param %v exceeds maximum length 65535: %w", k, ErrMalformedParam)
+		}
 
 		var hdr [4]byte
 		binary.BigEndian.PutUint16(hdr[0:2], uint16(k))
@@ -469,7 +472,7 @@ func EncodeIPv6Hints(ips []net.IP) []byte {
 }
 
 func parseDomainName(data []byte, offset int) (string, int, error) {
-	if offset >= len(data) {
+	if offset < 0 || offset >= len(data) {
 		return "", offset, ErrTruncatedRDATA
 	}
 
@@ -596,7 +599,7 @@ func ParseResponseRecords(dnsMsg []byte, expectedType uint16) ([]*Record, error)
 func skipName(data []byte, offset int) (int, error) {
 	curr := offset
 	for {
-		if curr >= len(data) {
+		if curr < 0 || curr >= len(data) {
 			return 0, ErrTruncatedRDATA
 		}
 
