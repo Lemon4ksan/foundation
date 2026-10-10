@@ -818,3 +818,69 @@ func TestMachine_Constructor(t *testing.T) {
 		t.Fatalf("expected initial state 'init', got %q", got)
 	}
 }
+
+func TestRepro_FSM_StateMutationDuringBeforeHookClobbered(t *testing.T) {
+	fsm := New[testState, testEvent](stateA)
+	fsm.AddRules(
+		TransitionRule[testState, testEvent]{From: stateA, Event: eventGo, To: stateB},
+	)
+
+	// A before-hook or concurrent caller force-sets the state to stateC
+	fsm.OnBefore(eventGo, func(_ context.Context, _ testState, _ testEvent, _ testState) error {
+		fsm.ForceSet(stateC)
+		return nil
+	})
+
+	err := fsm.Transition(context.Background(), eventGo)
+	if err == nil {
+		t.Fatal("expected transition to fail when state was mutated underneath it")
+	}
+
+	// State must remain stateC, not clobbered to stateB!
+	if got := fsm.CurrentState(); got != stateC {
+		t.Fatalf("expected state to remain %v after ForceSet, but got %v", stateC, got)
+	}
+}
+
+func TestRepro_FSM_DirectContextCancellation(t *testing.T) {
+	fsm := New[testState, testEvent](stateA)
+	fsm.AddRules(
+		TransitionRule[testState, testEvent]{From: stateA, Event: eventGo, To: stateB},
+	)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // canceled before call without any hooks
+
+	err := fsm.Transition(ctx, eventGo)
+	if err == nil {
+		t.Fatal("expected error from canceled context")
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context.Canceled, got %v", err)
+	}
+	if got := fsm.CurrentState(); got != stateA {
+		t.Fatalf("expected state to remain %v, got %v", stateA, got)
+	}
+}
+
+func FuzzFSM(f *testing.F) {
+	f.Add([]byte{0, 1, 0, 2, 1, 0})
+	f.Add([]byte{})
+	f.Add([]byte{1, 2, 3, 4, 5})
+
+	f.Fuzz(func(t *testing.T, events []byte) {
+		m := New[int, byte](0)
+		m.AddRules(
+			TransitionRule[int, byte]{From: 0, Event: 0, To: 1},
+			TransitionRule[int, byte]{From: 1, Event: 1, To: 2},
+			TransitionRule[int, byte]{From: 2, Event: 2, To: 0},
+		)
+
+		for _, ev := range events {
+			// Either succeeds or returns an error, but must never panic
+			_ = m.Transition(context.Background(), ev)
+		}
+	})
+}
+
+

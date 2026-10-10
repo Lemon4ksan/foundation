@@ -51,3 +51,38 @@ func TestSecret_Allocations(t *testing.T) {
 		t.Errorf("expected 0 allocations, got %v", allocs)
 	}
 }
+
+func TestRepro_SecretMemoryWipeVerification(t *testing.T) {
+	buf := []byte("highly-sensitive-signing-key")
+	sec := secret.New(buf)
+
+	assert.Equal(t, "highly-sensitive-signing-key", string(sec.Value()))
+
+	sec.Wipe()
+
+	// Verify the wrapped value was zeroed
+	assert.Equal(t, 0, len(sec.Value()))
+
+	// Verify the underlying memory was actively wiped with zeroes
+	for i, b := range buf {
+		if b != 0 {
+			t.Fatalf("byte at index %d was not wiped: %v", i, b)
+		}
+	}
+
+	// String wipe
+	strSec := secret.New("secret-string")
+	strSec.Wipe()
+	assert.Equal(t, "", strSec.Value())
+
+	// Zero allocations test
+	s := secret.New([]byte("my-alloc-test-secret"))
+	allocs := testing.AllocsPerRun(100, func() {
+		s.Wipe()
+	})
+	if allocs > 0 {
+		t.Errorf("expected 0 allocations for Wipe, got %v", allocs)
+	}
+}
+
+

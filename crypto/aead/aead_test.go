@@ -684,3 +684,92 @@ func TestStream_Adversarial_Concurrency(t *testing.T) {
 
 	wg.Wait()
 }
+
+func TestRepro_AEAD_TamperedTagAndTruncation(t *testing.T) {
+	key := make([]byte, aead.KeySize)
+	_, _ = io.ReadFull(rand.Reader, key)
+
+	for _, algo := range []aead.Algorithm{aead.AES256GCM, aead.ChaCha20Poly1305, aead.XChaCha20Poly1305} {
+		t.Run(algo.String(), func(t *testing.T) {
+			c, err := aead.New(algo, key)
+			require.NoError(t, err)
+
+			nonce := make([]byte, c.NonceSize())
+			_, _ = io.ReadFull(rand.Reader, nonce)
+
+			plaintext := []byte("confidential-payload-message")
+			aad := []byte("header-metadata")
+
+			ct, err := aead.Seal(algo, key, nonce, plaintext, aad)
+			require.NoError(t, err)
+
+			// 1. Truncate ciphertext completely (shorter than tag overhead)
+			for l := 0; l < c.Overhead(); l++ {
+				_, err := aead.Open(algo, key, nonce, ct[:l], aad)
+				assert.Error(t, err)
+			}
+
+			// 2. Tamper the authentication tag (last byte)
+			tamperedTag := append([]byte(nil), ct...)
+			tamperedTag[len(tamperedTag)-1] ^= 0x01
+			_, err = aead.Open(algo, key, nonce, tamperedTag, aad)
+			assert.Error(t, err)
+
+			// 3. Tamper the ciphertext body (first byte)
+			tamperedBody := append([]byte(nil), ct...)
+			tamperedBody[0] ^= 0x01
+			_, err = aead.Open(algo, key, nonce, tamperedBody, aad)
+			assert.Error(t, err)
+
+			// 4. Tamper nonce
+			wrongNonce := append([]byte(nil), nonce...)
+			wrongNonce[0] ^= 0x01
+			_, err = aead.Open(algo, key, wrongNonce, ct, aad)
+			assert.Error(t, err)
+		})
+	}
+}
+
+func FuzzAEAD_SealOpenTamper(f *testing.F) {
+	key := make([]byte, aead.KeySize)
+	_, _ = io.ReadFull(rand.Reader, key)
+
+	f.Add([]byte("hello world"), []byte("aad"), byte(0))
+	f.Add([]byte(""), []byte(""), byte(1))
+	f.Add(bytes.Repeat([]byte("X"), 200), []byte("metadata"), byte(42))
+
+	f.Fuzz(func(t *testing.T, pt, aad []byte, tamperByte byte) {
+		algo := aead.AES256GCM
+		c, err := aead.New(algo, key)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		nonce := make([]byte, c.NonceSize())
+		ct, err := aead.Seal(algo, key, nonce, pt, aad)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Valid decrypt
+		dec, err := aead.Open(algo, key, nonce, ct, aad)
+		if err != nil {
+			t.Fatalf("Open failed: %v", err)
+		}
+		if !bytes.Equal(dec, pt) {
+			t.Fatal("decrypted mismatch")
+		}
+
+		// Tamper
+		if len(ct) > 0 {
+			tampered := append([]byte(nil), ct...)
+			idx := int(tamperByte) % len(tampered)
+			tampered[idx] ^= 0xAA // guaranteed non-zero mutation
+			_, err := aead.Open(algo, key, nonce, tampered, aad)
+			if err == nil {
+				t.Fatalf("expected error on tampered ciphertext at index %d", idx)
+			}
+		}
+	})
+}
+

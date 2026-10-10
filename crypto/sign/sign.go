@@ -84,15 +84,29 @@ func Verify(pubKey PublicKey, message, signature []byte) bool {
 }
 
 // FingerprintSHA256 returns the standard OpenSSH-compatible SHA-256 fingerprint
-// of the public key (e.g. "SHA256:47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU").
+// of the public key (e.g. "SHA256:...").
 func FingerprintSHA256(pubKey PublicKey) string {
-	h := sha256.Sum256(pubKey)
-	b64 := base64.RawStdEncoding.EncodeToString(h[:])
-	return "SHA256:" + b64
+	if len(pubKey) != PublicKeySize {
+		return ""
+	}
+	// OpenSSH wire format for Ed25519 public key:
+	// string "ssh-ed25519" (4-byte length prefix 11 + 11 bytes)
+	// string pubKey bytes (4-byte length prefix 32 + 32 bytes)
+	var wire [51]byte
+	wire[3] = 11
+	copy(wire[4:15], "ssh-ed25519")
+	wire[18] = 32
+	copy(wire[19:], pubKey)
+
+	h := sha256.Sum256(wire[:])
+	return "SHA256:" + base64.RawStdEncoding.EncodeToString(h[:])
 }
 
 // FingerprintHex returns the colon-delimited lowercase hex SHA-256 fingerprint.
 func FingerprintHex(pubKey PublicKey) string {
+	if len(pubKey) != PublicKeySize {
+		return ""
+	}
 	h := sha256.Sum256(pubKey)
 	parts := make([]string, len(h))
 	for i, b := range h {
@@ -117,7 +131,7 @@ func EncodePrivateKeyPEM(privKey PrivateKey) ([]byte, error) {
 // DecodePrivateKeyPEM deserializes an Ed25519 private key from PKCS#8 PEM format.
 func DecodePrivateKeyPEM(pemData []byte) (PrivateKey, error) {
 	block, _ := pem.Decode(pemData)
-	if block == nil {
+	if block == nil || block.Type != "PRIVATE KEY" {
 		return nil, ErrInvalidPEM
 	}
 
@@ -127,7 +141,7 @@ func DecodePrivateKeyPEM(pemData []byte) (PrivateKey, error) {
 	}
 
 	privKey, ok := parsed.(ed25519.PrivateKey)
-	if !ok {
+	if !ok || len(privKey) != PrivateKeySize {
 		return nil, errors.New("sign: key is not an Ed25519 private key")
 	}
 
@@ -150,7 +164,7 @@ func EncodePublicKeyPEM(pubKey PublicKey) ([]byte, error) {
 // DecodePublicKeyPEM deserializes an Ed25519 public key from PKIX PEM format.
 func DecodePublicKeyPEM(pemData []byte) (PublicKey, error) {
 	block, _ := pem.Decode(pemData)
-	if block == nil {
+	if block == nil || block.Type != "PUBLIC KEY" {
 		return nil, ErrInvalidPEM
 	}
 
@@ -160,7 +174,7 @@ func DecodePublicKeyPEM(pemData []byte) (PublicKey, error) {
 	}
 
 	pubKey, ok := parsed.(ed25519.PublicKey)
-	if !ok {
+	if !ok || len(pubKey) != PublicKeySize {
 		return nil, errors.New("sign: key is not an Ed25519 public key")
 	}
 
@@ -169,6 +183,9 @@ func DecodePublicKeyPEM(pemData []byte) (PublicKey, error) {
 
 // PublicKeyHex returns the hexadecimal string representation of the public key.
 func PublicKeyHex(pubKey PublicKey) string {
+	if len(pubKey) != PublicKeySize {
+		return ""
+	}
 	return hex.EncodeToString(pubKey)
 }
 

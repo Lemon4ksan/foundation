@@ -207,3 +207,37 @@ func TestStream_Chunks_Errors(t *testing.T) {
 		assert.True(t, hadError)
 	})
 }
+
+type mockShortNonceAEAD struct{}
+
+func (m mockShortNonceAEAD) NonceSize() int { return 4 }
+func (m mockShortNonceAEAD) Overhead() int  { return 16 }
+func (m mockShortNonceAEAD) Seal(dst, nonce, plaintext, additionalData []byte) []byte {
+	return append(dst, plaintext...)
+}
+func (m mockShortNonceAEAD) Open(dst, nonce, ciphertext, additionalData []byte) ([]byte, error) {
+	return append(dst, ciphertext...), nil
+}
+
+func TestRepro_StreamAEAD_ShortNoncePanic(t *testing.T) {
+	mockCipher := mockShortNonceAEAD{}
+	nonce4 := []byte{1, 2, 3, 4}
+
+	// Must return ErrInvalidNonceLength instead of accepting short nonces and panicking
+	_, err := aead.NewStreamWriter(io.Discard, mockCipher, nonce4, 1024, nil)
+	if err == nil {
+		t.Fatal("expected error for nonce size < 8")
+	}
+	if !errors.Is(err, aead.ErrInvalidNonceLength) {
+		t.Fatalf("expected ErrInvalidNonceLength, got %v", err)
+	}
+
+	_, err = aead.NewStreamReader(bytes.NewReader(nil), mockCipher, nonce4, nil)
+	if err == nil {
+		t.Fatal("expected error for nonce size < 8")
+	}
+	if !errors.Is(err, aead.ErrInvalidNonceLength) {
+		t.Fatalf("expected ErrInvalidNonceLength, got %v", err)
+	}
+}
+

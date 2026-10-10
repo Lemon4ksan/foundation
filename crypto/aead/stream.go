@@ -82,8 +82,8 @@ func NewStreamWriter(
 	if aead == nil {
 		return nil, errors.New("aead: nil cipher provided")
 	}
-	if len(nonceBase) != aead.NonceSize() {
-		return nil, fmt.Errorf("%w: expected %d bytes, got %d", ErrInvalidNonceLength, aead.NonceSize(), len(nonceBase))
+	if len(nonceBase) != aead.NonceSize() || len(nonceBase) < 8 {
+		return nil, fmt.Errorf("%w: expected %d bytes (minimum 8), got %d", ErrInvalidNonceLength, aead.NonceSize(), len(nonceBase))
 	}
 	switch {
 	case chunkSize <= 0:
@@ -118,13 +118,21 @@ func (sw *StreamWriter) Write(p []byte) (int, error) {
 
 	// We only flush chunks when len(sw.buf) > sw.chunkSize so that the last remaining bytes
 	// can be emitted with flagLastChunk when Close() is called.
-	for len(sw.buf) > sw.chunkSize {
-		chunk := sw.buf[:sw.chunkSize]
+	offset := 0
+	for len(sw.buf)-offset > sw.chunkSize {
+		chunk := sw.buf[offset : offset+sw.chunkSize]
 		if err := sw.writeChunk(chunk, 0x00); err != nil {
+			if offset > 0 {
+				copy(sw.buf, sw.buf[offset:])
+				sw.buf = sw.buf[:len(sw.buf)-offset]
+			}
 			return 0, err
 		}
-		// Shift buffer
-		sw.buf = append(sw.buf[:0], sw.buf[sw.chunkSize:]...)
+		offset += sw.chunkSize
+	}
+	if offset > 0 {
+		copy(sw.buf, sw.buf[offset:])
+		sw.buf = sw.buf[:len(sw.buf)-offset]
 	}
 
 	return written, nil
@@ -150,6 +158,10 @@ func (sw *StreamWriter) Close() error {
 }
 
 func (sw *StreamWriter) writeChunk(plaintext []byte, flag uint8) error {
+	if sw.chunkIdx == ^uint64(0) {
+		return errors.New("aead: maximum chunk index reached; nonce exhaustion")
+	}
+
 	nonce := deriveChunkNonce(sw.nonceBase, sw.chunkIdx)
 	aad := deriveChunkAAD(sw.streamAAD, sw.chunkIdx, flag)
 
@@ -187,8 +199,8 @@ func NewStreamReader(r io.Reader, aead cipher.AEAD, nonceBase, streamAAD []byte)
 	if aead == nil {
 		return nil, errors.New("aead: nil cipher provided")
 	}
-	if len(nonceBase) != aead.NonceSize() {
-		return nil, fmt.Errorf("%w: expected %d bytes, got %d", ErrInvalidNonceLength, aead.NonceSize(), len(nonceBase))
+	if len(nonceBase) != aead.NonceSize() || len(nonceBase) < 8 {
+		return nil, fmt.Errorf("%w: expected %d bytes (minimum 8), got %d", ErrInvalidNonceLength, aead.NonceSize(), len(nonceBase))
 	}
 
 	return &StreamReader{
@@ -306,7 +318,11 @@ func (sr *StreamReader) Chunks() iter.Seq2[[]byte, error] {
 
 			ctBuf := make([]byte, ctLen)
 			if _, err := io.ReadFull(sr.r, ctBuf); err != nil {
-				yield(nil, ErrStreamTruncated)
+				if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+					yield(nil, ErrStreamTruncated)
+				} else {
+					yield(nil, fmt.Errorf("aead: read chunk %d ciphertext: %w", sr.chunkIdx, err))
+				}
 				return
 			}
 
@@ -355,8 +371,8 @@ func EncryptChunks(
 	if aead == nil {
 		return nil, errors.New("aead: nil cipher provided")
 	}
-	if len(nonceBase) != aead.NonceSize() {
-		return nil, fmt.Errorf("%w: expected %d bytes, got %d", ErrInvalidNonceLength, aead.NonceSize(), len(nonceBase))
+	if len(nonceBase) != aead.NonceSize() || len(nonceBase) < 8 {
+		return nil, fmt.Errorf("%w: expected %d bytes (minimum 8), got %d", ErrInvalidNonceLength, aead.NonceSize(), len(nonceBase))
 	}
 	switch {
 	case chunkSize <= 0:
