@@ -737,15 +737,39 @@ func compileStructDecoder(t reflect.Type) (decodeFunc, error) {
 			}
 			cursor = newCursor
 
+			var field structFieldDecoder
+			var exists bool
 			var key string
-			if hasEscape {
+
+			if !hasEscape {
+				field, exists = fieldMap[string(keyRaw)]
+				if !exists {
+					if len(keyRaw) <= 64 {
+						var lowerBuf [64]byte
+						for i := 0; i < len(keyRaw); i++ {
+							c := keyRaw[i]
+							if c >= 'A' && c <= 'Z' {
+								c += 32
+							}
+							lowerBuf[i] = c
+						}
+						field, exists = fieldMap[string(lowerBuf[:len(keyRaw)])]
+					}
+					if !exists {
+						key = string(keyRaw)
+						field, exists = fieldMap[strings.ToLower(key)]
+					}
+				}
+			} else {
 				unescaped, err := unescapeString(make([]byte, 0, len(keyRaw)), keyRaw)
 				if err != nil {
 					return cursor, err
 				}
 				key = string(decodeToValidUTF8(unescaped))
-			} else {
-				key = string(decodeToValidUTF8(keyRaw))
+				field, exists = fieldMap[key]
+				if !exists {
+					field, exists = fieldMap[strings.ToLower(key)]
+				}
 			}
 
 			cursor = skipWhitespace(data, cursor)
@@ -757,10 +781,6 @@ func compileStructDecoder(t reflect.Type) (decodeFunc, error) {
 			}
 			cursor++
 
-			field, exists := fieldMap[key]
-			if !exists {
-				field, exists = fieldMap[strings.ToLower(key)]
-			}
 			if exists {
 				fieldPtr := unsafe.Add(p, field.offset)
 				if field.quoted {
@@ -790,6 +810,9 @@ func compileStructDecoder(t reflect.Type) (decodeFunc, error) {
 				}
 			} else {
 				if cfg != nil && cfg.DisallowUnknownFields {
+					if key == "" {
+						key = string(keyRaw)
+					}
 					return cursor, fmt.Errorf("json: unknown field %q", key)
 				}
 
@@ -881,16 +904,15 @@ func compileSliceDecoder(t reflect.Type) (decodeFunc, error) {
 			}
 			first = false
 
-			elemVal := reflect.New(elemType)
-			elemPtr := unsafe.Pointer(elemVal.Pointer())
+			curLen := sliceVal.Len()
+			sliceVal.Set(reflect.Append(sliceVal, reflect.Zero(elemType)))
+			elemPtr := unsafe.Pointer(sliceVal.Index(curLen).Addr().Pointer())
 
 			newCursor, err := elemDec(data, cursor, elemPtr, cfg)
 			if err != nil {
 				return cursor, err
 			}
 			cursor = newCursor
-
-			sliceVal.Set(reflect.Append(sliceVal, elemVal.Elem()))
 		}
 	}, nil
 }

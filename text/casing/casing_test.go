@@ -81,3 +81,39 @@ func TestCasing_Unicode(t *testing.T) {
 	assert.Equal(t, "мой-тест", casing.ToKebab("МойТест"))
 }
 
+func BenchmarkToSnake(b *testing.B) {
+	input := "PascalCaseLongIdentifierExampleName"
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		_ = casing.ToSnake(input)
+	}
+}
+
+func BenchmarkToCamel(b *testing.B) {
+	input := "pascal_case_long_identifier_example_name"
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		_ = casing.ToCamel(input)
+	}
+}
+
+func BenchmarkToPascal(b *testing.B) {
+	input := "pascal_case_long_identifier_example_name"
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		_ = casing.ToPascal(input)
+	}
+}
+
+func BenchmarkSplitWords(b *testing.B) {
+	input := "PascalCaseLongIdentifierExampleName"
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		_ = casing.SplitWords(input)
+	}
+}
+
