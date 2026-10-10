@@ -64,7 +64,9 @@ func (l *Adaptive) Acquire(ctx context.Context) error {
 		found := false
 		for i, w := range l.waitChs {
 			if w == ch {
-				l.waitChs = append(l.waitChs[:i], l.waitChs[i+1:]...)
+				copy(l.waitChs[i:], l.waitChs[i+1:])
+				l.waitChs[len(l.waitChs)-1] = nil
+				l.waitChs = l.waitChs[:len(l.waitChs)-1]
 				found = true
 				break
 			}
@@ -124,7 +126,9 @@ func (l *Adaptive) Release(rtt time.Duration) {
 	slots := int(l.limit) - l.active
 	for slots > 0 && len(l.waitChs) > 0 {
 		ch := l.waitChs[0]
-		l.waitChs = l.waitChs[1:]
+		copy(l.waitChs, l.waitChs[1:])
+		l.waitChs[len(l.waitChs)-1] = nil
+		l.waitChs = l.waitChs[:len(l.waitChs)-1]
 
 		close(ch)
 

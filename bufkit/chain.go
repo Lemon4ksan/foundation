@@ -30,7 +30,7 @@ func acquireChunk() []byte {
 }
 
 func releaseChunk(b []byte) {
-	if cap(b) == DefaultChunkSize && len(b) > 0 {
+	if cap(b) == DefaultChunkSize {
 		c := (*chunk)(unsafe.Pointer(unsafe.SliceData(b)))
 		chunkPool.Put(c)
 	}
@@ -137,6 +137,16 @@ func (c *Chain) WriteByte(b byte) error {
 	return nil
 }
 
+// popFrontChunk recycles the leading chunk, shifts remaining chunks left to preserve
+// backing slice capacity, clears the vacated slot for GC, and resets headIdx to 0.
+func (c *Chain) popFrontChunk() {
+	releaseChunk(c.chunks[0])
+	copy(c.chunks, c.chunks[1:])
+	c.chunks[len(c.chunks)-1] = nil
+	c.chunks = c.chunks[:len(c.chunks)-1]
+	c.headIdx = 0
+}
+
 // ReadByte reads and returns the next byte from the chain, or [io.EOF] if the buffer is empty.
 func (c *Chain) ReadByte() (byte, error) {
 	if c.length == 0 {
@@ -148,9 +158,7 @@ func (c *Chain) ReadByte() (byte, error) {
 	c.headIdx++
 	c.length--
 	if len(c.chunks) > 1 && c.headIdx == DefaultChunkSize {
-		releaseChunk(currentChunk)
-		c.chunks = c.chunks[1:]
-		c.headIdx = 0
+		c.popFrontChunk()
 	} else if len(c.chunks) == 1 && c.headIdx == c.tailIdx {
 		c.headIdx = 0
 		c.tailIdx = 0
@@ -187,9 +195,7 @@ func (c *Chain) Read(p []byte) (int, error) {
 		p = p[toCopy:]
 
 		if len(c.chunks) > 1 && c.headIdx == DefaultChunkSize {
-			releaseChunk(currentChunk)
-			c.chunks = c.chunks[1:]
-			c.headIdx = 0
+			c.popFrontChunk()
 		} else if len(c.chunks) == 1 && c.headIdx == c.tailIdx {
 			c.headIdx = 0
 			c.tailIdx = 0
@@ -271,7 +277,6 @@ func (c *Chain) Discard(n int) (int, error) {
 	remaining := toDiscard
 
 	for remaining > 0 && c.length > 0 {
-		currentChunk := c.chunks[0]
 		var available int
 		if len(c.chunks) == 1 {
 			available = c.tailIdx - c.headIdx
@@ -285,9 +290,7 @@ func (c *Chain) Discard(n int) (int, error) {
 		remaining -= step
 
 		if len(c.chunks) > 1 && c.headIdx == DefaultChunkSize {
-			releaseChunk(currentChunk)
-			c.chunks = c.chunks[1:]
-			c.headIdx = 0
+			c.popFrontChunk()
 		} else if len(c.chunks) == 1 && c.headIdx == c.tailIdx {
 			c.headIdx = 0
 			c.tailIdx = 0
@@ -369,11 +372,12 @@ func (c *Chain) WriteTo(w io.Writer) (int64, error) {
 			}
 		}
 
-		releaseChunk(chunk)
-		c.chunks = c.chunks[1:]
-		c.headIdx = 0
+		c.popFrontChunk()
 	}
 
+	if cap(c.chunks) <= len(c.initial) {
+		c.chunks = c.initial[:0]
+	}
 	c.length = 0
 	c.tailIdx = 0
 	return totalWritten, nil
@@ -488,12 +492,15 @@ func (c *Chain) ChunksSeq() iter.Seq[[]byte] {
 
 // Reset clears all data in the chain and recycles allocated chunks back to the pool for reuse.
 func (c *Chain) Reset() {
-	for _, chunk := range c.chunks {
+	for i, chunk := range c.chunks {
 		releaseChunk(chunk)
+		c.chunks[i] = nil
 	}
+	clear(c.initial[:])
 	if cap(c.chunks) <= len(c.initial) {
 		c.chunks = c.initial[:0]
 	} else {
+		clear(c.chunks[:cap(c.chunks)])
 		c.chunks = c.chunks[:0]
 	}
 	c.headIdx = 0

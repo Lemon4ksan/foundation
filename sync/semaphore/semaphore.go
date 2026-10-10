@@ -54,7 +54,9 @@ func (s *Semaphore) Acquire(ctx context.Context) error {
 		found := false
 		for i, w := range s.waiters {
 			if w == ch {
-				s.waiters = append(s.waiters[:i], s.waiters[i+1:]...)
+				copy(s.waiters[i:], s.waiters[i+1:])
+				s.waiters[len(s.waiters)-1] = nil
+				s.waiters = s.waiters[:len(s.waiters)-1]
 				found = true
 				break
 			}
@@ -109,7 +111,9 @@ func (s *Semaphore) Resize(newLimit int) {
 func (s *Semaphore) notifyWaiters() {
 	for s.active < s.limit && len(s.waiters) > 0 {
 		ch := s.waiters[0]
-		s.waiters = s.waiters[1:]
+		copy(s.waiters, s.waiters[1:])
+		s.waiters[len(s.waiters)-1] = nil
+		s.waiters = s.waiters[:len(s.waiters)-1]
 		s.active++
 
 		close(ch)

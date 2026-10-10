@@ -117,8 +117,9 @@ func New[T any](cfg Config) *Breaker[T] {
 	cfg.ResolveDefaults()
 
 	return &Breaker[T]{
-		cfg:   cfg,
-		state: StateClosed,
+		cfg:     cfg,
+		state:   StateClosed,
+		records: make([]record, 0, cfg.MinRequests*2),
 	}
 }
 
@@ -257,9 +258,9 @@ func (cb *Breaker[T]) transitionTo(target State, openTime time.Time) {
 	cb.state = target
 	cb.openTime = openTime
 
-	// Clear sliding metrics on boundary state transitions.
+	// Clear sliding metrics on boundary state transitions while retaining allocated capacity.
 	if target == StateClosed || target == StateOpen {
-		cb.records = nil
+		cb.records = cb.records[:0]
 	}
 
 	// Trigger callbacks in an isolated background goroutine to prevent
