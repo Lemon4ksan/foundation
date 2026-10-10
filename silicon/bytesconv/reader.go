@@ -54,12 +54,12 @@ func (b *StreamReader) Peek(n int) ([]byte, error) {
 		return nil, errors.New("bytesconv: negative count")
 	}
 
-	for b.w-b.r < n && b.err == nil {
-		b.fill()
-	}
-
 	if n > len(b.buf) {
 		return nil, ErrBufferFull
+	}
+
+	for b.w-b.r < n && b.err == nil {
+		b.fill()
 	}
 
 	var err error
@@ -85,19 +85,26 @@ func (b *StreamReader) Discard(n int) (int, error) {
 		return 0, nil
 	}
 
-	remain := b.w - b.r
-	if remain == 0 && b.err != nil {
-		return 0, b.err
+	remain := n
+	for remain > 0 {
+		avail := b.w - b.r
+		if avail == 0 {
+			if b.err != nil {
+				return n - remain, b.err
+			}
+			b.fill()
+			avail = b.w - b.r
+			if avail == 0 {
+				return n - remain, b.err
+			}
+		}
+
+		discard := min(avail, remain)
+		b.r += discard
+		remain -= discard
 	}
 
-	if n <= remain {
-		b.r += n
-		return n, nil
-	}
-
-	b.r = b.w
-
-	return remain, io.EOF
+	return n, nil
 }
 
 // ReadSlice reads until the first occurrence of delim in the input, returning a slice pointing to the internal buffer.
@@ -116,6 +123,11 @@ func (b *StreamReader) ReadSlice(delim byte) ([]byte, error) {
 			res := b.buf[b.r:b.w]
 			b.r = b.w
 			return res, b.err
+		}
+
+		if b.Buffered() >= len(b.buf) {
+			b.r = b.w
+			return b.buf, ErrBufferFull
 		}
 
 		s = b.w - b.r
