@@ -10,8 +10,9 @@ import (
 
 // SlicePool provides a reusable, type-safe slice pool for reducing heap allocations.
 type SlicePool[T any] struct {
-	pool sync.Pool
-	cap  int
+	pool       sync.Pool
+	holderPool sync.Pool
+	cap        int
 }
 
 // NewSlicePool creates a new [SlicePool] with a default initial capacity for allocated slices.
@@ -19,29 +20,42 @@ func NewSlicePool[T any](capacity int) *SlicePool[T] {
 	if capacity <= 0 {
 		capacity = 32
 	}
-	return &SlicePool[T]{
+	p := &SlicePool[T]{
 		cap: capacity,
-		pool: sync.Pool{
-			New: func() any {
-				s := make([]T, 0, capacity)
-				return &s
-			},
+	}
+	p.holderPool = sync.Pool{
+		New: func() any {
+			return new([]T)
 		},
 	}
+	p.pool = sync.Pool{
+		New: func() any {
+			h := p.holderPool.Get().(*[]T)
+			*h = make([]T, 0, capacity)
+			return h
+		},
+	}
+	return p
 }
 
 // Get acquires an empty slice with at least the default capacity.
 func (p *SlicePool[T]) Get() []T {
-	ptr := p.pool.Get().(*[]T)
-	return (*ptr)[:0]
+	h := p.pool.Get().(*[]T)
+	s := (*h)[:0]
+	*h = nil
+	p.holderPool.Put(h)
+	return s
 }
 
-// Put returns a slice to the pool. If the slice capacity exceeds 4x the default capacity,
-// it is discarded to prevent unbounded memory growth.
+// Put returns a slice to the pool. If the slice capacity exceeds 4x the default capacity
+// or is less than the pool capacity, it is discarded to prevent unbounded memory growth
+// or pool corruption. All elements in the slice are cleared to prevent memory retention.
 func (p *SlicePool[T]) Put(s []T) {
-	if cap(s) > p.cap*4 {
+	if cap(s) < p.cap || cap(s) > p.cap*4 {
 		return
 	}
-	s = s[:0]
-	p.pool.Put(&s)
+	clear(s[:cap(s)])
+	h := p.holderPool.Get().(*[]T)
+	*h = s[:0]
+	p.pool.Put(h)
 }

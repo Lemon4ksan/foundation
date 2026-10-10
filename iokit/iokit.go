@@ -55,7 +55,7 @@ func LimitToContentLength(r io.Reader, contentLen int64) io.Reader {
 // It avoids the heap allocation that io.LimitReader would incur.
 func copyWithLimit(w io.Writer, r io.ReadCloser, limit int64) (int64, error) {
 	bufPtr := copyBufPool.Get().(*[]byte)
-	if cap(*bufPtr) == 0 {
+	if cap(*bufPtr) < 32*1024 {
 		b := make([]byte, 32*1024)
 		bufPtr = &b
 	}
@@ -63,7 +63,7 @@ func copyWithLimit(w io.Writer, r io.ReadCloser, limit int64) (int64, error) {
 	buf := (*bufPtr)[:cap(*bufPtr)]
 	*bufPtr = buf
 	defer func() {
-		if cap(*bufPtr) <= maxPoolBufferSize {
+		if cap(*bufPtr) >= 32*1024 && cap(*bufPtr) <= maxPoolBufferSize {
 			copyBufPool.Put(bufPtr)
 		}
 	}()
@@ -117,7 +117,7 @@ func CopyZeroAlloc(w io.Writer, r io.Reader) (int64, error) {
 	}
 
 	bufPtr := copyBufPool.Get().(*[]byte)
-	if cap(*bufPtr) == 0 {
+	if cap(*bufPtr) < 32*1024 {
 		b := make([]byte, 32*1024)
 		bufPtr = &b
 	}
@@ -125,7 +125,7 @@ func CopyZeroAlloc(w io.Writer, r io.Reader) (int64, error) {
 	buf := (*bufPtr)[:cap(*bufPtr)]
 	*bufPtr = buf
 	defer func() {
-		if cap(*bufPtr) <= maxPoolBufferSize {
+		if cap(*bufPtr) >= 32*1024 && cap(*bufPtr) <= maxPoolBufferSize {
 			copyBufPool.Put(bufPtr)
 		}
 	}()

@@ -98,9 +98,7 @@ func (q *BufferQueue) WriteTo(w io.Writer) (int64, error) {
 
 // Reset clears the queue for reuse without releasing underlying slice capacity.
 func (q *BufferQueue) Reset() {
-	for i := range q.raw {
-		q.raw[i] = nil
-	}
+	clear(q.raw[:cap(q.raw)])
 	q.bufs = q.raw[:0]
 	q.totalBytes = 0
 }
@@ -147,6 +145,8 @@ func AcquireBufferQueue() *BufferQueue {
 func ReleaseBufferQueue(q *BufferQueue) {
 	if q != nil {
 		q.Reset()
-		queuePool.Put(q)
+		if cap(q.raw) <= DefaultMaxVectoredSlices*4 {
+			queuePool.Put(q)
+		}
 	}
 }

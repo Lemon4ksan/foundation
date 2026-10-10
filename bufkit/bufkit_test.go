@@ -1020,3 +1020,39 @@ func TestChain_WriteTo_LengthAccounting(t *testing.T) {
 	expectedLen := initialLen - int(n)
 	assert.Equal(t, expectedLen, c.Len())
 }
+
+func BenchmarkChain_StreamingWriteRead(b *testing.B) {
+	c := bufkit.NewChain()
+	defer c.Release()
+
+	writeBuf := make([]byte, 8192)
+	readBuf := make([]byte, 8192)
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		_, _ = c.Write(writeBuf)
+		_, _ = c.Read(readBuf)
+	}
+}
+
+func TestChain_StreamingCapacityRetention_Allocs(t *testing.T) {
+	c := bufkit.NewChain()
+	defer c.Release()
+
+	writeBuf := make([]byte, 8192)
+	readBuf := make([]byte, 8192)
+
+	// Pre-warm with 1 iteration
+	_, _ = c.Write(writeBuf)
+	_, _ = c.Read(readBuf)
+
+	allocs := testing.AllocsPerRun(100, func() {
+		_, _ = c.Write(writeBuf)
+		_, _ = c.Read(readBuf)
+	})
+	t.Logf("Chain streaming allocs per run: %f", allocs)
+	if allocs > 0 {
+		t.Errorf("expected 0 allocs per run in steady streaming state, got %f", allocs)
+	}
+}

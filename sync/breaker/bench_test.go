@@ -156,3 +156,89 @@ func TestBreaker_HalfOpen_PanicPermanentWedge(t *testing.T) {
 		)
 	}
 }
+
+func BenchmarkBreaker_Transitions(b *testing.B) {
+	cb := breaker.New[int](breaker.Config{
+		FailureThreshold: 0.5,
+		Cooldown:         time.Nanosecond,
+		MinRequests:      5,
+		Window:           time.Hour,
+	})
+	ctx := context.Background()
+	failErr := errors.New("fail")
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		for range 5 {
+			_, _ = cb.Do(ctx, func(ctx context.Context) (int, error) {
+				return 0, failErr
+			})
+		}
+		_, _ = cb.Do(ctx, func(ctx context.Context) (int, error) {
+			return 1, nil
+		})
+	}
+}
+
+func BenchmarkBreaker_ClosedSteadyState(b *testing.B) {
+	cb := breaker.New[int](breaker.Config{
+		FailureThreshold: 0.5,
+		Cooldown:         time.Hour,
+		MinRequests:      1000,
+		Window:           time.Nanosecond,
+	})
+	ctx := context.Background()
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		_, _ = cb.Do(ctx, func(ctx context.Context) (int, error) {
+			return 1, nil
+		})
+	}
+}
+
+func TestBreaker_TransitionCapacityRetention_Allocs(t *testing.T) {
+	cb := breaker.New[int](breaker.Config{
+		FailureThreshold: 0.5,
+		Cooldown:         time.Millisecond,
+		MinRequests:      5,
+		Window:           time.Hour,
+	})
+	ctx := context.Background()
+	failErr := errors.New("fail")
+
+	// Pre-warm
+	for range 10 {
+		_, _ = cb.Do(ctx, func(ctx context.Context) (int, error) {
+			return 1, nil
+		})
+	}
+
+	// Trip breaker to Open
+	for range 10 {
+		_, _ = cb.Do(ctx, func(ctx context.Context) (int, error) {
+			return 0, failErr
+		})
+	}
+	time.Sleep(2 * time.Millisecond)
+
+	// Recover via Half-Open to Closed
+	_, _ = cb.Do(ctx, func(ctx context.Context) (int, error) {
+		return 1, nil
+	})
+
+	// Measure allocations in the recovered Closed state
+	allocs := testing.AllocsPerRun(10, func() {
+		_, _ = cb.Do(ctx, func(ctx context.Context) (int, error) {
+			return 1, nil
+		})
+	})
+	t.Logf("Breaker post-recovery allocs: %f", allocs)
+	if allocs > 0 {
+		t.Errorf("expected 0 allocs post-recovery, got %f", allocs)
+	}
+}

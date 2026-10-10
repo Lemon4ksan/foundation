@@ -89,3 +89,18 @@ func TestSlicePool(t *testing.T) {
 		t.Fatalf("expected reset slice len=0, got %d", len(s2))
 	}
 }
+
+func TestSlicePool_Allocs(t *testing.T) {
+	sp := NewSlicePool[int](16)
+	s := sp.Get()
+	sp.Put(s)
+
+	allocs := testing.AllocsPerRun(100, func() {
+		x := sp.Get()
+		sp.Put(x)
+	})
+	t.Logf("SlicePool allocs: %f", allocs)
+	if allocs > 0 {
+		t.Errorf("expected 0 allocs, got %f", allocs)
+	}
+}
