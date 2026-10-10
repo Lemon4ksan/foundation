@@ -17,7 +17,7 @@
 //
 // Stdlib counterpart: none - fills gap: locking by string/key identifier
 //
-// Rejected compromise: sync.Map or map[*]*sync.Mutex leaks memory over time as keys accumulate without automated cleanup.
+// Rejected compromise: [sync.Map] or map[*]*[sync.Mutex] leaks memory over time as keys accumulate without automated cleanup.
 //
 // Accepted cost: slightly higher lock acquisition time due to global map lock and reference counting overhead.
 //

@@ -4,7 +4,7 @@
 
 // Package uuid implements Universally Unique Identifiers strictly conforming to RFC 9562.
 //
-// The package models UUIDs as a compact 16-byte array ([UUID]) in big-endian network byte order.
+// It models UUIDs as a compact 16-byte array ([UUID]) in big-endian network byte order.
 // It provides generation, validation, and serialization routines for both random (UUIDv4) and
 // time-ordered (UUIDv7) identifiers. The [Parse] and [UUID.Format] / [UUID.Append] methods
 // are designed for ultra-high throughput environments and use SIMD hardware acceleration when

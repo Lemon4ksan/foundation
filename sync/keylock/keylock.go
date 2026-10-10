@@ -24,7 +24,7 @@ var refCounterPool = sync.Pool{
 
 // Mutex implements a thread-safe, striped key-based locking mechanism.
 //
-// The zero value for Mutex is valid and ready for use.
+// The zero value is valid and ready for use.
 // It is safe for concurrent use.
 type Mutex[K comparable] struct {
 	mu    sync.Mutex
@@ -57,7 +57,7 @@ func (km *Mutex[K]) Keys() []K {
 
 // IsLocked reports whether the specified key is currently held by a goroutine.
 //
-// Unlike simple map lookups, IsLocked only returns true if the lock has been successfully acquired.
+// Unlike simple map lookups, it only returns true if the lock has been successfully acquired.
 // Complexity: Amortized O(1) time; zero-allocation.
 func (km *Mutex[K]) IsLocked(key K) bool {
 	km.mu.Lock()

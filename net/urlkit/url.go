@@ -33,7 +33,8 @@ func fastHash(s string) uint32 {
 }
 
 // cacheShard protects an isolated hash map partition with an RWMutex to minimize lock contention.
-// It is padded to 64 bytes to eliminate false sharing across CPU cachelines under high concurrent load.
+//
+// It is padded to 64 bytes to eliminate false sharing across CPU cachelines.
 type cacheShard struct {
 	mu sync.RWMutex
 	m  map[string]*url.URL
@@ -70,7 +71,7 @@ type URLView struct {
 	Fragment string
 }
 
-// Hostname returns the host part of u without port, if any.
+// Hostname returns the host part without the port, if any.
 func (u URLView) Hostname() string {
 	h := u.Host
 	if strings.HasPrefix(h, "[") {
@@ -89,7 +90,7 @@ func (u URLView) Hostname() string {
 	return h
 }
 
-// Port returns the port part of u.Host, or an empty string if no port is present.
+// Port returns the port part of the host, or an empty string if none is present.
 func (u URLView) Port() string {
 	h := u.Host
 	if strings.HasPrefix(h, "[") {
@@ -118,13 +119,14 @@ func (u URLView) CanonicalPort() string {
 	return ""
 }
 
-// IsAbs reports whether the URLView specifies an absolute scheme.
+// IsAbs reports whether the view specifies an absolute scheme.
 func (u URLView) IsAbs() bool {
 	return u.Scheme != ""
 }
 
-// QueryValue returns the first value associated with the given key in RawQuery, or ("", false).
-// If the key exists without percent encoding, it returns a zero-alloc slice directly.
+// QueryValue returns the first value associated with the given key in the raw query, or an empty string and false.
+//
+// If the key exists without percent encoding, it returns a slice directly.
 func (u URLView) QueryValue(key string) (string, bool) {
 	q := u.RawQuery
 	for len(q) > 0 {
@@ -166,7 +168,8 @@ func (u URLView) QueryValue(key string) (string, bool) {
 	return "", false
 }
 
-// QuerySeq returns a zero-allocation iterator yielding key-value pairs from RawQuery.
+// QuerySeq returns an iterator yielding key-value pairs from the raw query.
+//
 // Keys and values with percent-encoding or '+' are unescaped using fast vector routines.
 func (u URLView) QuerySeq() iter.Seq2[string, string] {
 	return func(yield func(string, string) bool) {
@@ -239,7 +242,7 @@ func (u URLView) String() string {
 	return string(u.AppendTo(buf))
 }
 
-// ToURL converts URLView to a standard [*url.URL].
+// ToURL converts the view to a standard [*url.URL].
 func (u URLView) ToURL() *url.URL {
 	res := &url.URL{
 		Scheme:   u.Scheme,
@@ -357,12 +360,12 @@ func ParseView(rawURL string) (URLView, error) {
 	return view, nil
 }
 
-// IsAbsURL reports whether path begins with an absolute HTTP or HTTPS scheme identifier (RFC 3986 §3.1 & §4.3).
+// IsAbsURL reports whether the path begins with an absolute HTTP or HTTPS scheme identifier (RFC 3986 §3.1 & §4.3).
 func IsAbsURL(path string) bool {
 	return len(path) >= 7 && (strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://"))
 }
 
-// Parse parses rawURL string or returns a cached [*url.URL] pointer.
+// Parse parses the string or returns a cached [*url.URL].
 func Parse(rawURL string) (*url.URL, error) {
 	if rawURL == "" {
 		return &url.URL{}, nil
@@ -398,7 +401,7 @@ func Parse(rawURL string) (*url.URL, error) {
 	return parsed, nil
 }
 
-// CloneURL returns a deep copy of u.
+// CloneURL returns a deep copy of the [*url.URL].
 func CloneURL(u *url.URL) *url.URL {
 	if u == nil {
 		return nil
@@ -413,7 +416,9 @@ func CloneURL(u *url.URL) *url.URL {
 	return &cloned
 }
 
-// NormalizeBaseURL parses and normalizes a raw Base URI string, ensuring a trailing slash per RFC 3986 §5.2.3.
+// NormalizeBaseURL parses and normalizes a raw Base URI string into a [*url.URL].
+//
+// It ensures a trailing slash per RFC 3986 §5.2.3.
 func NormalizeBaseURL(raw string) (*url.URL, error) {
 	if raw == "" {
 		return &url.URL{}, nil
@@ -427,8 +432,9 @@ func NormalizeBaseURL(raw string) (*url.URL, error) {
 	return Parse(formatted)
 }
 
-// Resolve resolves a relative path or absolute URL against baseURL (RFC 3986 §5).
-// It features an O(1) zero-allocation fast-path for root-domain paths and normalizes slash boundaries.
+// Resolve resolves a relative path or absolute URL against the base [*url.URL] (RFC 3986 §5).
+//
+// It features a zero-allocation fast-path for root-domain paths and normalizes slash boundaries.
 func Resolve(baseURL *url.URL, path string) (*url.URL, error) {
 	if (path == "" || path == "/") && baseURL != nil && baseURL.Host != "" {
 		return CloneURL(baseURL), nil
@@ -457,7 +463,7 @@ func Resolve(baseURL *url.URL, path string) (*url.URL, error) {
 	return Parse(targetStr)
 }
 
-// ResolveString computes the resolved target URL string from baseURL and path (RFC 3986 §5).
+// ResolveString computes the resolved target URL string from the base [*url.URL] and path (RFC 3986 §5).
 func ResolveString(baseURL *url.URL, path string) (string, error) {
 	if IsAbsURL(path) || baseURL == nil || baseURL.Host == "" {
 		return path, nil
@@ -473,7 +479,7 @@ func ResolveString(baseURL *url.URL, path string) (string, error) {
 	return baseURL.ResolveReference(rel).String(), nil
 }
 
-// ReplaceVar performs path variable replacement ({key} -> value) in path.
+// ReplaceVar performs path variable replacement ({key} -> value) in the path.
 func ReplaceVar(path, key, value string) string {
 	if key == "" || len(path) < len(key)+2 {
 		return path
@@ -508,7 +514,7 @@ func ReplaceVar(path, key, value string) string {
 	return res
 }
 
-// AppendReplaceVar appends path with {key} replaced by value into dst without heap allocations.
+// AppendReplaceVar appends the path with {key} replaced by value into dst without heap allocations.
 func AppendReplaceVar(dst []byte, path, key, value string) []byte {
 	if key == "" || len(path) < len(key)+2 {
 		return append(dst, path...)
@@ -531,7 +537,7 @@ func AppendReplaceVar(dst []byte, path, key, value string) []byte {
 	return dst
 }
 
-// FastAppendQuery appends key=value to targetURL using SIMD byte detection and pooled buffers.
+// FastAppendQuery appends key=value to the target URL using SIMD byte detection and pooled buffers.
 func FastAppendQuery(targetURL, key, value string) string {
 	if key == "" {
 		return targetURL
@@ -559,7 +565,7 @@ func FastAppendQuery(targetURL, key, value string) string {
 	return res
 }
 
-// AppendRawQuery appends raw query string to targetURL using SIMD byte detection and pooled buffers.
+// AppendRawQuery appends the raw query string to the target URL using SIMD byte detection and pooled buffers.
 func AppendRawQuery(targetURL, rawQuery string) string {
 	if rawQuery == "" {
 		return targetURL
@@ -584,7 +590,7 @@ func AppendRawQuery(targetURL, rawQuery string) string {
 	return res
 }
 
-// MatchDomainPattern checks if host matches pattern (supporting exact and *.wildcard matches).
+// MatchDomainPattern checks if the host matches the pattern (supporting exact and *.wildcard matches).
 func MatchDomainPattern(host, pattern string) bool {
 	host = strings.TrimSuffix(host, ".")
 	pattern = strings.TrimSuffix(pattern, ".")
@@ -605,7 +611,7 @@ func MatchDomainPattern(host, pattern string) bool {
 	return false
 }
 
-// IsCrossOrigin determines whether u1 and u2 belong to different RFC 6454 web origins.
+// IsCrossOrigin determines whether the given [*url.URL] instances belong to different RFC 6454 web origins.
 func IsCrossOrigin(u1, u2 *url.URL) bool {
 	if u1 == nil || u2 == nil {
 		return false
@@ -625,7 +631,7 @@ func IsCrossOrigin(u1, u2 *url.URL) bool {
 	return CanonicalPort(u1) != CanonicalPort(u2)
 }
 
-// CanonicalPort resolves effective port number considering scheme defaults.
+// CanonicalPort resolves the effective port number considering scheme defaults.
 func CanonicalPort(u *url.URL) string {
 	if u == nil {
 		return ""
@@ -647,7 +653,7 @@ func CanonicalPort(u *url.URL) string {
 	return ""
 }
 
-// IsSameDomainOrSubdomain reports whether clean host h1 and h2 match domain or subdomain suffix.
+// IsSameDomainOrSubdomain reports whether the clean hosts match domain or subdomain suffix.
 func IsSameDomainOrSubdomain(clean1, clean2 string) bool {
 	clean1 = strings.TrimSuffix(clean1, ".")
 	clean2 = strings.TrimSuffix(clean2, ".")
@@ -667,7 +673,7 @@ func IsSameDomainOrSubdomain(clean1, clean2 string) bool {
 	return false
 }
 
-// BuildPath constructs a final URL path by interpolating pathParams and appending queryParams efficiently.
+// BuildPath constructs a final URL path by interpolating pathParams and appending query parameters from [url.Values].
 func BuildPath(basePath string, pathParams map[string]string, queryParams url.Values) string {
 	if len(pathParams) == 0 && len(queryParams) == 0 {
 		return basePath
@@ -746,8 +752,9 @@ func AppendPathEscapeString(dst []byte, src string) []byte {
 	return AppendQueryEscapeString(dst, src)
 }
 
-// QueryUnescape unescapes URL percent-encoded characters (%XX) and replaces '+' with ' '
-// using hardware vector acceleration.
+// QueryUnescape unescapes URL percent-encoded characters (%XX) and replaces '+' with ' '.
+//
+// It uses hardware vector acceleration.
 func QueryUnescape(s string) (string, error) {
 	if len(s) == 0 {
 		return "", nil
@@ -833,6 +840,7 @@ func fromHexChar(c byte) int {
 }
 
 // PathUnescape unescapes URL percent-encoded characters (%XX) without touching '+'.
+//
 // It complies with RFC 3986 Section 2.2 for URI components.
 func PathUnescape(s string) (string, error) {
 	if len(s) == 0 {

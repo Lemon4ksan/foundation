@@ -13,8 +13,12 @@ import (
 )
 
 // AtomicWriteFile writes data to a temporary file in the directory of path
-// and renames it atomically to path. This prevents concurrent readers or crashes
+// and renames it atomically to path. It prevents concurrent readers or crashes
 // from observing partial writes.
+//
+// It does not panic.
+//
+// Complexity: O(N) time where N is the length of data. Allocates memory for file operations.
 func AtomicWriteFile(path string, data []byte, perm os.FileMode) error {
 	dir := filepath.Dir(path)
 	tmp, err := os.CreateTemp(dir, ".atomic-*")
@@ -52,6 +56,10 @@ func AtomicWriteFile(path string, data []byte, perm os.FileMode) error {
 
 // ReadFileLimited reads up to maxBytes from the specified file path.
 // If the file size exceeds maxBytes, it returns an error before reading the full file.
+//
+// It does not panic.
+//
+// Complexity: O(N) time where N is the number of bytes read.
 func ReadFileLimited(path string, maxBytes int64) ([]byte, error) {
 	if maxBytes < 0 {
 		return nil, errors.New("fskit: negative maxBytes limit")

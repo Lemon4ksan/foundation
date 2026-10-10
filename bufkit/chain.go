@@ -37,6 +37,7 @@ func releaseChunk(b []byte) {
 
 // Chain is a zero-allocation scatter-gather buffer composed of fixed-size pooled memory chunks.
 // It avoids continuous memory reallocation and copying when growing dynamic payloads.
+// The zero value is empty and ready to use. It is not safe for concurrent use.
 type Chain struct {
 	initial [8][]byte // inline storage for up to 8 chunks (32KB) without heap slice allocation
 	chunks  [][]byte
@@ -46,6 +47,7 @@ type Chain struct {
 }
 
 // NewChain instantiates an empty [Chain].
+// This operation executes in O(1) time.
 func NewChain() *Chain {
 	c := &Chain{}
 	c.chunks = c.initial[:0]
@@ -65,6 +67,7 @@ func (c *Chain) ensureInit() {
 }
 
 // Write appends the contents of p to the chain, acquiring new pooled chunks as needed.
+// It executes in O(N) time where N is len(p).
 func (c *Chain) Write(p []byte) (int, error) {
 	if len(p) == 0 {
 		return 0, nil

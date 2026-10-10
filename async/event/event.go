@@ -22,7 +22,7 @@ type Event interface {
 
 // Envelope provides a reusable implementation of the [Event] interface.
 //
-// Embedding Envelope allows custom event structs to satisfy the [Event] interface
+// Embedding it allows custom event structs to satisfy the [Event] interface
 // and enables request-scoped context propagation.
 // The zero value is valid and ready for use.
 type Envelope struct {
@@ -52,8 +52,8 @@ func (b *Envelope) SetContext(ctx context.Context) {
 
 // Subscription represents an active event listener registered on a [Bus].
 //
-// It manages the lifecycle of an internal buffered event channel. Subscriptions
-// are created via [Bus.Subscribe] or [Bus.SubscribeAll] and must be cleaned up
+// It manages the lifecycle of an internal buffered event channel. It
+// is created via [Bus.Subscribe] or [Bus.SubscribeAll] and must be closed
 // using [Subscription.Unsubscribe] to prevent memory leaks.
 // The zero value is not ready for use.
 // All exported methods manage their own internal synchronization and are safe for concurrent use.
@@ -188,8 +188,8 @@ func (b *Bus) SetOnDropped(fn func(event Event, subID uint64)) {
 // Subscribe registers a subscription to receive events of the specified types with a default buffer size of 128.
 //
 // If no event types are provided or if an event is nil, those entries are ignored.
-// Duplicate event types within a single Subscribe call are automatically deduplicated.
-// If the Bus is closed, Subscribe returns a subscription with an already closed channel.
+// Duplicate event types within a single call are automatically deduplicated.
+// If the [Bus] is closed, it returns a subscription with an already closed channel.
 // Complexity: O(N) time where N is the number of event types; allocates memory for the new subscription.
 func (b *Bus) Subscribe(evs ...Event) *Subscription {
 	return b.SubscribeBuffer(128, evs...)
@@ -241,7 +241,7 @@ func (b *Bus) SubscribeBuffer(bufferSize int, evs ...Event) *Subscription {
 	return sub
 }
 
-// SubscribeTyped registers a type-safe subscription on the bus for events of type E.
+// SubscribeTyped registers a type-safe subscription on the [Bus] for events of type E.
 //
 // E can be a value or pointer type that satisfies [Event].
 // An optional custom bufferSize can be provided (default 128).
@@ -286,7 +286,31 @@ func (b *Bus) SubscribeTyped[E any](bufSize ...int) *TypedSubscription[E] {
 	go func() {
 		defer close(ts.ch)
 		for raw := range sub.C() {
-			if typed, ok := raw.(E); ok {
+			var typed E
+			var ok bool
+			if v, isExact := raw.(E); isExact {
+				typed = v
+				ok = true
+			} else {
+				rv := reflect.ValueOf(raw)
+				rt := reflect.TypeFor[E]()
+				if rv.Kind() != reflect.Pointer && rt.Kind() == reflect.Pointer {
+					if rv.Type() == rt.Elem() {
+						ptr := reflect.New(rv.Type())
+						ptr.Elem().Set(rv)
+						typed = ptr.Interface().(E)
+						ok = true
+					}
+				} else if rv.Kind() == reflect.Pointer && rt.Kind() != reflect.Pointer {
+					val := rv.Elem()
+					if val.Type() == rt {
+						typed = val.Interface().(E)
+						ok = true
+					}
+				}
+			}
+
+			if ok {
 				select {
 				case ts.ch <- typed:
 				default:
@@ -305,7 +329,7 @@ func (b *Bus) SubscribeTyped[E any](bufSize ...int) *TypedSubscription[E] {
 
 // SubscribeAll registers a subscription to receive every event published on the [Bus].
 //
-// If the Bus is closed, SubscribeAll returns a subscription with an already closed channel.
+// If the [Bus] is closed, it returns a subscription with an already closed channel.
 // Complexity: amortized O(1) time; allocates memory.
 func (b *Bus) SubscribeAll() *Subscription {
 	b.mu.Lock()
@@ -332,9 +356,9 @@ func (b *Bus) SubscribeAll() *Subscription {
 
 // Publish broadcasts an event to all matched subscriptions.
 //
-// Publish is strictly non-blocking. If a matched subscriber's channel buffer
-// is full, the event is silently dropped for that subscriber (or routed to onDropped).
-// If the event is nil, or the Bus is closed, Publish returns immediately.
+// It is non-blocking. If a matched subscriber's channel buffer
+// is full, the event is dropped for that subscriber (or routed to onDropped).
+// If the event is nil, or the [Bus] is closed, it returns immediately.
 // Complexity: O(N + M) time where N is the number of active subscriptions for the event type, and M is the number of catch-all subscriptions; zero-allocation.
 func (b *Bus) Publish(event Event) {
 	if event == nil {
@@ -361,7 +385,7 @@ func (b *Bus) Publish(event Event) {
 
 // Close shuts down the [Bus], marks it as closed, and closes all active subscription channels.
 //
-// Subsequent calls to Close are safe, idempotent no-ops and return nil immediately.
+// Subsequent calls are safe, idempotent no-ops and return nil immediately.
 // Complexity: O(S) time where S is the total number of subscriptions; allocates memory for unique channel deduplication.
 func (b *Bus) Close() error {
 	b.mu.Lock()

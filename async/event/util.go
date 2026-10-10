@@ -11,7 +11,7 @@ import (
 )
 
 // SubscribeTo registers a type-safe listener callback running on a dedicated worker goroutine.
-// The listener processes events of type T until ctx is cancelled, the bus is closed,
+// It processes events of type T until ctx is cancelled, the bus is closed,
 // or the returned cancel function is invoked.
 //
 // Parameters:
@@ -23,7 +23,7 @@ import (
 // Concurrency & Lifetime Guarantees:
 //   - The returned cancel() function is thread-safe, idempotent, and guarantees immediate
 //     unregistration from the event bus and closure of internal subscription channels.
-//   - When ctx is cancelled externally, the worker goroutine terminates cleanly and releases
+//   - When ctx is cancelled externally, the worker goroutine terminates and releases
 //     the bus subscription via deferred unregistration.
 func SubscribeTo[E any](ctx context.Context, bus *Bus, handler func(E), bufSize ...int) (cancel func()) {
 	if bus == nil || handler == nil {
@@ -70,7 +70,7 @@ func SubscribeTo[E any](ctx context.Context, bus *Bus, handler func(E), bufSize 
 }
 
 // SubscribeSeq returns a Go 1.23+ streaming iterator (iter.Seq[T]) over typed events.
-// It enables natural, idiomatic Go for-range iteration:
+// It enables Go for-range iteration:
 //
 //	for ev := range eventutil.SubscribeSeq[*web.NewOfferEvent](ctx, bus) {
 //	    log.Info("offer received", "id", ev.Offer.ID)
@@ -80,7 +80,7 @@ func SubscribeTo[E any](ctx context.Context, bus *Bus, handler func(E), bufSize 
 //   - The underlying typed subscription is created immediately upon invocation of SubscribeSeq.
 //   - When the loop terminates (via early break, context cancellation, or bus closure),
 //     the subscription is guaranteed to be unsubscribed and all channels closed immediately
-//     via deferred cleanup inside the iterator function.
+//     via deferred unregistration inside the iterator function.
 //   - If ctx is cancelled before or during iteration, iteration yields zero further items and exits.
 func SubscribeSeq[E any](ctx context.Context, bus *Bus, bufSize ...int) iter.Seq[E] {
 	if bus == nil {

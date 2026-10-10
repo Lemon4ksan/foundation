@@ -64,3 +64,8 @@ Absolute Formatting Rules (Primary Directives):
 
 7. Anti-Stuttering Rule (NEW):
 - NEVER repeat the entity name at the beginning of subsequent sentences or paragraphs. Use 'It', 'This operation', or passive voice instead. For example, do not write 'IsPrivateIP reports... IsPrivateIP evaluates...'. Instead write 'IsPrivateIP reports... It evaluates...'
+
+8. Anti-Robotic Rules (NEW):
+- Omit the Obvious: Do not write "safe for concurrent use" on synchronization primitives (Mutex, Spinlock, Semaphore) where it's implicitly the entire point of the type.
+- Silence on Safety: ONLY document panics if they happen. KATEGORICHESKI FORBIDDEN to write "It does not panic".
+- Natural Flow: Avoid robotic lists ("It does X. It does Y. It does Z"). Combine constraints into a single fluent sentence (e.g., "It executes in O(1) time and is zero-allocation.") and only when it adds architectural value.

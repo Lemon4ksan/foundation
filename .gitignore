@@ -9,4 +9,5 @@ coverage.txt
 vendor/
 go.work
 go.work.sum
-.agents/teamwork
+.agents/teamwork/
+.agents/scratch/

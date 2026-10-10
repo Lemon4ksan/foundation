@@ -50,6 +50,8 @@ type task[In, Out any] struct {
 // Map is a high-level helper utility that transforms a slice of inputs concurrently using the provided mapper function under a temporary [Pipeline].
 //
 // It preserves the original index order of the inputs in the returned slice.
+// It does not panic. It is safe for concurrent use.
+//
 // Executes in O(N) time and allocates memory for the output slice.
 func Map[In, Out any](
 	ctx context.Context,
@@ -67,6 +69,8 @@ func Map[In, Out any](
 }
 
 // ForEach is a high-level helper utility that processes a slice of inputs concurrently for side-effects, ignoring individual successful return values.
+//
+// It does not panic. It is safe for concurrent use.
 //
 // Executes in O(N) time and allocates memory for internal structures.
 func ForEach[In any](
@@ -91,6 +95,8 @@ func ForEach[In any](
 //
 // If yield returns false or ctx is cancelled, workers are cancelled immediately
 // and iteration halts without leaking background goroutines.
+// It does not panic. It is safe for concurrent use.
+//
 // Executes in O(N) time and allocates memory.
 func TransformSeq[In, Out any](
 	ctx context.Context,
@@ -131,6 +137,14 @@ func TransformSeq[In, Out any](
 		var workerWg sync.WaitGroup
 		for range cfg.Workers {
 			workerWg.Go(func() {
+				defer func() {
+					if r := recover(); r != nil {
+						select {
+						case <-runCtx.Done():
+						case outCh <- resItem{err: fmt.Errorf("pipeline: mapper panicked: %v", r)}:
+						}
+					}
+				}()
 				for item := range inCh {
 					select {
 					case <-runCtx.Done():
@@ -173,6 +187,8 @@ type Pipeline[In, Out any] struct {
 
 // New instantiates and configures a new [Pipeline] with the given [Config].
 //
+// It does not panic.
+//
 // Executes in O(1) time and allocates memory.
 func New[In, Out any](cfg Config) *Pipeline[In, Out] {
 	cfg.resolveDefaults()
@@ -196,6 +212,8 @@ func New[In, Out any](cfg Config) *Pipeline[In, Out] {
 // It preserves the original index order of the inputs in the returned output slice.
 // If FailFast is enabled, the first encountered error cancels all running workers and
 // is returned immediately. Otherwise, all encountered errors are aggregated using [errors.Join].
+// It does not panic. It is safe for concurrent use.
+//
 // Executes in O(N) time and allocates memory.
 func (p *Pipeline[In, Out]) Transform(
 	ctx context.Context,
@@ -373,6 +391,8 @@ func (p *Pipeline[In, Out]) Transform(
 
 // TransformSeq concurrently transforms the input iterator using mapper under the pipeline's configuration.
 //
+// It does not panic. It is safe for concurrent use.
+//
 // Executes in O(N) time and allocates memory.
 func (p *Pipeline[In, Out]) TransformSeq(
 	ctx context.Context,
@@ -386,6 +406,8 @@ func (p *Pipeline[In, Out]) TransformSeq(
 //
 // It closes both returned channels upon completion or early cancellation.
 // All error dispatches are non-blocking to prevent worker goroutine leakage.
+// It does not panic. It is safe for concurrent use.
+//
 // Executes in O(N) time and allocates memory.
 func (p *Pipeline[In, Out]) Stream(
 	ctx context.Context,

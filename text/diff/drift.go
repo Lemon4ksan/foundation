@@ -76,8 +76,8 @@ type Drift struct {
 
 // Report aggregates all detected discrepancies and summary metrics.
 //
-// Note: Due to a bug in ExitCode evaluation, ghost endpoints will cause ExitCode
-// to return 2 (failure) even when Additive mode is enabled, defeating the purpose
+// Note: Due to a bug in [Report.ExitCode] evaluation, ghost endpoints will cause [Report.ExitCode]
+// to return 2 (failure) even when [Report.Additive] mode is enabled, defeating the purpose
 // of suppressing ghost endpoints in CI pipelines.
 type Report struct {
 	LocalTarget           string  `json:"local_target"`
@@ -133,7 +133,7 @@ func (r *Report) HasDrift() bool {
 	return len(r.Drifts) > 0
 }
 
-// Render formats the report as human-readable terminal output.
+// Render formats the [Report] as human-readable terminal output.
 func (r *Report) Render(color bool) string {
 	if len(r.Drifts) == 0 {
 		if r.Additive {
@@ -235,7 +235,7 @@ func (r *Report) Render(color bool) string {
 	return sb.String()
 }
 
-// JSON serializes the diff report into indented JSON.
+// JSON serializes the [Report] into indented JSON.
 func (r *Report) JSON() ([]byte, error) {
 	return json.MarshalIndent(r, "", "  ")
 }

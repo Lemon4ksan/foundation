@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// Stopwatch provides lightweight monotonic latency measurement.
+// Stopwatch provides monotonic latency measurement.
 type Stopwatch struct {
 	start time.Time
 }

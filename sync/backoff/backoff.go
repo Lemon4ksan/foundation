@@ -12,6 +12,8 @@ import (
 )
 
 // JitterMode defines the randomization algorithm applied to backoff intervals.
+//
+// Its zero value is valid. It is safe for concurrent use.
 type JitterMode uint8
 
 const (
@@ -26,6 +28,8 @@ const (
 )
 
 // Policy represents a stateful or stateless backoff delay generator.
+//
+// Thread-safety depends on the underlying implementation.
 type Policy interface {
 	// NextDelay calculates the sleep duration for the given 1-based attempt index.
 	NextDelay(attempt int) time.Duration
@@ -46,6 +50,8 @@ type Exponential struct {
 }
 
 // NewExponential creates an [Exponential] backoff generator utilizing the provided boundaries and growth factor.
+//
+// It does not panic.
 //
 // Complexity: O(1) time.
 func NewExponential(initial, max time.Duration, factor float64) *Exponential {
@@ -76,6 +82,8 @@ func NewExponential(initial, max time.Duration, factor float64) *Exponential {
 
 // WithFullJitter sets JitterMode to Full Jitter.
 //
+// It does not panic. It is not safe for concurrent use.
+//
 // Executes in O(1) time and is zero-allocation.
 func (b *Exponential) WithFullJitter() *Exponential {
 	b.Jitter = JitterFull
@@ -83,6 +91,8 @@ func (b *Exponential) WithFullJitter() *Exponential {
 }
 
 // WithEqualJitter sets JitterMode to Equal Jitter.
+//
+// It does not panic. It is not safe for concurrent use.
 //
 // Executes in O(1) time and is zero-allocation.
 func (b *Exponential) WithEqualJitter() *Exponential {
@@ -92,6 +102,8 @@ func (b *Exponential) WithEqualJitter() *Exponential {
 
 // WithDecorrelatedJitter sets JitterMode to Decorrelated Jitter.
 //
+// It does not panic. It is not safe for concurrent use.
+//
 // Executes in O(1) time and is zero-allocation.
 func (b *Exponential) WithDecorrelatedJitter() *Exponential {
 	b.Jitter = JitterDecorrelated
@@ -100,6 +112,8 @@ func (b *Exponential) WithDecorrelatedJitter() *Exponential {
 
 // Reset resets the stateful sleep history.
 //
+// It does not panic. It is not safe for concurrent use.
+//
 // Executes in O(1) time and is zero-allocation.
 func (b *Exponential) Reset() {
 	b.lastSleep = b.Initial
@@ -107,10 +121,14 @@ func (b *Exponential) Reset() {
 
 // NextDelay calculates the duration for the attempt.
 //
+// It does not panic. It is safe for concurrent use unless the decorrelated jitter mode is used.
+//
 // Executes in O(1) time and is zero-allocation.
 func (b *Exponential) NextDelay(attempt int) time.Duration {
 	if attempt <= 1 {
-		return b.applyJitter(b.Initial)
+		delay := b.applyJitter(b.Initial)
+		b.lastSleep = delay
+		return delay
 	}
 
 	if b.Jitter == JitterDecorrelated {
@@ -179,6 +197,8 @@ type Linear struct {
 
 // NewLinear creates a [Linear] backoff generator utilizing the provided boundaries and step increment.
 //
+// It does not panic.
+//
 // Complexity: O(1) time.
 func NewLinear(initial, max, step time.Duration) *Linear {
 	if initial <= 0 {
@@ -207,6 +227,8 @@ func NewLinear(initial, max, step time.Duration) *Linear {
 
 // WithFullJitter enables Full Jitter on linear backoff.
 //
+// It does not panic. It is not safe for concurrent use.
+//
 // Executes in O(1) time and is zero-allocation.
 func (b *Linear) WithFullJitter() *Linear {
 	b.Jitter = JitterFull
@@ -215,10 +237,14 @@ func (b *Linear) WithFullJitter() *Linear {
 
 // Reset is a no-op for stateless linear backoff.
 //
+// It does not panic. It is safe for concurrent use.
+//
 // Executes in O(1) time and is zero-allocation.
 func (b *Linear) Reset() {}
 
 // NextDelay calculates the duration for the attempt.
+//
+// It does not panic. It is safe for concurrent use.
 //
 // Executes in O(1) time and is zero-allocation.
 func (b *Linear) NextDelay(attempt int) time.Duration {
@@ -261,6 +287,8 @@ type Constant struct {
 
 // NewConstant creates a [Constant] backoff generator enforcing the specified fixed delay.
 //
+// It does not panic.
+//
 // Complexity: O(1) time.
 func NewConstant(delay time.Duration) *Constant {
 	return &Constant{
@@ -271,6 +299,8 @@ func NewConstant(delay time.Duration) *Constant {
 
 // WithFullJitter enables Full Jitter on constant delay.
 //
+// It does not panic. It is not safe for concurrent use.
+//
 // Executes in O(1) time and is zero-allocation.
 func (b *Constant) WithFullJitter() *Constant {
 	b.Jitter = JitterFull
@@ -279,10 +309,14 @@ func (b *Constant) WithFullJitter() *Constant {
 
 // Reset is a no-op for constant backoff.
 //
+// It does not panic. It is safe for concurrent use.
+//
 // Executes in O(1) time and is zero-allocation.
 func (b *Constant) Reset() {}
 
 // NextDelay returns the constant delay.
+//
+// It does not panic. It is safe for concurrent use.
 //
 // Executes in O(1) time and is zero-allocation.
 func (b *Constant) NextDelay(attempt int) time.Duration {
