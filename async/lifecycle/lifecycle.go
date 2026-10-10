@@ -59,8 +59,6 @@ type Orchestrator struct {
 }
 
 // NewOrchestrator initializes and returns a new [Orchestrator] instance.
-//
-// Executes in O(1) time and allocates memory for internal maps.
 func NewOrchestrator() *Orchestrator {
 	return &Orchestrator{
 		services: make(map[string]Service),
@@ -68,8 +66,6 @@ func NewOrchestrator() *Orchestrator {
 }
 
 // All returns a newly allocated slice containing a shallow copy of all currently registered services in the orchestrator.
-//
-// Executes in O(N) time where N is the number of registered services, and allocates memory for the returned slice.
 func (o *Orchestrator) All() []Service {
 	o.mu.RLock()
 	defer o.mu.RUnlock()
@@ -83,8 +79,6 @@ func (o *Orchestrator) All() []Service {
 }
 
 // Register adds a [Service] to the orchestrator's managed set.
-//
-// Executes in O(1) time and allocates memory to store the service in the internal map.
 func (o *Orchestrator) Register(s Service) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
@@ -97,8 +91,6 @@ func (o *Orchestrator) Register(s Service) {
 }
 
 // InitAll performs topological sorting of all registered services and executes their [Service.Init] routines in order.
-//
-// Executes in O(V + E) time where V is the number of services and E is the number of dependency links, and allocates memory for the sorted slice.
 func (o *Orchestrator) InitAll(ctx context.Context) error {
 	o.mu.Lock()
 	defer o.mu.Unlock()
@@ -124,8 +116,6 @@ func (o *Orchestrator) InitAll(ctx context.Context) error {
 }
 
 // StartAll executes the startup routine for all initialized services sequentially in topological order.
-//
-// Executes in O(N) time where N is the number of services, and allocates memory for the running slice.
 func (o *Orchestrator) StartAll(ctx context.Context) error {
 	o.mu.Lock()
 	defer o.mu.Unlock()
@@ -153,8 +143,6 @@ func (o *Orchestrator) StartAll(ctx context.Context) error {
 }
 
 // StopAll gracefully terminates all active services in reverse topological order.
-//
-// Executes in O(N) time where N is the number of running services, and is zero-allocation.
 func (o *Orchestrator) StopAll(ctx context.Context) error {
 	o.mu.Lock()
 	defer o.mu.Unlock()

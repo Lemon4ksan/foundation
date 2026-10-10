@@ -10,11 +10,6 @@ import "slices"
 // and returns a new slice containing the results.
 //
 // If the input slice is nil, Map returns nil.
-//
-// # Complexity
-//
-//   - Time: O(N)
-//   - Space: O(N) allocations for the returned slice.
 func Map[F, T any](slice []F, fn func(F) T) []T {
 	if slice == nil || fn == nil {
 		return nil
@@ -32,11 +27,6 @@ func Map[F, T any](slice []F, fn func(F) T) []T {
 // and flattens the resulting slices into a single, merged slice.
 //
 // If the input slice is nil, FlatMap returns nil.
-//
-// # Complexity
-//
-//   - Time: O(N * M), where M is the average length of slices returned by fn.
-//   - Space: O(N * M) allocations for the returned slice.
 func FlatMap[F, T any](slice []F, fn func(F) []T) []T {
 	if slice == nil || fn == nil {
 		return nil
@@ -54,11 +44,6 @@ func FlatMap[F, T any](slice []F, fn func(F) []T) []T {
 //
 // It returns nil if the slice is empty, or if size is less than or equal to 0.
 // The last chunk may contain fewer elements if len(slice) is not a multiple of size.
-//
-// # Complexity
-//
-//   - Time: O(N)
-//   - Space: O(N) since the returned chunks reference the original backing array.
 func Chunked[T any](slice []T, size int) [][]T {
 	if len(slice) == 0 || size <= 0 {
 		return nil
@@ -78,11 +63,6 @@ func Chunked[T any](slice []T, size int) [][]T {
 // The order of the keys in the returned slice is undefined.
 //
 // If the map is nil, Keys returns nil.
-//
-// # Complexity
-//
-//   - Time: O(N)
-//   - Space: O(N) allocations for the returned slice.
 func Keys[K comparable, V any](m map[K]V) []K {
 	if m == nil {
 		return nil
@@ -100,11 +80,6 @@ func Keys[K comparable, V any](m map[K]V) []K {
 // The order of the values in the returned slice is undefined.
 //
 // If the map is nil, Values returns nil.
-//
-// # Complexity
-//
-//   - Time: O(N)
-//   - Space: O(N) allocations for the returned slice.
 func Values[K comparable, V any](m map[K]V) []V {
 	if m == nil {
 		return nil
@@ -122,11 +97,6 @@ func Values[K comparable, V any](m map[K]V) []V {
 // element of the slice, and the values are the elements themselves.
 //
 // If the input slice is nil, IndexBy returns nil.
-//
-// # Complexity
-//
-//   - Time: O(N)
-//   - Space: O(N) allocations for the returned map.
 func IndexBy[K comparable, V any](slice []V, fn func(V) K) map[K]V {
 	if slice == nil || fn == nil {
 		return nil
@@ -142,11 +112,6 @@ func IndexBy[K comparable, V any](slice []V, fn func(V) K) map[K]V {
 
 // Unique returns a new slice containing only the unique elements from the original slice.
 // It preserves the relative order of the elements.
-//
-// # Complexity
-//
-//   - Time: O(N)
-//   - Space: O(N) allocations for the deduplication map and the returned slice.
 func Unique[T comparable](slice []T) []T {
 	if len(slice) == 0 {
 		return slice
@@ -169,11 +134,6 @@ func Unique[T comparable](slice []T) []T {
 // extracted by the key-extractor function fn.
 //
 // If the input slice is nil, GroupBy returns nil.
-//
-// # Complexity
-//
-//   - Time: O(N)
-//   - Space: O(N) allocations for the maps and grouped slices.
 func GroupBy[K comparable, V any](slice []V, fn func(V) K) map[K][]V {
 	if slice == nil || fn == nil {
 		return nil
@@ -244,11 +204,6 @@ func FindOptional[T any](slice []T, fn func(T) bool) Optional[T] {
 //
 // It clears the unused trailing elements of the modified backing array using the
 // built-in clear() function to allow the Garbage Collector to reclaim referenced memory.
-//
-// # Complexity
-//
-//   - Time: O(N)
-//   - Space: O(1) auxiliary space (Zero allocations).
 func FilterInPlace[T any](slice []T, fn func(T) bool) []T {
 	if fn == nil {
 		return slice
