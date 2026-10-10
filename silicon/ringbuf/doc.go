@@ -14,7 +14,7 @@
 // cached head on consumer) to eliminate cache-line bouncing between producer
 // and consumer cores until capacity boundaries are reached.
 //
-// The primary entry points are [New] for MPMC [Buffer] and [NewSPSCRingBuffer] for [SPSCRingBuffer].
+// The primary entry points are [New] for MPMC [Buffer] and [NewSPSC] for [SPSC].
 //
 // # Compared to the standard library
 //

@@ -5,7 +5,7 @@
 // Package testing provides a zero-dependency toolkit for unit testing and mocking.
 //
 // It replaces bulky external testing dependencies with a lightweight, high-performance
-// alternative that integrates seamlessly with the standard library. The toolkit comprises
+// alternative that integrates directly with the standard library. The toolkit comprises
 // subpackages for non-terminating assertions ([github.com/lemon4ksan/foundation/testing/assert]),
 // immediate-terminating requirements ([github.com/lemon4ksan/foundation/testing/require]),
 // and interface mocking primitives ([github.com/lemon4ksan/foundation/testing/mock]).

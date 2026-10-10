@@ -93,10 +93,8 @@ func NewSlabAllocator[T any](slotCount int) (*SlabAllocator[T], error) {
 	return s, nil
 }
 
-// Alloc checks out one zero-initialized T slot from the slab.
-// Returns nil if all slots are currently in use.
-//
-// Time complexity: O(slots/64) - scans bitmap words until a free slot is found.
+// Alloc checks out one zero-initialized T slot from the slab by scanning bitmap words
+// using hardware bit-counting instructions. Returns nil if all slots are currently in use.
 func (s *SlabAllocator[T]) Alloc() *T {
 	if s == nil || s.page == nil || s.free == 0 {
 		return nil
@@ -129,8 +127,6 @@ func (s *SlabAllocator[T]) Alloc() *T {
 //
 // Returns true if the pointer belonged to this slab and was freed, or false if the
 // pointer did not originate from this slab (or was nil).
-//
-// Time complexity: O(1).
 func (s *SlabAllocator[T]) Free(p *T) bool {
 	if s == nil || s.page == nil || p == nil {
 		return false
@@ -160,7 +156,7 @@ func (s *SlabAllocator[T]) Free(p *T) bool {
 	return true
 }
 
-// Reset marks all slots as free in O(slots/64) time.
+// Reset marks all slots as free.
 // Slot memory is NOT zeroed - it will be zeroed lazily on the next [SlabAllocator.Alloc].
 //
 // All previously returned pointers are invalidated after Reset.

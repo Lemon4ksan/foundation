@@ -11,10 +11,7 @@ import (
 )
 
 // AppendJoinURL appends base and subsequent path segments into dst as a canonical URL path
-// without mangling scheme prefixes (e.g. https://).
-//
-// Concurrency & Zero-Allocation Semantics:
-// When dst has sufficient capacity, AppendJoinURL performs strictly zero heap allocations.
+// without mangling scheme prefixes (e.g. https://). When dst has sufficient capacity, it appends without heap allocations.
 func AppendJoinURL(dst []byte, base string, parts ...string) []byte {
 	if len(parts) == 0 {
 		return append(dst, base...)
@@ -74,8 +71,6 @@ func AppendJoinURL(dst []byte, base string, parts ...string) []byte {
 // JoinURL joins base and subsequent path segments into a canonical URL path without mangling scheme prefixes (e.g. https://).
 // Unlike path.Join, it guarantees that "https://" is not collapsed into "https:/",
 // and unlike filepath.Join on Windows, it strictly preserves forward slashes ("/").
-//
-// Allocations: exactly 1 heap allocation for the returned string buffer.
 func JoinURL(base string, parts ...string) string {
 	if len(parts) == 0 {
 		return base
@@ -94,10 +89,7 @@ func JoinURL(base string, parts ...string) string {
 
 // AppendClean appends the shortest path name equivalent to p by purely lexical processing into dst.
 // If the path contains a scheme (e.g. "https://domain.com/a/../b"), the scheme and authority are preserved
-// while the path portion is cleaned.
-//
-// Concurrency & Zero-Allocation Semantics:
-// When dst has sufficient capacity, AppendClean performs strictly zero heap allocations.
+// while the path portion is cleaned. When dst has sufficient capacity, it appends without heap allocations.
 func AppendClean(dst []byte, p string) []byte {
 	if p == "" {
 		return append(dst, '.')
@@ -139,10 +131,7 @@ func Clean(p string) string {
 }
 
 // AppendSanitize strips Directory Traversal sequences ("../", "..\", etc.) from p to ensure safe usage in file lookups,
-// appending the result into dst.
-//
-// Concurrency & Zero-Allocation Semantics:
-// When dst has sufficient capacity, AppendSanitize performs strictly zero heap allocations.
+// appending the result into dst. When dst has sufficient capacity, it appends without heap allocations.
 func AppendSanitize(dst []byte, p string) []byte {
 	if p == "" {
 		return dst

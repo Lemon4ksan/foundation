@@ -11,7 +11,7 @@ import (
 	"golang.org/x/sys/cpu"
 )
 
-// SPSCRingBuffer implements a Single-Producer Single-Consumer lock-free ring buffer.
+// SPSC implements a Single-Producer Single-Consumer lock-free ring buffer.
 //
 // Memory Architecture & Hardware Alignment:
 //   - Zero CAS (CompareAndSwap) Operations: Eliminates atomic CAS loop contention.
@@ -22,7 +22,7 @@ import (
 //     are separated by 64-byte cpu.CacheLinePad boundaries to prevent False Sharing across CPU cores.
 //   - Bitwise Masking: Buffer capacity is rounded up to the nearest power of two,
 //     enabling 1-cycle bitwise AND (& mask) indexing instead of costly division (% cap).
-type SPSCRingBuffer[T any] struct {
+type SPSC[T any] struct {
 	_          cpu.CacheLinePad
 	head       atomic.Uint64 // Written ONLY by Producer thread
 	cachedTail uint64        // Local to Producer thread; refreshed from tail only when queue appears full
@@ -35,9 +35,12 @@ type SPSCRingBuffer[T any] struct {
 	buffer []atomic.Pointer[T]
 }
 
-// NewSPSCRingBuffer constructs an [SPSCRingBuffer] with the requested capacity.
+// SPSCRingBuffer is an alias for [SPSC] to eliminate package stutter while retaining backward compatibility.
+type SPSCRingBuffer[T any] = SPSC[T]
+
+// NewSPSC constructs an [SPSC] ring buffer with the requested capacity.
 // Capacity is automatically rounded up to the next power of two.
-func NewSPSCRingBuffer[T any](capacity int) *SPSCRingBuffer[T] {
+func NewSPSC[T any](capacity int) *SPSC[T] {
 	if capacity < 2 {
 		capacity = 2
 	}
@@ -50,17 +53,22 @@ func NewSPSCRingBuffer[T any](capacity int) *SPSCRingBuffer[T] {
 		capPow2 = 1 << 62
 	}
 
-	return &SPSCRingBuffer[T]{
+	return &SPSC[T]{
 		mask:   capPow2 - 1,
 		buffer: make([]atomic.Pointer[T], capPow2),
 	}
+}
+
+// NewSPSCRingBuffer constructs an [SPSC] ring buffer with the requested capacity.
+func NewSPSCRingBuffer[T any](capacity int) *SPSC[T] {
+	return NewSPSC[T](capacity)
 }
 
 // Push enqueues item into the ring buffer.
 //
 // Thread Safety Invariant: Must be invoked from EXACTLY ONE Producer goroutine.
 // Returns false if the buffer is full.
-func (s *SPSCRingBuffer[T]) Push(item *T) bool {
+func (s *SPSC[T]) Push(item *T) bool {
 	head := s.head.Load()
 
 	if head-s.cachedTail > s.mask {
@@ -82,7 +90,7 @@ func (s *SPSCRingBuffer[T]) Push(item *T) bool {
 //
 // Thread Safety Invariant: Must be invoked from EXACTLY ONE Consumer goroutine.
 // Returns nil if the buffer is empty.
-func (s *SPSCRingBuffer[T]) Pop() *T {
+func (s *SPSC[T]) Pop() *T {
 	tail := s.tail.Load()
 
 	if s.cachedHead == tail {
@@ -102,7 +110,7 @@ func (s *SPSCRingBuffer[T]) Pop() *T {
 }
 
 // Len returns the current number of items buffered in the queue.
-func (s *SPSCRingBuffer[T]) Len() int {
+func (s *SPSC[T]) Len() int {
 	head := s.head.Load()
 	tail := s.tail.Load()
 
@@ -112,29 +120,29 @@ func (s *SPSCRingBuffer[T]) Len() int {
 // Clear removes and drops all elements from the ring buffer, zeroing all pointer slots.
 //
 // Thread Safety Invariant: Must be invoked from EXACTLY ONE Consumer goroutine.
-func (s *SPSCRingBuffer[T]) Clear() {
+func (s *SPSC[T]) Clear() {
 	for s.Pop() != nil {
 	}
 }
 
 // Cap returns the total power-of-two storage capacity of the ring buffer.
-func (s *SPSCRingBuffer[T]) Cap() int {
+func (s *SPSC[T]) Cap() int {
 	return int(s.mask + 1)
 }
 
 // IsFull reports whether the ring buffer cannot accept more items without popping.
-func (s *SPSCRingBuffer[T]) IsFull() bool {
+func (s *SPSC[T]) IsFull() bool {
 	return s.Len() >= s.Cap()
 }
 
 // IsEmpty reports whether the ring buffer contains zero items.
-func (s *SPSCRingBuffer[T]) IsEmpty() bool {
+func (s *SPSC[T]) IsEmpty() bool {
 	return s.Len() == 0
 }
 
 // Drain pops and yields all buffered items in FIFO order until the buffer is empty.
 // Thread Safety Invariant: Must be invoked from EXACTLY ONE Consumer goroutine.
-func (s *SPSCRingBuffer[T]) Drain() iter.Seq[*T] {
+func (s *SPSC[T]) Drain() iter.Seq[*T] {
 	return func(yield func(*T) bool) {
 		for {
 			item := s.Pop()

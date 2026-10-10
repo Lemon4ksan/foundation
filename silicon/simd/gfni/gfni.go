@@ -8,11 +8,8 @@ package gfni
 // modulo the irreducible polynomial x^8 + x^4 + x^3 + x + 1 (0x11B).
 //
 // This function implements the Russian Peasant (xtime) shift-and-add algorithm and serves
-// as the portable, architecture-independent reference implementation and software fallback
+// as the architecture-independent reference implementation and software fallback
 // for the hardware VGF2P8MULB SIMD instruction.
-//
-// Concurrency: Pure function, safe for concurrent use by multiple goroutines.
-// Allocation: Strictly 0 allocs/op, zero heap overhead.
 func MultiplyGF2P8(a, b byte) byte {
 	var p byte = 0
 	for range 8 {
@@ -33,11 +30,8 @@ func MultiplyGF2P8(a, b byte) byte {
 // and writes the resulting field elements into dst.
 //
 // If len(src) is 0, the function returns immediately without modifying dst (safe when dst is nil).
-// If len(dst) < len(src), MultiplyGF2P8Vector panics with a slice bounds check out of range.
-// dst and src may alias the same underlying memory buffer (in-place scaling is fully supported).
-//
-// Concurrency: Safe for concurrent calls on distinct memory slices.
-// Allocation: Strictly 0 allocs/op when using preallocated slices.
+// If len(dst) < len(src), MultiplyGF2P8Vector panics.
+// dst and src may alias the same underlying memory buffer for in-place scaling.
 func MultiplyGF2P8Vector(dst, src []byte, scalar byte) {
 	n := len(src)
 	if n == 0 {

@@ -171,6 +171,9 @@ type DNSRecord struct {
 	TTL  uint32
 }
 
+// Record is an alias for [DNSRecord] to eliminate package stuttering.
+type Record = DNSRecord
+
 // NormalizeTTL normalizes a raw 32-bit DNS wire TTL adhering strictly to RFC 2181 §8 and RFC 8767 §4.
 //
 // Behavior:
@@ -403,6 +406,17 @@ func ParseDNSResponseRecords(msg []byte, expectedID uint16) ([]DNSRecord, error)
 	if id != 0 && expectedID != 0 && id != expectedID {
 		return nil, ErrDNSResponseCode
 	}
+	return parseDNSResponseRecordsInternal(msg, expectedID)
+}
+
+// ParseResponseRecords parses an RFC 1035 binary DNS response packet
+// and extracts IP address records along with their authoritative TTLs.
+// It provides a non-stuttering entry point to [ParseDNSResponseRecords].
+func ParseResponseRecords(msg []byte, expectedID uint16) ([]Record, error) {
+	return ParseDNSResponseRecords(msg, expectedID)
+}
+
+func parseDNSResponseRecordsInternal(msg []byte, expectedID uint16) ([]DNSRecord, error) {
 
 	flags := binary.BigEndian.Uint16(msg[2:4])
 	if flags&0x000f != 0 {

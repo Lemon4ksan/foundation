@@ -57,9 +57,7 @@ var (
 	}
 
 	// Whitelist of public packages temporarily permitted without doc.go.
-	allowedMissingDocGo = map[string]bool{
-		"github.com/lemon4ksan/foundation/silicon/simd/gfni": true,
-	}
+	allowedMissingDocGo = map[string]bool{}
 )
 
 func loadPackageList(t *testing.T) []pkgInfo {

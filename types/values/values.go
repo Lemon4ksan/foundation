@@ -30,6 +30,9 @@ type ValueError struct {
 	Index int
 }
 
+// Error is an alias for [ValueError] to eliminate package stuttering.
+type Error = ValueError
+
 func (e *ValueError) Error() string {
 	if e == nil {
 		return "<nil>"

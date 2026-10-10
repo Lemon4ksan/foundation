@@ -10,8 +10,8 @@ import (
 
 // Implements reports whether type t implements interface T.
 //
-// Unlike the standard library [reflect.Type.Implements], this helper does not panic
-// if T is a non-interface type or if t is nil; instead it safely returns false.
+// Unlike the standard library [reflect.Type.Implements], Implements returns false
+// if T is a non-interface type or if t is nil, rather than panicking.
 // It executes with 0 heap allocations.
 //
 //go:inline

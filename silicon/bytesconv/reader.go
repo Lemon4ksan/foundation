@@ -22,6 +22,9 @@ type StreamReader struct {
 	err error
 }
 
+// Reader is an alias for [StreamReader] to eliminate package stuttering.
+type Reader = StreamReader
+
 // NewStreamReader returns a new StreamReader with at least the specified buffer size (minimum 4096 bytes).
 func NewStreamReader(rd io.Reader, size int) *StreamReader {
 	if size < 4096 {
@@ -32,6 +35,11 @@ func NewStreamReader(rd io.Reader, size int) *StreamReader {
 		buf: make([]byte, size),
 		rd:  rd,
 	}
+}
+
+// NewReader returns a new [Reader] with at least the specified buffer size (minimum 4096 bytes).
+func NewReader(rd io.Reader, size int) *Reader {
+	return NewStreamReader(rd, size)
 }
 
 // Reset discards any buffered data, resets read/write pointers, and sets the underlying reader to rd.

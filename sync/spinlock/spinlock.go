@@ -25,7 +25,7 @@ type Lock struct {
 
 // Lock acquires the spinlock.
 //
-// If the lock is already in use, the calling goroutine blocks until it is available, executing in zero-allocation O(1) time.
+// If the lock is already in use, the calling goroutine spins until it is available.
 func (s *Lock) Lock() {
 	if atomic.CompareAndSwapUint32(&s.state, 0, 1) {
 		return
