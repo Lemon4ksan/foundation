@@ -15,8 +15,8 @@ import (
 var ErrBadLength = errors.New("hkdf: requested key length exceeds maximum limit")
 
 // Extract implements HKDF-Extract (RFC 5869 Section 2.2).
-// It extracts a pseudorandom key (PRK) of hash length from the input keying material (secret) and salt.
-// If salt is nil or empty, a string of HashLen zeros is used.
+//
+// Executes in O(N) time where N is the length of the secret, and allocates memory for the pseudorandom key.
 func Extract(h func() hash.Hash, secret, salt []byte) []byte {
 	hasher := h()
 	if len(salt) == 0 {
@@ -28,7 +28,8 @@ func Extract(h func() hash.Hash, secret, salt []byte) []byte {
 }
 
 // Expand implements HKDF-Expand (RFC 5869 Section 2.3).
-// It expands a pseudorandom key (PRK) with domain context info into an output key of the specified length.
+//
+// Executes in O(N) time where N is the number of hash iterations, and allocates memory for the output key.
 func Expand(h func() hash.Hash, prk, info []byte, length int) ([]byte, error) {
 	if length < 0 {
 		return nil, ErrBadLength
@@ -70,6 +71,8 @@ func Expand(h func() hash.Hash, prk, info []byte, length int) ([]byte, error) {
 }
 
 // DeriveKey combines HKDF-Extract and HKDF-Expand into a single call.
+//
+// Executes in O(N+M) time where N is the secret length and M is the hash iterations, and allocates memory for the intermediate PRK and the final key.
 func DeriveKey(h func() hash.Hash, secret, salt, info []byte, length int) ([]byte, error) {
 	prk := Extract(h, secret, salt)
 	return Expand(h, prk, info, length)

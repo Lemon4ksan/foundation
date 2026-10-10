@@ -8,6 +8,7 @@ package urlkit
 
 import "errors"
 
+// ErrInvalidEscape indicates that an invalid URL escape sequence was encountered during unescaping.
 var ErrInvalidEscape = errors.New("url: invalid URL escape sequence")
 
 func unescapeVector(dst, src []byte, mode UnescapeMode) (int, error) {

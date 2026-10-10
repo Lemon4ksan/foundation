@@ -15,13 +15,13 @@ import (
 type JitterMode uint8
 
 const (
-	// JitterNone applies no randomization (deterministic delay).
+	// JitterNone applies no randomization.
 	JitterNone JitterMode = iota
-	// JitterFull randomizes delay uniformly in range [0, baseDelay].
+	// JitterFull randomizes delay uniformly in the range [0, baseDelay].
 	JitterFull
-	// JitterEqual splits delay into half deterministic and half uniform randomized [baseDelay/2, baseDelay].
+	// JitterEqual splits delay into half deterministic and half uniform randomized.
 	JitterEqual
-	// JitterDecorrelated updates state: next = min(max, rand(initial, prev * 3)).
+	// JitterDecorrelated updates state based on the decorrelated jitter algorithm.
 	JitterDecorrelated
 )
 
@@ -29,11 +29,14 @@ const (
 type Policy interface {
 	// NextDelay calculates the sleep duration for the given 1-based attempt index.
 	NextDelay(attempt int) time.Duration
-	// Reset resets any internal stateful state (e.g. for decorrelated jitter).
+	// Reset resets any internal stateful state.
 	Reset()
 }
 
-// Exponential computes backoff growing by factor with an optional jitter distribution.
+// Exponential computes backoff growing by a factor with an optional jitter distribution.
+//
+// The zero value is empty and ready to use.
+// Read-only operations are safe for concurrent use; mutations require external synchronization.
 type Exponential struct {
 	Initial   time.Duration
 	Max       time.Duration
@@ -42,7 +45,9 @@ type Exponential struct {
 	lastSleep time.Duration
 }
 
-// NewExponential creates an [Exponential] with reasonable defaults (factor=2.0).
+// NewExponential creates an [Exponential] with the provided limits and factor.
+//
+// Executes in O(1) time and allocates memory.
 func NewExponential(initial, max time.Duration, factor float64) *Exponential {
 	if initial <= 0 {
 		initial = 100 * time.Millisecond
@@ -65,30 +70,40 @@ func NewExponential(initial, max time.Duration, factor float64) *Exponential {
 	}
 }
 
-// WithFullJitter sets JitterMode to Full Jitter (AWS recommended standard).
+// WithFullJitter sets JitterMode to Full Jitter.
+//
+// Executes in O(1) time and is zero-allocation.
 func (b *Exponential) WithFullJitter() *Exponential {
 	b.Jitter = JitterFull
 	return b
 }
 
 // WithEqualJitter sets JitterMode to Equal Jitter.
+//
+// Executes in O(1) time and is zero-allocation.
 func (b *Exponential) WithEqualJitter() *Exponential {
 	b.Jitter = JitterEqual
 	return b
 }
 
 // WithDecorrelatedJitter sets JitterMode to Decorrelated Jitter.
+//
+// Executes in O(1) time and is zero-allocation.
 func (b *Exponential) WithDecorrelatedJitter() *Exponential {
 	b.Jitter = JitterDecorrelated
 	return b
 }
 
 // Reset resets the stateful sleep history.
+//
+// Executes in O(1) time and is zero-allocation.
 func (b *Exponential) Reset() {
 	b.lastSleep = b.Initial
 }
 
-// NextDelay calculates the duration for attempt (1-based).
+// NextDelay calculates the duration for the attempt.
+//
+// Executes in O(1) time and is zero-allocation.
 func (b *Exponential) NextDelay(attempt int) time.Duration {
 	if attempt <= 1 {
 		return b.applyJitter(b.Initial)
@@ -148,6 +163,9 @@ func (b *Exponential) applyJitter(baseDelay time.Duration) time.Duration {
 }
 
 // Linear computes backoff growing linearly by step on each attempt.
+//
+// The zero value is empty and ready to use.
+// Read-only operations are safe for concurrent use; mutations require external synchronization.
 type Linear struct {
 	Initial time.Duration
 	Max     time.Duration
@@ -156,6 +174,8 @@ type Linear struct {
 }
 
 // NewLinear creates a [Linear] calculator.
+//
+// Executes in O(1) time and allocates memory.
 func NewLinear(initial, max, step time.Duration) *Linear {
 	if initial <= 0 {
 		initial = 100 * time.Millisecond
@@ -178,15 +198,21 @@ func NewLinear(initial, max, step time.Duration) *Linear {
 }
 
 // WithFullJitter enables Full Jitter on linear backoff.
+//
+// Executes in O(1) time and is zero-allocation.
 func (b *Linear) WithFullJitter() *Linear {
 	b.Jitter = JitterFull
 	return b
 }
 
 // Reset is a no-op for stateless linear backoff.
+//
+// Executes in O(1) time and is zero-allocation.
 func (b *Linear) Reset() {}
 
-// NextDelay calculates the duration for attempt (1-based).
+// NextDelay calculates the duration for the attempt.
+//
+// Executes in O(1) time and is zero-allocation.
 func (b *Linear) NextDelay(attempt int) time.Duration {
 	if attempt <= 1 {
 		return b.applyJitter(b.Initial)
@@ -217,12 +243,17 @@ func (b *Linear) applyJitter(baseDelay time.Duration) time.Duration {
 }
 
 // Constant computes a fixed static delay with optional jitter.
+//
+// The zero value is empty and ready to use.
+// Read-only operations are safe for concurrent use; mutations require external synchronization.
 type Constant struct {
 	Delay  time.Duration
 	Jitter JitterMode
 }
 
 // NewConstant creates a fixed static delay backoff.
+//
+// Executes in O(1) time and allocates memory.
 func NewConstant(delay time.Duration) *Constant {
 	return &Constant{
 		Delay:  delay,
@@ -231,15 +262,21 @@ func NewConstant(delay time.Duration) *Constant {
 }
 
 // WithFullJitter enables Full Jitter on constant delay.
+//
+// Executes in O(1) time and is zero-allocation.
 func (b *Constant) WithFullJitter() *Constant {
 	b.Jitter = JitterFull
 	return b
 }
 
 // Reset is a no-op for constant backoff.
+//
+// Executes in O(1) time and is zero-allocation.
 func (b *Constant) Reset() {}
 
 // NextDelay returns the constant delay.
+//
+// Executes in O(1) time and is zero-allocation.
 func (b *Constant) NextDelay(attempt int) time.Duration {
 	if b.Jitter == JitterFull && b.Delay > 0 {
 		return randkit.Jitter(b.Delay)

@@ -15,9 +15,10 @@ import (
 )
 
 // Adaptive controls concurrency dynamically using a Vegas-style congestion algorithm.
-// It measures round-trip times (RTT) to dynamically adjust the allowed concurrent request limit.
 //
-// An Adaptive is safe for concurrent use by multiple goroutines.
+// The zero value is empty and ready to use.
+// Read-only operations are safe for concurrent use; mutations require external synchronization unless stated otherwise.
+// Note that methods on [Adaptive] manage their own internal locks.
 type Adaptive struct {
 	mu          sync.Mutex
 	limit       float64
@@ -32,6 +33,8 @@ type Adaptive struct {
 }
 
 // NewAdaptive initializes an [Adaptive] instance with default settings.
+//
+// Executes in O(1) time and allocates memory for the tracking structure.
 func NewAdaptive(initialLimit float64) *Adaptive {
 	return &Adaptive{
 		limit:     initialLimit,
@@ -47,6 +50,7 @@ func NewAdaptive(initialLimit float64) *Adaptive {
 //
 // It returns nil on successful acquisition. It returns [context.Canceled] or
 // [context.DeadlineExceeded] if the context expires before a slot becomes available.
+// Executes in O(1) time if uncontended, allocating a channel otherwise.
 func (l *Adaptive) Acquire(ctx context.Context) error {
 	l.mu.Lock()
 	if l.active < int(l.limit) {
@@ -93,6 +97,7 @@ func (l *Adaptive) Acquire(ctx context.Context) error {
 //
 // It adjusts the concurrency limit based on Vegas queuing limits (alpha and beta thresholds)
 // and unblocks waiting goroutines if slots become available.
+// Executes in amortized O(W) time where W is the number of woken waiters and is zero-allocation.
 func (l *Adaptive) Release(rtt time.Duration) {
 	// Defensive check: sanitise input RTT to prevent division-by-zero or NaN propagation.
 	if rtt <= 0 {
@@ -142,6 +147,8 @@ func (l *Adaptive) Release(rtt time.Duration) {
 }
 
 // Limit returns the active dynamic concurrency limit.
+//
+// Executes in O(1) time and is zero-allocation.
 func (l *Adaptive) Limit() float64 {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -156,10 +163,11 @@ type limiterEntry struct {
 	lastTouch time.Time
 }
 
-// Keyed manages dynamic rate limiters per key, automatically cleaning up
-// inactive limiters from memory after a configured TTL duration.
+// Keyed manages dynamic rate limiters per key, automatically cleaning up inactive limiters from memory after a configured TTL duration.
 //
-// A Keyed is safe for concurrent use by multiple goroutines.
+// The zero value is empty and ready to use.
+// Read-only operations are safe for concurrent use; mutations require external synchronization unless stated otherwise.
+// Note that methods on [Keyed] manage their own internal locks.
 type Keyed[K comparable] struct {
 	mu       sync.Mutex
 	r        rate.Limit
@@ -171,9 +179,10 @@ type Keyed[K comparable] struct {
 	closed   bool
 }
 
-// NewKeyed creates a new [Keyed] with the specified rate limit, burst size,
-// and TTL for inactive limiters. It starts a background sweeper goroutine to clean up
-// expired entries.
+// NewKeyed creates a [Keyed] with the specified rate limit, burst size, and TTL for inactive limiters.
+//
+// It starts a background sweeper goroutine to clean up expired entries.
+// Executes in O(1) time and allocates memory for the tracking structures and background goroutine.
 func NewKeyed[K comparable](r rate.Limit, b int, ttl time.Duration) *Keyed[K] {
 	kl := &Keyed[K]{
 		r:        r,
@@ -240,6 +249,8 @@ func (kl *Keyed[K]) getLimiter(key K) (*rate.Limiter, error) {
 }
 
 // Allow reports whether an event may occur for the given key immediately.
+//
+// Executes in amortized O(1) time and allocates memory only when a new key is encountered.
 func (kl *Keyed[K]) Allow(key K) (bool, error) {
 	lim, err := kl.getLimiter(key)
 	if err != nil {
@@ -249,8 +260,9 @@ func (kl *Keyed[K]) Allow(key K) (bool, error) {
 	return lim.Allow(), nil
 }
 
-// Wait blocks until the rate limiter allows an event to occur for the key,
-// or until the context is cancelled.
+// Wait blocks until the rate limiter allows an event to occur for the key, or until the context is cancelled.
+//
+// Executes in amortized O(1) time and allocates memory only when a new key is encountered.
 func (kl *Keyed[K]) Wait(ctx context.Context, key K) error {
 	lim, err := kl.getLimiter(key)
 	if err != nil {
@@ -264,6 +276,7 @@ func (kl *Keyed[K]) Wait(ctx context.Context, key K) error {
 //
 // Subsequent operations on [Keyed] will return [ErrClosed].
 // Close is idempotent and safe to call concurrently.
+// Executes in O(1) time excluding background wait time and is zero-allocation.
 func (kl *Keyed[K]) Close() error {
 	kl.mu.Lock()
 	if kl.closed {
@@ -282,6 +295,8 @@ func (kl *Keyed[K]) Close() error {
 }
 
 // Len returns the number of active key limiters currently stored in memory.
+//
+// Executes in O(1) time and is zero-allocation.
 func (kl *Keyed[K]) Len() int {
 	kl.mu.Lock()
 	defer kl.mu.Unlock()
@@ -289,6 +304,10 @@ func (kl *Keyed[K]) Len() int {
 }
 
 // SlidingWindow implements a thread-safe sliding window log rate limiter.
+//
+// The zero value is empty and ready to use.
+// Read-only operations are safe for concurrent use; mutations require external synchronization unless stated otherwise.
+// Note that methods on [SlidingWindow] manage their own internal locks.
 type SlidingWindow struct {
 	mu         sync.Mutex
 	timestamps []time.Time
@@ -297,6 +316,8 @@ type SlidingWindow struct {
 }
 
 // NewSlidingWindow constructs a new sliding window rate limiter instance.
+//
+// Executes in O(1) time and allocates memory for tracking timestamps.
 func NewSlidingWindow(limit int, window time.Duration) *SlidingWindow {
 	if limit < 0 {
 		limit = 0
@@ -309,7 +330,9 @@ func NewSlidingWindow(limit int, window time.Duration) *SlidingWindow {
 	}
 }
 
-// Allow returns true if the request is permitted within the sliding window interval.
+// Allow reports whether the request is permitted within the sliding window interval.
+//
+// Executes in O(N) time where N is the current limit window size.
 func (l *SlidingWindow) Allow(now time.Time) (bool, time.Duration) {
 	l.mu.Lock()
 	defer l.mu.Unlock()

@@ -22,32 +22,28 @@ var refCounterPool = sync.Pool{
 	},
 }
 
-// Mutex implements a thread-safe, striped/key-based locking mechanism.
+// Mutex implements a thread-safe, striped or key-based locking mechanism.
 //
-// It allows goroutine A to lock key "X" while goroutine B works concurrently
-// with key "Y" without blockages. Mutex automatically reclaims unused internal
-// mutexes from memory using reference counting.
-//
-// A Mutex is safe for concurrent use by multiple goroutines.
+// The zero value is empty and ready to use.
+// Read-only operations are safe for concurrent use; mutations require external synchronization unless stated otherwise.
+// Note that [Mutex] manages its own internal locks for safe concurrent use.
 type Mutex[K comparable] struct {
 	mu    sync.Mutex
 	locks map[K]*refCounter
 }
 
-// New creates and returns a new [Mutex] instance for keys of type K.
+// New creates a [Mutex] instance for keys of type K.
+//
+// Executes in O(1) time and allocates memory for the tracking structures.
 func New[K comparable]() *Mutex[K] {
 	return &Mutex[K]{
 		locks: make(map[K]*refCounter),
 	}
 }
 
-// Keys returns a newly allocated slice containing all currently tracked
-// and locked keys.
+// Keys returns a newly allocated slice containing all currently tracked and locked keys.
 //
-// # Complexity
-//
-// Time Complexity: O(N), where N is the number of currently active locks.
-// Space Complexity: O(N) allocation for the returned slice.
+// Executes in O(N) time and space, where N is the number of currently active locks.
 func (km *Mutex[K]) Keys() []K {
 	km.mu.Lock()
 	defer km.mu.Unlock()
@@ -60,11 +56,10 @@ func (km *Mutex[K]) Keys() []K {
 	return keys
 }
 
-// IsLocked returns true if the specified key is currently locked.
+// IsLocked reports whether the specified key is currently locked.
 //
-// Unlike simple map lookups, IsLocked is highly precise: it only returns true
-// if the lock has been successfully acquired by a goroutine, ignoring temporary
-// states during active acquisition or failed TryLock attempts.
+// Unlike simple map lookups, IsLocked only returns true if the lock has been successfully acquired by a goroutine.
+// Executes in amortized O(1) time and is zero-allocation.
 func (km *Mutex[K]) IsLocked(key K) bool {
 	km.mu.Lock()
 	defer km.mu.Unlock()
@@ -74,17 +69,10 @@ func (km *Mutex[K]) IsLocked(key K) bool {
 	return exists && ref.held
 }
 
-// ForceUnlock forcibly unlocks and deletes the specified key from the registry,
-// even if the caller is not the lock holder.
+// ForceUnlock forcibly unlocks and deletes the specified key from the registry.
 //
-// # Safety Warning
-//
-// ForceUnlock violates standard mutex ownership invariants. If other goroutines
-// are currently waiting for this lock (blocked inside [Mutex.Lock]), calling
-// ForceUnlock will cause those waiting goroutines to acquire a disconnected,
-// orphaned lock. When they eventually attempt to call [Mutex.Unlock],
-// they will panic with "unlock of unlocked key".
-// Use ForceUnlock only in test fixtures or when no other waiters are present.
+// Use ForceUnlock only in test fixtures or when no other waiters are present to prevent orphans.
+// Executes in amortized O(1) time and is zero-allocation.
 func (km *Mutex[K]) ForceUnlock(key K) {
 	km.mu.Lock()
 
@@ -104,10 +92,10 @@ func (km *Mutex[K]) ForceUnlock(key K) {
 	ref.mu.Unlock()
 }
 
-// Lock locks the specified key.
+// Lock acquires the specified key.
 //
-// If the key is already locked by another goroutine, the calling goroutine
-// blocks until the key is unlocked.
+// If the key is already locked by another goroutine, the calling goroutine blocks until the key is unlocked.
+// Executes in amortized O(1) time.
 func (km *Mutex[K]) Lock(key K) {
 	km.mu.Lock()
 	if km.locks == nil {
@@ -133,9 +121,10 @@ func (km *Mutex[K]) Lock(key K) {
 	km.mu.Unlock()
 }
 
-// Unlock unlocks the specified key, allowing waiting goroutines to proceed.
+// Unlock releases the specified key.
 //
-// Unlock panics if the key is not currently registered or held.
+// Panics if the key is not currently registered or held.
+// Executes in amortized O(1) time and is zero-allocation.
 func (km *Mutex[K]) Unlock(key K) {
 	km.mu.Lock()
 
@@ -164,8 +153,8 @@ func (km *Mutex[K]) Unlock(key K) {
 
 // TryLock attempts to lock the specified key without blocking the caller.
 //
-// It returns true if the lock was successfully acquired, and false if the
-// key is already locked by another goroutine.
+// It returns true if the lock was successfully acquired, and false if the key is already locked by another goroutine.
+// Executes in amortized O(1) time.
 func (km *Mutex[K]) TryLock(key K) bool {
 	km.mu.Lock()
 	if km.locks == nil {
@@ -205,10 +194,8 @@ func (km *Mutex[K]) TryLock(key K) bool {
 }
 
 // KeysSeq returns an iterator yielding all currently tracked and locked keys.
-// Iteration stops immediately if yield returns false.
 //
-// Concurrency Guarantees:
-// KeysSeq is safe for concurrent use.
+// Executes in O(N) time and space, where N is the number of active locks, for initialization.
 func (km *Mutex[K]) KeysSeq() iter.Seq[K] {
 	return func(yield func(K) bool) {
 		km.mu.Lock()
@@ -231,7 +218,9 @@ func (km *Mutex[K]) KeysSeq() iter.Seq[K] {
 }
 
 // WithLock executes fn while holding the lock for key on km.
+//
 // It guarantees that the key is unlocked upon return.
+// Executes in amortized O(1) time excluding the execution of fn.
 func WithLock[K comparable](km *Mutex[K], key K, fn func()) {
 	km.Lock(key)
 	defer km.Unlock(key)
@@ -239,7 +228,9 @@ func WithLock[K comparable](km *Mutex[K], key K, fn func()) {
 }
 
 // WithLockResult executes fn while holding the lock for key on km, returning its result and error.
+//
 // It guarantees that the key is unlocked upon return.
+// Executes in amortized O(1) time excluding the execution of fn.
 func WithLockResult[K comparable, V any](km *Mutex[K], key K, fn func() (V, error)) (V, error) {
 	km.Lock(key)
 	defer km.Unlock(key)

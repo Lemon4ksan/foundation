@@ -9,6 +9,9 @@ import (
 )
 
 // DerefType resolves the underlying non-pointer type, unwrapping all consecutive pointer layers (e.g. ***T -> T).
+//
+// It executes in O(P) time where P is the number of pointer indirections.
+// It is safe for concurrent use.
 func DerefType(t reflect.Type) reflect.Type {
 	if t == nil {
 		return nil
@@ -22,7 +25,10 @@ func DerefType(t reflect.Type) reflect.Type {
 }
 
 // DerefValue unwraps consecutive pointer and interface levels until reaching the concrete value.
+//
 // If any pointer along the chain is nil or the value is invalid, returns an invalid [reflect.Value].
+// It executes in O(P) time where P is the number of pointer and interface indirections.
+// It is safe for concurrent use.
 func DerefValue(v reflect.Value) reflect.Value {
 	for v.IsValid() && (v.Kind() == reflect.Pointer || v.Kind() == reflect.Interface) {
 		if v.Kind() == reflect.Pointer && v.IsNil() {
@@ -36,6 +42,8 @@ func DerefValue(v reflect.Value) reflect.Value {
 }
 
 // IndirectType dereferences a single pointer level if t is a pointer type.
+//
+// It executes in O(1) time and is safe for concurrent use.
 func IndirectType(t reflect.Type) reflect.Type {
 	if t != nil && t.Kind() == reflect.Pointer {
 		return t.Elem()
@@ -45,6 +53,8 @@ func IndirectType(t reflect.Type) reflect.Type {
 }
 
 // IndirectValue dereferences a single pointer level if v is a non-nil pointer.
+//
+// It executes in O(1) time and is safe for concurrent use.
 func IndirectValue(v reflect.Value) reflect.Value {
 	if v.IsValid() && v.Kind() == reflect.Pointer && !v.IsNil() {
 		return v.Elem()
@@ -54,6 +64,9 @@ func IndirectValue(v reflect.Value) reflect.Value {
 }
 
 // IndirectKind returns the [reflect.Kind] of the dereferenced type or value.
+//
+// It executes in O(P) time where P is the number of pointer indirections.
+// It is safe for concurrent use.
 func IndirectKind(v any) reflect.Kind {
 	if v == nil {
 		return reflect.Invalid
@@ -80,6 +93,10 @@ func IndirectKind(v any) reflect.Kind {
 }
 
 // TypeName returns a clean, human-readable name of any value or type without pointer prefixes.
+//
+// It executes in O(P) time where P is the number of pointer indirections.
+// It is safe for concurrent use.
+// It may allocate memory for string representation.
 func TypeName(v any) string {
 	if v == nil {
 		return "<nil>"
@@ -113,6 +130,9 @@ func TypeName(v any) string {
 }
 
 // FullTypeName returns the full reflect.Type string representation of any value or type.
+//
+// It executes in O(1) time and is safe for concurrent use.
+// It allocates memory for string representation.
 func FullTypeName(v any) string {
 	if v == nil {
 		return "<nil>"

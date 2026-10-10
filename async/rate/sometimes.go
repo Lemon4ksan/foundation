@@ -9,16 +9,12 @@ import (
 	"time"
 )
 
-// Sometimes will perform an action occasionally. The First, Every, and
-// Interval fields govern the behavior of Do, which performs the action.
-// A zero Sometimes value will perform an action exactly once.
+// Sometimes will perform an action occasionally.
 //
-// # Example: logging with rate limiting
-//
-//	var sometimes = rate.Sometimes{First: 3, Interval: 10*time.Second}
-//	func Spammy() {
-//	        sometimes.Do(func() { log.Info("here I am!") })
-//	}
+// The First, Every, and Interval fields govern the behavior of Do, which performs the action.
+// The zero value is empty and ready to use.
+// Read-only operations are safe for concurrent use; mutations require external synchronization unless stated otherwise.
+// Note that methods on [Sometimes] manage their own internal locks.
 type Sometimes struct {
 	First    int           // if non-zero, the first N calls to Do will run f.
 	Every    int           // if non-zero, every Nth call to Do will run f.
@@ -31,28 +27,15 @@ type Sometimes struct {
 
 // Do runs the function f as allowed by First, Every, and Interval.
 //
-// The model is a union (not intersection) of filters.  The first call to Do
-// always runs f.  Subsequent calls to Do run f if allowed by First or Every or
-// Interval.
-//
+// The model is a union (not intersection) of filters. The first call to Do always runs f.
+// Subsequent calls to Do run f if allowed by First, Every, or Interval.
 // A non-zero First:N causes the first N Do(f) calls to run f.
-//
-// A non-zero Every:M causes every Mth Do(f) call, starting with the first, to
-// run f.
-//
-// A non-zero Interval causes Do(f) to run f if Interval has elapsed since
-// Do last ran f.
-//
+// A non-zero Every:M causes every Mth Do(f) call, starting with the first, to run f.
+// A non-zero Interval causes Do(f) to run f if Interval has elapsed since Do last ran f.
 // Specifying multiple filters produces the union of these execution streams.
-// For example, specifying both First:N and Every:M causes the first N Do(f)
-// calls and every Mth Do(f) call, starting with the first, to run f.  See
-// Examples for more.
-//
-// If Do is called multiple times simultaneously, the calls will block and run
-// serially.  Therefore, Do is intended for lightweight operations.
-//
-// Because a call to Do may block until f returns, if f causes Do to be called,
-// it will deadlock.
+// If Do is called multiple times simultaneously, the calls will block and run serially.
+// Because a call to Do may block until f returns, if f causes Do to be called, it will deadlock.
+// Executes in amortized O(1) time excluding the execution of f and is zero-allocation.
 func (s *Sometimes) Do(f func()) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

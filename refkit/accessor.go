@@ -15,6 +15,7 @@ import (
 // [reflect.Int32], [reflect.Int64]) and for unsigned integer kinds whose values fit
 // within [math.MaxInt64]. For unsupported kinds, invalid values, or unsigned values that
 // overflow [math.MaxInt64], it returns (0, false).
+// It executes in O(1) time and is safe for concurrent use.
 func AsInt64(v reflect.Value) (int64, bool) {
 	if !v.IsValid() {
 		return 0, false
@@ -39,6 +40,7 @@ func AsInt64(v reflect.Value) (int64, bool) {
 // It succeeds for unsigned integer kinds ([reflect.Uint], [reflect.Uint8], [reflect.Uint16],
 // [reflect.Uint32], [reflect.Uint64], [reflect.Uintptr]) and for non-negative signed integers.
 // For unsupported kinds, invalid values, or negative signed integers, it returns (0, false).
+// It executes in O(1) time and is safe for concurrent use.
 func AsUint64(v reflect.Value) (uint64, bool) {
 	if !v.IsValid() {
 		return 0, false
@@ -62,6 +64,7 @@ func AsUint64(v reflect.Value) (uint64, bool) {
 //
 // It succeeds for [reflect.Float32] and [reflect.Float64]. For other kinds or invalid values,
 // it returns (0, false).
+// It executes in O(1) time and is safe for concurrent use.
 func AsFloat64(v reflect.Value) (float64, bool) {
 	if !v.IsValid() {
 		return 0, false
@@ -78,6 +81,7 @@ func AsFloat64(v reflect.Value) (float64, bool) {
 // AsBool extracts a boolean from v without interface boxing allocations.
 //
 // It succeeds for [reflect.Bool]. For other kinds or invalid values, it returns (false, false).
+// It executes in O(1) time and is safe for concurrent use.
 func AsBool(v reflect.Value) (bool, bool) {
 	if !v.IsValid() {
 		return false, false
@@ -94,6 +98,7 @@ func AsBool(v reflect.Value) (bool, bool) {
 //
 // It succeeds for byte slices ([]byte) and addressable byte arrays ([N]byte). For other kinds,
 // non-byte slices/arrays, or invalid values, it returns (nil, false).
+// It executes in O(1) time and is safe for concurrent use.
 func AsBytes(v reflect.Value) ([]byte, bool) {
 	if !v.IsValid() {
 		return nil, false
@@ -113,6 +118,7 @@ func AsBytes(v reflect.Value) ([]byte, bool) {
 // AsString extracts the string from v without copying or interface boxing allocations.
 //
 // It succeeds for [reflect.String]. For other kinds or invalid values, it returns ("", false).
+// It executes in O(1) time and is safe for concurrent use.
 func AsString(v reflect.Value) (string, bool) {
 	if !v.IsValid() {
 		return "", false

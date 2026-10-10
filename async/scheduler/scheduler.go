@@ -12,6 +12,8 @@ import (
 )
 
 // Priority defines the execution precedence level of a [Task].
+//
+// The zero value is [PriorityLow].
 type Priority int
 
 const (
@@ -24,7 +26,9 @@ const (
 )
 
 // Task represents a single schedulable unit of work.
-// Acquire instances using [Scheduler.AcquireTask] and release them with [Scheduler.ReleaseTask].
+//
+// The zero value is empty and not ready to use.
+// Read-only operations are safe for concurrent use; mutations require external synchronization.
 type Task struct {
 	// ID is the unique identifier of the task. Required for cancellation.
 	ID string
@@ -47,7 +51,9 @@ type Task struct {
 }
 
 // Debounce returns a thread-safe wrapped function that delays invoking fn until interval has elapsed.
+//
 // Each invocation of the returned function restarts the delay timer.
+// Executes in O(1) time and allocates memory for the timer and closure.
 func Debounce(interval time.Duration, fn func()) func() {
 	var (
 		mu    sync.Mutex
@@ -67,7 +73,9 @@ func Debounce(interval time.Duration, fn func()) func() {
 }
 
 // Throttle returns a thread-safe wrapped function that invokes fn at most once per interval.
+//
 // The first invocation runs asynchronously in a new goroutine, and subsequent calls are ignored during the cooldown.
+// Executes in O(1) time and allocates memory for the closure.
 func Throttle(interval time.Duration, fn func()) func() {
 	var (
 		mu      sync.Mutex
@@ -87,11 +95,10 @@ func Throttle(interval time.Duration, fn func()) func() {
 	}
 }
 
-// DebounceFn returns a thread-safe wrapped function that delays invoking fn with parameter arg
-// until interval has elapsed since the most recent call. Each call restarts the timer with the latest argument.
+// DebounceFn returns a thread-safe wrapped function that delays invoking fn with parameter arg until interval has elapsed since the most recent call.
 //
-// Concurrency Guarantees:
-// The returned function is safe for concurrent use across multiple goroutines.
+// Each call restarts the timer with the latest argument.
+// Executes in O(1) time and allocates memory.
 func DebounceFn[T any](interval time.Duration, fn func(T)) func(T) {
 	var (
 		mu    sync.Mutex
@@ -118,10 +125,9 @@ func DebounceFn[T any](interval time.Duration, fn func(T)) func(T) {
 }
 
 // ThrottleFn returns a thread-safe wrapped function that invokes fn with parameter arg at most once per interval.
-// The first invocation runs asynchronously in a new goroutine, and subsequent calls within the interval window are ignored.
 //
-// Concurrency Guarantees:
-// The returned function is safe for concurrent use across multiple goroutines.
+// The first invocation runs asynchronously in a new goroutine, and subsequent calls within the interval window are ignored.
+// Executes in O(1) time and allocates memory.
 func ThrottleFn[T any](interval time.Duration, fn func(T)) func(T) {
 	var (
 		mu      sync.Mutex
@@ -143,8 +149,9 @@ func ThrottleFn[T any](interval time.Duration, fn func(T)) func(T) {
 
 // Scheduler coordinates prioritized, time-exact task execution.
 //
-// Create new instances of Scheduler using the [New] constructor function.
-// All scheduler operations are safe for concurrent use by multiple goroutines.
+// The zero value is empty and not ready to use.
+// Read-only operations are safe for concurrent use; mutations require external synchronization unless stated otherwise.
+// Note that methods on [Scheduler] manage their own internal locks.
 type Scheduler struct {
 	mu        sync.Mutex
 	tasks     taskHeap
@@ -156,7 +163,9 @@ type Scheduler struct {
 	workerSem chan struct{} // bounded concurrency semaphore
 }
 
-// New initializes and returns a new [Scheduler] instance.
+// New initializes a new [Scheduler] instance.
+//
+// Executes in O(1) time and allocates memory.
 func New() *Scheduler {
 	s := &Scheduler{
 		wakeChan:  make(chan struct{}, 1),
@@ -170,7 +179,9 @@ func New() *Scheduler {
 }
 
 // SetMaxConcurrency limits the maximum number of concurrent tasks executing at the same time.
+//
 // By default (or if limit <= 0), the scheduler uses unbounded concurrency.
+// Executes in O(1) time and allocates memory for the concurrency semaphore.
 func (s *Scheduler) SetMaxConcurrency(limit int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -184,15 +195,14 @@ func (s *Scheduler) SetMaxConcurrency(limit int) {
 
 // AcquireTask retrieves a clean, recycled [Task] instance from the internal pool.
 //
-// Always configure and schedule tasks returned by this method using [Scheduler.Schedule].
+// Executes in amortized O(1) time and allocates memory only when the pool is empty.
 func (s *Scheduler) AcquireTask() *Task {
 	return s.taskPool.Get().(*Task)
 }
 
 // ReleaseTask resets task fields and returns the [Task] back to the internal pool.
 //
-// Do not read, write, or hold references to a task once it has been released,
-// as doing so will cause serious data races and memory corruption.
+// Executes in O(1) time and is zero-allocation.
 func (s *Scheduler) ReleaseTask(t *Task) {
 	if s == nil || t == nil {
 		return
@@ -213,10 +223,7 @@ func (s *Scheduler) ReleaseTask(t *Task) {
 // It automatically signals the active scheduler loop to recalculate its sleep
 // duration if the newly scheduled task has a higher priority (sooner run time)
 // than current pending tasks.
-//
-// # Complexity
-//
-// Time Complexity: O(log N) where N is the number of scheduled tasks.
+// Executes in O(log N) time where N is the number of scheduled tasks, and allocates memory if heap resizing is required.
 func (s *Scheduler) Schedule(t *Task) {
 	if s == nil || t == nil {
 		return
@@ -238,7 +245,8 @@ func (s *Scheduler) Schedule(t *Task) {
 }
 
 // CancelTask prevents a scheduled task with the given ID from executing.
-// It uses O(1) lazy cancellation and is safe for concurrent use.
+//
+// Executes in O(1) time using lazy cancellation and is zero-allocation.
 func (s *Scheduler) CancelTask(id string) {
 	if id == "" {
 		return
@@ -257,10 +265,10 @@ func (s *Scheduler) CancelTask(id string) {
 //
 // It blocks the calling goroutine until the provided context is cancelled, at which point
 // it waits for all active, currently executing tasks to complete before returning.
-//
 // Tasks are executed asynchronously in dedicated background goroutines as soon
 // as their scheduled run times arrive. Start dynamically scales its sleep intervals
 // using internal timers to match changing task deadlines.
+// Executes in O(1) time excluding the execution of tasks, and allocates memory for timer channels.
 func (s *Scheduler) Start(ctx context.Context) {
 	var (
 		timer     *time.Timer

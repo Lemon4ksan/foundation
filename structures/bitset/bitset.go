@@ -26,10 +26,10 @@ func numWords(nbits int) int {
 }
 
 // Set represents a dense, growable bit array backed by []uint64 words.
-// Bit indices are 0-indexed. The zero value is an empty Set ready to use.
+// Bit indices are 0-indexed. The zero value is empty and ready to use.
 //
-// Read-only operations are safe for concurrent use across multiple goroutines.
-// Concurrent mutations or concurrent read/writes must be externally synchronized.
+// Read-only operations are safe for concurrent use; mutations require external synchronization.
+// The data structure operations are generally amortized O(1) and zero-allocation.
 type Set struct {
 	words  []uint64
 	length int

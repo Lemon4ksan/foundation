@@ -10,6 +10,8 @@ import (
 )
 
 // Matcher represents a call argument matcher.
+//
+// Read-only operations are safe for concurrent use.
 type Matcher interface {
 	Matches(x any) bool
 	String() string
@@ -17,21 +19,27 @@ type Matcher interface {
 
 type anyMatcher struct{}
 
-// Any returns a matcher matching anything.
+// Any returns a [Matcher] matching anything.
+//
+// Executes in O(1) time and is zero-allocation.
 func Any() Matcher                  { return anyMatcher{} }
 func (anyMatcher) Matches(any) bool { return true }
 func (anyMatcher) String() string   { return "is anything" }
 
 type eqMatcher struct{ x any }
 
-// Eq returns a matcher matching by deep equality.
+// Eq returns a [Matcher] matching by deep equality.
+//
+// Executes in O(1) time and allocates memory.
 func Eq(x any) Matcher                 { return eqMatcher{x: x} }
 func (m eqMatcher) Matches(x any) bool { return reflect.DeepEqual(m.x, x) }
 func (m eqMatcher) String() string     { return fmt.Sprintf("is equal to %v", m.x) }
 
 type nilMatcher struct{}
 
-// Nil returns a matcher matching nil pointers, slices, maps, or interfaces.
+// Nil returns a [Matcher] matching nil pointers, slices, maps, or interfaces.
+//
+// Executes in O(1) time and is zero-allocation.
 func Nil() Matcher { return nilMatcher{} }
 
 func (nilMatcher) Matches(x any) bool {
@@ -52,6 +60,8 @@ func (nilMatcher) String() string { return "is nil" }
 type notMatcher struct{ m Matcher }
 
 // Not inverts the inner matcher.
+//
+// Executes in O(1) time and allocates memory.
 func Not(m any) Matcher {
 	if matcher, ok := m.(Matcher); ok {
 		return notMatcher{m: matcher}
@@ -65,6 +75,8 @@ func (n notMatcher) String() string     { return fmt.Sprintf("not(%v)", n.m) }
 type assignableToTypeOfMatcher struct{ target reflect.Type }
 
 // AssignableToTypeOf matches if arg is assignable to the target type.
+//
+// Executes in O(1) time and allocates memory.
 func AssignableToTypeOf(x any) Matcher {
 	if t, ok := x.(reflect.Type); ok {
 		return assignableToTypeOfMatcher{target: t}
@@ -88,6 +100,8 @@ func (a assignableToTypeOfMatcher) String() string {
 type lenMatcher struct{ n int }
 
 // Len matches if arg has length n.
+//
+// Executes in O(1) time and allocates memory.
 func Len(n int) Matcher { return lenMatcher{n: n} }
 
 func (l lenMatcher) Matches(x any) bool {

@@ -6,34 +6,41 @@ package ringbuffer
 
 import "iter"
 
-// Buffer is a growable FIFO queue that reuses its backing storage.
-// The zero value is empty and ready to use.
+// Buffer represents a growable FIFO queue that reuses its backing storage.
 //
+// The zero value is empty and ready to use.
 // Read-only operations are safe for concurrent use; mutations require external synchronization.
-// The slice length stores the queue length, so wrapped positions are accessed by reslicing to capacity.
 type Buffer[T any] struct {
 	ring    []T // len is the number of queued elements; cap is the storage size
 	headPos int // index of the first element in the full backing storage
 }
 
-// Init preallocates a buffer with the specified capacity size in O(n) time.
+// Init preallocates the buffer with the specified capacity size.
+//
+// Executes in O(N) time where N is the size, and allocates memory.
 func (r *Buffer[T]) Init(size int) {
 	r.ring = make([]T, 0, size)
 	r.headPos = 0
 }
 
-// Len returns the number of elements in the ring buffer in O(1) time.
+// Len returns the number of elements in the ring buffer.
+//
+// Executes in O(1) time and is zero-allocation.
 func (r *Buffer[T]) Len() int {
 	return len(r.ring)
 }
 
-// Empty reports whether the ring buffer contains zero elements in O(1) time.
+// Empty reports whether the [Buffer] contains zero elements.
+//
+// Executes in O(1) time and is zero-allocation.
 func (r *Buffer[T]) Empty() bool {
 	return len(r.ring) == 0
 }
 
-// PushBack appends a new element to the back of the queue in amortized O(1) time.
-// If the ring buffer is full, its capacity is increased first.
+// PushBack appends a new element to the back of the queue.
+//
+// If the [Buffer] is full, its capacity is increased first.
+// Executes in amortized O(1) time and allocates memory only when growing.
 func (r *Buffer[T]) PushBack(t T) {
 	if len(r.ring) == cap(r.ring) {
 		r.grow()
@@ -52,8 +59,10 @@ func (r *Buffer[T]) PushBack(t T) {
 	r.ring[:cap(r.ring)][tailPos] = t
 }
 
-// PopFront removes and returns the next element from the front of the queue in O(1) time.
-// Panics if the buffer is empty.
+// PopFront removes and returns the next element from the front of the queue.
+//
+// Panics if the [Buffer] is empty.
+// Executes in O(1) time and is zero-allocation.
 func (r *Buffer[T]) PopFront() T {
 	if r.Empty() {
 		panic("ringbuffer: pop from an empty queue")
@@ -73,8 +82,10 @@ func (r *Buffer[T]) PopFront() T {
 	return t
 }
 
-// PeekFront returns the next element from the front of the queue without removing it in O(1) time.
-// Panics if the buffer is empty.
+// PeekFront returns the next element from the front of the queue without removing it.
+//
+// Panics if the [Buffer] is empty.
+// Executes in O(1) time and is zero-allocation.
 func (r *Buffer[T]) PeekFront() T {
 	if r.Empty() {
 		panic("ringbuffer: peek from an empty queue")
@@ -100,13 +111,17 @@ func (r *Buffer[T]) grow() {
 }
 
 // Clear removes all elements while retaining the allocated storage.
+//
+// Executes in O(N) time and is zero-allocation.
 func (r *Buffer[T]) Clear() {
 	clear(r.ring[:cap(r.ring)])
 	r.ring = r.ring[:0]
 	r.headPos = 0
 }
 
-// All returns an iterator over queued elements in FIFO order without mutating the ring buffer.
+// All returns an iterator over queued elements in FIFO order without mutating the [Buffer].
+//
+// Executes in O(1) time to create the iterator and is zero-allocation.
 func (r *Buffer[T]) All() iter.Seq[T] {
 	return func(yield func(T) bool) {
 		n := len(r.ring)
@@ -127,12 +142,17 @@ func (r *Buffer[T]) All() iter.Seq[T] {
 	}
 }
 
-// Values returns an iterator over queued elements in FIFO order without mutating the ring buffer.
+// Values returns an iterator over queued elements in FIFO order without mutating the [Buffer].
+//
+// See [Buffer.All] for the underlying implementation.
+// Executes in O(1) time to create the iterator and is zero-allocation.
 func (r *Buffer[T]) Values() iter.Seq[T] {
 	return r.All()
 }
 
-// Drain pops and yields all buffered items in FIFO order until the buffer is empty.
+// Drain pops and yields all buffered items in FIFO order until the [Buffer] is empty.
+//
+// Executes in O(1) time per element and is zero-allocation.
 func (r *Buffer[T]) Drain() iter.Seq[T] {
 	return func(yield func(T) bool) {
 		for !r.Empty() {
@@ -144,7 +164,9 @@ func (r *Buffer[T]) Drain() iter.Seq[T] {
 	}
 }
 
-// Backward returns an iterator over queued elements in reverse order (LIFO) without mutating the ring buffer.
+// Backward returns an iterator over queued elements in reverse order without mutating the [Buffer].
+//
+// Executes in O(1) time to create the iterator and is zero-allocation.
 func (r *Buffer[T]) Backward() iter.Seq[T] {
 	return func(yield func(T) bool) {
 		n := len(r.ring)
