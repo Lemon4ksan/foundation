@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// Sometimes will perform an action occasionally.  The First, Every, and
+// Sometimes will perform an action occasionally. The First, Every, and
 // Interval fields govern the behavior of Do, which performs the action.
 // A zero Sometimes value will perform an action exactly once.
 //

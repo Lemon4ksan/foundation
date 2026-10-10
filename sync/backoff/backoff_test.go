@@ -150,8 +150,10 @@ func BenchmarkExponential_ZeroAlloc(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	var i int
+	for b.Loop() {
 		_ = bo.NextDelay((i % 10) + 1)
+		i++
 	}
 }
 

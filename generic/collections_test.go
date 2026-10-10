@@ -421,8 +421,7 @@ func BenchmarkSet_Intersect_AsymmetricLargeReceiver(b *testing.B) {
 	}
 	small := NewSet(10, 20, 30, 40, 50)
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = large.Intersect(small)
 	}
 }
@@ -434,8 +433,7 @@ func BenchmarkSet_Intersect_AsymmetricSmallReceiver(b *testing.B) {
 	}
 	small := NewSet(10, 20, 30, 40, 50)
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = small.Intersect(large)
 	}
 }

@@ -32,10 +32,9 @@ func BenchmarkUUIDv7(b *testing.B) {
 
 	now := time.Now()
 
-	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = randkit.AppendUUIDv7(buf[:0], now)
 	}
 }

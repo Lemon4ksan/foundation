@@ -16,8 +16,6 @@ import (
 	"testing"
 	"time"
 
-	"golang.org/x/net/idna"
-
 	"github.com/lemon4ksan/foundation/async/dedup"
 	"github.com/lemon4ksan/foundation/async/event"
 	"github.com/lemon4ksan/foundation/async/lifecycle"
@@ -33,8 +31,6 @@ import (
 	"github.com/lemon4ksan/foundation/sync/semaphore"
 	"github.com/lemon4ksan/foundation/testing/assert"
 	"github.com/lemon4ksan/foundation/testing/require"
-	"github.com/lemon4ksan/foundation/text/encoding/charmap"
-	"github.com/lemon4ksan/foundation/text/encoding/htmlindex"
 )
 
 // -----------------------------------------------------------------------------
@@ -116,54 +112,7 @@ func BenchmarkCompare_Rate_Sometimes_FastPath(b *testing.B) {
 }
 
 // -----------------------------------------------------------------------------
-// 4. Web Encodings: WhatWG Charset Resolver & Windows-1251 Transcoding
-// -----------------------------------------------------------------------------
-
-func BenchmarkCompare_Encoding_WhatWG_Lookup(b *testing.B) {
-	charsets := []string{"windows-1251", "utf-8", "shift_jis", "gbk", "iso-8859-1", "euc-kr"}
-	b.ReportAllocs()
-
-	for i := 0; b.Loop(); i++ {
-		enc, err := htmlindex.Get(charsets[i%len(charsets)])
-		if err != nil || enc == nil {
-			b.Fatal(err)
-		}
-	}
-}
-
-func BenchmarkCompare_Encoding_Windows1251_Transcode(b *testing.B) {
-	sampleWin1251 := []byte(
-		"\xcf\xf0\xe8\xe2\xe5\xf2, \xcc\xe8\xf0! 1234567890 Тестирование производительности кремния",
-	)
-	dec := charmap.Windows1251.NewDecoder()
-	b.ReportAllocs()
-
-	for b.Loop() {
-		out, err := dec.Bytes(sampleWin1251)
-		if err != nil || len(out) == 0 {
-			b.Fatal(err)
-		}
-	}
-}
-
-func BenchmarkCompare_Encoding_Windows1251_Transform_ZeroAlloc(b *testing.B) {
-	sampleWin1251 := []byte(
-		"\xcf\xf0\xe8\xe2\xe5\xf2, \xcc\xe8\xf0! 1234567890 Тестирование производительности кремния",
-	)
-	dec := charmap.Windows1251.NewDecoder()
-	dst := make([]byte, 256)
-	b.ReportAllocs()
-
-	for b.Loop() {
-		_, _, err := dec.Transform(dst, sampleWin1251, true)
-		if err != nil {
-			b.Fatal(err)
-		}
-	}
-}
-
-// -----------------------------------------------------------------------------
-// 5. Host Sanitization & CleanHost (RFC 3492 / 5891)
+// 4. Host Sanitization & CleanHost (RFC 3492 / 5891)
 // -----------------------------------------------------------------------------
 
 const (
@@ -189,17 +138,6 @@ func BenchmarkCompare_CleanHost_ASCII_FastPath(b *testing.B) {
 		res := netutil.CleanHost(asciiDomain)
 		if res != asciiDomain {
 			b.Fatal("unexpected result")
-		}
-	}
-}
-
-func BenchmarkCompare_IDNA_ToASCII(b *testing.B) {
-	b.ReportAllocs()
-
-	for b.Loop() {
-		res, err := idna.ToASCII(internationalDomain)
-		if err != nil || !strings.HasPrefix(res, "xn--") {
-			b.Fatal(err)
 		}
 	}
 }

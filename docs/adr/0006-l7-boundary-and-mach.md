@@ -1,16 +1,19 @@
-# ADR-0006: Layer 7 protocol boundary
+# ADR-0006: Domain boundaries and strict isolation
 
 Status: Accepted
-Date: 2026-10-03
+Date: 2026-10-10
 Deciders: Lemon4ksan
 
 ## Context
-Early versions of this repository implemented Layer 7 protocols like HTTP/2, HPACK, and QPACK. This conflated low-level transport mechanics with high-level wire semantics, forcing version bumps for protocol spec changes and obscuring the repository's mission as a systems substrate.
+Early versions of this repository implemented Layer 7 protocols, heavy C-ported codecs (zstd/lz4), TUI frameworks, and complex transport engines (QUIC, SOCKS proxies). This conflated low-level computational mechanics with high-level application logic, causing massive repository bloat.
 
 ## Decision
-We strictly exclude all Layer 7 application protocols (HTTP, HPACK/QPACK, WebSocket, gRPC, Steam). `foundation` only provides Layer 4 transport and QUIC stream primitives (`net/*`, `net/quic`, `net/proxy`, `net/ip`, `net/tls`). 
+We strictly exclude all high-level application protocols, heavy data-transformation codecs, and user-interface libraries from `foundation`.
+- Complex L4 transports and proxy routing (`net/quic`, `net/proxy`) belong in `mach`.
+- Heavy data sealing and compression (`codec/compress`, `text/encoding`) belong in `seal`.
+- Terminal UI and command argument routing (`tuikit`, `argkit`) belong in `ctrl`.
 
-Application protocol framing and HTTP engines live in external repositories or consumer codebases.
+`foundation` provides strictly the bare systems substrate: memory (`silicon`), data structures, concurrency (`async`, `sync`), raw I/O, base TCP/UDP/IP, and essential serialization (`codec/json`).
 
 ## Consequences
-The repository stays focused and avoids churn from application protocol changes. We pay by needing to coordinate releases across repositories when lower-level APIs change.
+The repository stays mathematically focused, lean, and avoids churn from application-level changes. We pay by needing to coordinate dependency trees across `foundation`, `mach`, `seal`, and `ctrl`.

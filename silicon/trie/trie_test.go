@@ -247,7 +247,7 @@ func BenchmarkRadixTree_Get_ZeroAlloc(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		val, ok := tree.Get(searchKey)
 		if !ok || val != 500 {
 			b.Fatalf("lookup failed")
@@ -267,7 +267,7 @@ func BenchmarkRadixTree_LongestPrefix_ZeroAlloc(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		prefix, val, ok := tree.LongestPrefix(searchKey)
 		if !ok || prefix != "/api/v1/users" || val != "users" {
 			b.Fatalf("prefix match failed")

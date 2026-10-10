@@ -213,7 +213,7 @@ func TestFastHash64_Unaligned(t *testing.T) {
 
 	// Verify short, unaligned slices of various lengths
 	for offset := 1; offset < 8; offset++ {
-		for length := 0; length < 32; length++ {
+		for length := range 32 {
 			slice := data[offset : offset+length]
 			h := FastHash64(slice)
 			copied := append([]byte(nil), slice...)

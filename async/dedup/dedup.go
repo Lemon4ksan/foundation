@@ -55,21 +55,21 @@ type Group[K comparable, V any] struct {
 //
 // Concurrency Guarantees:
 // KeysSeq is safe for concurrent use.
-func (group *Group[K, V]) KeysSeq() iter.Seq[K] {
+func (g *Group[K, V]) KeysSeq() iter.Seq[K] {
 	return func(yield func(K) bool) {
-		if group == nil {
+		if g == nil {
 			return
 		}
-		group.mu.Lock()
-		if len(group.calls) == 0 {
-			group.mu.Unlock()
+		g.mu.Lock()
+		if len(g.calls) == 0 {
+			g.mu.Unlock()
 			return
 		}
-		keys := make([]K, 0, len(group.calls))
-		for k := range group.calls {
+		keys := make([]K, 0, len(g.calls))
+		for k := range g.calls {
 			keys = append(keys, k)
 		}
-		group.mu.Unlock()
+		g.mu.Unlock()
 
 		for _, k := range keys {
 			if !yield(k) {
@@ -80,19 +80,19 @@ func (group *Group[K, V]) KeysSeq() iter.Seq[K] {
 }
 
 // InFlight returns the number of currently active in-flight deduplication calls.
-func (group *Group[K, V]) InFlight() int {
-	if group == nil {
+func (g *Group[K, V]) InFlight() int {
+	if g == nil {
 		return 0
 	}
-	group.mu.Lock()
-	n := len(group.calls)
-	group.mu.Unlock()
+	g.mu.Lock()
+	n := len(g.calls)
+	g.mu.Unlock()
 	return n
 }
 
 // Len returns the number of currently active in-flight deduplication calls.
-func (group *Group[K, V]) Len() int {
-	return group.InFlight()
+func (g *Group[K, V]) Len() int {
+	return g.InFlight()
 }
 
 // CallFn represents a context-aware generic function executed by a [Group].
@@ -111,8 +111,8 @@ type CallFn[V any] func(ctx context.Context) (V, error)
 // of the initiating caller, while secondary waiting callers receive [ErrWorkerPanicked].
 //
 // It returns an error if the passed context is already expired.
-func (group *Group[K, V]) Do(ctx context.Context, key K, callFn CallFn[V]) (V, error) {
-	if group == nil {
+func (g *Group[K, V]) Do(ctx context.Context, key K, callFn CallFn[V]) (V, error) {
+	if g == nil {
 		var zero V
 		return zero, errors.New("dedup: group is nil")
 	}
@@ -127,16 +127,16 @@ func (group *Group[K, V]) Do(ctx context.Context, key K, callFn CallFn[V]) (V, e
 		return zero, err
 	}
 
-	group.mu.Lock()
-	if group.calls == nil {
-		group.calls = make(map[K]*call[V])
+	g.mu.Lock()
+	if g.calls == nil {
+		g.calls = make(map[K]*call[V])
 	}
 
-	c, ok := group.calls[key]
+	c, ok := g.calls[key]
 	if !ok {
 		// Current call is the initiator for this key.
-		c, ch := group.startWorker(key, callFn)
-		return group.wait(ctx, key, c, ch)
+		c, ch := g.startWorker(key, callFn)
+		return g.wait(ctx, key, c, ch)
 	}
 
 	c.mu.Lock()
@@ -145,7 +145,7 @@ func (group *Group[K, V]) Do(ctx context.Context, key K, callFn CallFn[V]) (V, e
 		// Extract values and return immediately without enqueuing.
 		val, err, panicVal := c.val, c.err, c.panicVal
 		c.mu.Unlock()
-		group.mu.Unlock()
+		g.mu.Unlock()
 
 		if panicVal != nil {
 			var zero V
@@ -159,17 +159,17 @@ func (group *Group[K, V]) Do(ctx context.Context, key K, callFn CallFn[V]) (V, e
 	ch := make(chan Result[V], 1)
 	c.waiters[ch] = ctx
 	c.mu.Unlock()
-	group.mu.Unlock()
+	g.mu.Unlock()
 
-	return group.wait(ctx, key, c, ch)
+	return g.wait(ctx, key, c, ch)
 }
 
 // DoChan executes and suppresses duplicate concurrent calls for a given key,
 // returning a receive-only channel that receives the single [Result].
-func (group *Group[K, V]) DoChan(ctx context.Context, key K, callFn CallFn[V]) <-chan Result[V] {
+func (g *Group[K, V]) DoChan(ctx context.Context, key K, callFn CallFn[V]) <-chan Result[V] {
 	ch := make(chan Result[V], 1)
 
-	if group == nil {
+	if g == nil {
 		ch <- Result[V]{Err: errors.New("dedup: group is nil")}
 		return ch
 	}
@@ -184,16 +184,16 @@ func (group *Group[K, V]) DoChan(ctx context.Context, key K, callFn CallFn[V]) <
 		return ch
 	}
 
-	group.mu.Lock()
-	if group.calls == nil {
-		group.calls = make(map[K]*call[V])
+	g.mu.Lock()
+	if g.calls == nil {
+		g.calls = make(map[K]*call[V])
 	}
 
-	c, ok := group.calls[key]
+	c, ok := g.calls[key]
 	if !ok {
-		c, initCh := group.startWorker(key, callFn)
+		c, initCh := g.startWorker(key, callFn)
 		go func() {
-			val, err := group.wait(ctx, key, c, initCh)
+			val, err := g.wait(ctx, key, c, initCh)
 			ch <- Result[V]{Val: val, Err: err}
 		}()
 		return ch
@@ -203,7 +203,7 @@ func (group *Group[K, V]) DoChan(ctx context.Context, key K, callFn CallFn[V]) <
 	if c.done {
 		val, err, panicVal := c.val, c.err, c.panicVal
 		c.mu.Unlock()
-		group.mu.Unlock()
+		g.mu.Unlock()
 
 		if panicVal != nil {
 			ch <- Result[V]{Err: ErrWorkerPanicked, PanicVal: panicVal}
@@ -216,10 +216,10 @@ func (group *Group[K, V]) DoChan(ctx context.Context, key K, callFn CallFn[V]) <
 	waiterCh := make(chan Result[V], 1)
 	c.waiters[waiterCh] = ctx
 	c.mu.Unlock()
-	group.mu.Unlock()
+	g.mu.Unlock()
 
 	go func() {
-		val, err := group.wait(ctx, key, c, waiterCh)
+		val, err := g.wait(ctx, key, c, waiterCh)
 		ch <- Result[V]{Val: val, Err: err}
 	}()
 
@@ -230,7 +230,7 @@ func (group *Group[K, V]) DoChan(ctx context.Context, key K, callFn CallFn[V]) <
 // and spawns a background goroutine to execute the task.
 //
 // This method must be called under group.mu locked, and it unlocks it before returning.
-func (group *Group[K, V]) startWorker(key K, fn CallFn[V]) (*call[V], chan Result[V]) {
+func (g *Group[K, V]) startWorker(key K, fn CallFn[V]) (*call[V], chan Result[V]) {
 	ctx, cancel := context.WithCancel(context.Background()) //nolint:gosec
 
 	initCh := make(chan Result[V], 1)
@@ -240,16 +240,16 @@ func (group *Group[K, V]) startWorker(key K, fn CallFn[V]) (*call[V], chan Resul
 		initiator: initCh,
 	}
 	c.waiters[initCh] = ctx
-	group.calls[key] = c
-	group.mu.Unlock()
+	g.calls[key] = c
+	g.mu.Unlock()
 
-	go group.run(ctx, key, c, fn)
+	go g.run(ctx, key, c, fn)
 
 	return c, initCh
 }
 
 // wait blocks until the call completes or the caller's context is cancelled.
-func (group *Group[K, V]) wait(ctx context.Context, key K, c *call[V], resCh chan Result[V]) (V, error) {
+func (g *Group[K, V]) wait(ctx context.Context, key K, c *call[V], resCh chan Result[V]) (V, error) {
 	select {
 	case res := <-resCh:
 		if res.PanicVal != nil {
@@ -261,14 +261,14 @@ func (group *Group[K, V]) wait(ctx context.Context, key K, c *call[V], resCh cha
 	case <-ctx.Done():
 		// The caller's context was cancelled or expired.
 		// Acquire locks in strict hierarchical order: group.mu -> c.mu.
-		group.mu.Lock()
+		g.mu.Lock()
 		c.mu.Lock()
 
 		if c.done {
 			// The task completed just before the cancellation was processed.
 			// Prioritize the actual computed result.
 			c.mu.Unlock()
-			group.mu.Unlock()
+			g.mu.Unlock()
 
 			res := <-resCh
 			if res.PanicVal != nil {
@@ -285,11 +285,11 @@ func (group *Group[K, V]) wait(ctx context.Context, key K, c *call[V], resCh cha
 		// and remove the call from the active group to reclaim resources.
 		if len(c.waiters) == 0 {
 			c.cancel()
-			delete(group.calls, key)
+			delete(g.calls, key)
 		}
 
 		c.mu.Unlock()
-		group.mu.Unlock()
+		g.mu.Unlock()
 
 		var zero V
 
@@ -298,7 +298,7 @@ func (group *Group[K, V]) wait(ctx context.Context, key K, c *call[V], resCh cha
 }
 
 // run executes the worker function and distributes the result to all waiters.
-func (group *Group[K, V]) run(ctx context.Context, key K, c *call[V], fn CallFn[V]) {
+func (g *Group[K, V]) run(ctx context.Context, key K, c *call[V], fn CallFn[V]) {
 	var (
 		val V
 		err error
@@ -306,13 +306,13 @@ func (group *Group[K, V]) run(ctx context.Context, key K, c *call[V], fn CallFn[
 
 	defer func() {
 		if r := recover(); r != nil {
-			group.mu.Lock()
+			g.mu.Lock()
 			c.mu.Lock()
 
 			c.done = true
 			c.panicVal = r
 
-			delete(group.calls, key)
+			delete(g.calls, key)
 
 			for ch := range c.waiters {
 				if ch == c.initiator {
@@ -323,25 +323,25 @@ func (group *Group[K, V]) run(ctx context.Context, key K, c *call[V], fn CallFn[
 			}
 
 			c.mu.Unlock()
-			group.mu.Unlock()
+			g.mu.Unlock()
 		}
 	}()
 
 	val, err = fn(ctx)
 
-	group.mu.Lock()
+	g.mu.Lock()
 	c.mu.Lock()
 
 	c.done = true
 	c.val = val
 	c.err = err
 
-	delete(group.calls, key)
+	delete(g.calls, key)
 
 	for ch := range c.waiters {
 		ch <- Result[V]{Val: val, Err: err}
 	}
 
 	c.mu.Unlock()
-	group.mu.Unlock()
+	g.mu.Unlock()
 }

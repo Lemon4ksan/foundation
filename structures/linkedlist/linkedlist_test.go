@@ -608,8 +608,10 @@ func BenchmarkList_PushBack(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	var i int
+	for b.Loop() {
 		l.PushBack(i)
+		i++
 	}
 }
 
@@ -618,8 +620,10 @@ func BenchmarkList_PushFront(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	var i int
+	for b.Loop() {
 		l.PushFront(i)
+		i++
 	}
 }
 

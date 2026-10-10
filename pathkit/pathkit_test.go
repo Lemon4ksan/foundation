@@ -524,7 +524,6 @@ func TestPath_ZeroAllocGuarantees(t *testing.T) {
 func BenchmarkSegmentsSeq_ZeroAlloc(b *testing.B) {
 	path := "/usr/local/bin/foundation/exec"
 
-	b.ResetTimer()
 	b.ReportAllocs()
 
 	for b.Loop() {
@@ -537,7 +536,6 @@ func BenchmarkSegmentsSeq_ZeroAlloc(b *testing.B) {
 func BenchmarkSegmentsSeq_Windows_ZeroAlloc(b *testing.B) {
 	path := `C:\Windows\System32\drivers\etc\hosts`
 
-	b.ResetTimer()
 	b.ReportAllocs()
 
 	for b.Loop() {
@@ -551,7 +549,6 @@ func BenchmarkAppendJoinURL_ZeroAlloc(b *testing.B) {
 	scratch := make([]byte, 0, 128)
 	base := "https://api.github.com/v1"
 
-	b.ResetTimer()
 	b.ReportAllocs()
 
 	for b.Loop() {
@@ -563,7 +560,6 @@ func BenchmarkAppendJoinURL_ZeroAlloc(b *testing.B) {
 func BenchmarkAncestors_ZeroAlloc(b *testing.B) {
 	p := pathkit.New("/var/log/nginx/app/access.log")
 
-	b.ResetTimer()
 	b.ReportAllocs()
 
 	for b.Loop() {

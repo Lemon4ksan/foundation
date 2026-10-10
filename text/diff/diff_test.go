@@ -127,7 +127,7 @@ func TestAdversarial_ExtremeDriftsVolume(t *testing.T) {
 		expectedGhost       int
 	)
 
-	for i := 0; i < count; i++ {
+	for i := range count {
 		var sev diff.DriftSeverity
 		switch i % 4 {
 		case 0:
@@ -294,10 +294,10 @@ func TestAdversarial_ConcurrentReportAccess(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(goroutines)
 
-	for g := 0; g < goroutines; g++ {
+	for g := range goroutines {
 		go func(gid int) {
 			defer wg.Done()
-			for i := 0; i < iterations; i++ {
+			for range iterations {
 				assert.Equal(t, 1, report.BreakingCount())
 				assert.Equal(t, 1, report.NonBreakingCount())
 				assert.Equal(t, 1, report.GhostCount())

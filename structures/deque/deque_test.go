@@ -135,12 +135,12 @@ func TestZeroValueReceiver(t *testing.T) {
 func TestPushPopFIFO(t *testing.T) {
 	d := New[int]()
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		d.PushBack(i)
 		require.Equal(t, i+1, d.Len())
 	}
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		v, ok := d.PopFront()
 		require.True(t, ok)
 		require.Equal(t, i, v)
@@ -156,7 +156,7 @@ func TestPushPopFIFO(t *testing.T) {
 func TestPushPopLIFO(t *testing.T) {
 	// LIFO at Back
 	d := New[int]()
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		d.PushBack(i)
 	}
 	for i := 9; i >= 0; i-- {
@@ -167,7 +167,7 @@ func TestPushPopLIFO(t *testing.T) {
 	require.True(t, d.Empty())
 
 	// LIFO at Front
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		d.PushFront(i)
 	}
 	for i := 9; i >= 0; i-- {
@@ -180,10 +180,10 @@ func TestPushPopLIFO(t *testing.T) {
 
 func TestPushPopReverseFIFO(t *testing.T) {
 	d := New[int]()
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		d.PushFront(i) // front: 9, 8, ..., 0
 	}
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		v, ok := d.PopBack() // back popped first: 0, 1, ..., 9
 		require.True(t, ok)
 		require.Equal(t, i, v)
@@ -239,7 +239,7 @@ func TestFrontAndBack(t *testing.T) {
 	d := NewWithCapacity[int](8)
 
 	// Shift head to index 6 to test wrapped back index
-	for i := 0; i < 6; i++ {
+	for range 6 {
 		d.PushBack(0)
 		d.PopFront()
 	}
@@ -308,7 +308,7 @@ func TestRandomAccess_At_Set(t *testing.T) {
 
 func TestClear(t *testing.T) {
 	d := NewWithCapacity[int](16)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		d.PushBack(i)
 	}
 	require.Equal(t, 10, d.Len())
@@ -327,7 +327,7 @@ func TestClear(t *testing.T) {
 
 func TestBufferGrowth_Unwrapped(t *testing.T) {
 	d := NewWithCapacity[int](4)
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		d.PushBack(i)
 	}
 	require.Equal(t, 4, d.Cap())
@@ -337,7 +337,7 @@ func TestBufferGrowth_Unwrapped(t *testing.T) {
 	require.Equal(t, 8, d.Cap())
 	require.Equal(t, 5, d.Len())
 
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		require.Equal(t, i, d.At(i))
 	}
 }
@@ -387,11 +387,11 @@ func TestIterators_Values(t *testing.T) {
 
 	d := NewWithCapacity[int](8)
 	// Shift head to test wrapped iterator
-	for i := 0; i < 6; i++ {
+	for range 6 {
 		d.PushBack(0)
 		d.PopFront()
 	}
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		d.PushBack(i)
 	}
 
@@ -423,7 +423,7 @@ func TestIterators_All(t *testing.T) {
 
 	d := NewWithCapacity[string](8)
 	// Shift head to test wrapped iterator
-	for i := 0; i < 6; i++ {
+	for range 6 {
 		d.PushBack("")
 		d.PopFront()
 	}
@@ -458,7 +458,7 @@ func TestIterators_Backward(t *testing.T) {
 
 	d := NewWithCapacity[int](8)
 	// Shift head to test wrapped iterator
-	for i := 0; i < 6; i++ {
+	for range 6 {
 		d.PushBack(0)
 		d.PopFront()
 	}
@@ -489,7 +489,7 @@ func TestIterators_Drain(t *testing.T) {
 	}
 
 	d := New[int]()
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		d.PushBack(i)
 	}
 
@@ -522,7 +522,7 @@ func TestGCLeak_WeakPointers(t *testing.T) {
 
 	// Push 10 elements tracked by weak pointers
 	wps := make([]weak.Pointer[int], 10)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		func(idx int) {
 			obj := new(int)
 			*obj = idx
@@ -533,12 +533,12 @@ func TestGCLeak_WeakPointers(t *testing.T) {
 
 	// Verify weak pointers are still valid while in queue
 	runtime.GC()
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		require.NotNil(t, wps[i].Value())
 	}
 
 	// Pop 5 from front
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		popped, ok := d.PopFront()
 		require.True(t, ok)
 		require.Equal(t, i, *popped)
@@ -556,12 +556,12 @@ func TestGCLeak_WeakPointers(t *testing.T) {
 	require.True(t, d.Empty())
 
 	// Run GC; all 10 objects should be collected because slots were zeroed
-	for retry := 0; retry < 5; retry++ {
+	for range 5 {
 		runtime.GC()
 		runtime.Gosched()
 	}
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		require.Nil(t, wps[i].Value(), "memory leak: popped slot retained pointer")
 	}
 }
@@ -569,7 +569,7 @@ func TestGCLeak_WeakPointers(t *testing.T) {
 func TestGCLeak_Clear_WeakPointers(t *testing.T) {
 	d := New[*int]()
 	wps := make([]weak.Pointer[int], 16)
-	for i := 0; i < 16; i++ {
+	for i := range 16 {
 		func(idx int) {
 			obj := new(int)
 			*obj = idx
@@ -581,12 +581,12 @@ func TestGCLeak_Clear_WeakPointers(t *testing.T) {
 	d.Clear()
 	require.True(t, d.Empty())
 
-	for retry := 0; retry < 5; retry++ {
+	for range 5 {
 		runtime.GC()
 		runtime.Gosched()
 	}
 
-	for i := 0; i < 16; i++ {
+	for i := range 16 {
 		require.Nil(t, wps[i].Value(), "memory leak: Clear() failed to zero slots")
 	}
 }
@@ -600,18 +600,18 @@ func TestGCLeak_Finalizers(t *testing.T) {
 	d := New[*trackedNode]()
 
 	const count = 50
-	for i := 0; i < count; i++ {
+	for i := range count {
 		func(idx int) {
 			node := &trackedNode{id: idx}
-			runtime.SetFinalizer(node, func(_ *trackedNode) {
-				finalized.Add(1)
-			})
+			runtime.AddCleanup(node, func(counter *atomic.Int32) {
+				counter.Add(1)
+			}, &finalized)
 			d.PushBack(node)
 		}(i)
 	}
 
 	// Pop all
-	for i := 0; i < count; i++ {
+	for range count {
 		popOneDeque(t, d)
 	}
 
@@ -633,17 +633,17 @@ func TestGCLeak_Finalizers(t *testing.T) {
 func TestConcurrentReaders(t *testing.T) {
 	const n = 2000
 	d := NewWithCapacity[int](n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		d.PushBack(i * 3)
 	}
 
 	var wg sync.WaitGroup
 	const goroutines = 32
-	for g := 0; g < goroutines; g++ {
+	for g := range goroutines {
 		wg.Add(1)
 		go func(gid int) {
 			defer wg.Done()
-			for iter := 0; iter < 200; iter++ {
+			for iter := range 200 {
 				_ = d.Len()
 				_ = d.Cap()
 				_ = d.Empty()
@@ -683,11 +683,9 @@ func TestConcurrentSynchronizedWriters(t *testing.T) {
 	var wg sync.WaitGroup
 
 	// Readers
-	for r := 0; r < 16; r++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for i := 0; i < 200; i++ {
+	for range 16 {
+		wg.Go(func() {
+			for range 200 {
 				mu.RLock()
 				_ = d.Len()
 				_ = d.Empty()
@@ -698,15 +696,15 @@ func TestConcurrentSynchronizedWriters(t *testing.T) {
 				}
 				mu.RUnlock()
 			}
-		}()
+		})
 	}
 
 	// Writers
-	for w := 0; w < 8; w++ {
+	for w := range 8 {
 		wg.Add(1)
 		go func(wid int) {
 			defer wg.Done()
-			for i := 0; i < 100; i++ {
+			for i := range 100 {
 				mu.Lock()
 				if wid%2 == 0 {
 					d.PushBack(wid*1000 + i)
@@ -741,11 +739,11 @@ func TestConcurrentPipeline_ProducerConsumer(t *testing.T) {
 	var consumedSum atomic.Int64
 
 	// Producers
-	for p := 0; p < producers; p++ {
+	for p := range producers {
 		wg.Add(1)
 		go func(pid int) {
 			defer wg.Done()
-			for i := 0; i < itemsPerProducer; i++ {
+			for i := range itemsPerProducer {
 				val := pid*itemsPerProducer + i + 1
 				mu.Lock()
 				d.PushBack(val)
@@ -755,10 +753,8 @@ func TestConcurrentPipeline_ProducerConsumer(t *testing.T) {
 	}
 
 	// Consumers
-	for c := 0; c < consumers; c++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range consumers {
+		wg.Go(func() {
 			for consumedCount.Load() < totalItems {
 				mu.Lock()
 				val, ok := d.PopFront()
@@ -770,7 +766,7 @@ func TestConcurrentPipeline_ProducerConsumer(t *testing.T) {
 					runtime.Gosched()
 				}
 			}
-		}()
+		})
 	}
 
 	wg.Wait()
@@ -791,7 +787,7 @@ func TestChallenge_DifferentialSliceModel(t *testing.T) {
 	var ref []int
 
 	const operations = 50_000
-	for op := 0; op < operations; op++ {
+	for range operations {
 		action := rng.Intn(10)
 		val := rng.Intn(1000_000)
 
@@ -944,7 +940,7 @@ func TestStress_CircularGrowthAllHeadPositions(t *testing.T) {
 
 	for _, initCap := range testCaps {
 		// Test every possible head offset in [0, initCap - 1]
-		for headOffset := 0; headOffset < initCap; headOffset++ {
+		for headOffset := range initCap {
 			// Sub-test A: Growth triggered by PushBack
 			{
 				d := NewWithCapacity[int](initCap)
@@ -957,7 +953,7 @@ func TestStress_CircularGrowthAllHeadPositions(t *testing.T) {
 				require.Equal(t, 0, d.Len())
 
 				// Step 2: Fill to capacity with known sequential integers
-				for i := 0; i < initCap; i++ {
+				for i := range initCap {
 					d.PushBack(i * 10)
 				}
 				require.Equal(t, initCap, d.Len())
@@ -972,7 +968,7 @@ func TestStress_CircularGrowthAllHeadPositions(t *testing.T) {
 				require.GreaterOrEqual(t, d.Cap(), initCap*2)
 
 				// Step 5: Verify all elements retain correct order from front to back
-				for i := 0; i < initCap; i++ {
+				for i := range initCap {
 					require.Equal(t, i*10, d.At(i))
 				}
 				require.Equal(t, newItem, d.At(initCap))
@@ -994,7 +990,7 @@ func TestStress_CircularGrowthAllHeadPositions(t *testing.T) {
 				require.Equal(t, 0, d.Len())
 
 				// Fill to capacity
-				for i := 0; i < initCap; i++ {
+				for i := range initCap {
 					d.PushBack(i * 10)
 				}
 				require.Equal(t, initCap, d.Len())
@@ -1008,7 +1004,7 @@ func TestStress_CircularGrowthAllHeadPositions(t *testing.T) {
 
 				// Verify front item is at index 0 and rest are shifted by +1
 				require.Equal(t, frontItem, d.At(0))
-				for i := 0; i < initCap; i++ {
+				for i := range initCap {
 					require.Equal(t, i*10, d.At(i+1))
 				}
 
@@ -1032,7 +1028,7 @@ func TestStress_MultiStageSuccessiveGrowth(t *testing.T) {
 	require.Equal(t, 2, d.Cap())
 
 	const totalElements = 250
-	for i := 0; i < totalElements; i++ {
+	for i := range totalElements {
 		if i%3 == 0 {
 			d.PushFront(i)
 		} else {
@@ -1067,7 +1063,7 @@ func TestStress_Alternating1Million_PushFrontPopBack(t *testing.T) {
 		d := NewWithCapacity[int](32)
 
 		// Seed with initial elements: [0, 1, ..., queueSize-1]
-		for i := 0; i < queueSize; i++ {
+		for i := range queueSize {
 			d.PushBack(i)
 		}
 		initialCap := d.Cap()
@@ -1075,11 +1071,11 @@ func TestStress_Alternating1Million_PushFrontPopBack(t *testing.T) {
 
 		const iterations = 1_000_000
 		expected := make([]int, queueSize)
-		for i := 0; i < queueSize; i++ {
+		for i := range queueSize {
 			expected[i] = i
 		}
 
-		for i := 0; i < iterations; i++ {
+		for i := range iterations {
 			newVal := i + 100
 			d.PushFront(newVal)
 			popped, ok := d.PopBack()
@@ -1107,12 +1103,12 @@ func TestStress_Alternating1Million_PushFrontPopBack(t *testing.T) {
 	{
 		const queueSize = 16
 		d := NewWithCapacity[int](queueSize)
-		for i := 0; i < queueSize; i++ {
+		for i := range queueSize {
 			d.PushBack(i)
 		}
 		require.Equal(t, queueSize, d.Cap())
 
-		for i := 0; i < 100_000; i++ {
+		for i := range 100_000 {
 			popped, ok := d.PopBack()
 			require.True(t, ok)
 			_ = popped
@@ -1132,14 +1128,14 @@ func TestStress_Alternating1Million_PushBackPopFront(t *testing.T) {
 		d := NewWithCapacity[int](64)
 
 		// Pre-fill queue
-		for i := 0; i < queueSize; i++ {
+		for i := range queueSize {
 			d.PushBack(i)
 		}
 		initialCap := d.Cap()
 		require.Equal(t, 64, initialCap)
 
 		const iterations = 1_000_000
-		for i := 0; i < iterations; i++ {
+		for i := range iterations {
 			newVal := i + queueSize
 			d.PushBack(newVal)
 			popped, ok := d.PopFront()
@@ -1160,12 +1156,12 @@ func TestStress_Alternating1Million_PushBackPopFront(t *testing.T) {
 	{
 		const queueSize = 32
 		d := NewWithCapacity[int](queueSize)
-		for i := 0; i < queueSize; i++ {
+		for i := range queueSize {
 			d.PushBack(i)
 		}
 		require.Equal(t, queueSize, d.Cap())
 
-		for i := 0; i < 100_000; i++ {
+		for i := range 100_000 {
 			popped, ok := d.PopFront()
 			require.True(t, ok)
 			_ = popped
@@ -1185,7 +1181,7 @@ func TestStress_Alternating1Million_MixedBurstCycles(t *testing.T) {
 	rng := rand.New(rand.NewSource(20261001))
 	const totalOps = 1_000_000
 
-	for op := 0; op < totalOps; op++ {
+	for op := range totalOps {
 		action := rng.Intn(4)
 		val := op
 
@@ -1221,7 +1217,7 @@ func TestStress_Alternating1Million_MixedBurstCycles(t *testing.T) {
 
 		// Keep queue bounded so memory does not explode
 		if d.Len() > 500 {
-			for k := 0; k < 250; k++ {
+			for range 250 {
 				dVal, _ := d.PopFront()
 				require.Equal(t, oracle[0], dVal)
 				oracle = oracle[1:]
@@ -1246,14 +1242,14 @@ func TestStress_GCLeak_WeakPointers_Massive(t *testing.T) {
 	d := New[*int]()
 
 	// Shift head to test wrapped slot evacuation
-	for i := 0; i < 50; i++ {
+	for range 50 {
 		dummy := new(int)
 		d.PushBack(dummy)
 		d.PopFront()
 	}
 
 	wps := make([]weak.Pointer[int], count)
-	for i := 0; i < count; i++ {
+	for i := range count {
 		func(idx int) {
 			obj := new(int)
 			*obj = idx
@@ -1270,19 +1266,19 @@ func TestStress_GCLeak_WeakPointers_Massive(t *testing.T) {
 
 	// Verify all weak pointers are alive while in deque
 	runtime.GC()
-	for i := 0; i < count; i++ {
+	for i := range count {
 		require.NotNil(t, wps[i].Value())
 	}
 
 	// Pop 250 from Front
-	for i := 0; i < 250; i++ {
+	for range 250 {
 		val, ok := d.PopFront()
 		require.True(t, ok)
 		_ = val
 	}
 
 	// Pop 250 from Back
-	for i := 0; i < 250; i++ {
+	for range 250 {
 		val, ok := d.PopBack()
 		require.True(t, ok)
 		_ = val
@@ -1296,14 +1292,14 @@ func TestStress_GCLeak_WeakPointers_Massive(t *testing.T) {
 	require.True(t, d.Empty())
 
 	// Force garbage collection
-	for retry := 0; retry < 5; retry++ {
+	for range 5 {
 		runtime.GC()
 		runtime.Gosched()
 	}
 
 	// All 1,000 objects must have been collected
 	leakedCount := 0
-	for i := 0; i < count; i++ {
+	for i := range count {
 		if wps[i].Value() != nil {
 			leakedCount++
 		}
@@ -1325,17 +1321,17 @@ func TestStress_GCLeak_Finalizers(t *testing.T) {
 	d := New[*finalizerTarget]()
 
 	// Pre-shift head
-	for i := 0; i < 30; i++ {
+	for range 30 {
 		d.PushBack(&finalizerTarget{})
 		d.PopFront()
 	}
 
-	for i := 0; i < count; i++ {
+	for i := range count {
 		func(id int) {
 			target := &finalizerTarget{val: id}
-			runtime.SetFinalizer(target, func(_ *finalizerTarget) {
-				finalizerRunCount.Add(1)
-			})
+			runtime.AddCleanup(target, func(counter *atomic.Int32) {
+				counter.Add(1)
+			}, &finalizerRunCount)
 			if id%2 == 0 {
 				d.PushBack(target)
 			} else {
@@ -1347,7 +1343,7 @@ func TestStress_GCLeak_Finalizers(t *testing.T) {
 	require.Equal(t, count, d.Len())
 
 	// Pop half
-	for i := 0; i < count/2; i++ {
+	for range count / 2 {
 		_, ok := d.PopFront()
 		require.True(t, ok)
 	}
@@ -1374,7 +1370,7 @@ func TestStress_GCLeak_Drain(t *testing.T) {
 	d := New[*int]()
 
 	wps := make([]weak.Pointer[int], count)
-	for i := 0; i < count; i++ {
+	for i := range count {
 		func(idx int) {
 			obj := new(int)
 			*obj = idx
@@ -1391,12 +1387,12 @@ func TestStress_GCLeak_Drain(t *testing.T) {
 	require.Equal(t, count, drainedCount)
 	require.True(t, d.Empty())
 
-	for retry := 0; retry < 5; retry++ {
+	for range 5 {
 		runtime.GC()
 		runtime.Gosched()
 	}
 
-	for i := 0; i < count; i++ {
+	for i := range count {
 		require.Nil(t, wps[i].Value(), "Drain() failed to clear slot references")
 	}
 }
@@ -1412,11 +1408,11 @@ func TestStress_MultiGoroutineReadContention(t *testing.T) {
 	d := NewWithCapacity[int](size)
 
 	// Shift head into the middle to ensure readers read wrapped buffer indices
-	for i := 0; i < size/2; i++ {
+	for range size / 2 {
 		d.PushBack(-1)
 		d.PopFront()
 	}
-	for i := 0; i < size; i++ {
+	for i := range size {
 		d.PushBack(i * 7)
 	}
 	require.Equal(t, size, d.Len())
@@ -1425,11 +1421,11 @@ func TestStress_MultiGoroutineReadContention(t *testing.T) {
 	const iterations = 500
 	var wg sync.WaitGroup
 
-	for g := 0; g < numGoroutines; g++ {
+	for g := range numGoroutines {
 		wg.Add(1)
 		go func(gid int) {
 			defer wg.Done()
-			for iter := 0; iter < iterations; iter++ {
+			for iter := range iterations {
 				// Inspection queries
 				require.Equal(t, size, d.Len())
 				require.False(t, d.Empty())
@@ -1489,11 +1485,9 @@ func TestStress_SynchronizedReadWriteContention(t *testing.T) {
 	const opsPerWorker = 300
 
 	// Readers
-	for r := 0; r < readers; r++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for i := 0; i < opsPerWorker; i++ {
+	for range readers {
+		wg.Go(func() {
+			for range opsPerWorker {
 				rw.RLock()
 				length := d.Len()
 				empty := d.Empty()
@@ -1506,15 +1500,15 @@ func TestStress_SynchronizedReadWriteContention(t *testing.T) {
 				rw.RUnlock()
 				runtime.Gosched()
 			}
-		}()
+		})
 	}
 
 	// Writers
-	for w := 0; w < writers; w++ {
+	for w := range writers {
 		wg.Add(1)
 		go func(wid int) {
 			defer wg.Done()
-			for i := 0; i < opsPerWorker; i++ {
+			for i := range opsPerWorker {
 				rw.Lock()
 				val := wid*10_000 + i
 
@@ -1566,11 +1560,11 @@ func TestStress_HeavyProducerConsumerPipeline(t *testing.T) {
 	var consumedSum atomic.Int64
 
 	// Producers
-	for p := 0; p < producers; p++ {
+	for p := range producers {
 		wg.Add(1)
 		go func(pid int) {
 			defer wg.Done()
-			for i := 0; i < itemsPerProducer; i++ {
+			for i := range itemsPerProducer {
 				val := pid*itemsPerProducer + i + 1
 				mu.Lock()
 				if i%2 == 0 {
@@ -1584,7 +1578,7 @@ func TestStress_HeavyProducerConsumerPipeline(t *testing.T) {
 	}
 
 	// Consumers
-	for c := 0; c < consumers; c++ {
+	for c := range consumers {
 		wg.Add(1)
 		go func(cid int) {
 			defer wg.Done()
@@ -1691,7 +1685,7 @@ func BenchmarkDeque_Back(b *testing.B) {
 
 func BenchmarkDeque_At_Positive(b *testing.B) {
 	d := NewWithCapacity[int](1024)
-	for i := 0; i < 512; i++ {
+	for i := range 512 {
 		d.PushBack(i)
 	}
 	b.ReportAllocs()
@@ -1705,7 +1699,7 @@ func BenchmarkDeque_At_Positive(b *testing.B) {
 
 func BenchmarkDeque_At_Negative(b *testing.B) {
 	d := NewWithCapacity[int](1024)
-	for i := 0; i < 512; i++ {
+	for i := range 512 {
 		d.PushBack(i)
 	}
 	b.ReportAllocs()
@@ -1718,7 +1712,7 @@ func BenchmarkDeque_At_Negative(b *testing.B) {
 
 func BenchmarkDeque_Set(b *testing.B) {
 	d := NewWithCapacity[int](1024)
-	for i := 0; i < 512; i++ {
+	for i := range 512 {
 		d.PushBack(i)
 	}
 	b.ReportAllocs()
@@ -1733,7 +1727,7 @@ func BenchmarkDeque_Set(b *testing.B) {
 
 func BenchmarkDeque_Values_Iterate_1024(b *testing.B) {
 	d := NewWithCapacity[int](1024)
-	for i := 0; i < 1024; i++ {
+	for i := range 1024 {
 		d.PushBack(i)
 	}
 	b.ReportAllocs()
@@ -1750,7 +1744,7 @@ func BenchmarkDeque_Values_Iterate_1024(b *testing.B) {
 
 func BenchmarkDeque_All_Iterate_1024(b *testing.B) {
 	d := NewWithCapacity[int](1024)
-	for i := 0; i < 1024; i++ {
+	for i := range 1024 {
 		d.PushBack(i)
 	}
 	b.ReportAllocs()
@@ -1767,7 +1761,7 @@ func BenchmarkDeque_All_Iterate_1024(b *testing.B) {
 
 func BenchmarkDeque_Backward_Iterate_1024(b *testing.B) {
 	d := NewWithCapacity[int](1024)
-	for i := 0; i < 1024; i++ {
+	for i := range 1024 {
 		d.PushBack(i)
 	}
 	b.ReportAllocs()
@@ -1784,7 +1778,7 @@ func BenchmarkDeque_Backward_Iterate_1024(b *testing.B) {
 
 func BenchmarkDeque_Drain_64(b *testing.B) {
 	d := NewWithCapacity[int](1024)
-	for i := 0; i < 64; i++ {
+	for i := range 64 {
 		d.PushBack(i)
 	}
 	b.ReportAllocs()
@@ -1794,7 +1788,7 @@ func BenchmarkDeque_Drain_64(b *testing.B) {
 		for v := range d.Drain() {
 			_ = v
 		}
-		for i := 0; i < 64; i++ {
+		for i := range 64 {
 			d.PushBack(i)
 		}
 	}
@@ -1806,7 +1800,7 @@ func BenchmarkDeque_Clear_Reuse(b *testing.B) {
 	b.ResetTimer()
 
 	for b.Loop() {
-		for i := 0; i < 100; i++ {
+		for i := range 100 {
 			d.PushBack(i)
 		}
 		d.Clear()
@@ -1816,11 +1810,11 @@ func BenchmarkDeque_Clear_Reuse(b *testing.B) {
 func BenchmarkDeque_Wrapped_FIFO(b *testing.B) {
 	d := NewWithCapacity[int](1024)
 	// Pre-fill and pop half to shift head into the middle
-	for i := 0; i < 500; i++ {
+	for i := range 500 {
 		d.PushBack(i)
 		d.PopFront()
 	}
-	for i := 0; i < 500; i++ {
+	for i := range 500 {
 		d.PushBack(i)
 	}
 	b.ReportAllocs()
@@ -1938,7 +1932,7 @@ func TestOracle_100kRandomizedOps(t *testing.T) {
 	d := New[int]()
 	oracle := newSliceOracle[int]()
 
-	for op := 0; op < totalOps; op++ {
+	for op := range totalOps {
 		action := rng.Intn(100)
 		val := rng.Intn(1_000_000)
 
@@ -2068,7 +2062,7 @@ func TestChallenge_FIFOInvariants_Streaming(t *testing.T) {
 		const streamLength = 50_000
 
 		// Fill window
-		for i := 0; i < win; i++ {
+		for i := range win {
 			d.PushBack(i)
 		}
 		require.Equal(t, win, d.Len())
@@ -2102,7 +2096,7 @@ func TestChallenge_ReverseFIFOInvariants_Streaming(t *testing.T) {
 		const streamLength = 30_000
 
 		// Fill window by pushing front
-		for i := 0; i < win; i++ {
+		for i := range win {
 			d.PushFront(i)
 		}
 		require.Equal(t, win, d.Len())
@@ -2135,7 +2129,7 @@ func TestChallenge_DoubleEnded_DualLIFOStacks(t *testing.T) {
 	// Front stack: PushFront and PopFront must behave as pure LIFO
 	frontStack := New[int]()
 	const n = 10_000
-	for i := 0; i < n; i++ {
+	for i := range n {
 		frontStack.PushFront(i)
 		f, ok := frontStack.Front()
 		require.True(t, ok)
@@ -2150,7 +2144,7 @@ func TestChallenge_DoubleEnded_DualLIFOStacks(t *testing.T) {
 
 	// Back stack: PushBack and PopBack must behave as pure LIFO
 	backStack := New[int]()
-	for i := 0; i < n; i++ {
+	for i := range n {
 		backStack.PushBack(i)
 		b, ok := backStack.Back()
 		require.True(t, ok)
@@ -2170,7 +2164,7 @@ func TestChallenge_DoubleEnded_SymmetricalPalindrome(t *testing.T) {
 
 	// Push i to back, then i to front -> creates a palindrome:
 	// front: (pairs-1), ..., 1, 0, 0, 1, ..., (pairs-1) :back
-	for i := 0; i < pairs; i++ {
+	for i := range pairs {
 		d.PushBack(i)
 		d.PushFront(i)
 	}
@@ -2204,7 +2198,7 @@ func TestChallenge_DoubleEnded_SymmetricalPalindrome(t *testing.T) {
 func TestChallenge_IteratorConsistency_ExhaustiveEarlyExit(t *testing.T) {
 	const size = 128
 	d := New[int]()
-	for i := 0; i < size; i++ {
+	for i := range size {
 		d.PushBack(i * 10)
 	}
 
@@ -2257,7 +2251,7 @@ func TestChallenge_IteratorConsistency_ExhaustiveEarlyExit(t *testing.T) {
 
 	// Drain() early exit: test partial consumption
 	dDrain := New[int]()
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		dDrain.PushBack(i)
 	}
 
@@ -2285,12 +2279,12 @@ func TestChallenge_ContinuousHeadRotations(t *testing.T) {
 	d := NewWithCapacity[int](capSize)
 
 	// Keep size at 10 while shifting head 1,000,000 steps
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		d.PushBack(i)
 	}
 
 	const steps = 1_000_000
-	for step := 0; step < steps; step++ {
+	for step := range steps {
 		// Pop front
 		oldVal, ok := d.PopFront()
 		require.True(t, ok)
@@ -2338,11 +2332,11 @@ func TestChallenge_GenericTypesVariety(t *testing.T) {
 
 	// Test zero-sized types struct{}
 	dEmpty := New[struct{}]()
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		dEmpty.PushBack(struct{}{})
 	}
 	require.Equal(t, 100, dEmpty.Len())
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		_, ok := dEmpty.PopFront()
 		require.True(t, ok)
 	}
@@ -2366,11 +2360,11 @@ func TestChallenge_ConcurrentTortureWithRace(t *testing.T) {
 	var totalPopped atomic.Int64
 
 	// Concurrent synchronized writers (mix of PushFront, PushBack, PopFront, PopBack)
-	for w := 0; w < writers; w++ {
+	for w := range writers {
 		wg.Add(1)
 		go func(wid int) {
 			defer wg.Done()
-			for i := 0; i < opsPerWorker; i++ {
+			for i := range opsPerWorker {
 				mu.Lock()
 				val := int64(wid*opsPerWorker + i)
 				if wid%2 == 0 {
@@ -2399,11 +2393,9 @@ func TestChallenge_ConcurrentTortureWithRace(t *testing.T) {
 	}
 
 	// Concurrent readers
-	for r := 0; r < readers; r++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for i := 0; i < opsPerWorker; i++ {
+	for range readers {
+		wg.Go(func() {
+			for range opsPerWorker {
 				mu.RLock()
 				_ = d.Len()
 				_ = d.Empty()
@@ -2416,7 +2408,7 @@ func TestChallenge_ConcurrentTortureWithRace(t *testing.T) {
 				}
 				mu.RUnlock()
 			}
-		}()
+		})
 	}
 
 	wg.Wait()

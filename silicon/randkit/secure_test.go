@@ -81,7 +81,7 @@ func BenchmarkConstantTimeEqual(b *testing.B) {
 	s2 := "super-secret-token-abcdef1234567890"
 	b.ResetTimer()
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = randkit.ConstantTimeEqual(s1, s2)
 	}
 }

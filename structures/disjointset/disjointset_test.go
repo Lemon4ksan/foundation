@@ -35,7 +35,7 @@ func TestConstructors(t *testing.T) {
 		require.Equal(t, n, d.Len())
 		require.Equal(t, n, d.Count())
 
-		for i := 0; i < n; i++ {
+		for i := range n {
 			require.Equal(t, i, d.Find(i))
 			require.Equal(t, 1, d.Size(i))
 			require.True(t, d.Connected(i, i))
@@ -94,7 +94,7 @@ func TestFind(t *testing.T) {
 	d := New(10)
 
 	// Direct root lookup
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		require.Equal(t, i, d.Find(i))
 	}
 
@@ -204,7 +204,7 @@ func TestConnected(t *testing.T) {
 	})
 
 	// Reflexivity
-	for i := 0; i < 6; i++ {
+	for i := range 6 {
 		require.True(t, d.Connected(i, i))
 	}
 
@@ -242,7 +242,7 @@ func TestSize(t *testing.T) {
 	})
 
 	// Initial sizes
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		require.Equal(t, 1, d.Size(i))
 	}
 
@@ -256,7 +256,7 @@ func TestSize(t *testing.T) {
 	require.Equal(t, 2, d.Size(3))
 
 	d.Union(1, 3)
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		require.Equal(t, 4, d.Size(i))
 	}
 	require.Equal(t, 1, d.Size(4))
@@ -278,10 +278,10 @@ func TestReset(t *testing.T) {
 	require.Equal(t, 10, d.Len())
 	require.Equal(t, 10, d.Count())
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		require.Equal(t, i, d.Find(i))
 		require.Equal(t, 1, d.Size(i))
-		for j := 0; j < 10; j++ {
+		for j := range 10 {
 			if i == j {
 				require.True(t, d.Connected(i, j))
 			} else {
@@ -312,7 +312,7 @@ func TestDeepChainPathCompression(t *testing.T) {
 	require.Equal(t, 0, root)
 
 	// Verify all nodes now point directly to root 0
-	for i := 0; i < n; i++ {
+	for i := range n {
 		require.Equal(t, 0, d.parent[i])
 		require.Equal(t, 0, d.Find(i))
 	}
@@ -320,20 +320,18 @@ func TestDeepChainPathCompression(t *testing.T) {
 
 func TestConcurrentReaders_CountLen(t *testing.T) {
 	d := New(1000)
-	for i := 0; i < 500; i++ {
+	for i := range 500 {
 		d.Union(i, i+500)
 	}
 
 	var wg sync.WaitGroup
-	for g := 0; g < 32; g++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for i := 0; i < 1000; i++ {
+	for range 32 {
+		wg.Go(func() {
+			for range 1000 {
 				_ = d.Len()
 				_ = d.Count()
 			}
-		}()
+		})
 	}
 	wg.Wait()
 }
@@ -344,25 +342,23 @@ func TestConcurrentSynchronizedWriters(t *testing.T) {
 	var wg sync.WaitGroup
 
 	// Readers of Len & Count
-	for r := 0; r < 16; r++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for i := 0; i < 500; i++ {
+	for range 16 {
+		wg.Go(func() {
+			for range 500 {
 				mu.RLock()
 				_ = d.Len()
 				_ = d.Count()
 				mu.RUnlock()
 			}
-		}()
+		})
 	}
 
 	// Writers performing mutations and path-compressing queries
-	for w := 0; w < 8; w++ {
+	for w := range 8 {
 		wg.Add(1)
 		go func(wId int) {
 			defer wg.Done()
-			for i := 0; i < 200; i++ {
+			for i := range 200 {
 				u := (wId*100 + i) % 1000
 				v := (wId*50 + i*3) % 1000
 
@@ -384,11 +380,11 @@ func TestConcurrentMutex_AllOps(t *testing.T) {
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 
-	for g := 0; g < 16; g++ {
+	for g := range 16 {
 		wg.Add(1)
 		go func(gId int) {
 			defer wg.Done()
-			for i := 0; i < 300; i++ {
+			for i := range 300 {
 				u := (gId*120 + i) % 2000
 				v := (gId*70 + i*7) % 2000
 
@@ -413,12 +409,12 @@ func TestConcurrentMutex_AllOps(t *testing.T) {
 func TestConcurrentIndependentInstances(t *testing.T) {
 	var wg sync.WaitGroup
 
-	for g := 0; g < 32; g++ {
+	for g := range 32 {
 		wg.Add(1)
 		go func(seed int) {
 			defer wg.Done()
 			d := New(200)
-			for i := 0; i < 100; i++ {
+			for i := range 100 {
 				u := (seed*13 + i) % 200
 				v := (seed*7 + i*3) % 200
 				d.Union(u, v)
@@ -445,14 +441,14 @@ func TestMathematicalInvariants(t *testing.T) {
 	rng := rand.New(rand.NewPCG(42, 99))
 
 	// Perform random unions
-	for i := 0; i < 150; i++ {
+	for range 150 {
 		u := rng.IntN(n)
 		v := rng.IntN(n)
 		d.Union(u, v)
 	}
 
 	// 1. Idempotence: Find(Find(x)) == Find(x)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		root := d.Find(i)
 		require.Equal(t, root, d.Find(root))
 	}
@@ -460,7 +456,7 @@ func TestMathematicalInvariants(t *testing.T) {
 	// 2. Exact Root Count: count(roots where parent[r] == r) == Count()
 	rootCount := 0
 	rootSizes := make(map[int]int)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		root := d.Find(i)
 		if root == i {
 			rootCount++
@@ -477,9 +473,9 @@ func TestMathematicalInvariants(t *testing.T) {
 	require.Equal(t, n, totalSize)
 
 	// 4. Transitivity: Connected(a, b) && Connected(b, c) => Connected(a, c)
-	for a := 0; a < 20; a++ {
-		for b := 0; b < 20; b++ {
-			for c := 0; c < 20; c++ {
+	for a := range 20 {
+		for b := range 20 {
+			for c := range 20 {
 				if d.Connected(a, b) && d.Connected(b, c) {
 					require.True(t, d.Connected(a, c))
 				}
@@ -585,7 +581,7 @@ func TestGraphOracleDifferential(t *testing.T) {
 	oracle := newGraphOracle(n)
 	rng := rand.New(rand.NewPCG(12345, 67890))
 
-	for op := 0; op < 2000; op++ {
+	for range 2000 {
 		u := rng.IntN(n)
 		v := rng.IntN(n)
 
@@ -740,7 +736,7 @@ func TestStress_AdversarialTopologies(t *testing.T) {
 			d.Union(i, i+1)
 		}
 		// Teeth: connect each spine node i to tooth half+i
-		for i := 0; i < half; i++ {
+		for i := range half {
 			d.Union(i, half+i)
 		}
 		require.Equal(t, 1, d.Count())
@@ -754,8 +750,8 @@ func TestStress_RapidResetBurst(t *testing.T) {
 	d := New(n)
 	rng := rand.New(rand.NewPCG(777, 888))
 
-	for burst := 0; burst < 100; burst++ {
-		for op := 0; op < 200; op++ {
+	for range 100 {
+		for range 200 {
 			d.Union(rng.IntN(n), rng.IntN(n))
 		}
 		d.Reset()
@@ -773,13 +769,13 @@ func TestStress_ContendedConcurrentTorture(t *testing.T) {
 	goroutines := 32
 	opsPerGoroutine := 500
 
-	for g := 0; g < goroutines; g++ {
+	for g := range goroutines {
 		wg.Add(1)
 		go func(gId int) {
 			defer wg.Done()
 			rng := rand.New(rand.NewPCG(uint64(gId), 5555))
 
-			for i := 0; i < opsPerGoroutine; i++ {
+			for range opsPerGoroutine {
 				u := rng.IntN(n)
 				v := rng.IntN(n)
 
@@ -856,7 +852,7 @@ func TestStress_OneMillionElementUniverse_HierarchicalMerges(t *testing.T) {
 	// Phase 5: Random cross-universe merges across [0, 1M)
 	rng := rand.New(rand.NewPCG(20261001, 1000000))
 	const randomOps = 200_000
-	for op := 0; op < randomOps; op++ {
+	for range randomOps {
 		u := rng.IntN(n)
 		v := rng.IntN(n)
 		wasConnected := d.Connected(u, v)
@@ -872,7 +868,7 @@ func TestStress_OneMillionElementUniverse_HierarchicalMerges(t *testing.T) {
 	// Phase 6: Conservation of Elements invariant: sum of all root sizes == n
 	visitedRoots := make(map[int]bool)
 	totalElements := 0
-	for i := 0; i < 50_000; i++ {
+	for i := range 50_000 {
 		r := d.Find(i)
 		if !visitedRoots[r] {
 			visitedRoots[r] = true
@@ -929,7 +925,7 @@ func TestStress_AdversarialTopology_DeepLinearChain10000(t *testing.T) {
 	require.Equal(t, 0, root)
 
 	// Verify that ALL 10,000 nodes are now flattened to depth 1 (directly pointing to root 0)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		require.Equal(t, 0, d.parent[i])
 		require.Equal(t, 0, d.Find(i))
 	}
@@ -956,7 +952,7 @@ func TestStress_AdversarialTopology_StarGraph(t *testing.T) {
 
 	// All satellites must be connected to hub and each other
 	rng := rand.New(rand.NewPCG(42, 42))
-	for iter := 0; iter < 1000; iter++ {
+	for range 1000 {
 		leafA := rng.IntN(n-1) + 1
 		leafB := rng.IntN(n-1) + 1
 		require.True(t, d.Connected(leafA, leafB))
@@ -971,7 +967,7 @@ func TestStress_AdversarialTopology_BinaryTree(t *testing.T) {
 	d := New(n)
 
 	// Wire binary tree: parent i connects to 2i+1 and 2i+2
-	for i := 0; i < n/2; i++ {
+	for i := range n / 2 {
 		left := 2*i + 1
 		right := 2*i + 2
 		if left < n {
@@ -991,7 +987,7 @@ func TestStress_AdversarialTopology_BinaryTree(t *testing.T) {
 	}
 
 	// Verify all compressed directly
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		require.Equal(t, d.Find(0), d.Find(n-1-i))
 	}
 }
@@ -1004,12 +1000,12 @@ func TestStress_AdversarialTopology_CombGraph(t *testing.T) {
 	d := New(n)
 
 	// Build linear spine: 0 -> 1 -> 2 -> ... -> spineLen-1
-	for i := 0; i < spineLen-1; i++ {
+	for i := range spineLen - 1 {
 		d.Union(i, i+1)
 	}
 
 	// Attach tooth to each spine node: tooth (spineLen + i) attached to spine node i
-	for i := 0; i < spineLen; i++ {
+	for i := range spineLen {
 		d.Union(i, spineLen+i)
 	}
 
@@ -1021,7 +1017,7 @@ func TestStress_AdversarialTopology_CombGraph(t *testing.T) {
 	require.True(t, d.Connected(spineLen+2500, 0))
 
 	// Verify path compression works cleanly across comb teeth
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		tooth := spineLen + i*50
 		require.Equal(t, d.Find(0), d.Find(tooth))
 	}
@@ -1037,14 +1033,14 @@ func TestStress_AdversarialTopology_CaterpillarGraph(t *testing.T) {
 	d := New(totalNodes)
 
 	// Connect spine nodes
-	for i := 0; i < spineNodes-1; i++ {
+	for i := range spineNodes - 1 {
 		d.Union(i, i+1)
 	}
 
 	// Connect legs for each spine node
-	for i := 0; i < spineNodes; i++ {
+	for i := range spineNodes {
 		baseLeg := spineNodes + i*legsPerNode
-		for leg := 0; leg < legsPerNode; leg++ {
+		for leg := range legsPerNode {
 			d.Union(i, baseLeg+leg)
 		}
 	}
@@ -1066,9 +1062,9 @@ func TestStress_RapidResetBurst_1000Iterations_ZeroAllocations(t *testing.T) {
 	rng := rand.New(rand.NewPCG(999, 111))
 
 	// 1,000 burst iterations of random unions and resets
-	for iter := 0; iter < 1000; iter++ {
+	for range 1000 {
 		// Mutate state with random unions
-		for op := 0; op < 100; op++ {
+		for range 100 {
 			u := rng.IntN(n)
 			v := rng.IntN(n)
 			d.Union(u, v)
@@ -1091,7 +1087,7 @@ func TestStress_RapidResetBurst_1000Iterations_ZeroAllocations(t *testing.T) {
 
 	// Verify zero allocations on Reset() across 1,000 runs using testing.AllocsPerRun
 	dPopulated := New(2048)
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		dPopulated.Union(i, i+1)
 	}
 
@@ -1108,7 +1104,7 @@ func TestStress_AllHotPaths_ZeroAllocations(t *testing.T) {
 	d := New(n)
 
 	// Pre-fill some connections
-	for i := 0; i < n/2; i++ {
+	for i := range n / 2 {
 		d.Union(i, i+n/2)
 	}
 
@@ -1168,13 +1164,13 @@ func TestStress_ContendedConcurrentTorture_Mutex(t *testing.T) {
 	var totalUnions atomic.Int64
 	var totalQueries atomic.Int64
 
-	for g := 0; g < goroutines; g++ {
+	for g := range goroutines {
 		wg.Add(1)
 		go func(gId int) {
 			defer wg.Done()
 			rng := rand.New(rand.NewPCG(uint64(gId+1), 99999))
 
-			for iter := 0; iter < opsPerWorker; iter++ {
+			for range opsPerWorker {
 				u := rng.IntN(n)
 				v := rng.IntN(n)
 				action := rng.IntN(6)
@@ -1225,11 +1221,9 @@ func TestStress_ContendedConcurrentTorture_RWMutex(t *testing.T) {
 	const opsPerWorker = 500
 
 	// Readers
-	for r := 0; r < readers; r++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for iter := 0; iter < opsPerWorker; iter++ {
+	for range readers {
+		wg.Go(func() {
+			for range opsPerWorker {
 				rw.RLock()
 				l := d.Len()
 				c := d.Count()
@@ -1239,17 +1233,17 @@ func TestStress_ContendedConcurrentTorture_RWMutex(t *testing.T) {
 				require.GreaterOrEqual(t, c, 1)
 				require.LessOrEqual(t, c, n)
 			}
-		}()
+		})
 	}
 
 	// Writers
-	for w := 0; w < writers; w++ {
+	for w := range writers {
 		wg.Add(1)
 		go func(wId int) {
 			defer wg.Done()
 			rng := rand.New(rand.NewPCG(uint64(wId*17+1), 12345))
 
-			for iter := 0; iter < opsPerWorker; iter++ {
+			for range opsPerWorker {
 				u := rng.IntN(n)
 				v := rng.IntN(n)
 
@@ -1284,15 +1278,13 @@ func TestStress_ConcurrentReadOnly_NoLock(t *testing.T) {
 	const goroutines = 64
 	const iterations = 5000
 
-	for g := 0; g < goroutines; g++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for iter := 0; iter < iterations; iter++ {
+	for range goroutines {
+		wg.Go(func() {
+			for range iterations {
 				require.Equal(t, expectedLen, d.Len())
 				require.Equal(t, expectedCount, d.Count())
 			}
-		}()
+		})
 	}
 
 	wg.Wait()
@@ -1436,7 +1428,7 @@ func BenchmarkSet_Union_Self(b *testing.B) {
 
 func BenchmarkSet_Connected(b *testing.B) {
 	d := New(1024)
-	for i := 0; i < 512; i++ {
+	for i := range 512 {
 		d.Union(i, i+512)
 	}
 	b.ReportAllocs()
@@ -1451,7 +1443,7 @@ func BenchmarkSet_Connected(b *testing.B) {
 
 func BenchmarkSet_Size(b *testing.B) {
 	d := New(1024)
-	for i := 0; i < 512; i++ {
+	for i := range 512 {
 		d.Union(i, i+512)
 	}
 	b.ReportAllocs()
@@ -1486,7 +1478,7 @@ func BenchmarkSet_Len(b *testing.B) {
 
 func BenchmarkSet_Reset_1024(b *testing.B) {
 	d := New(1024)
-	for i := 0; i < 500; i++ {
+	for i := range 500 {
 		d.Union(i, i+1)
 	}
 	b.ReportAllocs()
@@ -1499,7 +1491,7 @@ func BenchmarkSet_Reset_1024(b *testing.B) {
 
 func BenchmarkSet_Reset_65536(b *testing.B) {
 	d := New(65536)
-	for i := 0; i < 30000; i++ {
+	for i := range 30000 {
 		d.Union(i, i+1)
 	}
 	b.ReportAllocs()
@@ -1520,7 +1512,7 @@ func BenchmarkSet_Kruskal_Workload(b *testing.B) {
 	rng := rand.New(rand.NewPCG(123, 456))
 
 	edges := make([]edge, numEdges)
-	for i := 0; i < numEdges; i++ {
+	for i := range numEdges {
 		edges[i] = edge{
 			u: rng.IntN(n),
 			v: rng.IntN(n),
@@ -1562,7 +1554,7 @@ type graphRefOracle struct {
 
 func newGraphRefOracle(n int) *graphRefOracle {
 	adj := make([][]int, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		adj[i] = make([]int, 0, 8)
 	}
 	return &graphRefOracle{
@@ -1772,7 +1764,7 @@ func TestOracle_100kRandomizedBFSDFSOperations(t *testing.T) {
 	sizeQueries := 0
 	findQueries := 0
 
-	for op := 0; op < totalOps; op++ {
+	for op := range totalOps {
 		action := rng.IntN(100)
 
 		switch {
@@ -1844,7 +1836,7 @@ func TestOracle_100kRandomizedBFSDFSOperations(t *testing.T) {
 
 			require.Equal(t, n, dsu.Len())
 			require.Equal(t, n, dsu.Count())
-			for i := 0; i < 10; i++ {
+			for range 10 {
 				checkIdx := rng.IntN(n)
 				require.Equal(t, checkIdx, dsu.Find(checkIdx))
 				require.Equal(t, 1, dsu.Size(checkIdx))
@@ -1860,7 +1852,7 @@ func TestOracle_100kRandomizedBFSDFSOperations(t *testing.T) {
 
 			// Element conservation check
 			seenRoots := make(map[int]int)
-			for i := 0; i < n; i++ {
+			for i := range n {
 				r := dsu.Find(i)
 				seenRoots[r] = dsu.Size(r)
 			}
@@ -1896,7 +1888,7 @@ func TestChallenge_EquivalenceRelationInvariants(t *testing.T) {
 		// Initial singleton invariants
 		require.Equal(t, n, dsu.Len())
 		require.Equal(t, n, dsu.Count())
-		for i := 0; i < n; i++ {
+		for i := range n {
 			// Reflexivity
 			require.True(t, dsu.Connected(i, i))
 			require.Equal(t, i, dsu.Find(i))
@@ -1905,7 +1897,7 @@ func TestChallenge_EquivalenceRelationInvariants(t *testing.T) {
 
 		// Random unions to form complex partition
 		numMerges := n * 2
-		for step := 0; step < numMerges; step++ {
+		for range numMerges {
 			u := rng.IntN(n)
 			v := rng.IntN(n)
 			dsu.Union(u, v)
@@ -1913,7 +1905,7 @@ func TestChallenge_EquivalenceRelationInvariants(t *testing.T) {
 
 		// Mathematical Invariant 1: Reflexivity
 		// ∀ x ∈ [0, n): x ~ x
-		for x := 0; x < n; x++ {
+		for x := range n {
 			require.True(t, dsu.Connected(x, x), fmt.Sprintf("n=%d: reflexivity failed at %d", n, x))
 			require.Equal(t, dsu.Find(x), dsu.Find(x))
 			require.GreaterOrEqual(t, dsu.Size(x), 1)
@@ -1922,7 +1914,7 @@ func TestChallenge_EquivalenceRelationInvariants(t *testing.T) {
 		// Mathematical Invariant 2: Symmetry
 		// ∀ x, y ∈ [0, n): x ~ y ⇔ y ~ x
 		samplePairs := min(n*n, 2000)
-		for s := 0; s < samplePairs; s++ {
+		for range samplePairs {
 			x := rng.IntN(n)
 			y := rng.IntN(n)
 			xy := dsu.Connected(x, y)
@@ -1933,7 +1925,7 @@ func TestChallenge_EquivalenceRelationInvariants(t *testing.T) {
 		// Mathematical Invariant 3: Transitivity
 		// ∀ x, y, z ∈ [0, n): (x ~ y ∧ y ~ z) ⇒ x ~ z
 		sampleTriples := min(n*n, 3000)
-		for s := 0; s < sampleTriples; s++ {
+		for range sampleTriples {
 			x := rng.IntN(n)
 			y := rng.IntN(n)
 			z := rng.IntN(n)
@@ -1950,7 +1942,7 @@ func TestChallenge_EquivalenceRelationInvariants(t *testing.T) {
 		// 3. For every root r, Size(r) equals the number of elements whose Find(x) == r
 		// 4. Any two distinct roots r1 != r2 have disjoint sets of elements
 		rootElements := make(map[int][]int)
-		for x := 0; x < n; x++ {
+		for x := range n {
 			r := dsu.Find(x)
 			require.Equal(t, r, dsu.Find(r), "root must be its own representative")
 			rootElements[r] = append(rootElements[r], x)
@@ -2048,7 +2040,7 @@ func TestChallenge_PathCompressionTorture(t *testing.T) {
 	require.Equal(t, 0, root)
 
 	// Verify all traversed nodes now point directly to root 0
-	for i := 0; i < chainLen; i++ {
+	for i := range chainLen {
 		require.Equal(t, 0, dsu.parent[i], fmt.Sprintf("node %d was not compressed to root", i))
 		require.Equal(t, 0, dsu.Find(i))
 	}
@@ -2104,7 +2096,7 @@ func TestChallenge_AdversarialTopologies(t *testing.T) {
 		edgesAdded := 0
 		redundantEdges := 0
 
-		for u := 0; u < n; u++ {
+		for u := range n {
 			for v := u + 1; v < n; v++ {
 				if dsu.Union(u, v) {
 					edgesAdded++
@@ -2125,9 +2117,9 @@ func TestChallenge_AdversarialTopologies(t *testing.T) {
 		dsu := New(n)
 		rng := rand.New(rand.NewPCG(888, 999))
 
-		for cycle := 0; cycle < 50; cycle++ {
+		for range 50 {
 			// Random unions
-			for i := 0; i < 300; i++ {
+			for range 300 {
 				dsu.Union(rng.IntN(n), rng.IntN(n))
 			}
 			require.Less(t, dsu.Count(), n)
@@ -2136,7 +2128,7 @@ func TestChallenge_AdversarialTopologies(t *testing.T) {
 			dsu.Reset()
 			require.Equal(t, n, dsu.Count())
 			require.Equal(t, n, dsu.Len())
-			for i := 0; i < 20; i++ {
+			for range 20 {
 				x := rng.IntN(n)
 				require.Equal(t, 1, dsu.Size(x))
 				require.Equal(t, x, dsu.Find(x))
@@ -2205,13 +2197,13 @@ func TestChallenge_ConcurrentTortureWithRace(t *testing.T) {
 	var totalQueries atomic.Int64
 
 	// Concurrent synchronized mutating workers
-	for w := 0; w < writers; w++ {
+	for w := range writers {
 		wg.Add(1)
 		go func(wid int) {
 			defer wg.Done()
 			rng := rand.New(rand.NewPCG(uint64(wid*1000+1), 9999))
 
-			for i := 0; i < opsPerWorker; i++ {
+			for i := range opsPerWorker {
 				u := rng.IntN(n)
 				v := rng.IntN(n)
 
@@ -2233,11 +2225,11 @@ func TestChallenge_ConcurrentTortureWithRace(t *testing.T) {
 	}
 
 	// Concurrent readers accessing Len and Count (which do not compress paths)
-	for r := 0; r < readers; r++ {
+	for r := range readers {
 		wg.Add(1)
 		go func(rid int) {
 			defer wg.Done()
-			for i := 0; i < opsPerWorker; i++ {
+			for range opsPerWorker {
 				mu.RLock()
 				l := dsu.Len()
 				c := dsu.Count()
@@ -2262,7 +2254,7 @@ func TestChallenge_ConcurrentIndependentInstances(t *testing.T) {
 	const goroutines = 32
 	const ops = 1000
 
-	for g := 0; g < goroutines; g++ {
+	for g := range goroutines {
 		wg.Add(1)
 		go func(gid int) {
 			defer wg.Done()
@@ -2270,7 +2262,7 @@ func TestChallenge_ConcurrentIndependentInstances(t *testing.T) {
 			d := New(n)
 			rng := rand.New(rand.NewPCG(uint64(gid), 12345))
 
-			for i := 0; i < ops; i++ {
+			for range ops {
 				u := rng.IntN(n)
 				v := rng.IntN(n)
 				d.Union(u, v)

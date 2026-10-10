@@ -136,11 +136,11 @@ func TestAdversarial_Mock_HighConcurrencyRace(t *testing.T) {
 	const goroutines = 20
 	const perGoroutine = totalCalls / goroutines
 
-	for g := 0; g < goroutines; g++ {
+	for g := range goroutines {
 		wg.Add(1)
 		go func(gid int) {
 			defer wg.Done()
-			for i := 0; i < perGoroutine; i++ {
+			for i := range perGoroutine {
 				res, err := svc.Greet(fmt.Sprintf("user-%d", gid), i)
 				assert.NoError(t, err)
 				assert.Equal(t, "ok", res)
@@ -171,9 +171,7 @@ func TestAdversarial_Mock_ConcurrentSatisfiedAndInvocations(t *testing.T) {
 
 	// Concurrently query ctrl.Satisfied() while calls are actively firing
 	for range 5 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for {
 				select {
 				case <-stopCheck:
@@ -182,15 +180,13 @@ func TestAdversarial_Mock_ConcurrentSatisfiedAndInvocations(t *testing.T) {
 					_ = ctrl.Satisfied()
 				}
 			}
-		}()
+		})
 	}
 
 	for range totalCalls {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			svc.Noop()
-		}()
+		})
 	}
 
 	// Wait for all invocations to finish

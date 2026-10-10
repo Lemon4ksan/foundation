@@ -119,9 +119,9 @@ func New[T any](cfg Config) *Pool[T] {
 //
 // The caller must increment pool.currentWorkers under pool.mu protection
 // before calling this method.
-func (pool *Pool[T]) spawnWorker() {
-	pool.wg.Go(func() {
-		timer := time.NewTimer(pool.cfg.IdleTimeout)
+func (p *Pool[T]) spawnWorker() {
+	p.wg.Go(func() {
+		timer := time.NewTimer(p.cfg.IdleTimeout)
 		defer timer.Stop()
 
 		for {
@@ -133,40 +133,40 @@ func (pool *Pool[T]) spawnWorker() {
 				}
 			}
 
-			timer.Reset(pool.cfg.IdleTimeout)
+			timer.Reset(p.cfg.IdleTimeout)
 
 			select {
-			case t, ok := <-pool.tasks:
+			case t, ok := <-p.tasks:
 				if !ok {
-					pool.mu.Lock()
-					pool.currentWorkers--
-					pool.mu.Unlock()
+					p.mu.Lock()
+					p.currentWorkers--
+					p.mu.Unlock()
 
 					return
 				}
 
-				pool.runTask(t)
+				p.runTask(t)
 
 			case <-timer.C:
 				// Worker has been idle for IdleTimeout. Decide if we should scale down.
-				pool.mu.Lock()
-				if pool.currentWorkers > pool.cfg.MinWorkers {
-					pool.currentWorkers--
-					pool.mu.Unlock()
+				p.mu.Lock()
+				if p.currentWorkers > p.cfg.MinWorkers {
+					p.currentWorkers--
+					p.mu.Unlock()
 					return
 				}
 
-				pool.mu.Unlock()
+				p.mu.Unlock()
 			}
 		}
 	})
 }
 
 // runTask executes the work payload of a task, capturing panics and updating metrics.
-func (pool *Pool[T]) runTask(t task[T]) {
-	pool.mu.Lock()
-	pool.busyWorkers++
-	pool.mu.Unlock()
+func (p *Pool[T]) runTask(t task[T]) {
+	p.mu.Lock()
+	p.busyWorkers++
+	p.mu.Unlock()
 
 	var (
 		val T
@@ -174,9 +174,9 @@ func (pool *Pool[T]) runTask(t task[T]) {
 	)
 
 	defer func() {
-		pool.mu.Lock()
-		pool.busyWorkers--
-		pool.mu.Unlock()
+		p.mu.Lock()
+		p.busyWorkers--
+		p.mu.Unlock()
 
 		if r := recover(); r != nil {
 			err = fmt.Errorf("task panicked: %v", r)
@@ -196,39 +196,39 @@ func (pool *Pool[T]) runTask(t task[T]) {
 // Submit dynamically evaluates the load on the pool: if all current workers are busy
 // or tasks are queuing up, and the current worker count is below [Config.MaxWorkers], it
 // spawns a new worker goroutine.
-func (pool *Pool[T]) Submit(ctx context.Context, fn func(context.Context) (T, error)) (*Future[T], error) {
-	pool.mu.Lock()
+func (p *Pool[T]) Submit(ctx context.Context, fn func(context.Context) (T, error)) (*Future[T], error) {
+	p.mu.Lock()
 
-	if pool.closed {
-		pool.mu.Unlock()
+	if p.closed {
+		p.mu.Unlock()
 		return nil, ErrClosed
 	}
 
-	if len(pool.tasks) >= pool.cfg.QueueLimit {
-		pool.mu.Unlock()
+	if len(p.tasks) >= p.cfg.QueueLimit {
+		p.mu.Unlock()
 		return nil, ErrQueueFull
 	}
 
 	future := NewFuture[T]()
 
 	select {
-	case pool.tasks <- task[T]{ctx, fn, future}:
+	case p.tasks <- task[T]{ctx, fn, future}:
 	default:
-		pool.mu.Unlock()
+		p.mu.Unlock()
 		return nil, ErrQueueFull
 	}
 
 	// Safely evaluate worker scaling under mutex protection.
 	shouldSpawn := false
-	if pool.currentWorkers < pool.cfg.MaxWorkers && (pool.busyWorkers == pool.currentWorkers || len(pool.tasks) > 0) {
-		pool.currentWorkers++
+	if p.currentWorkers < p.cfg.MaxWorkers && (p.busyWorkers == p.currentWorkers || len(p.tasks) > 0) {
+		p.currentWorkers++
 		shouldSpawn = true
 	}
 
-	pool.mu.Unlock()
+	p.mu.Unlock()
 
 	if shouldSpawn {
-		pool.spawnWorker()
+		p.spawnWorker()
 	}
 
 	return future, nil
@@ -239,7 +239,7 @@ func (pool *Pool[T]) Submit(ctx context.Context, fn func(context.Context) (T, er
 //
 // Concurrency Guarantees:
 // ItemsSeq is safe for concurrent use.
-func (pool *Pool[T]) ItemsSeq(
+func (p *Pool[T]) ItemsSeq(
 	ctx context.Context,
 	tasks iter.Seq[func(context.Context) (T, error)],
 ) iter.Seq2[T, error] {
@@ -252,7 +252,7 @@ func (pool *Pool[T]) ItemsSeq(
 		runCtx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
-		resultsCh := make(chan resItem, pool.cfg.QueueLimit)
+		resultsCh := make(chan resItem, p.cfg.QueueLimit)
 		var futWg sync.WaitGroup
 
 		go func() {
@@ -265,7 +265,7 @@ func (pool *Pool[T]) ItemsSeq(
 				default:
 				}
 
-				fut, err := pool.Submit(runCtx, taskFn)
+				fut, err := p.Submit(runCtx, taskFn)
 				if err != nil {
 					var zero T
 					select {
@@ -319,18 +319,18 @@ func ItemsSeq[T any](
 // goroutines have exited.
 //
 // Calling Close on an already closed pool returns nil immediately.
-func (pool *Pool[T]) Close() error {
-	pool.mu.Lock()
-	if pool.closed {
-		pool.mu.Unlock()
+func (p *Pool[T]) Close() error {
+	p.mu.Lock()
+	if p.closed {
+		p.mu.Unlock()
 		return nil
 	}
 
-	pool.closed = true
-	close(pool.tasks)
-	pool.mu.Unlock()
+	p.closed = true
+	close(p.tasks)
+	p.mu.Unlock()
 
-	pool.wg.Wait()
+	p.wg.Wait()
 
 	return nil
 }

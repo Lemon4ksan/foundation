@@ -37,7 +37,7 @@ func TestLimiter_Adaptive_CancelStormStress(t *testing.T) {
 	for i := range numWorkers {
 		go func(workerID int) {
 			defer wg.Done()
-			for j := 0; j < iterations; j++ {
+			for range iterations {
 				// Vary timeout between 0ms and 10ms
 				timeout := time.Duration(rand.IntN(10)) * time.Millisecond
 				ctx, cancel := context.WithTimeout(context.Background(), timeout)

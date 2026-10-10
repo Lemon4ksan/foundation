@@ -382,10 +382,9 @@ func BenchmarkDecodeSeq(b *testing.B) {
 	for _, v := range []uint64{25, 15293, 494878333} {
 		buf = Append(buf, v)
 	}
-	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		count := 0
 		for range DecodeSeq(buf) {
 			count++

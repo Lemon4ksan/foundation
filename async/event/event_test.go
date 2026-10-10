@@ -815,8 +815,7 @@ func TestEnvelope_Methods(t *testing.T) {
 	if ctx == nil {
 		t.Fatal("expected non-nil context")
 	}
-	customCtx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	customCtx := t.Context()
 	be.SetContext(customCtx)
 	if be.Context() != customCtx {
 		t.Fatal("expected set context")

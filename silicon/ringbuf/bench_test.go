@@ -23,9 +23,9 @@ func TestChallenge_GCLeakVerification(t *testing.T) {
 	buf := New[trackedObj](4)
 	obj := &trackedObj{id: 42}
 
-	runtime.SetFinalizer(obj, func(o *trackedObj) {
-		finalized.Add(1)
-	})
+	runtime.AddCleanup(obj, func(counter *atomic.Int32) {
+		counter.Add(1)
+	}, &finalized)
 
 	require.True(t, buf.Push(obj))
 	obj = nil // Clear local reference
@@ -67,11 +67,11 @@ func TestChallenge_MPMCHighContentionTorture(t *testing.T) {
 	wg.Add(numProducers + numConsumers)
 
 	// Producers
-	for p := 0; p < numProducers; p++ {
+	for p := range numProducers {
 		start := p * itemsPerProd
 		go func(base int) {
 			defer wg.Done()
-			for i := 0; i < itemsPerProd; i++ {
+			for i := range itemsPerProd {
 				val := base + i
 				for !buf.Push(&val) {
 					runtime.Gosched()
@@ -81,7 +81,7 @@ func TestChallenge_MPMCHighContentionTorture(t *testing.T) {
 	}
 
 	// Consumers
-	for c := 0; c < numConsumers; c++ {
+	for range numConsumers {
 		go func() {
 			defer wg.Done()
 			for totalConsumed.Load() < int64(totalItems) {
@@ -101,7 +101,7 @@ func TestChallenge_MPMCHighContentionTorture(t *testing.T) {
 	wg.Wait()
 
 	require.Equal(t, int64(totalItems), totalConsumed.Load())
-	for i := 0; i < totalItems; i++ {
+	for i := range totalItems {
 		require.Equal(t, int32(1), received[i].Load(), "item was either dropped or duplicated")
 	}
 }

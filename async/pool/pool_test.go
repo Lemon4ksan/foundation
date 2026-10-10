@@ -417,7 +417,6 @@ func BenchmarkItemsSeq(b *testing.B) {
 	p := New[int](Config{MinWorkers: 4, MaxWorkers: 4, QueueLimit: 50})
 	defer p.Close()
 
-	b.ResetTimer()
 	b.ReportAllocs()
 
 	for b.Loop() {

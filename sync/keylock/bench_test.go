@@ -32,7 +32,7 @@ func TestKeyLock_HeavySameKeyContention(t *testing.T) {
 	for i := range numGoroutines {
 		go func(workerID int) {
 			defer wg.Done()
-			for j := 0; j < iterations; j++ {
+			for j := range iterations {
 				km.Lock(key)
 				slice = append(slice, workerID*1000+j)
 				km.Unlock(key)
@@ -449,7 +449,6 @@ func BenchmarkWithLockResult(b *testing.B) {
 	km := keylock.New[string]()
 	const key = "bench-key"
 
-	b.ResetTimer()
 	b.ReportAllocs()
 
 	for b.Loop() {

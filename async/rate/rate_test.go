@@ -600,11 +600,11 @@ func BenchmarkAllowN(b *testing.B) {
 }
 
 func BenchmarkWaitNNoDelay(b *testing.B) {
-	lim := NewLimiter(Limit(b.N), b.N)
+	lim := NewLimiter(Inf, 1)
 	ctx := context.Background()
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+
+	for b.Loop() {
 		lim.WaitN(ctx, 1)
 	}
 }
@@ -677,13 +677,13 @@ func TestSometimesNegative(t *testing.T) {
 func BenchmarkSometimes(b *testing.B) {
 	b.Run("no-interval", func(b *testing.B) {
 		s := Sometimes{Every: 10}
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			s.Do(func() {})
 		}
 	})
 	b.Run("with-interval", func(b *testing.B) {
 		s := Sometimes{Interval: time.Second}
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			s.Do(func() {})
 		}
 	})

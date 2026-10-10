@@ -217,9 +217,9 @@ func TestChallenge_GCLeakVerification(t *testing.T) {
 			r.Init(8)
 
 			obj := &trackedObj{id: 42}
-			runtime.SetFinalizer(obj, func(o *trackedObj) {
-				finalized.Add(1)
-			})
+			runtime.AddCleanup(obj, func(counter *atomic.Int32) {
+				counter.Add(1)
+			}, &finalized)
 
 			r.PushBack(obj)
 			obj = nil // Drop local reference
@@ -258,7 +258,7 @@ func TestChallenge_DifferentialFuzz(t *testing.T) {
 		oracle := make([]int, 0)
 		counter := 0
 
-		for step := 0; step < numSteps; step++ {
+		for range numSteps {
 			op := rng.IntN(10)
 
 			switch {

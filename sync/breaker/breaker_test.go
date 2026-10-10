@@ -303,7 +303,7 @@ func TestBreakerAllocations(t *testing.T) {
 	}
 
 	// Pre-warm
-	for i := 0; i < 1024; i++ {
+	for range 1024 {
 		_, _ = cb.Do(ctx, fn)
 	}
 

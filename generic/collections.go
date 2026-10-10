@@ -95,11 +95,23 @@ type cacheImpl[K comparable, V any] struct {
 	closed      atomic.Bool
 }
 
+type cacheJanitorCleanupState struct {
+	stopJanitor chan struct{}
+	closed      *atomic.Bool
+}
+
+func stopCacheJanitor(s cacheJanitorCleanupState) {
+	if s.closed.CompareAndSwap(false, true) {
+		close(s.stopJanitor)
+	}
+}
+
 // Cache implements a thread-safe, in-memory key-value store with Time-To-Live (TTL) expiration
 // and automatic background memory reclamation.
 // It is safe for concurrent use by multiple goroutines.
 type Cache[K comparable, V any] struct {
-	impl *cacheImpl[K, V]
+	impl    *cacheImpl[K, V]
+	cleanup runtime.Cleanup
 }
 
 // DefaultCleanupInterval is the default frequency for background TTL reclamation.
@@ -122,37 +134,38 @@ func NewCacheWithJanitor[K comparable, V any](cleanupInterval time.Duration) *Ca
 
 	if cleanupInterval > 0 {
 		go impl.runJanitor(cleanupInterval)
-		runtime.SetFinalizer(c, func(outer *Cache[K, V]) {
-			outer.Close()
+		c.cleanup = runtime.AddCleanup(c, stopCacheJanitor, cacheJanitorCleanupState{
+			stopJanitor: impl.stopJanitor,
+			closed:      &impl.closed,
 		})
 	}
 
 	return c
 }
 
-func (impl *cacheImpl[K, V]) runJanitor(interval time.Duration) {
+func (ci *cacheImpl[K, V]) runJanitor(interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ticker.C:
-			impl.PurgeExpired()
-		case <-impl.stopJanitor:
+			ci.PurgeExpired()
+		case <-ci.stopJanitor:
 			return
 		}
 	}
 }
 
-// Close stops the background janitor goroutine and unregisters the finalizer.
+// Close stops the background janitor goroutine and unregisters the cleanup.
 // It is safe to call multiple times.
 func (c *Cache[K, V]) Close() {
 	if c == nil || c.impl == nil {
 		return
 	}
+	c.cleanup.Stop()
 	if c.impl.closed.CompareAndSwap(false, true) {
 		close(c.impl.stopJanitor)
-		runtime.SetFinalizer(c, nil)
 	}
 }
 
@@ -317,27 +330,27 @@ func (c *Cache[K, V]) PurgeExpired() int {
 	return c.impl.PurgeExpired()
 }
 
-func (impl *cacheImpl[K, V]) PurgeExpired() int {
-	impl.mu.Lock()
-	defer impl.mu.Unlock()
-	return impl.purgeExpiredLocked(time.Now())
+func (ci *cacheImpl[K, V]) PurgeExpired() int {
+	ci.mu.Lock()
+	defer ci.mu.Unlock()
+	return ci.purgeExpiredLocked(time.Now())
 }
 
-func (impl *cacheImpl[K, V]) purgeExpiredLocked(now time.Time) int {
-	if impl.data == nil {
+func (ci *cacheImpl[K, V]) purgeExpiredLocked(now time.Time) int {
+	if ci.data == nil {
 		return 0
 	}
 
 	evicted := 0
-	for k, item := range impl.data {
+	for k, item := range ci.data {
 		if !now.Before(item.expiresAt) {
-			delete(impl.data, k)
+			delete(ci.data, k)
 			evicted++
 		}
 	}
 
-	if len(impl.data) == 0 && evicted > 1024 {
-		impl.data = make(map[K]cacheItem[V])
+	if len(ci.data) == 0 && evicted > 1024 {
+		ci.data = make(map[K]cacheItem[V])
 	}
 
 	return evicted

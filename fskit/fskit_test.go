@@ -669,7 +669,6 @@ func BenchmarkFastWalk(b *testing.B) {
 		_ = os.WriteFile(filepath.Join(dir, "file"+string(rune('a'+i))+".txt"), []byte("data"), 0o644)
 	}
 
-	b.ResetTimer()
 	b.ReportAllocs()
 
 	for b.Loop() {
@@ -685,7 +684,6 @@ func BenchmarkFastWalkSeq(b *testing.B) {
 		_ = os.WriteFile(filepath.Join(dir, "file"+string(rune('a'+i))+".txt"), []byte("data"), 0o644)
 	}
 
-	b.ResetTimer()
 	b.ReportAllocs()
 
 	for b.Loop() {
@@ -702,7 +700,6 @@ func BenchmarkWalkSeq(b *testing.B) {
 		_ = os.WriteFile(filepath.Join(dir, "file"+string(rune('a'+i))+".txt"), []byte("data"), 0o644)
 	}
 
-	b.ResetTimer()
 	b.ReportAllocs()
 
 	for b.Loop() {
@@ -716,7 +713,6 @@ func BenchmarkWalkSeq(b *testing.B) {
 func BenchmarkIsIncompressibleExtension(b *testing.B) {
 	name := "path/to/archive/file.tar.gz"
 
-	b.ResetTimer()
 	b.ReportAllocs()
 
 	for b.Loop() {
@@ -736,7 +732,6 @@ func BenchmarkOpenMmapReadAt(b *testing.B) {
 	defer m.Close()
 
 	buf := make([]byte, 1024)
-	b.ResetTimer()
 	b.ReportAllocs()
 
 	for b.Loop() {
