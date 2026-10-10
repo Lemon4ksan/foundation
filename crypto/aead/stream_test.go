@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"crypto/cipher"
 	"crypto/rand"
+	"encoding/binary"
 	"errors"
 	"io"
 	"testing"
@@ -240,4 +241,79 @@ func TestRepro_StreamAEAD_ShortNoncePanic(t *testing.T) {
 		t.Fatalf("expected ErrInvalidNonceLength, got %v", err)
 	}
 }
+
+func TestRepro_StreamAEAD_CorruptedHeaderFlag(t *testing.T) {
+	c, nonce := newTestAEAD(t)
+	// Frame with invalid flag 0x02
+	var badFrame [5 + 16]byte
+	binary.BigEndian.PutUint32(badFrame[0:4], 16)
+	badFrame[4] = 0x02 // Corrupted header flag!
+
+	sr, err := aead.NewStreamReader(bytes.NewReader(badFrame[:]), c, nonce, nil)
+	require.NoError(t, err)
+
+	buf := make([]byte, 32)
+	_, err = sr.Read(buf)
+	if err == nil {
+		t.Fatal("expected error on corrupted header flag")
+	}
+	if !errors.Is(err, aead.ErrInvalidHeaderFlag) {
+		t.Fatalf("expected ErrInvalidHeaderFlag, got %v", err)
+	}
+}
+
+func TestRepro_StreamAEAD_ChunkTooSmall(t *testing.T) {
+	c, nonce := newTestAEAD(t)
+	var badFrame [5]byte
+	binary.BigEndian.PutUint32(badFrame[0:4], uint32(c.Overhead()-1)) // smaller than overhead
+	badFrame[4] = 0x01
+
+	sr, err := aead.NewStreamReader(bytes.NewReader(badFrame[:]), c, nonce, nil)
+	require.NoError(t, err)
+
+	buf := make([]byte, 32)
+	_, err = sr.Read(buf)
+	if err == nil {
+		t.Fatal("expected error on chunk smaller than overhead")
+	}
+	if !errors.Is(err, aead.ErrChunkTooSmall) {
+		t.Fatalf("expected ErrChunkTooSmall, got %v", err)
+	}
+}
+
+type oneByteWriter struct {
+	buf bytes.Buffer
+}
+
+func (w *oneByteWriter) Write(p []byte) (int, error) {
+	if len(p) == 0 {
+		return 0, nil
+	}
+	w.buf.WriteByte(p[0])
+	return 1, nil
+}
+
+func TestRepro_StreamAEAD_PartialWriter(t *testing.T) {
+	c, nonce := newTestAEAD(t)
+	pw := &oneByteWriter{}
+
+	payload := []byte("stream encryption through a one-byte-at-a-time partial writer")
+	sw, err := aead.NewStreamWriter(pw, c, nonce, 1024, []byte("aad"))
+	require.NoError(t, err)
+
+	n, err := sw.Write(payload)
+	require.NoError(t, err)
+	assert.Equal(t, len(payload), n)
+	require.NoError(t, sw.Close())
+
+	// Verify plaintext successfully decrypts
+	sr, err := aead.NewStreamReader(bytes.NewReader(pw.buf.Bytes()), c, nonce, []byte("aad"))
+	require.NoError(t, err)
+
+	dec, err := io.ReadAll(sr)
+	require.NoError(t, err)
+	assert.Equal(t, payload, dec)
+}
+
+
 

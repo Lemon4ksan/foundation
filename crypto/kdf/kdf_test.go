@@ -149,3 +149,51 @@ func TestDeriveSubkeyAndNonce(t *testing.T) {
 		t.Fatal("nonces for different counters must not collide")
 	}
 }
+
+func TestRepro_Argon2id_ParameterBounds(t *testing.T) {
+	pass := []byte("password")
+	salt := []byte("12345678") // valid 8-byte salt
+
+	// 1. Threads (Parallelism) < 1
+	k := kdf.Argon2id(pass, salt, kdf.Argon2idProfile{MemoryKiB: 1024, Iterations: 1, Parallelism: 0}, 32)
+	if k != nil {
+		t.Fatalf("expected nil for Parallelism < 1, got %v", k)
+	}
+
+	// 2. Iterations (Time) < 1
+	k = kdf.Argon2id(pass, salt, kdf.Argon2idProfile{MemoryKiB: 1024, Iterations: 0, Parallelism: 1}, 32)
+	if k != nil {
+		t.Fatalf("expected nil for Iterations < 1, got %v", k)
+	}
+
+	// 3. Memory < 8 * Parallelism
+	k = kdf.Argon2id(pass, salt, kdf.Argon2idProfile{MemoryKiB: 4, Iterations: 1, Parallelism: 1}, 32)
+	if k != nil {
+		t.Fatalf("expected nil for Memory < 8, got %v", k)
+	}
+
+	// 4. Salt length < 8
+	k = kdf.Argon2id(pass, []byte("short"), kdf.ProfileFast, 32)
+	if k != nil {
+		t.Fatalf("expected nil for salt < 8 bytes, got %v", k)
+	}
+	k = kdf.Argon2id(pass, nil, kdf.ProfileFast, 32)
+	if k != nil {
+		t.Fatalf("expected nil for nil salt, got %v", k)
+	}
+
+	// 5. Zero keyLen
+	k = kdf.Argon2id(pass, salt, kdf.ProfileFast, 0)
+	if k != nil {
+		t.Fatalf("expected nil for keyLen == 0, got %v", k)
+	}
+}
+
+func TestRepro_PBKDF2_MemoryAllocationLimitOverflow(t *testing.T) {
+	// Attempt huge keyLen that would cause excessive allocation / integer overflow
+	k := kdf.PBKDF2(sha256.New, []byte("password"), []byte("salt"), 1, 1<<30)
+	if k != nil {
+		t.Fatalf("expected nil for excessive keyLen, got len %d", len(k))
+	}
+}
+

@@ -33,6 +33,13 @@ var (
 )
 
 // Argon2id derives a cryptographic key from password and salt using the specified profile parameters.
+// Returns nil if parameters violate RFC 9106 bounds (e.g. threads < 1, iterations < 1, memory < 8*p, salt < 8 bytes, keyLen == 0).
 func Argon2id(password, salt []byte, profile Argon2idProfile, keyLen uint32) []byte {
+	if profile.Parallelism < 1 || profile.Iterations < 1 || profile.MemoryKiB < 8*uint32(profile.Parallelism) {
+		return nil
+	}
+	if len(salt) < 8 || keyLen == 0 {
+		return nil
+	}
 	return argon2.IDKey(password, salt, profile.Iterations, profile.MemoryKiB, profile.Parallelism, keyLen)
 }

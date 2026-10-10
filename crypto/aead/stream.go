@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"iter"
+	"sync"
 )
 
 const (
@@ -33,6 +34,12 @@ var (
 
 	// ErrChunkTooLarge indicates a chunk payload length exceeds MaxChunkSize.
 	ErrChunkTooLarge = errors.New("aead: chunk size exceeds maximum allowed")
+
+	// ErrChunkTooSmall indicates a chunk payload length is smaller than the cipher's tag overhead.
+	ErrChunkTooSmall = errors.New("aead: chunk length smaller than tag overhead")
+
+	// ErrInvalidHeaderFlag indicates a chunk frame header contains an unrecognized flag byte.
+	ErrInvalidHeaderFlag = errors.New("aead: invalid chunk header flag")
 )
 
 func deriveChunkNonce(baseNonce []byte, chunkIdx uint64) []byte {
@@ -60,6 +67,7 @@ func deriveChunkAAD(streamAAD []byte, chunkIdx uint64, flag uint8) []byte {
 
 // StreamWriter wraps an io.Writer and provides streaming AEAD authenticated chunk encryption.
 type StreamWriter struct {
+	mu        sync.Mutex
 	w         io.Writer
 	aead      cipher.AEAD
 	nonceBase []byte
@@ -106,6 +114,9 @@ func NewStreamWriter(
 
 // Write buffers data and writes out intermediate authenticated chunks.
 func (sw *StreamWriter) Write(p []byte) (int, error) {
+	sw.mu.Lock()
+	defer sw.mu.Unlock()
+
 	if sw.closed {
 		return 0, errors.New("aead: write to closed StreamWriter")
 	}
@@ -140,6 +151,9 @@ func (sw *StreamWriter) Write(p []byte) (int, error) {
 
 // Close flushes any remaining buffered plaintext as the authenticated terminal chunk.
 func (sw *StreamWriter) Close() error {
+	sw.mu.Lock()
+	defer sw.mu.Unlock()
+
 	if sw.closed {
 		return nil
 	}
@@ -165,18 +179,25 @@ func (sw *StreamWriter) writeChunk(plaintext []byte, flag uint8) error {
 	nonce := deriveChunkNonce(sw.nonceBase, sw.chunkIdx)
 	aad := deriveChunkAAD(sw.streamAAD, sw.chunkIdx, flag)
 
-	ciphertext := sw.aead.Seal(nil, nonce, plaintext, aad)
-	ctLen := uint32(len(ciphertext))
-
 	var header [5]byte
+	ctLen := uint32(len(plaintext) + sw.aead.Overhead())
 	binary.BigEndian.PutUint32(header[0:4], ctLen)
 	header[4] = flag
 
-	if _, err := sw.w.Write(header[:]); err != nil {
-		return fmt.Errorf("aead: write chunk %d header: %w", sw.chunkIdx, err)
-	}
-	if _, err := sw.w.Write(ciphertext); err != nil {
-		return fmt.Errorf("aead: write chunk %d ciphertext: %w", sw.chunkIdx, err)
+	// Pre-populating with the 5-byte header writes a single atomic frame
+	frame := sw.aead.Seal(header[:5], nonce, plaintext, aad)
+
+	for len(frame) > 0 {
+		n, err := sw.w.Write(frame)
+		if n > 0 {
+			frame = frame[n:]
+		}
+		if err != nil {
+			return fmt.Errorf("aead: write chunk %d: %w", sw.chunkIdx, err)
+		}
+		if n == 0 {
+			return fmt.Errorf("aead: write chunk %d: %w", sw.chunkIdx, io.ErrShortWrite)
+		}
 	}
 
 	sw.chunkIdx++
@@ -235,11 +256,14 @@ func (sr *StreamReader) Read(p []byte) (int, error) {
 		ctLen := binary.BigEndian.Uint32(header[0:4])
 		flag := header[4]
 
+		if flag > flagLastChunk {
+			return 0, fmt.Errorf("%w: 0x%02x", ErrInvalidHeaderFlag, flag)
+		}
 		if ctLen > MaxChunkSize {
 			return 0, fmt.Errorf("%w: chunk length %d", ErrChunkTooLarge, ctLen)
 		}
 		if int(ctLen) < sr.aead.Overhead() {
-			return 0, fmt.Errorf("aead: chunk length %d smaller than tag overhead", ctLen)
+			return 0, fmt.Errorf("%w: chunk length %d smaller than tag overhead", ErrChunkTooSmall, ctLen)
 		}
 
 		ctBuf := make([]byte, ctLen)
@@ -307,12 +331,16 @@ func (sr *StreamReader) Chunks() iter.Seq2[[]byte, error] {
 			ctLen := binary.BigEndian.Uint32(header[0:4])
 			flag := header[4]
 
+			if flag > flagLastChunk {
+				yield(nil, fmt.Errorf("%w: 0x%02x", ErrInvalidHeaderFlag, flag))
+				return
+			}
 			if ctLen > MaxChunkSize {
 				yield(nil, fmt.Errorf("%w: chunk length %d", ErrChunkTooLarge, ctLen))
 				return
 			}
 			if int(ctLen) < sr.aead.Overhead() {
-				yield(nil, fmt.Errorf("aead: chunk length %d smaller than tag overhead", ctLen))
+				yield(nil, fmt.Errorf("%w: chunk length %d smaller than tag overhead", ErrChunkTooSmall, ctLen))
 				return
 			}
 
