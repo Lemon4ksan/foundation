@@ -22,8 +22,8 @@ type BytesReader interface {
 	Bytes() (data []byte, volatile bool)
 }
 
-// InspectBytes attempts to extract contiguous payload bytes from r without allocations.
-// Returns the data slice, volatility flag, and a boolean indicating whether the reader supports contiguous byte inspection.
+// InspectBytes attempts to extract contiguous payload bytes from r without allocations,
+// returning the data slice, volatility flag, and a boolean indicating whether the reader supports contiguous byte inspection.
 func InspectBytes(r io.Reader) (data []byte, volatile, ok bool) {
 	if r == nil {
 		return nil, false, false
@@ -43,8 +43,8 @@ func InspectBytes(r io.Reader) (data []byte, volatile, ok bool) {
 
 // ReadAllSafe returns the payload bytes, guaranteeing that the returned slice
 // is safe to retain independently of the reader's lifecycle.
-// If r provides contiguous non-volatile bytes, returns them without allocation;
-// if volatile, returns a cloned slice; otherwise falls back to [io.ReadAll].
+// If r provides contiguous non-volatile bytes, it returns them without allocation;
+// if volatile, it returns a cloned slice; otherwise it falls back to [io.ReadAll].
 func ReadAllSafe(r io.Reader) ([]byte, error) {
 	if data, volatile, ok := InspectBytes(r); ok {
 		if len(data) == 0 {

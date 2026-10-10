@@ -27,10 +27,6 @@ type windowsMmap struct {
 }
 
 // OpenMmap maps the specified file path directly into the process virtual memory address space.
-//
-// It does not panic.
-//
-// Complexity: O(1) time.
 func OpenMmap(path string) (MmapFile, error) {
 	f, err := os.Open(path)
 	if err != nil {

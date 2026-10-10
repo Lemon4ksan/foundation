@@ -45,8 +45,6 @@ type Config struct {
 }
 
 // ResolveDefaults validates the configuration boundaries and applies safe fallback defaults for any non-positive or conflicting fields.
-//
-// Executes in O(1) time and is zero-allocation.
 func (c *Config) ResolveDefaults() {
 	if c.MinWorkers <= 0 {
 		c.MinWorkers = 1
@@ -67,9 +65,8 @@ func (c *Config) ResolveDefaults() {
 
 // Pool manages a set of worker goroutines that scale dynamically under load.
 //
-// The zero value is empty and not ready to use.
-// Read-only operations are safe for concurrent use; mutations require external synchronization unless stated otherwise.
-// Note that methods on [Pool] manage their own internal locks.
+// The zero value is empty and not ready to use; instances must be created with [New].
+// All exported methods manage their own synchronization and are safe for concurrent use.
 type Pool[T any] struct {
 	mu             sync.Mutex
 	cfg            Config
@@ -81,8 +78,6 @@ type Pool[T any] struct {
 }
 
 // New creates, initializes, and starts a worker [Pool] with the provided configuration.
-//
-// Executes in O(N) time, where N is the minimum number of workers, and allocates memory for internal structures.
 func New[T any](cfg Config) *Pool[T] {
 	cfg.ResolveDefaults()
 
@@ -176,8 +171,6 @@ func (p *Pool[T]) runTask(t task[T]) {
 }
 
 // Submit enqueues a task for asynchronous execution by an idle worker.
-//
-// Executes in amortized O(1) time and allocates memory for tracking the new task and the returned [Future].
 func (p *Pool[T]) Submit(ctx context.Context, fn func(context.Context) (T, error)) (*Future[T], error) {
 	p.mu.Lock()
 
@@ -217,8 +210,6 @@ func (p *Pool[T]) Submit(ctx context.Context, fn func(context.Context) (T, error
 }
 
 // ItemsSeq executes a sequence of tasks using the pool and yields results as they complete.
-//
-// Executes in O(N) time, where N is the number of tasks, and allocates memory for internal tracking and channels.
 func (p *Pool[T]) ItemsSeq(
 	ctx context.Context,
 	tasks iter.Seq[func(context.Context) (T, error)],
@@ -283,8 +274,6 @@ func (p *Pool[T]) ItemsSeq(
 }
 
 // ItemsSeq submits tasks from the input iterator to the provided [Pool] and yields results as they complete.
-//
-// Executes in O(N) time, where N is the number of tasks, and allocates memory for internal tracking and channels.
 func ItemsSeq[T any](
 	ctx context.Context,
 	pool *Pool[T],
@@ -293,9 +282,7 @@ func ItemsSeq[T any](
 	return pool.ItemsSeq(ctx, tasks)
 }
 
-// Close initiates a graceful shutdown of the pool.
-//
-// Executes in O(N) time, where N is the number of active workers, and is zero-allocation.
+// Close initiates a graceful shutdown of the pool, waiting for all active workers to finish.
 func (p *Pool[T]) Close() error {
 	p.mu.Lock()
 	if p.closed {
@@ -314,8 +301,8 @@ func (p *Pool[T]) Close() error {
 
 // Future represents an asynchronous, deferred execution.
 //
-// The zero value is empty and not ready to use.
-// Read-only operations are safe for concurrent use; mutations require external synchronization.
+// The zero value is empty and not ready to use; instances are returned by [Pool.Submit].
+// Read-only operations are safe for concurrent use.
 type Future[T any] struct {
 	ch   chan struct{}
 	val  T
@@ -324,17 +311,14 @@ type Future[T any] struct {
 }
 
 // NewFuture returns a new, uncompleted [Future] instance.
-//
-// Executes in O(1) time and allocates memory.
 func NewFuture[T any]() *Future[T] {
 	return &Future[T]{
 		ch: make(chan struct{}),
 	}
 }
 
-// Get blocks the calling goroutine until the associated task completes execution, or until the provided context is cancelled.
-//
-// Executes in O(1) time and is zero-allocation.
+// Get blocks the calling goroutine until the associated task completes execution,
+// or until ctx is cancelled.
 func (f *Future[T]) Get(ctx context.Context) (T, error) {
 	select {
 	case <-ctx.Done():
@@ -346,8 +330,6 @@ func (f *Future[T]) Get(ctx context.Context) (T, error) {
 }
 
 // Set completes the [Future] by storing the computed value and error, and unblocks any goroutines waiting on Get.
-//
-// Executes in O(1) time and is zero-allocation.
 func (f *Future[T]) Set(val T, err error) {
 	f.once.Do(func() {
 		f.val = val

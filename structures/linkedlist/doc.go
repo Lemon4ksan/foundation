@@ -4,9 +4,7 @@
 
 // Package list implements an array-backed generic doubly linked list.
 //
-// List provides standard list manipulations (push, pop, move, remove) while avoiding the type assertion overhead associated with container/list. Using Go generics, elements remain strongly typed. Iteration is available via Push iterators like [List.Values] and [List.Backward].
-//
-// Start with [New] and populate with [List.PushBack] or [List.PushFront].
+// List provides standard doubly linked list manipulations without the type assertion overhead of [container/list], utilizing Go generics for strong typing and Push iterators like [List.Values] and [List.Backward] for traversal.
 //
 // # Compared to the standard library
 //

@@ -12,8 +12,6 @@ import (
 )
 
 // PBKDF2 derives a cryptographic key from a password and salt using PBKDF2 (RFC 2898 / PKCS #5 v2.0).
-//
-// Executes in O(N*M) time where N is the number of iterations and M is the key length, and allocates memory for the derived key.
 func PBKDF2(h func() hash.Hash, password, salt []byte, iter, keyLen int) []byte {
 	prf := hmac.New(h, password)
 	hashLen := prf.Size()
@@ -51,9 +49,7 @@ func PBKDF2(h func() hash.Hash, password, salt []byte, iter, keyLen int) []byte 
 	return dk[:keyLen]
 }
 
-// PBKDF2SHA256 is a convenience wrapper for [PBKDF2] using [crypto/sha256].
-//
-// Executes in O(N*M) time where N is the number of iterations and M is the key length, and allocates memory for the derived key.
+// PBKDF2SHA256 is a convenience wrapper for PBKDF2 using SHA-256.
 func PBKDF2SHA256(password, salt []byte, iter, keyLen int) []byte {
 	return PBKDF2(sha256.New, password, salt, iter, keyLen)
 }

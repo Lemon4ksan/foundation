@@ -47,12 +47,7 @@ type task[In, Out any] struct {
 	err error
 }
 
-// Map is a high-level helper utility that transforms a slice of inputs concurrently using the provided mapper function under a temporary [Pipeline].
-//
-// It preserves the original index order of the inputs in the returned slice.
-// It does not panic. It is safe for concurrent use.
-//
-// Executes in O(N) time and allocates memory for the output slice.
+// Map transforms a slice of inputs concurrently using mapper, preserving input order in the returned slice.
 func Map[In, Out any](
 	ctx context.Context,
 	cfg Config,
@@ -68,11 +63,7 @@ func Map[In, Out any](
 	return p.Transform(ctx, inputs, mapper)
 }
 
-// ForEach is a high-level helper utility that processes a slice of inputs concurrently for side-effects, ignoring individual successful return values.
-//
-// It does not panic. It is safe for concurrent use.
-//
-// Executes in O(N) time and allocates memory for internal structures.
+// ForEach processes a slice of inputs concurrently for side-effects, returning any encountered error.
 func ForEach[In any](
 	ctx context.Context,
 	cfg Config,
@@ -91,13 +82,9 @@ func ForEach[In any](
 	return err
 }
 
-// TransformSeq concurrently transforms elements from the input iterator using mapper under bounded concurrency governed by cfg.Workers, yielding (Out, error) pairs.
-//
-// If yield returns false or ctx is cancelled, workers are cancelled immediately
-// and iteration halts without leaking background goroutines.
-// It does not panic. It is safe for concurrent use.
-//
-// Executes in O(N) time and allocates memory.
+// TransformSeq concurrently transforms elements from the input iterator using mapper,
+// yielding (Out, error) pairs under bounded concurrency governed by cfg.Workers.
+// If yield returns false or ctx is cancelled, workers terminate cleanly without leaking goroutines.
 func TransformSeq[In, Out any](
 	ctx context.Context,
 	cfg Config,
@@ -186,10 +173,6 @@ type Pipeline[In, Out any] struct {
 }
 
 // New instantiates and configures a new [Pipeline] with the given [Config].
-//
-// It does not panic.
-//
-// Executes in O(1) time and allocates memory.
 func New[In, Out any](cfg Config) *Pipeline[In, Out] {
 	cfg.resolveDefaults()
 
@@ -207,14 +190,9 @@ func New[In, Out any](cfg Config) *Pipeline[In, Out] {
 	return p
 }
 
-// Transform concurrently transforms the input slice using the provided mapper function.
-//
-// It preserves the original index order of the inputs in the returned output slice.
-// If FailFast is enabled, the first encountered error cancels all running workers and
-// is returned immediately. Otherwise, all encountered errors are aggregated using [errors.Join].
-// It does not panic. It is safe for concurrent use.
-//
-// Executes in O(N) time and allocates memory.
+// Transform concurrently transforms the input slice using mapper, preserving input order in the output.
+// If FailFast is enabled, the first encountered error cancels running workers and is returned immediately;
+// otherwise, all encountered errors are joined using [errors.Join].
 func (p *Pipeline[In, Out]) Transform(
 	ctx context.Context,
 	inputs []In,
@@ -390,10 +368,6 @@ func (p *Pipeline[In, Out]) Transform(
 }
 
 // TransformSeq concurrently transforms the input iterator using mapper under the pipeline's configuration.
-//
-// It does not panic. It is safe for concurrent use.
-//
-// Executes in O(N) time and allocates memory.
 func (p *Pipeline[In, Out]) TransformSeq(
 	ctx context.Context,
 	in iter.Seq[In],
@@ -402,13 +376,8 @@ func (p *Pipeline[In, Out]) TransformSeq(
 	return TransformSeq(ctx, p.config, in, mapper)
 }
 
-// Stream processes items from the input channel concurrently and yields results to the output channel.
-//
-// It closes both returned channels upon completion or early cancellation.
-// All error dispatches are non-blocking to prevent worker goroutine leakage.
-// It does not panic. It is safe for concurrent use.
-//
-// Executes in O(N) time and allocates memory.
+// Stream processes items from the input channel concurrently and sends results to the returned channels.
+// Both returned channels are closed upon completion or early cancellation.
 func (p *Pipeline[In, Out]) Stream(
 	ctx context.Context,
 	in <-chan In,

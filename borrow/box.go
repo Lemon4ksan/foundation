@@ -12,7 +12,6 @@ package borrow
 //
 // Once released or moved, any outstanding [Ref] or [Mut] handles derived from it
 // are immediately invalidated via generational increment.
-// The zero value is empty and not ready to use.
 type Box[T any] struct {
 	ptr  *T
 	slot *Slot
@@ -20,8 +19,6 @@ type Box[T any] struct {
 }
 
 // NewBox creates a new owned Box wrapping a heap-allocated instance of T.
-//
-// It executes in O(1) time and allocates memory.
 func NewBox[T any](val T) Box[T] {
 	ptr := new(T)
 	*ptr = val
@@ -34,8 +31,6 @@ func NewBox[T any](val T) Box[T] {
 }
 
 // NewBoxPtr creates a new owned Box wrapping an existing pointer and slot.
-//
-// It executes in O(1) time and may allocate memory.
 func NewBoxPtr[T any](ptr *T, slot *Slot) Box[T] {
 	if slot == nil {
 		slot = NewSlot()
@@ -48,10 +43,8 @@ func NewBoxPtr[T any](ptr *T, slot *Slot) Box[T] {
 }
 
 // Borrow borrows the boxed value as an immutable reference.
-//
 // It acquires a shared immutable borrow on the underlying slot,
 // panicking if the slot is already exclusively borrowed or invalid.
-// It executes in O(1) time and is safe for concurrent use.
 func (b Box[T]) Borrow() Ref[T] {
 	ref, err := b.TryBorrow()
 	if err != nil {
@@ -61,9 +54,7 @@ func (b Box[T]) Borrow() Ref[T] {
 }
 
 // TryBorrow attempts to borrow the boxed value as an immutable reference.
-//
 // Returns an error if the resource is already exclusively borrowed or invalid.
-// It executes in O(1) time and is safe for concurrent use.
 func (b Box[T]) TryBorrow() (Ref[T], error) {
 	if b.slot != nil {
 		if err := b.slot.TryAcquireShared(b.gen); err != nil {
@@ -74,10 +65,8 @@ func (b Box[T]) TryBorrow() (Ref[T], error) {
 }
 
 // BorrowMut borrows the boxed value as an exclusive mutable reference.
-//
 // It acquires an exclusive mutable borrow on the underlying slot,
 // panicking if the slot is already borrowed or invalid.
-// It executes in O(1) time and is safe for concurrent use.
 func (b *Box[T]) BorrowMut() Mut[T] {
 	mut, err := b.TryBorrowMut()
 	if err != nil {
@@ -87,9 +76,7 @@ func (b *Box[T]) BorrowMut() Mut[T] {
 }
 
 // TryBorrowMut attempts to borrow the boxed value as an exclusive mutable reference.
-//
 // Returns an error if the resource is actively borrowed or invalid.
-// It executes in O(1) time and is safe for concurrent use.
 func (b *Box[T]) TryBorrowMut() (Mut[T], error) {
 	if b.slot != nil {
 		if err := b.slot.TryAcquireExclusive(b.gen); err != nil {
@@ -104,8 +91,6 @@ func (b *Box[T]) TryBorrowMut() (Mut[T], error) {
 }
 
 // Get returns the underlying pointer after verifying generation validity.
-//
-// It executes in O(1) time and is safe for concurrent use.
 func (b Box[T]) Get() *T {
 	if b.slot != nil {
 		b.slot.CheckValid(b.gen)
@@ -113,9 +98,9 @@ func (b Box[T]) Get() *T {
 	return b.ptr
 }
 
-// Move transfers ownership of this Box to a new Box instance, invalidating the current instance and advancing the slot generation so that any pre-existing borrows are invalidated.
-//
-// It executes in O(1) time and is safe for concurrent use.
+// Move transfers ownership of this Box to a new Box instance,
+// invalidating the current instance and advancing the slot generation
+// so that any pre-existing borrows are invalidated.
 func (b *Box[T]) Move() Box[T] {
 	if b.slot != nil {
 		b.slot.CheckValid(b.gen)
@@ -135,10 +120,9 @@ func (b *Box[T]) Move() Box[T] {
 	return res
 }
 
-// Release consumes and destroys this Box, incrementing the generational counter and invalidating all borrowed references derived from it.
-//
+// Release consumes and destroys this Box, incrementing the generational counter
+// and invalidating all borrowed references derived from it.
 // If the underlying slot is bound to an enclosing scope, Invalidate is a safe no-op.
-// It executes in O(1) time and is safe for concurrent use.
 func (b *Box[T]) Release() {
 	if b == nil || b.ptr == nil {
 		return
@@ -153,8 +137,6 @@ func (b *Box[T]) Release() {
 }
 
 // IsValid checks whether this Box is still valid and not yet released or moved.
-//
-// It executes in O(1) time and is safe for concurrent use.
 func (b Box[T]) IsValid() bool {
 	if b.slot == nil || b.ptr == nil {
 		return false

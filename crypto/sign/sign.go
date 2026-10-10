@@ -49,8 +49,6 @@ type PublicKey = ed25519.PublicKey
 type PrivateKey = ed25519.PrivateKey
 
 // GenerateKey generates a new Ed25519 key pair using cryptographic entropy.
-// It executes in O(1) time and allocates memory for the keys.
-// It is safe for concurrent use.
 func GenerateKey() (PublicKey, PrivateKey, error) {
 	pub, priv, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
@@ -60,8 +58,6 @@ func GenerateKey() (PublicKey, PrivateKey, error) {
 }
 
 // NewKeyFromSeed derives an Ed25519 private key from a 32-byte seed.
-// It executes in O(1) time and allocates memory for the keys.
-// It is safe for concurrent use.
 func NewKeyFromSeed(seed []byte) (PublicKey, PrivateKey, error) {
 	if len(seed) != SeedSize {
 		return nil, nil, fmt.Errorf("%w: seed must be %d bytes, got %d", ErrInvalidKeyLength, SeedSize, len(seed))
@@ -72,10 +68,6 @@ func NewKeyFromSeed(seed []byte) (PublicKey, PrivateKey, error) {
 }
 
 // Sign signs the given message using the private key and returns the 64-byte signature.
-// It executes in O(N) time where N is the length of the message.
-// It allocates memory for the signature.
-// It is safe for concurrent use.
-// Panics if the private key length is invalid.
 func Sign(privKey PrivateKey, message []byte) []byte {
 	if len(privKey) != PrivateKeySize {
 		panic(fmt.Sprintf("sign: invalid private key length %d", len(privKey)))
@@ -84,9 +76,6 @@ func Sign(privKey PrivateKey, message []byte) []byte {
 }
 
 // Verify verifies whether signature is a valid Ed25519 signature of message by pubKey.
-// It executes in O(N) time where N is the length of the message.
-// It performs zero allocations.
-// It is safe for concurrent use.
 func Verify(pubKey PublicKey, message, signature []byte) bool {
 	if len(pubKey) != PublicKeySize || len(signature) != SignatureSize {
 		return false
@@ -94,9 +83,8 @@ func Verify(pubKey PublicKey, message, signature []byte) bool {
 	return ed25519.Verify(pubKey, message, signature)
 }
 
-// FingerprintSHA256 returns the standard OpenSSH-compatible SHA-256 fingerprint of the public key.
-// It executes in O(1) time and allocates memory for the string.
-// It is safe for concurrent use.
+// FingerprintSHA256 returns the standard OpenSSH-compatible SHA-256 fingerprint
+// of the public key (e.g. "SHA256:47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU").
 func FingerprintSHA256(pubKey PublicKey) string {
 	h := sha256.Sum256(pubKey)
 	b64 := base64.RawStdEncoding.EncodeToString(h[:])
@@ -104,8 +92,6 @@ func FingerprintSHA256(pubKey PublicKey) string {
 }
 
 // FingerprintHex returns the colon-delimited lowercase hex SHA-256 fingerprint.
-// It executes in O(1) time and allocates memory for the string.
-// It is safe for concurrent use.
 func FingerprintHex(pubKey PublicKey) string {
 	h := sha256.Sum256(pubKey)
 	parts := make([]string, len(h))
@@ -116,8 +102,6 @@ func FingerprintHex(pubKey PublicKey) string {
 }
 
 // EncodePrivateKeyPEM serializes an Ed25519 private key into PKCS#8 PEM format.
-// It executes in O(1) time and allocates memory for the PEM bytes.
-// It is safe for concurrent use.
 func EncodePrivateKeyPEM(privKey PrivateKey) ([]byte, error) {
 	pkcs8Bytes, err := x509.MarshalPKCS8PrivateKey(privKey)
 	if err != nil {
@@ -131,9 +115,6 @@ func EncodePrivateKeyPEM(privKey PrivateKey) ([]byte, error) {
 }
 
 // DecodePrivateKeyPEM deserializes an Ed25519 private key from PKCS#8 PEM format.
-// It executes in O(N) time where N is the length of the PEM data.
-// It allocates memory for the decoded key.
-// It is safe for concurrent use.
 func DecodePrivateKeyPEM(pemData []byte) (PrivateKey, error) {
 	block, _ := pem.Decode(pemData)
 	if block == nil {
@@ -154,8 +135,6 @@ func DecodePrivateKeyPEM(pemData []byte) (PrivateKey, error) {
 }
 
 // EncodePublicKeyPEM serializes an Ed25519 public key into PKIX PEM format.
-// It executes in O(1) time and allocates memory for the PEM bytes.
-// It is safe for concurrent use.
 func EncodePublicKeyPEM(pubKey PublicKey) ([]byte, error) {
 	pkixBytes, err := x509.MarshalPKIXPublicKey(pubKey)
 	if err != nil {
@@ -169,9 +148,6 @@ func EncodePublicKeyPEM(pubKey PublicKey) ([]byte, error) {
 }
 
 // DecodePublicKeyPEM deserializes an Ed25519 public key from PKIX PEM format.
-// It executes in O(N) time where N is the length of the PEM data.
-// It allocates memory for the decoded key.
-// It is safe for concurrent use.
 func DecodePublicKeyPEM(pemData []byte) (PublicKey, error) {
 	block, _ := pem.Decode(pemData)
 	if block == nil {
@@ -192,16 +168,11 @@ func DecodePublicKeyPEM(pemData []byte) (PublicKey, error) {
 }
 
 // PublicKeyHex returns the hexadecimal string representation of the public key.
-// It executes in O(1) time and allocates memory for the string.
-// It is safe for concurrent use.
 func PublicKeyHex(pubKey PublicKey) string {
 	return hex.EncodeToString(pubKey)
 }
 
 // ParsePublicKeyHex decodes a 64-character hex string into an Ed25519 public key.
-// It executes in O(N) time where N is the length of the hex string.
-// It allocates memory for the decoded key.
-// It is safe for concurrent use.
 func ParsePublicKeyHex(hexStr string) (PublicKey, error) {
 	clean := strings.TrimSpace(hexStr)
 	b, err := hex.DecodeString(clean)

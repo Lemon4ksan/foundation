@@ -53,10 +53,6 @@ func wrapReporter(t any) TestReporter {
 }
 
 // Controller defines the mock lifecycle controller.
-//
-// The zero value is empty and ready to use.
-// Read-only operations are safe for concurrent use; mutations require external synchronization unless stated otherwise.
-// Note that methods on [Controller] manage their own internal locks.
 type Controller struct {
 	T        TestReporter
 	mu       sync.Mutex
@@ -65,8 +61,6 @@ type Controller struct {
 }
 
 // NewController creates a new mock controller.
-//
-// Executes in O(1) time and allocates memory.
 func NewController(t any) *Controller {
 	tr := wrapReporter(t)
 	ctrl := &Controller{T: tr}
@@ -79,8 +73,6 @@ func NewController(t any) *Controller {
 }
 
 // Finish verifies all expected calls were made.
-//
-// Executes in O(N) time where N is the number of expected calls.
 func (c *Controller) Finish() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -106,9 +98,7 @@ func (c *Controller) Finish() {
 	}
 }
 
-// Satisfied reports whether all recorded expectations have been satisfied.
-//
-// Executes in O(N) time where N is the number of expected calls and is zero-allocation.
+// Satisfied returns true if all recorded expectations have been satisfied.
 func (c *Controller) Satisfied() bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -123,8 +113,6 @@ func (c *Controller) Satisfied() bool {
 }
 
 // RecordCall registers an expected method invocation.
-//
-// Executes in O(1) time and allocates memory.
 func (c *Controller) RecordCall(receiver any, method string, args ...any) *Call {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -136,8 +124,6 @@ func (c *Controller) RecordCall(receiver any, method string, args ...any) *Call 
 }
 
 // RecordCallWithMethodType registers an expected method invocation with reflection type info.
-//
-// Executes in O(1) time and allocates memory.
 func (c *Controller) RecordCallWithMethodType(
 	receiver any,
 	method string,
@@ -154,8 +140,6 @@ func (c *Controller) RecordCallWithMethodType(
 }
 
 // Call executes an invoked mock method against registered expectations.
-//
-// Executes in O(N) time where N is the number of expected calls.
 func (c *Controller) Call(receiver any, method string, args ...any) []any {
 	var targetCall *Call
 
@@ -210,8 +194,6 @@ func toCall(v any) *Call {
 }
 
 // InOrder declares that the given calls must be matched in order.
-//
-// Executes in O(N) time where N is the number of calls.
 func InOrder(calls ...any) {
 	var callList []*Call
 

@@ -75,10 +75,6 @@ type Drift struct {
 }
 
 // Report aggregates all detected discrepancies and summary metrics.
-//
-// Note: Due to a bug in [Report.ExitCode] evaluation, ghost endpoints will cause [Report.ExitCode]
-// to return 2 (failure) even when [Report.Additive] mode is enabled, defeating the purpose
-// of suppressing ghost endpoints in CI pipelines.
 type Report struct {
 	LocalTarget           string  `json:"local_target"`
 	RemoteTarget          string  `json:"remote_target"`

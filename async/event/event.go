@@ -33,8 +33,6 @@ type Envelope struct {
 func (Envelope) isEvent() {}
 
 // Context returns the event's execution context, defaulting to [context.Background] if nil.
-//
-// Complexity: O(1) time; zero-allocation.
 func (b *Envelope) Context() context.Context {
 	if b.Ctx == nil {
 		b.Ctx = context.Background()
@@ -44,8 +42,6 @@ func (b *Envelope) Context() context.Context {
 }
 
 // SetContext binds the provided request-scoped context to the event.
-//
-// Complexity: O(1) time; zero-allocation.
 func (b *Envelope) SetContext(ctx context.Context) {
 	b.Ctx = ctx
 }
@@ -69,12 +65,9 @@ type Subscription struct {
 //
 // The channel is closed and drained when [Subscription.Unsubscribe] is called
 // or when the associated [Bus] is closed.
-// Complexity: O(1) time; zero-allocation.
 func (s *Subscription) C() <-chan Event { return s.ch }
 
 // Unsubscribe deregisters the subscription from its associated [Bus] and closes its channel.
-//
-// Complexity: amortized O(1) time; zero-allocation.
 func (s *Subscription) Unsubscribe() {
 	if s.closed.CompareAndSwap(false, true) {
 		s.bus.unsubscribe(s)
@@ -84,7 +77,6 @@ func (s *Subscription) Unsubscribe() {
 // EventsSeq returns an iterator yielding events received on this subscription until ctx is canceled or the subscription is closed.
 //
 // Iteration ceases immediately if yield returns false.
-// Complexity: O(1) time per yielded element; zero-allocation.
 func (s *Subscription) EventsSeq(ctx context.Context) iter.Seq[Event] {
 	return func(yield func(Event) bool) {
 		for {
@@ -114,15 +106,11 @@ type TypedSubscription[E any] struct {
 }
 
 // C returns the read-only channel for typed events.
-//
-// Complexity: O(1) time; zero-allocation.
 func (ts *TypedSubscription[E]) C() <-chan E {
 	return ts.ch
 }
 
 // Unsubscribe deregisters the subscription from its bus and closes its channel.
-//
-// Complexity: amortized O(1) time; zero-allocation.
 func (ts *TypedSubscription[E]) Unsubscribe() {
 	if ts.closed.CompareAndSwap(false, true) {
 		ts.sub.Unsubscribe()
@@ -130,8 +118,6 @@ func (ts *TypedSubscription[E]) Unsubscribe() {
 }
 
 // EventsSeq returns an iterator yielding typed events received on this subscription.
-//
-// Complexity: O(1) time per yielded element; zero-allocation.
 func (ts *TypedSubscription[E]) EventsSeq(ctx context.Context) iter.Seq[E] {
 	return func(yield func(E) bool) {
 		for {
@@ -166,8 +152,6 @@ type Bus struct {
 }
 
 // New returns a new, initialized [Bus] instance ready to route events.
-//
-// Complexity: O(1) time; allocates memory for internal structures.
 func New() *Bus {
 	return &Bus{
 		subs:   make(map[reflect.Type]map[uint64]*Subscription),
@@ -177,8 +161,6 @@ func New() *Bus {
 }
 
 // SetOnDropped sets a callback function to be called when events are dropped due to full subscription channels.
-//
-// Complexity: O(1) time; zero-allocation.
 func (b *Bus) SetOnDropped(fn func(event Event, subID uint64)) {
 	b.mu.Lock()
 	b.onDropped = fn
@@ -190,14 +172,11 @@ func (b *Bus) SetOnDropped(fn func(event Event, subID uint64)) {
 // If no event types are provided or if an event is nil, those entries are ignored.
 // Duplicate event types within a single call are automatically deduplicated.
 // If the [Bus] is closed, it returns a subscription with an already closed channel.
-// Complexity: O(N) time where N is the number of event types; allocates memory for the new subscription.
 func (b *Bus) Subscribe(evs ...Event) *Subscription {
 	return b.SubscribeBuffer(128, evs...)
 }
 
 // SubscribeBuffer registers a subscription to receive events with a custom channel buffer capacity.
-//
-// Complexity: O(N) time where N is the number of event types; allocates memory for the new subscription.
 func (b *Bus) SubscribeBuffer(bufferSize int, evs ...Event) *Subscription {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -359,7 +338,6 @@ func (b *Bus) SubscribeAll() *Subscription {
 // It is non-blocking. If a matched subscriber's channel buffer
 // is full, the event is dropped for that subscriber (or routed to onDropped).
 // If the event is nil, or the [Bus] is closed, it returns immediately.
-// Complexity: O(N + M) time where N is the number of active subscriptions for the event type, and M is the number of catch-all subscriptions; zero-allocation.
 func (b *Bus) Publish(event Event) {
 	if event == nil {
 		return
@@ -386,7 +364,6 @@ func (b *Bus) Publish(event Event) {
 // Close shuts down the [Bus], marks it as closed, and closes all active subscription channels.
 //
 // Subsequent calls are safe, idempotent no-ops and return nil immediately.
-// Complexity: O(S) time where S is the total number of subscriptions; allocates memory for unique channel deduplication.
 func (b *Bus) Close() error {
 	b.mu.Lock()
 	defer b.mu.Unlock()

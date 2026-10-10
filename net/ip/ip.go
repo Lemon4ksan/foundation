@@ -24,8 +24,6 @@ var (
 )
 
 // DiscoverInterfaceIPs queries active system network interfaces and returns non-loopback IP addresses eligible for socket binding.
-// DiscoverInterfaceIPs executes in O(N) time, where N is the number of interfaces.
-// It allocates memory for the returned slice and is safe for concurrent use.
 func DiscoverInterfaceIPs() ([]net.IP, error) {
 	ifaces, err := net.Interfaces()
 	if err != nil {
@@ -56,8 +54,6 @@ func DiscoverInterfaceIPs() ([]net.IP, error) {
 }
 
 // IsPrivateIP reports whether ip belongs to private (RFC 1918/4193), loopback, link-local, or CGNAT ranges.
-// IsPrivateIP evaluates in O(1) time and performs zero allocations.
-// It is safe for concurrent use.
 func IsPrivateIP(ip net.IP) bool {
 	if ip == nil || ip.IsUnspecified() || ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
 		return true
@@ -90,8 +86,7 @@ func extractIP(addr net.Addr) net.IP {
 }
 
 // SourceRotator maintains a pool of local IP addresses and cycles through them for socket binding.
-// The zero value is empty and not ready to use; initialization via [NewSourceRotator] is required.
-// The pool slice is stored in an [sync/atomic.Pointer] using Copy-On-Write semantics, making [SourceRotator.Next]
+// The pool slice is stored in an [atomic.Pointer] using Copy-On-Write semantics, making [SourceRotator.Next]
 // and [SourceRotator.NextForFamily] completely lock-free under parallel execution.
 type SourceRotator struct {
 	ips atomic.Pointer[[]net.IP]
@@ -113,8 +108,7 @@ func NewSourceRotator(addrs []string) (*SourceRotator, error) {
 }
 
 // Next returns the next local IP address using round-robin rotation.
-// Next executes in O(1) time and performs zero allocations.
-// It is lock-free and safe for concurrent use.
+// Lock-free and contention-free under parallel execution.
 func (r *SourceRotator) Next() net.IP {
 	ipsPtr := r.ips.Load()
 	if ipsPtr == nil {
@@ -246,8 +240,6 @@ func NewSubnetRotator(cidr string) (*SubnetRotator, error) {
 }
 
 // Next generates a new cryptographically random IPv6 address inside the configured prefix range.
-// Next executes in O(1) time and allocates memory for the returned [net.IP].
-// It is safe for concurrent use.
 func (r *SubnetRotator) Next() net.IP {
 	bits := r.prefix.Bits()
 	addrBytes := r.prefix.Addr().As16()
@@ -275,9 +267,7 @@ func (r *SubnetRotator) Next() net.IP {
 	return res
 }
 
-// NextFast generates a new high-throughput pseudo-random IPv6 address using [math/rand/v2].
-// NextFast executes in O(1) time and allocates memory for the returned [net.IP].
-// It is lock-free and safe for concurrent use.
+// NextFast generates a new high-throughput pseudo-random IPv6 address using math/rand/v2 (lock-free).
 func (r *SubnetRotator) NextFast() net.IP {
 	bits := r.prefix.Bits()
 	addrBytes := r.prefix.Addr().As16()

@@ -11,7 +11,8 @@ import (
 	"github.com/lemon4ksan/foundation/silicon/bytesconv"
 )
 
-// Kind identifies string casing convention.
+// Kind identifies a string casing convention.
+// The zero value is an empty string and represents an unspecified casing.
 type Kind string
 
 const (
@@ -26,9 +27,6 @@ const (
 )
 
 // ToSnake converts s into snake_case (e.g. "HTTPServerURL" -> "http_server_url", "userName" -> "user_name").
-//
-// Note: It currently does not strip consecutive, leading, or trailing delimiters
-// (e.g. ToSnake("  hello  ") results in "hello__" instead of "hello").
 func ToSnake(s string) string {
 	return convertDelimited(s, '_', false)
 }

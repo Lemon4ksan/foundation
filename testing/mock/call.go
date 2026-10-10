@@ -10,8 +10,6 @@ import (
 )
 
 // Call represents an expected mock method invocation.
-//
-// The zero value is not ready to use.
 type Call struct {
 	ctrl        *Controller
 	receiver    any
@@ -146,32 +144,24 @@ func (c *Call) execute(args []any) []any {
 }
 
 // Return specifies return values for the expected call.
-//
-// Executes in O(1) time and is zero-allocation.
 func (c *Call) Return(rets ...any) *Call {
 	c.returns = rets
 	return c
 }
 
 // Do specifies a function to execute when the call is made.
-//
-// Executes in O(1) time and is zero-allocation.
 func (c *Call) Do(f any) *Call {
 	c.action = f
 	return c
 }
 
 // DoAndReturn specifies a function to execute and return its values.
-//
-// Executes in O(1) time and is zero-allocation.
 func (c *Call) DoAndReturn(f any) *Call {
 	c.doAndReturn = f
 	return c
 }
 
 // Times specifies the exact number of times the call is expected.
-//
-// Executes in O(1) time and is zero-allocation.
 func (c *Call) Times(n int) *Call {
 	c.minCalls = n
 	c.maxCalls = n
@@ -180,8 +170,6 @@ func (c *Call) Times(n int) *Call {
 }
 
 // AnyTimes allows the call to be executed 0 or more times.
-//
-// Executes in O(1) time and is zero-allocation.
 func (c *Call) AnyTimes() *Call {
 	c.minCalls = 0
 	c.maxCalls = -1
@@ -190,8 +178,6 @@ func (c *Call) AnyTimes() *Call {
 }
 
 // MinTimes sets the minimum number of expected calls.
-//
-// Executes in O(1) time and is zero-allocation.
 func (c *Call) MinTimes(n int) *Call {
 	c.minCalls = n
 	c.maxCalls = -1
@@ -199,9 +185,7 @@ func (c *Call) MinTimes(n int) *Call {
 	return c
 }
 
-// MaxTimes sets the maximum number of expected calls.
-//
-// Executes in O(1) time and is zero-allocation.
+// MaxTimes sets the maximum number of expected calls (between 0 and n calls).
 func (c *Call) MaxTimes(n int) *Call {
 	c.minCalls = 0
 	c.maxCalls = n
@@ -210,8 +194,6 @@ func (c *Call) MaxTimes(n int) *Call {
 }
 
 // SetArg sets an out-parameter by pointer when the call is matched.
-//
-// Executes in O(1) time.
 func (c *Call) SetArg(index int, val any) *Call {
 	c.setArgs[index] = val
 	return c

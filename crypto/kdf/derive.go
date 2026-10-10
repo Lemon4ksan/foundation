@@ -11,10 +11,6 @@ import (
 )
 
 // DeriveSubkey expands a master key into a domain-separated subkey using HKDF-SHA256.
-// It executes in O(N) time where N is the length of the subkey.
-// It allocates memory for the returned subkey.
-// It is safe for concurrent use.
-// Panics if HKDF expansion fails.
 func DeriveSubkey(masterKey []byte, domainTag string, length int) []byte {
 	k, err := Expand(sha256.New, masterKey, []byte(domainTag), length)
 	if err != nil {
@@ -25,10 +21,6 @@ func DeriveSubkey(masterKey []byte, domainTag string, length int) []byte {
 
 // DeriveNonce derives a deterministic, collision-resistant nonce from a master IV,
 // domain tag, and sequential counter using HKDF-SHA256.
-// It executes in O(N) time where N is the length of the nonce.
-// It allocates memory for the info buffer and returned nonce.
-// It is safe for concurrent use.
-// Panics if HKDF expansion fails.
 func DeriveNonce(masterIV []byte, domainTag string, counter uint64, length int) []byte {
 	info := make([]byte, len(domainTag)+8)
 	copy(info, domainTag)

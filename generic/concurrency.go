@@ -131,7 +131,6 @@ func ParallelForEach[T any](ctx context.Context, slice []T, limit int, fn func(c
 }
 
 // Future represents an asynchronous, deferred execution (a Promise pattern).
-// It is safe for concurrent use by multiple goroutines.
 type Future[T any] struct {
 	ch   chan struct{}
 	val  T

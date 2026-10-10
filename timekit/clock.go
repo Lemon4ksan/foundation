@@ -29,8 +29,7 @@ func init() {
 	}()
 }
 
-// CoarseNow returns the approximate current [time.Time] with millisecond resolution
-// without triggering OS clock system calls. It retains monotonic clock readings.
+// CoarseNow returns the approximate current [time.Time] with millisecond resolution, retaining monotonic clock readings without triggering OS clock system calls.
 func CoarseNow() time.Time {
 	return *cachedTime.Load()
 }
@@ -50,11 +49,7 @@ func CoarseUnixNano() int64 {
 	return cachedTime.Load().UnixNano()
 }
 
-// RangeSeq returns an iterator yielding timestamps from start up to end (inclusive if exact match),
-// advancing by step on each iteration. Iteration ceases immediately if step <= 0 or if yield returns false.
-//
-// Concurrency & Zero-Allocation Semantics:
-// RangeSeq is stateless and strictly zero-allocation. It is safe for concurrent use.
+// RangeSeq returns an iterator yielding timestamps from start up to end (inclusive if exact match), advancing by step on each iteration.
 func RangeSeq(start, end time.Time, step time.Duration) iter.Seq[time.Time] {
 	return func(yield func(time.Time) bool) {
 		if step <= 0 {

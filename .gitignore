@@ -11,3 +11,4 @@ go.work
 go.work.sum
 .agents/teamwork/
 .agents/scratch/
+.agents/audit_swarm/

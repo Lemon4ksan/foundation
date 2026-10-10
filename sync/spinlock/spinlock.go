@@ -18,7 +18,6 @@ import (
 //
 // The zero value for a Lock is an unlocked spinlock ready for use.
 // A Lock must not be copied after first use.
-// It is safe for concurrent use.
 type Lock struct {
 	state uint32
 	_     [60]byte
@@ -26,10 +25,7 @@ type Lock struct {
 
 // Lock acquires the spinlock.
 //
-// If the lock is already in use, the calling goroutine blocks until it is available.
-// It does not panic.
-// It executes in O(1) time and does not allocate memory.
-// It is safe for concurrent use.
+// If the lock is already in use, the calling goroutine blocks until it is available, executing in zero-allocation O(1) time.
 func (s *Lock) Lock() {
 	if atomic.CompareAndSwapUint32(&s.state, 0, 1) {
 		return
@@ -63,20 +59,11 @@ func (s *Lock) lockSlow() {
 }
 
 // Unlock releases the spinlock.
-//
-// It panics if the spinlock is not locked on entry to Unlock.
-// It executes in O(1) time and does not allocate memory.
-// It is safe for concurrent use.
 func (s *Lock) Unlock() {
 	atomic.StoreUint32(&s.state, 0)
 }
 
-// TryLock attempts to acquire the lock without blocking.
-//
-// It returns true if the lock was acquired, and false otherwise.
-// It does not panic.
-// It executes in O(1) time and does not allocate memory.
-// It is safe for concurrent use.
+// TryLock attempts to acquire the lock without blocking, returning true on success.
 func (s *Lock) TryLock() bool {
 	return atomic.CompareAndSwapUint32(&s.state, 0, 1)
 }

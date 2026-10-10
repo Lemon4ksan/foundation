@@ -39,8 +39,7 @@ func (e *Element[T]) List() *List[T] {
 
 // List represents a doubly linked list utilizing chunked memory pooling.
 //
-// The zero value for List is an empty list ready for use.
-// It is not safe for concurrent use.
+// The zero value is an empty list ready for use.
 // Detached element pointers may alias newly inserted elements due to memory reuse.
 type List[T any] struct {
 	chunks []*listChunk[T]
@@ -51,8 +50,6 @@ type List[T any] struct {
 }
 
 // Init initializes or clears the list.
-//
-// Complexity: O(1) time.
 func (l *List[T]) Init() *List[T] {
 	if len(l.chunks) == 0 {
 		l.chunks = append(l.chunks, new(listChunk[T]))
@@ -74,13 +71,9 @@ func (l *List[T]) Init() *List[T] {
 }
 
 // New returns an initialized list.
-//
-// Complexity: O(1) time.
 func New[T any]() *List[T] { return new(List[T]).Init() }
 
 // NewCapacity returns an initialized list with preallocated capacity.
-//
-// Complexity: O(N) time where N is the requested capacity.
 func NewCapacity[T any](capacity int) *List[T] {
 	chunksCount := (capacity + 1 + chunkSize - 1) / chunkSize
 	chunks := make([]*listChunk[T], chunksCount)
@@ -104,13 +97,9 @@ func NewCapacity[T any](capacity int) *List[T] {
 }
 
 // Len returns the number of elements of the list.
-//
-// Complexity: O(1) time; zero-allocation.
 func (l *List[T]) Len() int { return l.len }
 
 // Front returns the first element of the list, or nil if the list is empty.
-//
-// Complexity: O(1) time; zero-allocation.
 func (l *List[T]) Front() *Element[T] {
 	if l.len == 0 {
 		return nil
@@ -120,8 +109,6 @@ func (l *List[T]) Front() *Element[T] {
 }
 
 // Back returns the last element of the list, or nil if the list is empty.
-//
-// Complexity: O(1) time; zero-allocation.
 func (l *List[T]) Back() *Element[T] {
 	if l.len == 0 {
 		return nil
@@ -219,8 +206,8 @@ func (l *List[T]) move(e *Element[T], at int) {
 	e.next = atNextIdx
 }
 
-// Remove removes e from l if e is an element of list l.
-// It returns the element value e.Value.
+// Remove removes e from the list if it is an element, returning its value.
+//
 // The element must not be nil.
 func (l *List[T]) Remove(e *Element[T]) T {
 	v := e.Value
@@ -231,23 +218,19 @@ func (l *List[T]) Remove(e *Element[T]) T {
 	return v
 }
 
-// PushFront inserts a new element with value v at the front of the list and returns the new element.
-//
-// Complexity: O(1) time.
+// PushFront inserts a new element with value v at the front of the list and returns it.
 func (l *List[T]) PushFront(v T) *Element[T] {
 	l.lazyInit()
 	return l.insertValue(v, l.root)
 }
 
-// PushBack inserts a new element with value v at the back of the list and returns the new element.
-//
-// Complexity: O(1) time.
+// PushBack inserts a new element with value v at the back of the list and returns it.
 func (l *List[T]) PushBack(v T) *Element[T] {
 	l.lazyInit()
 	return l.insertValue(v, l.elem(l.root).prev)
 }
 
-// InsertBefore inserts a new element e with value v immediately before mark and returns e.
+// InsertBefore inserts a new element with value v immediately before mark and returns it.
 func (l *List[T]) InsertBefore(v T, mark *Element[T]) *Element[T] {
 	if mark.list != l {
 		return nil
@@ -255,7 +238,7 @@ func (l *List[T]) InsertBefore(v T, mark *Element[T]) *Element[T] {
 	return l.insertValue(v, mark.prev)
 }
 
-// InsertAfter inserts a new element e with value v immediately after mark and returns e.
+// InsertAfter inserts a new element with value v immediately after mark and returns it.
 func (l *List[T]) InsertAfter(v T, mark *Element[T]) *Element[T] {
 	if mark.list != l {
 		return nil
@@ -263,7 +246,7 @@ func (l *List[T]) InsertAfter(v T, mark *Element[T]) *Element[T] {
 	return l.insertValue(v, mark.idx)
 }
 
-// MoveToFront moves element e to the front of list l.
+// MoveToFront moves element e to the front of the list.
 func (l *List[T]) MoveToFront(e *Element[T]) {
 	if e.list != l || l.elem(l.root).next == e.idx {
 		return
@@ -271,7 +254,7 @@ func (l *List[T]) MoveToFront(e *Element[T]) {
 	l.move(e, l.root)
 }
 
-// MoveToBack moves element e to the back of list l.
+// MoveToBack moves element e to the back of the list.
 func (l *List[T]) MoveToBack(e *Element[T]) {
 	if e.list != l || l.elem(l.root).prev == e.idx {
 		return
@@ -295,7 +278,7 @@ func (l *List[T]) MoveAfter(e, mark *Element[T]) {
 	l.move(e, mark.idx)
 }
 
-// PushBackList inserts a copy of another list at the back of list l.
+// PushBackList inserts a copy of another list at the back of the list.
 func (l *List[T]) PushBackList(other *List[T]) {
 	l.lazyInit()
 	for i, e := other.Len(), other.Front(); i > 0; i, e = i-1, e.Next() {
@@ -303,7 +286,7 @@ func (l *List[T]) PushBackList(other *List[T]) {
 	}
 }
 
-// PushFrontList inserts a copy of another list at the front of list l.
+// PushFrontList inserts a copy of another list at the front of the list.
 func (l *List[T]) PushFrontList(other *List[T]) {
 	l.lazyInit()
 	for i, e := other.Len(), other.Back(); i > 0; i, e = i-1, e.Prev() {

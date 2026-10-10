@@ -267,9 +267,7 @@ type NumberConstraint interface {
 // will incorrectly fall through to the default integer case, causing their decimal
 // precision to be completely truncated (e.g. MyFloat(3.14) -> "3").
 //
-// Concurrency & Zero-Allocation Semantics:
 // For integers and floats, formatting uses strconv with zero heap allocations beyond the returned string.
-// It is fully thread-safe and safe for concurrent execution.
 func NumberString[T NumberConstraint](v T) string {
 	switch x := any(v).(type) {
 	case int:

@@ -13,8 +13,6 @@ import (
 )
 
 // Tag represents a parsed struct tag value (e.g. `json:"user_id,omitempty,inline"`).
-//
-// The zero value is empty and ready to use.
 type Tag struct {
 	Name    string   // Primary field identifier or "-"
 	Options []string // Subsequent comma-separated directive flags
@@ -25,7 +23,6 @@ type Tag struct {
 // For standard ASCII tags, ParseTag executes an optimized lock-free and zero-copy
 // scanning path without allocating rune slices. For simple tags without directives,
 // ParseTag achieves 0 heap allocations.
-// It executes in O(N) time where N is the length of the string and is safe for concurrent use.
 func ParseTag(tagStr string) Tag {
 	if tagStr == "" {
 		return Tag{}
@@ -189,15 +186,11 @@ func parseTagUnicode(tagStr string) Tag {
 }
 
 // Has reports whether the specified directive flag is present in the tag options list.
-//
-// It executes in O(N) time where N is the number of options and is safe for concurrent use.
 func (t Tag) Has(option string) bool {
 	return slices.Contains(t.Options, option)
 }
 
 // Value extracts the value of a key-value directive flag (e.g. `default=10` -> "10", `min=5` -> "5").
-//
-// It executes in O(N) time where N is the number of options and is safe for concurrent use.
 func (t Tag) Value(key string) string {
 	for _, opt := range t.Options {
 		if k, v, ok := strings.Cut(opt, "="); ok && k == key {
@@ -208,8 +201,6 @@ func (t Tag) Value(key string) string {
 }
 
 // Int extracts a numeric option parsed as int.
-//
-// It executes in O(N) time where N is the number of options and is safe for concurrent use.
 func (t Tag) Int(key string) (int, bool) {
 	val := t.Value(key)
 	if val == "" {
@@ -220,8 +211,6 @@ func (t Tag) Int(key string) (int, bool) {
 }
 
 // Float extracts a numeric option parsed as float64.
-//
-// It executes in O(N) time where N is the number of options and is safe for concurrent use.
 func (t Tag) Float(key string) (float64, bool) {
 	val := t.Value(key)
 	if val == "" {
@@ -232,8 +221,6 @@ func (t Tag) Float(key string) (float64, bool) {
 }
 
 // SplitOption splits a key-value option by delim, returning an iterator over the non-empty parts.
-//
-// It executes in O(N) time where N is the number of options and is safe for concurrent use.
 func (t Tag) SplitOption(key, delim string) iter.Seq[string] {
 	val := t.Value(key)
 	return func(yield func(string) bool) {
@@ -262,23 +249,16 @@ func (t Tag) SplitOption(key, delim string) iter.Seq[string] {
 }
 
 // IsEmpty reports whether the tag contains no name or options.
-//
-// It executes in O(1) time and is safe for concurrent use.
 func (t Tag) IsEmpty() bool {
 	return t.Name == "" && len(t.Options) == 0
 }
 
 // IsIgnored reports whether the tag explicitly ignores the field via `"-"`.
-//
-// It executes in O(1) time and is safe for concurrent use.
 func (t Tag) IsIgnored() bool {
 	return t.Name == "-"
 }
 
 // TagOf retrieves and parses the first matching struct tag for keys from field.
-//
-// It executes in O(K * N) time where K is the number of keys and N is the string length.
-// It is safe for concurrent use and may allocate memory.
 func TagOf(field reflect.StructField, keys ...string) Tag {
 	for _, key := range keys {
 		if raw, ok := field.Tag.Lookup(key); ok {

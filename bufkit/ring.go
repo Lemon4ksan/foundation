@@ -35,8 +35,8 @@ type Ring[T any] struct {
 	slots    []T
 }
 
-// NewRing instantiates a new [Ring] buffer. The capacity is automatically rounded
-// up to the nearest power of two to allow fast bitwise modulo operations.
+// NewRing returns a new [Ring] buffer with capacity rounded up to the nearest power of two
+// to replace modulo division with fast bitwise masking.
 func NewRing[T any](capacity int) *Ring[T] {
 	if capacity < 2 {
 		capacity = 2
@@ -81,7 +81,7 @@ func (r *Ring[T]) IsFull() bool {
 	return r.Len() >= int(r.capacity)
 }
 
-// Push enqueues an element into the ring buffer. Returns false if the buffer is full.
+// Push enqueues an element into the ring buffer, returning false if the buffer is full.
 func (r *Ring[T]) Push(val T) bool {
 	tail := r.tail.Load()
 	if tail-r.cachedHead >= r.capacity {
@@ -96,7 +96,8 @@ func (r *Ring[T]) Push(val T) bool {
 	return true
 }
 
-// Pop dequeues an element from the ring buffer. Returns false if the buffer is empty.
+// Pop dequeues an element from the ring buffer, zeroing the underlying slot for GC,
+// and returns (val, true) or (zero, false) if the buffer is empty.
 func (r *Ring[T]) Pop() (T, bool) {
 	head := r.head.Load()
 	if head >= r.cachedTail {
@@ -115,7 +116,7 @@ func (r *Ring[T]) Pop() (T, bool) {
 	return val, true
 }
 
-// Peek returns the next element in the ring without removing it. Returns false if the buffer is empty.
+// Peek returns the next element in the ring without removing it, or (zero, false) if empty.
 func (r *Ring[T]) Peek() (T, bool) {
 	head := r.head.Load()
 	if head >= r.cachedTail {
@@ -128,8 +129,7 @@ func (r *Ring[T]) Peek() (T, bool) {
 	return r.slots[head&r.mask], true
 }
 
-// PushBatch enqueues multiple elements in a single batch operation.
-// Returns the number of items successfully pushed (up to len(items)).
+// PushBatch enqueues multiple elements in a single batch operation and returns the number of items pushed.
 func (r *Ring[T]) PushBatch(items []T) int {
 	if len(items) == 0 {
 		return 0
@@ -158,8 +158,8 @@ func (r *Ring[T]) PushBatch(items []T) int {
 	return toPush
 }
 
-// PopBatch dequeues multiple elements into dst in a single batch operation.
-// Returns the number of items successfully popped (up to len(dst)).
+// PopBatch dequeues multiple elements into dst in a single batch operation and returns the number of items popped.
+// Source slots are aggressively zeroed to allow GC collection of generic elements.
 func (r *Ring[T]) PopBatch(dst []T) int {
 	if len(dst) == 0 {
 		return 0
@@ -197,7 +197,7 @@ func (r *Ring[T]) PopBatch(dst []T) int {
 	return toPop
 }
 
-// Reset clears all items in the ring buffer and resets indices.
+// Reset clears all items in the ring buffer, zeroes all slot references for GC, and resets indices.
 func (r *Ring[T]) Reset() {
 	var zero T
 	for i := range r.slots {
@@ -222,7 +222,8 @@ func (r *Ring[T]) All() iter.Seq[T] {
 	}
 }
 
-// Values returns an iterator over elements currently in the ring buffer in FIFO order without popping them.
+// Values returns an iterator over elements currently in the ring buffer in FIFO order without popping them;
+// it is an alias for [Ring.All].
 func (r *Ring[T]) Values() iter.Seq[T] {
 	return r.All()
 }
