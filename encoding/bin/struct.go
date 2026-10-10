@@ -6,6 +6,7 @@ package bin
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"iter"
 	"reflect"
@@ -40,8 +41,18 @@ type structLayout struct {
 
 var layoutCache sync.Map // map[reflect.Type]*structLayout
 
+func checkStructTarget(val reflect.Value) error {
+	if !val.IsValid() {
+		return errors.New("binkit: target must be a pointer to struct, got <nil>")
+	}
+	if val.Kind() != reflect.Pointer || val.IsNil() {
+		return fmt.Errorf("binkit: target must be a pointer to struct, got %v", val.Type())
+	}
+	return nil
+}
+
 func getLayout(t reflect.Type) (*structLayout, error) {
-	if t.Kind() != reflect.Pointer || t.Elem().Kind() != reflect.Struct {
+	if t == nil || t.Kind() != reflect.Pointer || t.Elem().Kind() != reflect.Struct {
 		return nil, fmt.Errorf("binkit: target must be a pointer to struct, got %v", t)
 	}
 
@@ -111,6 +122,9 @@ func getLayout(t reflect.Type) (*structLayout, error) {
 // UnmarshalLE automatically decodes little-endian binary fields from b into the target struct pointer.
 func UnmarshalLE(b []byte, dest any) error {
 	val := reflect.ValueOf(dest)
+	if err := checkStructTarget(val); err != nil {
+		return err
+	}
 	layout, err := getLayout(val.Type())
 	if err != nil {
 		return err
@@ -157,6 +171,9 @@ func UnmarshalLE(b []byte, dest any) error {
 // MarshalLE automatically encodes the target struct pointer's fields into little-endian binary bytes.
 func MarshalLE(src any, buf []byte) ([]byte, error) {
 	val := reflect.ValueOf(src)
+	if err := checkStructTarget(val); err != nil {
+		return nil, err
+	}
 	layout, err := getLayout(val.Type())
 	if err != nil {
 		return nil, err
@@ -208,6 +225,9 @@ func MarshalLE(src any, buf []byte) ([]byte, error) {
 // UnmarshalBE automatically decodes big-endian binary fields from b into the target struct pointer.
 func UnmarshalBE(b []byte, dest any) error {
 	val := reflect.ValueOf(dest)
+	if err := checkStructTarget(val); err != nil {
+		return err
+	}
 	layout, err := getLayout(val.Type())
 	if err != nil {
 		return err
@@ -254,6 +274,9 @@ func UnmarshalBE(b []byte, dest any) error {
 // MarshalBE automatically encodes the target struct pointer's fields into big-endian binary bytes.
 func MarshalBE(src any, buf []byte) ([]byte, error) {
 	val := reflect.ValueOf(src)
+	if err := checkStructTarget(val); err != nil {
+		return nil, err
+	}
 	layout, err := getLayout(val.Type())
 	if err != nil {
 		return nil, err

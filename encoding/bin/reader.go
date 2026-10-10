@@ -170,7 +170,7 @@ func (r *Reader) Bytes(n int) []byte {
 	if r.err != nil || n <= 0 {
 		return nil
 	}
-	if r.pos+n > len(r.data) {
+	if n > len(r.data)-r.pos {
 		r.err = ErrBufferTooShort
 		return nil
 	}
@@ -197,7 +197,7 @@ func (r *Reader) Skip(n int) {
 	if r.err != nil || n <= 0 {
 		return
 	}
-	if r.pos+n > len(r.data) {
+	if n > len(r.data)-r.pos {
 		r.err = ErrBufferTooShort
 		return
 	}

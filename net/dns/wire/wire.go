@@ -492,7 +492,7 @@ func SkipDomainName(msg []byte, offset int) (int, error) {
 	visited := 0
 
 	for {
-		if offset >= len(msg) || visited > 128 {
+		if offset < 0 || offset >= len(msg) || visited > 128 {
 			return 0, ErrTruncatedDNSMessage
 		}
 
