@@ -209,24 +209,41 @@ func scanNumber(data []byte, cursor int) (numBytes []byte, newCursor int, isFloa
 		}
 	}
 
-	for cursor < n {
-		b := data[cursor]
-		if b >= '0' && b <= '9' {
-			cursor++
-			continue
-		}
-
-		if b == '.' || b == 'e' || b == 'E' || b == '+' || b == '-' {
-			isFloat = true
-			cursor++
-			continue
-		}
-
-		break
+	if cursor >= n || data[cursor] < '0' || data[cursor] > '9' {
+		return nil, start, false, errInvalidChar
 	}
 
-	if cursor == start || (cursor == start+1 && data[start] == '-') {
-		return nil, cursor, false, errInvalidChar
+	if data[cursor] == '0' {
+		cursor++
+	} else {
+		for cursor < n && data[cursor] >= '0' && data[cursor] <= '9' {
+			cursor++
+		}
+	}
+
+	if cursor < n && data[cursor] == '.' {
+		isFloat = true
+		cursor++
+		if cursor >= n || data[cursor] < '0' || data[cursor] > '9' {
+			return nil, start, false, errInvalidChar
+		}
+		for cursor < n && data[cursor] >= '0' && data[cursor] <= '9' {
+			cursor++
+		}
+	}
+
+	if cursor < n && (data[cursor] == 'e' || data[cursor] == 'E') {
+		isFloat = true
+		cursor++
+		if cursor < n && (data[cursor] == '+' || data[cursor] == '-') {
+			cursor++
+		}
+		if cursor >= n || data[cursor] < '0' || data[cursor] > '9' {
+			return nil, start, false, errInvalidChar
+		}
+		for cursor < n && data[cursor] >= '0' && data[cursor] <= '9' {
+			cursor++
+		}
 	}
 
 	return data[start:cursor], cursor, isFloat, nil
@@ -248,17 +265,35 @@ func parseInt(b []byte) (int64, error) {
 		return 0, errInvalidChar
 	}
 
+	const (
+		maxVal = 18446744073709551615 / 10
+		maxRem = 18446744073709551615 % 10
+		maxInt = uint64(9223372036854775807) // math.MaxInt64
+		maxAbs = uint64(9223372036854775808) // -math.MinInt64
+	)
+
 	var n uint64
 	for _, c := range b {
 		if c < '0' || c > '9' {
 			return 0, fmt.Errorf("json: invalid integer %q", string(b))
 		}
+		d := uint64(c - '0')
+		if n > maxVal || (n == maxVal && d > maxRem) {
+			return 0, fmt.Errorf("json: integer overflow %q", string(b))
+		}
 
-		n = n*10 + uint64(c-'0')
+		n = n*10 + d
 	}
 
 	if neg {
+		if n > maxAbs {
+			return 0, fmt.Errorf("json: integer underflow %q", string(b))
+		}
 		return -int64(n), nil
+	}
+
+	if n > maxInt {
+		return 0, fmt.Errorf("json: integer overflow %q", string(b))
 	}
 
 	return int64(n), nil
@@ -270,13 +305,22 @@ func parseUint(b []byte) (uint64, error) {
 		return 0, errInvalidChar
 	}
 
+	const (
+		maxVal = 18446744073709551615 / 10
+		maxRem = 18446744073709551615 % 10
+	)
+
 	var n uint64
 	for _, c := range b {
 		if c < '0' || c > '9' {
 			return 0, fmt.Errorf("json: invalid unsigned integer %q", string(b))
 		}
+		d := uint64(c - '0')
+		if n > maxVal || (n == maxVal && d > maxRem) {
+			return 0, fmt.Errorf("json: integer overflow %q", string(b))
+		}
 
-		n = n*10 + uint64(c-'0')
+		n = n*10 + d
 	}
 
 	return n, nil
@@ -287,8 +331,20 @@ func parseFloat(b []byte) (float64, error) {
 	return strconv.ParseFloat(bytesconv.B2S(b), 64)
 }
 
+const maxDecodeDepth = 10000
+
+var errMaxDepth = errors.New("json: exceeded max depth")
+
 // validateValue validates and advances past any valid JSON value (object, array, string, number, bool, null).
 func validateValue(data []byte, cursor int) (int, error) {
+	return validateValueDepth(data, cursor, 0)
+}
+
+func validateValueDepth(data []byte, cursor int, depth int) (int, error) {
+	if depth >= maxDecodeDepth {
+		return cursor, errMaxDepth
+	}
+
 	cursor = skipWhitespace(data, cursor)
 	if cursor >= len(data) {
 		return cursor, errUnexpectedEnd
@@ -333,7 +389,7 @@ func validateValue(data []byte, cursor int) (int, error) {
 				return cursor, errInvalidChar
 			}
 			cursor++
-			newCursor, err = validateValue(data, cursor)
+			newCursor, err = validateValueDepth(data, cursor, depth+1)
 			if err != nil {
 				return cursor, err
 			}
@@ -362,7 +418,7 @@ func validateValue(data []byte, cursor int) (int, error) {
 			}
 			first = false
 
-			newCursor, err := validateValue(data, cursor)
+			newCursor, err := validateValueDepth(data, cursor, depth+1)
 			if err != nil {
 				return cursor, err
 			}

@@ -82,8 +82,10 @@ func (u URLView) Hostname() string {
 			}
 			return ip
 		}
+		return h
 	}
-	if colon := strings.LastIndexByte(h, ':'); colon >= 0 {
+	colon := strings.LastIndexByte(h, ':')
+	if colon >= 0 && strings.IndexByte(h, ':') == colon {
 		return h[:colon]
 	}
 	return h
@@ -95,9 +97,12 @@ func (u URLView) Port() string {
 	if strings.HasPrefix(h, "[") {
 		if end := strings.IndexByte(h, ']'); end >= 0 {
 			h = h[end+1:]
+		} else {
+			return ""
 		}
 	}
-	if colon := strings.LastIndexByte(h, ':'); colon >= 0 {
+	colon := strings.LastIndexByte(h, ':')
+	if colon >= 0 && strings.IndexByte(h, ':') == colon {
 		return h[colon+1:]
 	}
 	return ""

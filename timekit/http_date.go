@@ -140,6 +140,12 @@ func ParseHTTPDate(s string) (time.Time, error) {
 				m = time.December
 			}
 
+			switch s[:3] {
+			case "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat":
+			default:
+				return time.Parse(time.RFC1123, s)
+			}
+
 			if m != 0 {
 				y0 := s[12] - '0'
 				y1 := s[13] - '0'
@@ -160,7 +166,10 @@ func ParseHTTPDate(s string) (time.Time, error) {
 					min := int(min0)*10 + int(min1)
 					sec := int(sec0)*10 + int(sec1)
 					if hour < 24 && min < 60 && sec < 60 && day >= 1 && day <= 31 {
-						return time.Date(year, m, day, hour, min, sec, 0, time.UTC), nil
+						d := time.Date(year, m, day, hour, min, sec, 0, time.UTC)
+						if d.Day() == day && d.Month() == m {
+							return d, nil
+						}
 					}
 				}
 			}

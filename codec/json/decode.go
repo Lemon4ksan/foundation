@@ -9,6 +9,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"math"
 	"reflect"
 	"strconv"
 	"strings"
@@ -215,6 +216,10 @@ func decodeInt8(data []byte, cursor int, p unsafe.Pointer, cfg *DecoderConfig) (
 		return cursor, err
 	}
 
+	if n < math.MinInt8 || n > math.MaxInt8 {
+		return cursor, fmt.Errorf("json: cannot unmarshal %d into Go value of type int8", n)
+	}
+
 	*(*int8)(p) = int8(n)
 
 	return newCursor, nil
@@ -232,6 +237,10 @@ func decodeInt16(data []byte, cursor int, p unsafe.Pointer, cfg *DecoderConfig) 
 		return cursor, err
 	}
 
+	if n < math.MinInt16 || n > math.MaxInt16 {
+		return cursor, fmt.Errorf("json: cannot unmarshal %d into Go value of type int16", n)
+	}
+
 	*(*int16)(p) = int16(n)
 
 	return newCursor, nil
@@ -247,6 +256,10 @@ func decodeInt32(data []byte, cursor int, p unsafe.Pointer, cfg *DecoderConfig) 
 	n, err := parseInt(num)
 	if err != nil {
 		return cursor, err
+	}
+
+	if n < math.MinInt32 || n > math.MaxInt32 {
+		return cursor, fmt.Errorf("json: cannot unmarshal %d into Go value of type int32", n)
 	}
 
 	*(*int32)(p) = int32(n)
@@ -300,6 +313,10 @@ func decodeUint8(data []byte, cursor int, p unsafe.Pointer, cfg *DecoderConfig) 
 		return cursor, err
 	}
 
+	if n > math.MaxUint8 {
+		return cursor, fmt.Errorf("json: cannot unmarshal %d into Go value of type uint8", n)
+	}
+
 	*(*uint8)(p) = uint8(n)
 
 	return newCursor, nil
@@ -317,6 +334,10 @@ func decodeUint16(data []byte, cursor int, p unsafe.Pointer, cfg *DecoderConfig)
 		return cursor, err
 	}
 
+	if n > math.MaxUint16 {
+		return cursor, fmt.Errorf("json: cannot unmarshal %d into Go value of type uint16", n)
+	}
+
 	*(*uint16)(p) = uint16(n)
 
 	return newCursor, nil
@@ -332,6 +353,10 @@ func decodeUint32(data []byte, cursor int, p unsafe.Pointer, cfg *DecoderConfig)
 	n, err := parseUint(num)
 	if err != nil {
 		return cursor, err
+	}
+
+	if n > math.MaxUint32 {
+		return cursor, fmt.Errorf("json: cannot unmarshal %d into Go value of type uint32", n)
 	}
 
 	*(*uint32)(p) = uint32(n)
@@ -1141,6 +1166,14 @@ func decodeInterface(data []byte, cursor int, p unsafe.Pointer, cfg *DecoderConf
 }
 
 func decodeDynamic(data []byte, cursor int, cfg *DecoderConfig) (any, int, error) {
+	return decodeDynamicDepth(data, cursor, cfg, 0)
+}
+
+func decodeDynamicDepth(data []byte, cursor int, cfg *DecoderConfig, depth int) (any, int, error) {
+	if depth >= maxDecodeDepth {
+		return nil, cursor, errMaxDepth
+	}
+
 	cursor = skipWhitespace(data, cursor)
 	if cursor >= len(data) {
 		return nil, cursor, errUnexpectedEnd
@@ -1207,7 +1240,7 @@ func decodeDynamic(data []byte, cursor int, cfg *DecoderConfig) (any, int, error
 			}
 			cursor++
 
-			v, valNewCursor, err := decodeDynamic(data, cursor, cfg)
+			v, valNewCursor, err := decodeDynamicDepth(data, cursor, cfg, depth+1)
 			if err != nil {
 				return nil, cursor, err
 			}
@@ -1238,7 +1271,7 @@ func decodeDynamic(data []byte, cursor int, cfg *DecoderConfig) (any, int, error
 			}
 			first = false
 
-			elem, newCursor, err := decodeDynamic(data, cursor, cfg)
+			elem, newCursor, err := decodeDynamicDepth(data, cursor, cfg, depth+1)
 			if err != nil {
 				return nil, cursor, err
 			}
