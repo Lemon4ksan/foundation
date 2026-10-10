@@ -268,15 +268,6 @@ func (p *Pool[T]) ItemsSeq(
 	}
 }
 
-// ItemsSeq submits tasks from the input iterator to the provided [Pool] and yields results as they complete.
-func ItemsSeq[T any](
-	ctx context.Context,
-	pool *Pool[T],
-	tasks iter.Seq[func(context.Context) (T, error)],
-) iter.Seq2[T, error] {
-	return pool.ItemsSeq(ctx, tasks)
-}
-
 // Close initiates a graceful shutdown of the pool, waiting for all active workers to finish.
 func (p *Pool[T]) Close() error {
 	p.mu.Lock()
