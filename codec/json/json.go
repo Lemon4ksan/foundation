@@ -154,9 +154,17 @@ func UnmarshalWithConfig(data []byte, v any, cfg DecoderConfig) error {
 	ptr := unsafe.Pointer(rv.Pointer())
 	cursor := skipWhitespace(data, 0)
 
-	_, err = dec(data, cursor, ptr, &cfg)
+	newCursor, err := dec(data, cursor, ptr, &cfg)
+	if err != nil {
+		return err
+	}
 
-	return err
+	newCursor = skipWhitespace(data, newCursor)
+	if newCursor < len(data) {
+		return fmt.Errorf("json: invalid character %q after top-level value", data[newCursor])
+	}
+
+	return nil
 }
 
 // Valid reports whether data is a valid JSON encoding.

@@ -22,6 +22,7 @@ var months = [...]string{
 const HTTPDateLength = 29
 
 var errInvalidHTTPDateLength = errors.New("timekit: invalid HTTP-date length")
+var errInvalidHTTPDateValue = errors.New("timekit: invalid HTTP-date value")
 
 // AppendHTTPDate appends an RFC 7231 / RFC 9110 compliant HTTP-date (e.g. "Sun, 06 Nov 1994 08:49:37 GMT")
 // to dst without heap allocations.
@@ -65,7 +66,7 @@ func formatHTTPDateInto(buf []byte, weekday, month string, year, day, hour, min,
 	buf[10] = month[2]
 	buf[11] = ' '
 
-	y := year
+	y := year % 10000
 	if y < 0 {
 		y = -y
 	}
@@ -165,12 +166,17 @@ func ParseHTTPDate(s string) (time.Time, error) {
 					hour := int(h0)*10 + int(h1)
 					min := int(min0)*10 + int(min1)
 					sec := int(sec0)*10 + int(sec1)
-					if hour < 24 && min < 60 && sec < 60 && day >= 1 && day <= 31 {
-						d := time.Date(year, m, day, hour, min, sec, 0, time.UTC)
+					if hour < 24 && min < 60 && sec <= 60 && day >= 1 && day <= 31 {
+						d := time.Date(year, m, day, hour, min, 0, 0, time.UTC)
 						if d.Day() == day && d.Month() == m {
+							if sec != 0 {
+								d = d.Add(time.Duration(sec) * time.Second)
+							}
 							return d, nil
 						}
+						return time.Time{}, errInvalidHTTPDateValue
 					}
+					return time.Time{}, errInvalidHTTPDateValue
 				}
 			}
 		}

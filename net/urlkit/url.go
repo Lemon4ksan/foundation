@@ -248,9 +248,19 @@ func (u URLView) String() string {
 
 // ToURL converts the view to a standard [*url.URL].
 func (u URLView) ToURL() *url.URL {
+	host := u.Host
+	if start := strings.Index(host, "["); start >= 0 {
+		if end := strings.Index(host[start:], "]"); end >= 0 {
+			ipv6 := host[start : start+end+1]
+			if pct := strings.Index(ipv6, "%"); pct >= 0 && !strings.HasPrefix(ipv6[pct:], "%25") {
+				normalizedIPv6 := ipv6[:pct] + "%25" + ipv6[pct+1:]
+				host = host[:start] + normalizedIPv6 + host[start+end+1:]
+			}
+		}
+	}
 	res := &url.URL{
 		Scheme:   u.Scheme,
-		Host:     u.Host,
+		Host:     host,
 		Path:     u.Path,
 		RawQuery: u.RawQuery,
 		Fragment: u.Fragment,
@@ -279,6 +289,10 @@ func isSchemeChar(c byte) bool {
 func ParseView(rawURL string) (URLView, error) {
 	if rawURL == "" {
 		return URLView{}, nil
+	}
+
+	if strings.IndexByte(rawURL, 0) >= 0 {
+		return URLView{}, errors.New("url: invalid control character in URL")
 	}
 
 	var view URLView
@@ -344,6 +358,9 @@ func ParseView(rawURL string) (URLView, error) {
 		}
 		if atIdx := strings.LastIndexByte(authority, '@'); atIdx >= 0 {
 			view.User = authority[:atIdx]
+			if strings.IndexByte(view.User, '@') >= 0 {
+				return URLView{}, errors.New("url: invalid userinfo")
+			}
 			view.Host = authority[atIdx+1:]
 		} else {
 			view.Host = authority
@@ -353,6 +370,10 @@ func ParseView(rawURL string) (URLView, error) {
 	}
 
 	// 5. Host Validation
+	if !strings.HasPrefix(view.Host, "[") && strings.IndexByte(view.Host, '%') >= 0 {
+		return URLView{}, ErrInvalidHost
+	}
+
 	for i := 0; i < len(view.Host); i++ {
 		b := view.Host[i]
 		if b <= ' ' || b == '<' || b == '>' || b == '"' || b == 92 || b == '^' || b == 96 || b == '{' || b == '|' ||
@@ -387,7 +408,18 @@ func Parse(rawURL string) (*url.URL, error) {
 		return CloneURL(u), nil
 	}
 
-	parsed, err := url.Parse(rawURL)
+	normalizedURL := rawURL
+	if start := strings.Index(rawURL, "["); start >= 0 {
+		if end := strings.Index(rawURL[start:], "]"); end >= 0 {
+			ipv6 := rawURL[start : start+end+1]
+			if pct := strings.Index(ipv6, "%"); pct >= 0 && !strings.HasPrefix(ipv6[pct:], "%25") {
+				normalizedIPv6 := ipv6[:pct] + "%25" + ipv6[pct+1:]
+				normalizedURL = rawURL[:start] + normalizedIPv6 + rawURL[start+end+1:]
+			}
+		}
+	}
+
+	parsed, err := url.Parse(normalizedURL)
 	if err != nil {
 		return nil, err
 	}
