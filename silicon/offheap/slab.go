@@ -144,12 +144,17 @@ func (s *SlabAllocator[T]) Free(p *T) bool {
 
 	idx := offset / s.stride
 
+	word := idx / 64
+	bit := uint(idx % 64)
+	mask := uint64(1) << bit
+	if (s.bitmap[word] & mask) != 0 {
+		return false // already free - prevent double-free corruption
+	}
+
 	// Zero the slot memory before marking free to prevent stale data reads after reuse.
 	clear(unsafe.Slice((*byte)(unsafe.Pointer(p)), s.size))
 
-	word := idx / 64
-	bit := uint(idx % 64)
-	s.bitmap[word] |= 1 << bit
+	s.bitmap[word] |= mask
 	s.free++
 
 	return true
@@ -202,6 +207,25 @@ func (s *SlabAllocator[T]) Available() int {
 	}
 
 	return s.free
+}
+
+// TotalBytes returns the total off-heap bytes occupied by the slab page.
+func (s *SlabAllocator[T]) TotalBytes() int {
+	if s == nil || s.page == nil {
+		return 0
+	}
+
+	return s.stride * s.cap
+}
+
+// AllocatedBytes returns the total off-heap bytes currently in active use.
+func (s *SlabAllocator[T]) AllocatedBytes() int {
+	return s.Len() * s.stride
+}
+
+// FreeBytes returns the total off-heap bytes currently free.
+func (s *SlabAllocator[T]) FreeBytes() int {
+	return s.Available() * s.stride
 }
 
 // Release frees the entire slab page back to the OS kernel.

@@ -732,3 +732,107 @@ func TestList_ChunkRecyclingAllocations(t *testing.T) {
 		t.Fatalf("expected 0 heap allocations for chunk recycling, got %f allocations/run", allocs)
 	}
 }
+
+func TestList_MemoryRetention_Init(t *testing.T) {
+	type largeObj struct {
+		data [1024]byte
+	}
+
+	l := list.New[*largeObj]()
+	for i := 0; i < 500; i++ {
+		l.PushBack(&largeObj{})
+	}
+
+	if l.Len() != 500 {
+		t.Fatalf("expected 500 items, got %d", l.Len())
+	}
+	if l.Cap() < 500 {
+		t.Fatalf("expected Cap >= 500, got %d", l.Cap())
+	}
+
+	// Re-initialize list: must drop all 500 pointer references
+	l.Init()
+	if l.Len() != 0 {
+		t.Fatalf("expected 0 items after Init, got %d", l.Len())
+	}
+
+	// ShrinkToFit
+	l.ShrinkToFit()
+	if l.Cap() != 256 {
+		t.Fatalf("expected Cap == 256 after ShrinkToFit, got %d", l.Cap())
+	}
+}
+
+func TestList_NilSafety(t *testing.T) {
+	l := list.New[int]()
+	l.PushBack(1)
+	l.PushBack(2)
+
+	// Remove nil
+	if v := l.Remove(nil); v != 0 {
+		t.Fatalf("expected 0 from Remove(nil), got %d", v)
+	}
+
+	// Move methods with nil
+	l.MoveToFront(nil)
+	l.MoveToBack(nil)
+	l.MoveBefore(nil, nil)
+	l.MoveAfter(nil, nil)
+
+	// Insert methods with nil mark
+	if e := l.InsertBefore(99, nil); e != nil {
+		t.Fatal("expected nil from InsertBefore with nil mark")
+	}
+	if e := l.InsertAfter(99, nil); e != nil {
+		t.Fatal("expected nil from InsertAfter with nil mark")
+	}
+
+	// Push*List with nil
+	l.PushBackList(nil)
+	l.PushFrontList(nil)
+
+	if l.Len() != 2 {
+		t.Fatalf("expected len 2, got %d", l.Len())
+	}
+}
+
+func TestList_IteratorZeroAllocs(t *testing.T) {
+	l := list.New[int]()
+	for i := 0; i < 100; i++ {
+		l.PushBack(i)
+	}
+
+	allocsValues := testing.AllocsPerRun(10, func() {
+		sum := 0
+		for v := range l.Values() {
+			sum += v
+		}
+		_ = sum
+	})
+	if allocsValues > 0 {
+		t.Errorf("Values() had %f allocs, expected 0", allocsValues)
+	}
+
+	allocsBackward := testing.AllocsPerRun(10, func() {
+		sum := 0
+		for v := range l.Backward() {
+			sum += v
+		}
+		_ = sum
+	})
+	if allocsBackward > 0 {
+		t.Errorf("Backward() had %f allocs, expected 0", allocsBackward)
+	}
+
+	allocsAll := testing.AllocsPerRun(10, func() {
+		sum := 0
+		for idx, v := range l.All() {
+			sum += idx + v
+		}
+		_ = sum
+	})
+	if allocsAll > 0 {
+		t.Errorf("All() had %f allocs, expected 0", allocsAll)
+	}
+}
+

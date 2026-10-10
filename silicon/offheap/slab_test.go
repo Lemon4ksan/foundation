@@ -201,8 +201,48 @@ func TestSlabAllocator_InvalidFree_Ignored(t *testing.T) {
 	// Freeing nil must not panic.
 	assert.NotPanics(t, func() { slab.Free(nil) })
 
-	// Stats must be unchanged.
+// Stats must be unchanged.
 	assert.Equal(t, 8, slab.Available())
+}
+
+func TestSlabAllocator_DoubleFree_PreventCorruption(t *testing.T) {
+	slab, err := offheap.NewSlabAllocator[testFrameHeader](8)
+	require.NoError(t, err)
+	defer slab.Release()
+
+	p := slab.Alloc()
+	require.NotNil(t, p)
+	assert.Equal(t, 7, slab.Available())
+	assert.Equal(t, 1, slab.Len())
+
+	// First free must succeed
+	ok := slab.Free(p)
+	assert.True(t, ok)
+	assert.Equal(t, 8, slab.Available())
+	assert.Equal(t, 0, slab.Len())
+
+	// Second free must be rejected and NOT corrupt free count / Len
+	ok2 := slab.Free(p)
+	assert.False(t, ok2)
+	assert.Equal(t, 8, slab.Available())
+	assert.Equal(t, 0, slab.Len())
+	assert.True(t, slab.Len() >= 0)
+}
+
+func TestSlabAllocator_ByteTracking(t *testing.T) {
+	slab, err := offheap.NewSlabAllocator[testFrameHeader](16)
+	require.NoError(t, err)
+	defer slab.Release()
+
+	total := slab.TotalBytes()
+	assert.True(t, total > 0)
+	assert.Equal(t, 0, slab.AllocatedBytes())
+	assert.Equal(t, total, slab.FreeBytes())
+
+	p := slab.Alloc()
+	require.NotNil(t, p)
+	assert.True(t, slab.AllocatedBytes() > 0)
+	assert.Equal(t, total, slab.AllocatedBytes()+slab.FreeBytes())
 }
 
 func TestSlabAllocator_ZeroInit_AfterFree(t *testing.T) {

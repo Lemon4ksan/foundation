@@ -51,12 +51,15 @@ type List[T any] struct {
 
 // Init initializes or clears the list.
 func (l *List[T]) Init() *List[T] {
+	for _, chunk := range l.chunks {
+		if chunk != nil {
+			clear(chunk[:])
+		}
+	}
 	if len(l.chunks) == 0 {
 		l.chunks = append(l.chunks, new(listChunk[T]))
-		l.allocs = 1
-	} else {
-		l.allocs = 1
 	}
+	l.allocs = 1
 	l.root = 0
 	*l.elem(0) = Element[T]{
 		next: 0,
@@ -98,6 +101,48 @@ func NewCapacity[T any](capacity int) *List[T] {
 
 // Len returns the number of elements of the list.
 func (l *List[T]) Len() int { return l.len }
+
+// Cap returns the total element capacity allocated across all chunks.
+func (l *List[T]) Cap() int {
+	return len(l.chunks) * chunkSize
+}
+
+// ShrinkToFit releases unused chunks to allow GC reclamation.
+// If the list is empty, it shrinks chunk allocation down to 1 chunk.
+// If the list is non-empty, it trims trailing unallocated chunks.
+func (l *List[T]) ShrinkToFit() *List[T] {
+	if l.len == 0 {
+		if len(l.chunks) > 1 {
+			clear(l.chunks[1:])
+			l.chunks = l.chunks[:1]
+		}
+		if len(l.chunks) == 1 {
+			clear(l.chunks[0][:])
+		} else {
+			l.chunks = append(l.chunks, new(listChunk[T]))
+		}
+		l.allocs = 1
+		l.free = -1
+		l.root = 0
+		*l.elem(0) = Element[T]{
+			next: 0,
+			prev: 0,
+			idx:  0,
+			list: l,
+		}
+		return l
+	}
+
+	needed := (l.allocs + chunkSize - 1) / chunkSize
+	if needed < 1 {
+		needed = 1
+	}
+	if needed < len(l.chunks) {
+		clear(l.chunks[needed:])
+		l.chunks = l.chunks[:needed]
+	}
+	return l
+}
 
 // Front returns the first element of the list, or nil if the list is empty.
 func (l *List[T]) Front() *Element[T] {
@@ -207,14 +252,15 @@ func (l *List[T]) move(e *Element[T], at int) {
 }
 
 // Remove removes e from the list if it is an element, returning its value.
-//
-// The element must not be nil.
 func (l *List[T]) Remove(e *Element[T]) T {
+	if e == nil {
+		var zero T
+		return zero
+	}
 	v := e.Value
 	if e.list == l {
 		l.remove(e)
 	}
-
 	return v
 }
 
@@ -232,7 +278,7 @@ func (l *List[T]) PushBack(v T) *Element[T] {
 
 // InsertBefore inserts a new element with value v immediately before mark and returns it.
 func (l *List[T]) InsertBefore(v T, mark *Element[T]) *Element[T] {
-	if mark.list != l {
+	if mark == nil || mark.list != l {
 		return nil
 	}
 	return l.insertValue(v, mark.prev)
@@ -240,7 +286,7 @@ func (l *List[T]) InsertBefore(v T, mark *Element[T]) *Element[T] {
 
 // InsertAfter inserts a new element with value v immediately after mark and returns it.
 func (l *List[T]) InsertAfter(v T, mark *Element[T]) *Element[T] {
-	if mark.list != l {
+	if mark == nil || mark.list != l {
 		return nil
 	}
 	return l.insertValue(v, mark.idx)
@@ -248,7 +294,7 @@ func (l *List[T]) InsertAfter(v T, mark *Element[T]) *Element[T] {
 
 // MoveToFront moves element e to the front of the list.
 func (l *List[T]) MoveToFront(e *Element[T]) {
-	if e.list != l || l.elem(l.root).next == e.idx {
+	if e == nil || e.list != l || l.elem(l.root).next == e.idx {
 		return
 	}
 	l.move(e, l.root)
@@ -256,7 +302,7 @@ func (l *List[T]) MoveToFront(e *Element[T]) {
 
 // MoveToBack moves element e to the back of the list.
 func (l *List[T]) MoveToBack(e *Element[T]) {
-	if e.list != l || l.elem(l.root).prev == e.idx {
+	if e == nil || e.list != l || l.elem(l.root).prev == e.idx {
 		return
 	}
 	l.move(e, l.elem(l.root).prev)
@@ -264,7 +310,7 @@ func (l *List[T]) MoveToBack(e *Element[T]) {
 
 // MoveBefore moves element e to its new position before mark.
 func (l *List[T]) MoveBefore(e, mark *Element[T]) {
-	if e.list != l || e == mark || mark.list != l {
+	if e == nil || mark == nil || e.list != l || e == mark || mark.list != l {
 		return
 	}
 	l.move(e, mark.prev)
@@ -272,7 +318,7 @@ func (l *List[T]) MoveBefore(e, mark *Element[T]) {
 
 // MoveAfter moves element e to its new position after mark.
 func (l *List[T]) MoveAfter(e, mark *Element[T]) {
-	if e.list != l || e == mark || mark.list != l {
+	if e == nil || mark == nil || e.list != l || e == mark || mark.list != l {
 		return
 	}
 	l.move(e, mark.idx)
@@ -280,16 +326,22 @@ func (l *List[T]) MoveAfter(e, mark *Element[T]) {
 
 // PushBackList inserts a copy of another list at the back of the list.
 func (l *List[T]) PushBackList(other *List[T]) {
+	if other == nil || other.len == 0 {
+		return
+	}
 	l.lazyInit()
-	for i, e := other.Len(), other.Front(); i > 0; i, e = i-1, e.Next() {
+	for i, e := other.Len(), other.Front(); i > 0 && e != nil; i, e = i-1, e.Next() {
 		l.insertValue(e.Value, l.elem(l.root).prev)
 	}
 }
 
 // PushFrontList inserts a copy of another list at the front of the list.
 func (l *List[T]) PushFrontList(other *List[T]) {
+	if other == nil || other.len == 0 {
+		return
+	}
 	l.lazyInit()
-	for i, e := other.Len(), other.Back(); i > 0; i, e = i-1, e.Prev() {
+	for i, e := other.Len(), other.Back(); i > 0 && e != nil; i, e = i-1, e.Prev() {
 		l.insertValue(e.Value, l.root)
 	}
 }
@@ -297,12 +349,18 @@ func (l *List[T]) PushFrontList(other *List[T]) {
 // All returns an iterator yielding the index and element value from front to back.
 func (l *List[T]) All() iter.Seq2[int, T] {
 	return func(yield func(int, T) bool) {
+		if l == nil || l.len == 0 {
+			return
+		}
 		idx := 0
-		for e := l.Front(); e != nil; e = e.Next() {
-			if !yield(idx, e.Value) {
+		for cur := l.elem(l.root).next; cur != l.root; {
+			el := l.elem(cur)
+			next := el.next
+			if !yield(idx, el.Value) {
 				return
 			}
 			idx++
+			cur = next
 		}
 	}
 }
@@ -310,10 +368,16 @@ func (l *List[T]) All() iter.Seq2[int, T] {
 // Values returns an iterator yielding element values from front to back.
 func (l *List[T]) Values() iter.Seq[T] {
 	return func(yield func(T) bool) {
-		for e := l.Front(); e != nil; e = e.Next() {
-			if !yield(e.Value) {
+		if l == nil || l.len == 0 {
+			return
+		}
+		for cur := l.elem(l.root).next; cur != l.root; {
+			el := l.elem(cur)
+			next := el.next
+			if !yield(el.Value) {
 				return
 			}
+			cur = next
 		}
 	}
 }
@@ -321,10 +385,16 @@ func (l *List[T]) Values() iter.Seq[T] {
 // Backward returns an iterator yielding element values from back to front.
 func (l *List[T]) Backward() iter.Seq[T] {
 	return func(yield func(T) bool) {
-		for e := l.Back(); e != nil; e = e.Prev() {
-			if !yield(e.Value) {
+		if l == nil || l.len == 0 {
+			return
+		}
+		for cur := l.elem(l.root).prev; cur != l.root; {
+			el := l.elem(cur)
+			prev := el.prev
+			if !yield(el.Value) {
 				return
 			}
+			cur = prev
 		}
 	}
 }

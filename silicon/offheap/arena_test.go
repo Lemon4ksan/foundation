@@ -109,3 +109,98 @@ func TestRepro_Arena_AllocAligned_DynamicAlignment(t *testing.T) {
 		t.Fatalf("unexpected atomic value: %d", val)
 	}
 }
+
+func TestArena_AllocBuffer_ReleaseSafety(t *testing.T) {
+	arena, err := NewArena(64 * 1024)
+	if err != nil {
+		t.Fatalf("failed to create arena: %v", err)
+	}
+	defer arena.Release()
+
+	buf1 := arena.AllocBuffer(1024)
+	if buf1 == nil {
+		t.Fatal("AllocBuffer failed")
+	}
+	if !buf1.FromArena() {
+		t.Fatal("expected buf1.FromArena() to be true")
+	}
+	if buf1.Available() != 1024 {
+		t.Fatalf("expected buf1.Available() == 1024, got %d", buf1.Available())
+	}
+
+	msg := "hello offheap"
+	n, err := buf1.WriteString(msg)
+	if err != nil || n != len(msg) {
+		t.Fatalf("WriteString failed: %v", err)
+	}
+	if buf1.Available() != 1024-len(msg) {
+		t.Fatalf("expected Available %d, got %d", 1024-len(msg), buf1.Available())
+	}
+
+	// Release buf1: must NOT free the arena's kernel page or punch a hole in it!
+	buf1.Release()
+
+	// Arena must still be fully functional
+	buf2 := arena.AllocBuffer(2048)
+	if buf2 == nil {
+		t.Fatal("AllocBuffer after buf1.Release failed")
+	}
+	_, err = buf2.WriteString("second buffer still works")
+	if err != nil {
+		t.Fatalf("buf2 WriteString failed: %v", err)
+	}
+
+	p := arena.Alloc(512)
+	if p == nil {
+		t.Fatal("Alloc after buf1.Release failed")
+	}
+}
+
+func TestArena_CapacityQueries(t *testing.T) {
+	arena, err := NewArena(64 * 1024)
+	if err != nil {
+		t.Fatalf("failed to create arena: %v", err)
+	}
+	defer arena.Release()
+
+	if arena.Cap() != 64*1024 {
+		t.Fatalf("expected Cap == %d, got %d", 64*1024, arena.Cap())
+	}
+	if arena.Len() != 0 {
+		t.Fatalf("expected Len == 0, got %d", arena.Len())
+	}
+	if arena.Available() != 64*1024 {
+		t.Fatalf("expected Available == %d, got %d", 64*1024, arena.Available())
+	}
+
+	arena.Alloc(1024)
+	if arena.Len() != 1024 {
+		t.Fatalf("expected Len == 1024, got %d", arena.Len())
+	}
+	if arena.Available() != 64*1024-1024 {
+		t.Fatalf("expected Available == %d, got %d", 64*1024-1024, arena.Available())
+	}
+}
+
+func TestArenaPool_Tracking(t *testing.T) {
+	pool := NewArenaPool(64 * 1024)
+	if pool.ActiveCount() != 0 {
+		t.Fatalf("expected ActiveCount == 0, got %d", pool.ActiveCount())
+	}
+
+	a1 := pool.Acquire()
+	if a1 == nil {
+		t.Fatal("Acquire failed")
+	}
+	if pool.ActiveCount() != 1 {
+		t.Fatalf("expected ActiveCount == 1, got %d", pool.ActiveCount())
+	}
+	if pool.AllocatedBytes() != 64*1024 {
+		t.Fatalf("expected AllocatedBytes == 65536, got %d", pool.AllocatedBytes())
+	}
+
+	pool.Release(a1)
+	if pool.ActiveCount() != 0 {
+		t.Fatalf("expected ActiveCount == 0 after release, got %d", pool.ActiveCount())
+	}
+}
