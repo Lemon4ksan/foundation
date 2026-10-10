@@ -2,11 +2,12 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-//go:build (amd64 || arm64) && !purego
+//go:build amd64 && !purego
 
 package base64
 
 import (
+	"runtime"
 	"unsafe"
 )
 
@@ -28,6 +29,9 @@ func vectorBase64EncodeURL(src, dst []byte) int {
 		0,
 		0,
 	)
+	runtime.KeepAlive(src)
+	runtime.KeepAlive(dst)
+	runtime.KeepAlive(b64URLCharset)
 
 	return int(res)
 }

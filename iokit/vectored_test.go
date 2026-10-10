@@ -120,3 +120,17 @@ func TestBufferQueue_EmptyWrite(t *testing.T) {
 	assert.Equal(t, int64(0), n)
 	assert.Equal(t, 0, buf.Len())
 }
+
+func TestBufferQueue_CapacityRetention(t *testing.T) {
+	t.Parallel()
+
+	q := iokit.NewBufferQueue()
+	for i := 0; i < 20; i++ {
+		q.Push([]byte("test"))
+		var buf bytes.Buffer
+		_, err := q.WriteTo(&buf)
+		require.NoError(t, err)
+	}
+
+	assert.True(t, q.Cap() >= 16)
+}

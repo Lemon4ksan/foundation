@@ -64,10 +64,20 @@ func TestAllocations_ToSnake(t *testing.T) {
 	}
 }
 
-func TestReproduce_ConvertDelimitedTrailingBug(t *testing.T) {
+func TestCasing_TrimDelimiters(t *testing.T) {
 	res := casing.ToSnake("  hello  ")
 	assert.Equal(t, "hello", res)
-	
+
 	res2 := casing.ToKebab("a--b")
 	assert.Equal(t, "a-b", res2)
 }
+
+func TestCasing_Unicode(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, "мой_тест", casing.ToSnake("МойТест"))
+	assert.Equal(t, "привет_мир", casing.ToSnake("ПриветМир"))
+	assert.Equal(t, "ПРИВЕТ_МИР", casing.ToScreamingSnake("ПриветМир"))
+	assert.Equal(t, "мой-тест", casing.ToKebab("МойТест"))
+}
+

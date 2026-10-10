@@ -271,6 +271,13 @@ func (p Path) Dir() Path {
 
 	slashIdx := strings.LastIndexAny(trimmed, "/\\")
 	if slashIdx == -1 {
+		// Windows drive root (e.g. "C:" or "C:/" or "C:\")
+		if len(trimmed) == 2 && trimmed[1] == ':' {
+			if len(p.raw) > 2 {
+				return Path{raw: p.raw[:3], scheme: "", isURL: false}
+			}
+			return Path{raw: trimmed, scheme: "", isURL: false}
+		}
 		return Path{raw: ".", scheme: "", isURL: false}
 	}
 

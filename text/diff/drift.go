@@ -241,7 +241,7 @@ func (r *Report) RenderJSON() ([]byte, error) {
 	return r.JSON()
 }
 
-// ExitCode returns 1 if breaking changes exist, 2 if ghosts exist, or 0 if clean.
+// ExitCode returns 1 if breaking changes exist, 2 if ghosts exist (unless Additive is set), or 0 if clean.
 func (r *Report) ExitCode() int {
 	if r.BreakingCount() > 0 {
 		return 1

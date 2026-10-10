@@ -136,11 +136,9 @@ func TestReport_Complete(t *testing.T) {
 	assert.True(t, opts.Additive)
 }
 
-func TestReproduce_AdditiveModeExitCodeBug(t *testing.T) {
-	// In Additive mode, ghost endpoints should be ignored and should not fail the build.
-	// However, ExitCode() fails to check the Additive flag and returns 2.
+func TestReport_ExitCode_Additive(t *testing.T) {
 	report := &diff.Report{
-		Additive: true, // Expected to suppress ghost endpoints
+		Additive: true,
 		Drifts: []diff.Drift{
 			{
 				Severity: diff.SeverityGhost,
@@ -149,7 +147,5 @@ func TestReproduce_AdditiveModeExitCodeBug(t *testing.T) {
 			},
 		},
 	}
-	
-	// We expect this to ideally be 0.
 	assert.Equal(t, 0, report.ExitCode())
 }

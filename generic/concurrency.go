@@ -661,14 +661,20 @@ func (tg *TaskGroup[T]) Wait() []Result[T] {
 // If all tasks fail, RaceFirstSuccess returns the error of the last failed task.
 // If tasks is empty, it returns a Failure with an error.
 func RaceFirstSuccess[T any](ctx context.Context, tasks ...func(context.Context) Result[T]) Result[T] {
-	if len(tasks) == 0 {
+	var validCount int
+	for _, task := range tasks {
+		if task != nil {
+			validCount++
+		}
+	}
+	if validCount == 0 {
 		return Failure[T](errors.New("generic: no tasks to race"))
 	}
 
 	raceCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	resCh := make(chan Result[T], len(tasks))
+	resCh := make(chan Result[T], validCount)
 	var wg sync.WaitGroup
 
 	for _, task := range tasks {
@@ -708,7 +714,11 @@ func RaceFirstSuccess[T any](ctx context.Context, tasks ...func(context.Context)
 	}
 
 	if lastErr == nil {
-		lastErr = ctx.Err()
+		if ctx != nil && ctx.Err() != nil {
+			lastErr = ctx.Err()
+		} else {
+			lastErr = errors.New("generic: all tasks failed")
+		}
 	}
 
 	return Failure[T](lastErr)

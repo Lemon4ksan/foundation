@@ -65,12 +65,23 @@ int64_t base64_decode_avx2(const uint8_t* src, uint64_t len, uint8_t* dst) {
     size_t out = 0;
 
     for (; i + 4 <= len; i += 4) {
+        if (src[i] == '=' || src[i + 1] == '=') return -1;
+
         int v0 = b64_val(src[i]);
         int v1 = b64_val(src[i + 1]);
         int v2 = b64_val(src[i + 2]);
         int v3 = b64_val(src[i + 3]);
 
         if ((v0 | v1 | v2 | v3) < 0) return -1;
+
+        int pad = 0;
+        if (src[i + 2] == '=') pad++;
+        if (src[i + 3] == '=') pad++;
+
+        if (pad > 0) {
+            if (i + 4 != len) return -1;
+            if (src[i + 2] == '=' && src[i + 3] != '=') return -1;
+        }
 
         uint32_t triple = ((uint32_t)v0 << 18) | ((uint32_t)v1 << 12) | ((uint32_t)v2 << 6) | (uint32_t)v3;
 

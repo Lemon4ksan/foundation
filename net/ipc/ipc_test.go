@@ -51,6 +51,13 @@ func TestParseIPCURI(t *testing.T) {
 			wantIsIPC:  true,
 		},
 		{
+			name:       "windows_named_pipe_with_api_path",
+			rawURL:     "npipe:////./pipe/docker_engine/v1.41/containers/json",
+			wantSocket: "//./pipe/docker_engine",
+			wantReqURI: "/v1.41/containers/json",
+			wantIsIPC:  true,
+		},
+		{
 			name:       "windows_named_pipe_without_pipe_in_path",
 			rawURL:     "npipe://localhost/other/path",
 			wantSocket: "",

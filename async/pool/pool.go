@@ -194,17 +194,12 @@ func (p *Pool[T]) Submit(ctx context.Context, fn func(context.Context) (T, error
 	}
 
 	// Safely evaluate worker scaling under mutex protection.
-	shouldSpawn := false
 	if p.currentWorkers < p.cfg.MaxWorkers && (p.busyWorkers == p.currentWorkers || len(p.tasks) > 0) {
 		p.currentWorkers++
-		shouldSpawn = true
+		p.spawnWorker()
 	}
 
 	p.mu.Unlock()
-
-	if shouldSpawn {
-		p.spawnWorker()
-	}
 
 	return future, nil
 }

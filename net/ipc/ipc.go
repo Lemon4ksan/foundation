@@ -40,7 +40,16 @@ func ParseIPCURI(rawURL string) (socketPath, reqURI string, isIPC bool) {
 	}
 
 	if path, ok := strings.CutPrefix(rawURL, "npipe://"); ok {
-		if found := strings.Contains(path, "/pipe/"); found {
+		if idx := strings.Index(path, "/pipe/"); idx != -1 {
+			pipePrefixEnd := idx + len("/pipe/")
+			if slash := strings.IndexByte(path[pipePrefixEnd:], '/'); slash != -1 {
+				pipeEnd := pipePrefixEnd + slash
+				reqURI := path[pipeEnd:]
+				if reqURI == "" {
+					reqURI = "/"
+				}
+				return path[:pipeEnd], reqURI, true
+			}
 			return path, "/", true
 		}
 	}

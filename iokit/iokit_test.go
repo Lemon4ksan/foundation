@@ -751,3 +751,24 @@ func TestCopyBufPool_ZeroLengthSlice(t *testing.T) {
 	assert.Equal(t, int64(5000), n3)
 	assert.Equal(t, data, dst3.Bytes())
 }
+
+func TestMultiReadBody_ClosedAfterReallyClose(t *testing.T) {
+	t.Parallel()
+
+	payload := strings.Repeat("A", 100)
+	inner := io.NopCloser(strings.NewReader(payload))
+
+	mrb, err := NewMultiReadBody(inner, 512, false)
+	require.NoError(t, err)
+
+	reallyCloser, ok := mrb.(interface{ ReallyClose() })
+	require.True(t, ok)
+	reallyCloser.ReallyClose()
+
+	var buf [10]byte
+	_, rErr := mrb.Read(buf[:])
+	assert.Error(t, rErr)
+
+	cErr := mrb.Close()
+	assert.Error(t, cErr)
+}

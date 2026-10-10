@@ -93,7 +93,9 @@ func (c *Call) execute(args []any) []any {
 
 		for i, arg := range args {
 			if arg == nil {
-				in[i] = reflect.Zero(fnVal.Type().In(i))
+				if pt := fnParamType(fnVal.Type(), i); pt != nil {
+					in[i] = reflect.Zero(pt)
+				}
 			} else {
 				in[i] = reflect.ValueOf(arg)
 			}
@@ -115,7 +117,9 @@ func (c *Call) execute(args []any) []any {
 
 		for i, arg := range args {
 			if arg == nil {
-				in[i] = reflect.Zero(fnVal.Type().In(i))
+				if pt := fnParamType(fnVal.Type(), i); pt != nil {
+					in[i] = reflect.Zero(pt)
+				}
 			} else {
 				in[i] = reflect.ValueOf(arg)
 			}
@@ -201,4 +205,15 @@ func (c *Call) SetArg(index int, val any) *Call {
 
 func (c *Call) String() string {
 	return fmt.Sprintf("%T.%s(%v)", c.receiver, c.method, c.args)
+}
+
+func fnParamType(fnType reflect.Type, i int) reflect.Type {
+	numIn := fnType.NumIn()
+	if fnType.IsVariadic() && i >= numIn-1 {
+		return fnType.In(numIn - 1).Elem()
+	}
+	if i < numIn {
+		return fnType.In(i)
+	}
+	return nil
 }

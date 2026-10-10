@@ -412,6 +412,34 @@ func TestEmpirical_Pool_ItemsSeq_ErrorPropagation(t *testing.T) {
 	}
 }
 
+func TestPool_ConcurrentSubmitClose(t *testing.T) {
+	for range 500 {
+		p := New[int](Config{
+			MinWorkers: 1,
+			MaxWorkers: 10,
+		})
+
+		var wg sync.WaitGroup
+		wg.Add(11)
+		go func() {
+			defer wg.Done()
+			_ = p.Close()
+		}()
+
+		for range 10 {
+			go func() {
+				defer wg.Done()
+				_, _ = p.Submit(context.Background(), func(ctx context.Context) (int, error) {
+					return 1, nil
+				})
+			}()
+		}
+
+		wg.Wait()
+	}
+}
+
+
 func BenchmarkItemsSeq(b *testing.B) {
 	ctx := context.Background()
 	p := New[int](Config{MinWorkers: 4, MaxWorkers: 4, QueueLimit: 50})

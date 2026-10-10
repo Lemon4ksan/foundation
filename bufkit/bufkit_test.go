@@ -985,3 +985,38 @@ func BenchmarkRing_Reset(b *testing.B) {
 		ring.Reset()
 	}
 }
+
+type failAfterNWriter struct {
+	writesCount int
+	failOn      int
+}
+
+func (w *failAfterNWriter) Write(p []byte) (int, error) {
+	w.writesCount++
+	if w.writesCount == w.failOn {
+		return 0, errors.New("simulated error")
+	}
+	return len(p), nil
+}
+
+func TestChain_WriteTo_LengthAccounting(t *testing.T) {
+	c := bufkit.NewChain()
+
+	// Write enough to span 2 chunks (DefaultChunkSize + 10)
+	data := make([]byte, bufkit.DefaultChunkSize+10)
+	_, err := c.Write(data)
+	require.NoError(t, err)
+
+	initialLen := c.Len()
+
+	// Fail on the second write
+	w := &failAfterNWriter{failOn: 2}
+
+	n, err := c.WriteTo(w)
+	require.Error(t, err)
+	assert.Equal(t, int64(bufkit.DefaultChunkSize), n)
+
+	// c.length should have decremented by the bytes successfully written
+	expectedLen := initialLen - int(n)
+	assert.Equal(t, expectedLen, c.Len())
+}

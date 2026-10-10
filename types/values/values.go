@@ -7,6 +7,7 @@ package values
 import (
 	"encoding/json"
 	"errors"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -263,10 +264,6 @@ type NumberConstraint interface {
 
 // NumberString formats any integer or floating-point number into its decimal string representation.
 //
-// Note: Due to a type switch bug, custom floating-point types (e.g., type MyFloat float64) 
-// will incorrectly fall through to the default integer case, causing their decimal
-// precision to be completely truncated (e.g. MyFloat(3.14) -> "3").
-//
 // For integers and floats, formatting uses strconv with zero heap allocations beyond the returned string.
 func NumberString[T NumberConstraint](v T) string {
 	switch x := any(v).(type) {
@@ -297,6 +294,16 @@ func NumberString[T NumberConstraint](v T) string {
 	case float64:
 		return strconv.FormatFloat(x, 'f', -1, 64)
 	default:
-		return strconv.FormatInt(int64(v), 10)
+		val := reflect.ValueOf(v)
+		switch val.Kind() {
+		case reflect.Float32:
+			return strconv.FormatFloat(val.Float(), 'f', -1, 32)
+		case reflect.Float64:
+			return strconv.FormatFloat(val.Float(), 'f', -1, 64)
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+			return strconv.FormatUint(val.Uint(), 10)
+		default:
+			return strconv.FormatInt(val.Int(), 10)
+		}
 	}
 }

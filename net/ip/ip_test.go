@@ -5,8 +5,10 @@
 package ip_test
 
 import (
+	"fmt"
 	"net"
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/lemon4ksan/foundation/net/ip"
@@ -153,4 +155,40 @@ func TestIsPrivateIP(t *testing.T) {
 	assert.False(t, ip.IsPrivateIP(net.ParseIP("8.8.8.8")))
 	assert.False(t, ip.IsPrivateIP(net.ParseIP("1.1.1.1")))
 	assert.False(t, ip.IsPrivateIP(net.ParseIP("2606:4700:4700::1111")))
+}
+
+func TestNextForFamily_Concurrent(t *testing.T) {
+	t.Parallel()
+
+	// 1 IPv4 at index 1, 9 IPv6 addresses
+	addrs := []string{"2001:db8::1", "192.168.1.1"}
+	for i := 0; i < 8; i++ {
+		addrs = append(addrs, fmt.Sprintf("2001:db8::%x", i+2))
+	}
+
+	rotator, err := ip.NewSourceRotator(addrs)
+	require.NoError(t, err)
+
+	for iter := 0; iter < 100; iter++ {
+		const goroutines = 50
+		var wg sync.WaitGroup
+		var missed atomic.Int32
+
+		wg.Add(goroutines)
+		for range goroutines {
+			go func() {
+				defer wg.Done()
+				addr := rotator.NextForFamily(true)
+				if addr == nil {
+					missed.Add(1)
+				}
+			}()
+		}
+
+		wg.Wait()
+
+		if missed.Load() > 0 {
+			t.Fatalf("CRITICAL BUG: NextForFamily returned nil %d times despite having IPv4 address in pool (iteration %d)", missed.Load(), iter)
+		}
+	}
 }

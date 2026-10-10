@@ -573,6 +573,10 @@ func (m *MultiReadBody) Read(p []byte) (int, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	if m.closed {
+		return 0, os.ErrClosed
+	}
+
 	return m.reader.Read(p)
 }
 
@@ -585,6 +589,10 @@ func (m *MultiReadBody) Reset() {
 func (m *MultiReadBody) Close() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
+	if m.closed {
+		return os.ErrClosed
+	}
 
 	if m.tmpFile != nil {
 		_, _ = m.tmpFile.Seek(0, io.SeekStart)
@@ -608,6 +616,9 @@ func (m *MultiReadBody) ReallyClose() {
 	}
 
 	m.closed = true
+	m.data = nil
+	m.bytesRd.Reset(nil)
+	m.reader = nil
 
 	if m.offBuf != nil {
 		m.offBuf.Release()

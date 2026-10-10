@@ -18,8 +18,9 @@
 // calling [reflect.Value.Interface], preventing interface boxing allocations.
 //
 // 3. [SchemaCache]: A thread-safe, read-optimized cache storing parsed struct layouts
-// ([StructSchema] and [FieldSchema]) with pre-computed field byte offsets and pre-parsed
-// tags, delivering zero heap allocations on cache hit hot paths.
+// ([StructSchema] and [FieldSchema]) with pre-computed field byte offsets (or [OffsetInvalid]
+// for indirect pointer-embedded fields) and pre-parsed tags, delivering zero heap allocations
+// on cache hit hot paths.
 //
 // 4. [Implements]: A generic interface compliance checker utilizing [reflect.TypeFor]
 // that validates interface satisfaction safely without panics or boxing.

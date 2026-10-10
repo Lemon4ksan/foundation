@@ -10,6 +10,7 @@ import (
 	"net/netip"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/lemon4ksan/foundation/bufkit"
 	"github.com/lemon4ksan/foundation/net/dns/wire"
@@ -319,4 +320,15 @@ func FuzzPackDNSQuery(f *testing.F) {
 			_, _ = wire.ParseDNSResponse(packed, id)
 		}
 	})
+}
+
+func TestNormalizeTTL(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, 300*time.Second, wire.NormalizeTTL(300))
+
+	rawTTL := uint32(0x80000005)
+	assert.Equal(t, time.Duration(0), wire.NormalizeTTL(rawTTL))
+
+	assert.Equal(t, 7*24*time.Hour, wire.NormalizeTTL(0x7FFFFFFF))
 }

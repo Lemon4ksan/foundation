@@ -281,6 +281,7 @@ func (cb *Breaker[T]) pruneRecords(now time.Time) {
 	}
 
 	if i > 0 {
-		cb.records = cb.records[i:]
+		n := copy(cb.records, cb.records[i:])
+		cb.records = cb.records[:n]
 	}
 }

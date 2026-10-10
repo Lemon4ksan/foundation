@@ -152,9 +152,9 @@ func (r *SourceRotator) NextForFamily(isIPv4 bool) net.IP {
 		return nil
 	}
 
-	for range n {
-		i := r.idx.Add(1) - 1
-		ip := ips[i%n]
+	start := r.idx.Add(1) - 1
+	for offset := range n {
+		ip := ips[(start+offset)%n]
 
 		hasV4 := ip.To4() != nil
 		if isIPv4 == hasV4 {

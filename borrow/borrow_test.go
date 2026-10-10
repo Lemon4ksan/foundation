@@ -6,7 +6,9 @@ package borrow_test
 
 import (
 	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 	"unsafe"
 
 	"github.com/lemon4ksan/foundation/borrow"
@@ -636,6 +638,53 @@ func TestRegression_Concurrency_ScopeParallelPool(t *testing.T) {
 	}
 
 	wg.Wait()
+}
+
+func TestFreezeDataRace(t *testing.T) {
+	t.Parallel()
+
+	val := 42
+	box := borrow.NewBox(&val)
+	defer box.Release()
+
+	for i := 0; i < 500; i++ {
+		mut, err := box.TryBorrowMut()
+		require.NoError(t, err)
+
+		var stopSpin atomic.Bool
+		var refReleased atomic.Bool
+		var violation atomic.Bool
+		var wg sync.WaitGroup
+		wg.Add(2)
+
+		go func() {
+			defer wg.Done()
+			for !stopSpin.Load() {
+				newMut, err := box.TryBorrowMut()
+				if err == nil {
+					if !refReleased.Load() {
+						violation.Store(true)
+					}
+					newMut.Release()
+				}
+			}
+		}()
+
+		go func() {
+			defer wg.Done()
+			ref := mut.Freeze()
+			time.Sleep(50 * time.Microsecond)
+			stopSpin.Store(true)
+			refReleased.Store(true)
+			ref.Release()
+		}()
+
+		wg.Wait()
+
+		if violation.Load() {
+			t.Fatal("CRITICAL VIOLATION: Acquired Mut concurrently with Ref during Freeze!")
+		}
+	}
 }
 
 func BenchmarkSlot_SharedAcquireRelease(b *testing.B) {

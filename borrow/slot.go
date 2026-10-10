@@ -190,8 +190,8 @@ func (s *Slot) Freeze() {
 	if s == nil {
 		return
 	}
-	s.writer.Store(false)
 	s.readers.Add(1)
+	s.writer.Store(false)
 }
 
 // CheckValid verifies the generation and panics with a descriptive message if invalid.

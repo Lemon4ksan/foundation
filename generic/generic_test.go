@@ -824,6 +824,13 @@ func TestRaceFirstSuccess(t *testing.T) {
 			t.Fatal("expected failure on empty tasks")
 		}
 	})
+
+	t.Run("all_nil_tasks", func(t *testing.T) {
+		res := RaceFirstSuccess[int](context.Background(), nil, nil)
+		if res.IsSuccess() {
+			t.Fatal("expected failure on all nil tasks")
+		}
+	})
 }
 
 func TestMutexAndLockGuards(t *testing.T) {

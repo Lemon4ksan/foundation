@@ -320,6 +320,10 @@ func extractReceiverType(recv *ast.FieldList) string {
 		if ident, ok := index.X.(*ast.Ident); ok {
 			buf.WriteString(ident.Name)
 		}
+	} else if indexList, ok := t.(*ast.IndexListExpr); ok {
+		if ident, ok := indexList.X.(*ast.Ident); ok {
+			buf.WriteString(ident.Name)
+		}
 	}
 	return buf.String()
 }
@@ -572,4 +576,25 @@ func TestModernization_AcceptanceSuite(t *testing.T) {
 			t.Fatalf("Modernization incomplete: %d violations must be resolved across milestones.", len(violations))
 		}
 	})
+}
+
+func TestExtractReceiverType_MultiGeneric(t *testing.T) {
+	t.Parallel()
+
+	src := `package dummy
+type MyType[T1, T2 any] struct{}
+func (v *MyType[T1, T2]) GetID() int { return 0 }
+`
+	fset := token.NewFileSet()
+	node, err := parser.ParseFile(fset, "", src, 0)
+	if err != nil {
+		t.Fatalf("ParseFile error: %v", err)
+	}
+
+	funcDecl := node.Decls[1].(*ast.FuncDecl)
+	name := extractReceiverType(funcDecl.Recv)
+
+	if name != "*MyType" {
+		t.Fatalf("expected *MyType, got %q", name)
+	}
 }

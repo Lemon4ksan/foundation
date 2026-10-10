@@ -364,66 +364,52 @@ func TestRepro_Mutex_UnlockUnheldKey(t *testing.T) {
 	km.Unlock("key1")
 }
 
-func TestReproduce_ForceUnlockBreaksMutualExclusion(t *testing.T) {
+func TestKeyLock_ForceUnlock_Concurrent(t *testing.T) {
 	km := New[string]()
 	key := "A"
 
-	// Thread 1 acquires lock
 	km.Lock(key)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
 	blocked := make(chan struct{})
 
-	// Thread 2 attempts to acquire lock and blocks
 	go func() {
 		defer wg.Done()
 		close(blocked)
 		km.Lock(key)
-		time.Sleep(100 * time.Millisecond) // HOLD the lock!
-		defer func() { _ = recover() }() // Swallow panic on Unlock to prevent test crash
+		time.Sleep(100 * time.Millisecond)
+		defer func() { _ = recover() }()
 		km.Unlock(key)
 	}()
 
 	<-blocked
-	// Allow Thread 2 to enter km.Lock and wait on ref.mu.Lock()
 	time.Sleep(50 * time.Millisecond)
 
-	// ForceUnlock deletes the key from km.locks and unlocks ref.mu
-	// Thread 2 unblocks and enters its critical section on the deleted ref
 	km.ForceUnlock(key)
 	time.Sleep(50 * time.Millisecond)
 
-	// Now Thread 3 can successfully lock "A" because it was deleted from km.locks
-	// Thread 3 will create a new ref and succeed immediately!
-	// Mutual exclusion is broken.
 	locked := km.TryLock(key)
 	if locked {
-		// Clean up
 		km.Unlock(key)
-		t.Fatal("BUG: Mutual exclusion broken! Thread 3 was able to lock the key while Thread 2 was holding it after a ForceUnlock.")
+		t.Fatal("expected mutual exclusion to be preserved after ForceUnlock")
 	}
 	wg.Wait()
 }
 
-func TestReproduce_TryLockLeak(t *testing.T) {
+func TestKeyLock_TryLock_Contention(t *testing.T) {
 	km := New[string]()
-	// We simulate the exact scenario where TryLock's cleanup leaves count=0
-	// but fails to Put it in the pool.
-	
+
 	km.Lock("leak")
-	
-	// Create a race window by injecting another goroutine that TryLocks and fails.
-	// Because testing timing is tricky, we can't definitively check the pool internals easily,
-	// but we can execute the flow to demonstrate it doesn't crash but leaks memory.
+
 	var wg sync.WaitGroup
 	wg.Add(1)
-	
+
 	go func() {
 		defer wg.Done()
 		km.TryLock("leak")
 	}()
-	
+
 	km.Unlock("leak")
 	wg.Wait()
 }

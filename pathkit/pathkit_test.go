@@ -316,6 +316,15 @@ func TestPath_Sanitize(t *testing.T) {
 	assert.Equal(t, "var/log", pathkit.Sanitize(`..\..\var\log`))
 	assert.Equal(t, "safe/path", pathkit.Sanitize("./safe/path"))
 	assert.Equal(t, "", pathkit.Sanitize(""))
+	assert.Equal(t, "Windows/System32", pathkit.Sanitize(`C:\Windows\System32`))
+	assert.Equal(t, "Windows/System32", pathkit.Sanitize(`C:/Windows/System32`))
+}
+
+func TestPath_Dir_WindowsDriveRoot(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, "C:/", pathkit.New("C:/").Dir().String())
+	assert.Equal(t, "C:/", pathkit.New(`C:\`).Dir().String())
 }
 
 func TestPath_Iterators(t *testing.T) {
