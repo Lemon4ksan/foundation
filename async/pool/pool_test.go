@@ -400,7 +400,7 @@ func TestEmpirical_Pool_ItemsSeq_ErrorPropagation(t *testing.T) {
 	}
 
 	var gotErr error
-	for _, err := range ItemsSeq(ctx, p, failingSeq) {
+	for _, err := range p.ItemsSeq(ctx, failingSeq) {
 		if err != nil {
 			gotErr = err
 			break
