@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"golang.org/x/crypto/ssh"
+
 	"github.com/lemon4ksan/foundation/crypto/sign"
 )
 
@@ -98,6 +100,25 @@ func TestSign_Fingerprints(t *testing.T) {
 	}
 }
 
+func TestRepro_OpenSSHFingerprintIncompatibility(t *testing.T) {
+	pub, _, err := sign.GenerateKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sshKey, err := ssh.NewPublicKey(pub)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expected := ssh.FingerprintSHA256(sshKey)
+	actual := sign.FingerprintSHA256(pub)
+
+	if actual != expected {
+		t.Fatalf("OpenSSH fingerprint mismatch!\nExpected: %s\nActual:   %s", expected, actual)
+	}
+}
+
 func TestSign_PEMSerialization(t *testing.T) {
 	pub, priv, err := sign.GenerateKey()
 	if err != nil {
@@ -176,3 +197,69 @@ func TestSign_Hex(t *testing.T) {
 		t.Fatal("expected error on invalid hex")
 	}
 }
+
+func TestRepro_CorruptedKeyHandling(t *testing.T) {
+	pub, priv, err := sign.GenerateKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// 1. Wrong PEM type in DecodePrivateKeyPEM
+	pubPEM, err := sign.EncodePublicKeyPEM(pub)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = sign.DecodePrivateKeyPEM(pubPEM)
+	if err == nil {
+		t.Fatal("expected error when decoding public key PEM as private key")
+	}
+
+	// 2. Wrong PEM type in DecodePublicKeyPEM
+	privPEM, err := sign.EncodePrivateKeyPEM(priv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = sign.DecodePublicKeyPEM(privPEM)
+	if err == nil {
+		t.Fatal("expected error when decoding private key PEM as public key")
+	}
+
+	// 3. Corrupted key length handling
+	if fp := sign.FingerprintSHA256([]byte("too-short")); fp != "" {
+		t.Fatalf("expected empty fingerprint for invalid key size, got %s", fp)
+	}
+	if fpHex := sign.FingerprintHex([]byte("too-short")); fpHex != "" {
+		t.Fatalf("expected empty hex fingerprint for invalid key size, got %s", fpHex)
+	}
+	if hexVal := sign.PublicKeyHex([]byte("too-short")); hexVal != "" {
+		t.Fatalf("expected empty hex for invalid key size, got %s", hexVal)
+	}
+
+	// 4. Verify with corrupted public key
+	corruptedPub := make([]byte, sign.PublicKeySize)
+	copy(corruptedPub, pub)
+	corruptedPub[0] ^= 0xFF
+	msg := []byte("hello")
+	sig := sign.Sign(priv, msg)
+	if sign.Verify(corruptedPub, msg, sig) {
+		t.Fatal("verification must fail with corrupted public key")
+	}
+}
+
+func FuzzParsePublicKeyHex(f *testing.F) {
+	pub, _, _ := sign.GenerateKey()
+	f.Add(sign.PublicKeyHex(pub))
+	f.Add("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
+	f.Add("")
+	f.Add("zzzz")
+
+	f.Fuzz(func(t *testing.T, hexStr string) {
+		k, err := sign.ParsePublicKeyHex(hexStr)
+		if err == nil {
+			if len(k) != sign.PublicKeySize {
+				t.Errorf("parsed key had unexpected length: %d", len(k))
+			}
+		}
+	})
+}
+

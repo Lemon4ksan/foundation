@@ -62,6 +62,10 @@ func (f *Machine[State, Event]) AddRules(rules ...TransitionRule[State, Event]) 
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
+	if f.rules == nil {
+		f.rules = make(map[State]map[Event]State)
+	}
+
 	for _, r := range rules {
 		if f.rules[r.From] == nil {
 			f.rules[r.From] = make(map[Event]State)
@@ -92,6 +96,10 @@ func (f *Machine[State, Event]) OnBefore(event Event, cb TransitionCallback[Stat
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
+	if f.beforeHooks == nil {
+		f.beforeHooks = make(map[Event][]TransitionCallback[State, Event])
+	}
+
 	f.beforeHooks[event] = append(f.beforeHooks[event], cb)
 }
 
@@ -99,6 +107,10 @@ func (f *Machine[State, Event]) OnBefore(event Event, cb TransitionCallback[Stat
 func (f *Machine[State, Event]) OnAfter(event Event, cb TransitionCallback[State, Event]) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+
+	if f.afterHooks == nil {
+		f.afterHooks = make(map[Event][]TransitionCallback[State, Event])
+	}
 
 	f.afterHooks[event] = append(f.afterHooks[event], cb)
 }
@@ -121,8 +133,16 @@ func (f *Machine[State, Event]) Validate(event Event) (State, bool) {
 
 // Transition atomically moves the machine from its current state to the next state determined by the given event.
 func (f *Machine[State, Event]) Transition(ctx context.Context, event Event) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
 	f.transMu.Lock()
 	defer f.transMu.Unlock()
+
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 
 	f.mu.RLock()
 	from := f.current
@@ -150,8 +170,8 @@ func (f *Machine[State, Event]) Transition(ctx context.Context, event Event) err
 	f.mu.RUnlock()
 
 	// Execute before-hooks safely outside the RWMutex.
-	// Since transitions are serialized by transMu, we are guaranteed that
-	// f.current has not changed since our validation step.
+	// Since transitions are serialized by transMu, we expect that
+	// f.current has not changed unless forcefully mutated.
 	for _, hook := range beforeHooks {
 		if hook != nil {
 			if err := hook(ctx, from, event, to); err != nil {
@@ -161,6 +181,11 @@ func (f *Machine[State, Event]) Transition(ctx context.Context, event Event) err
 	}
 
 	f.mu.Lock()
+	if f.current != from {
+		current := f.current
+		f.mu.Unlock()
+		return fmt.Errorf("fsm: state mutated from %v to %v during transition", from, current)
+	}
 	f.current = to
 	f.mu.Unlock()
 

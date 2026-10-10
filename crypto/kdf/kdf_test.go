@@ -63,6 +63,67 @@ func TestPBKDF2_RFC6070TestCase1(t *testing.T) {
 	}
 }
 
+func TestRepro_PBKDF2_NegativeKeyLenPanic(t *testing.T) {
+	// Must not panic on negative key length
+	dk := kdf.PBKDF2(sha1.New, []byte("password"), []byte("salt"), 1, -1)
+	if dk != nil {
+		t.Fatalf("expected nil for negative keyLen, got %v", dk)
+	}
+}
+
+func TestRepro_PBKDF2_EdgeCases(t *testing.T) {
+	// Zero keyLen returns empty byte slice
+	dk0 := kdf.PBKDF2(sha1.New, []byte("password"), []byte("salt"), 1, 0)
+	if dk0 == nil || len(dk0) != 0 {
+		t.Fatalf("expected empty slice for keyLen=0, got %v", dk0)
+	}
+
+	// Zero or negative iteration count returns nil
+	dkZeroIter := kdf.PBKDF2(sha1.New, []byte("password"), []byte("salt"), 0, 16)
+	if dkZeroIter != nil {
+		t.Fatalf("expected nil for iter=0, got %v", dkZeroIter)
+	}
+
+	dkNegIter := kdf.PBKDF2(sha1.New, []byte("password"), []byte("salt"), -5, 16)
+	if dkNegIter != nil {
+		t.Fatalf("expected nil for iter=-5, got %v", dkNegIter)
+	}
+
+	// Nil hash function returns nil
+	dkNilHash := kdf.PBKDF2(nil, []byte("password"), []byte("salt"), 1, 16)
+	if dkNilHash != nil {
+		t.Fatalf("expected nil for nil hash, got %v", dkNilHash)
+	}
+}
+
+func FuzzPBKDF2(f *testing.F) {
+	f.Add([]byte("password"), []byte("salt"), 1, 16)
+	f.Add([]byte(""), []byte(""), 0, 0)
+	f.Add([]byte("pass"), []byte("salt"), -1, -1)
+	f.Add([]byte("secret"), []byte("salt1234"), 5, 64)
+
+	f.Fuzz(func(t *testing.T, password, salt []byte, iter, keyLen int) {
+		// Limit iter and keyLen to keep fuzzing fast
+		if iter > 20 {
+			iter = 20
+		}
+		if keyLen > 128 {
+			keyLen = 128
+		}
+
+		res := kdf.PBKDF2(sha256.New, password, salt, iter, keyLen)
+		if keyLen < 0 || iter <= 0 {
+			if res != nil {
+				t.Errorf("expected nil for invalid parameters")
+			}
+		} else {
+			if len(res) != keyLen {
+				t.Errorf("expected len %d, got %d", keyLen, len(res))
+			}
+		}
+	})
+}
+
 func TestArgon2id_FastProfile(t *testing.T) {
 	pass := []byte("test-vault-password")
 	salt := []byte("1234567890123456")

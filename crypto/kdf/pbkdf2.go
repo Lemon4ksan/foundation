@@ -13,6 +13,13 @@ import (
 
 // PBKDF2 derives a cryptographic key from a password and salt using PBKDF2 (RFC 2898 / PKCS #5 v2.0).
 func PBKDF2(h func() hash.Hash, password, salt []byte, iter, keyLen int) []byte {
+	if h == nil || keyLen < 0 || iter <= 0 {
+		return nil
+	}
+	if keyLen == 0 {
+		return []byte{}
+	}
+
 	prf := hmac.New(h, password)
 	hashLen := prf.Size()
 	numBlocks := (keyLen + hashLen - 1) / hashLen

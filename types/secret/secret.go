@@ -32,6 +32,24 @@ func (s Secret[T]) Expose() T {
 	return s.val
 }
 
+// Wipe securely zeroes the underlying sensitive material in memory.
+// If the wrapped value is a byte slice, its backing memory is explicitly overwritten with zeroes.
+// If the wrapped value implements a Wipe or Destroy method, it is invoked.
+// The secret container is then reset to its zero value.
+func (s *Secret[T]) Wipe() {
+	if b, ok := any(s.val).([]byte); ok {
+		for i := range b {
+			b[i] = 0
+		}
+	} else if w, ok := any(s.val).(interface{ Wipe() }); ok && w != nil {
+		w.Wipe()
+	} else if d, ok := any(s.val).(interface{ Destroy() }); ok && d != nil {
+		d.Destroy()
+	}
+	var zero T
+	s.val = zero
+}
+
 // String masks the secret when formatted with %s, %v, or fmt.Println.
 func (s Secret[T]) String() string {
 	return "******"
