@@ -6,8 +6,8 @@ package simd
 
 import (
 	"bytes"
-	"encoding/binary"
 	"math/bits"
+	"runtime"
 	"unicode/utf8"
 	"unsafe"
 )
@@ -27,33 +27,74 @@ func IndexByteSWAR(b []byte, target byte) int {
 		return -1
 	}
 
+	_ = b[n-1] // BCE
+	basePtr := unsafe.Pointer(unsafe.SliceData(b))
 	targetWord := RepeatByte0x01 * uint64(target)
 	i := 0
 
-	// Process 8-byte uint64 chunks
-	for i+8 <= n {
-		word := binary.LittleEndian.Uint64(b[i:])
-		xor := word ^ targetWord
+	// Unrolled 32-byte SWAR loop with coalesced zero-byte check
+	for i+32 <= n {
+		w0 := *(*uint64)(unsafe.Pointer(uintptr(basePtr) + uintptr(i)))
+		w1 := *(*uint64)(unsafe.Pointer(uintptr(basePtr) + uintptr(i+8)))
+		w2 := *(*uint64)(unsafe.Pointer(uintptr(basePtr) + uintptr(i+16)))
+		w3 := *(*uint64)(unsafe.Pointer(uintptr(basePtr) + uintptr(i+24)))
 
-		// Zero byte detection mask algorithm
-		hasZero := (xor - RepeatByte0x01) &^ xor & RepeatByte0x80
-		if hasZero != 0 {
-			// Find offset of first matching byte using trailing zeros count
-			byteIdx := bits.TrailingZeros64(hasZero) >> 3
+		x0 := w0 ^ targetWord
+		x1 := w1 ^ targetWord
+		x2 := w2 ^ targetWord
+		x3 := w3 ^ targetWord
 
-			return i + byteIdx
+		z0 := (x0 - RepeatByte0x01) &^ x0 & RepeatByte0x80
+		z1 := (x1 - RepeatByte0x01) &^ x1 & RepeatByte0x80
+		z2 := (x2 - RepeatByte0x01) &^ x2 & RepeatByte0x80
+		z3 := (x3 - RepeatByte0x01) &^ x3 & RepeatByte0x80
+
+		if (z0 | z1 | z2 | z3) != 0 {
+			if z0 != 0 {
+				res := i + (bits.TrailingZeros64(z0) >> 3)
+				runtime.KeepAlive(b)
+				return res
+			}
+			if z1 != 0 {
+				res := i + 8 + (bits.TrailingZeros64(z1) >> 3)
+				runtime.KeepAlive(b)
+				return res
+			}
+			if z2 != 0 {
+				res := i + 16 + (bits.TrailingZeros64(z2) >> 3)
+				runtime.KeepAlive(b)
+				return res
+			}
+			res := i + 24 + (bits.TrailingZeros64(z3) >> 3)
+			runtime.KeepAlive(b)
+			return res
 		}
 
+		i += 32
+	}
+
+	// 8-byte uint64 remainder chunks
+	for i+8 <= n {
+		word := *(*uint64)(unsafe.Pointer(uintptr(basePtr) + uintptr(i)))
+		xor := word ^ targetWord
+		hasZero := (xor - RepeatByte0x01) &^ xor & RepeatByte0x80
+		if hasZero != 0 {
+			res := i + (bits.TrailingZeros64(hasZero) >> 3)
+			runtime.KeepAlive(b)
+			return res
+		}
 		i += 8
 	}
 
 	// Scalar tail processing
 	for ; i < n; i++ {
-		if b[i] == target {
+		if *(*byte)(unsafe.Pointer(uintptr(basePtr) + uintptr(i))) == target {
+			runtime.KeepAlive(b)
 			return i
 		}
 	}
 
+	runtime.KeepAlive(b)
 	return -1
 }
 
@@ -65,13 +106,15 @@ func IndexByteTwoSWAR(b []byte, target1, target2 byte) int {
 		return -1
 	}
 
+	_ = b[n-1] // BCE
+	basePtr := unsafe.Pointer(unsafe.SliceData(b))
 	w1 := RepeatByte0x01 * uint64(target1)
 	w2 := RepeatByte0x01 * uint64(target2)
 	i := 0
 
+	// 8-byte uint64 SWAR chunks
 	for i+8 <= n {
-		word := binary.LittleEndian.Uint64(b[i:])
-
+		word := *(*uint64)(unsafe.Pointer(uintptr(basePtr) + uintptr(i)))
 		xor1 := word ^ w1
 		hasZero1 := (xor1 - RepeatByte0x01) &^ xor1 & RepeatByte0x80
 
@@ -80,20 +123,23 @@ func IndexByteTwoSWAR(b []byte, target1, target2 byte) int {
 
 		mask := hasZero1 | hasZero2
 		if mask != 0 {
-			byteIdx := bits.TrailingZeros64(mask) >> 3
-
-			return i + byteIdx
+			res := i + (bits.TrailingZeros64(mask) >> 3)
+			runtime.KeepAlive(b)
+			return res
 		}
 
 		i += 8
 	}
 
 	for ; i < n; i++ {
-		if b[i] == target1 || b[i] == target2 {
+		c := *(*byte)(unsafe.Pointer(uintptr(basePtr) + uintptr(i)))
+		if c == target1 || c == target2 {
+			runtime.KeepAlive(b)
 			return i
 		}
 	}
 
+	runtime.KeepAlive(b)
 	return -1
 }
 
@@ -138,19 +184,38 @@ func IndexDoubleCRLF(b []byte) int {
 }
 
 // ValidUTF8 reports whether b consists of valid UTF-8-encoded bytes,
-// accelerated with 64-bit SWAR vector ASCII fast-path processing (processing 8 bytes/cycle).
+// accelerated with 64-bit SWAR vector ASCII fast-path processing (processing 32 bytes/iter).
 func ValidUTF8(b []byte) bool {
 	n := len(b)
+	if n == 0 {
+		return true
+	}
+	_ = b[n-1] // BCE
+	basePtr := unsafe.Pointer(unsafe.SliceData(b))
 	i := 0
 
-	// Fast 8-byte SWAR loop for ASCII runs
+	// Fast 32-byte SWAR loop for ASCII runs
+	for i+32 <= n {
+		w0 := *(*uint64)(unsafe.Pointer(uintptr(basePtr) + uintptr(i)))
+		w1 := *(*uint64)(unsafe.Pointer(uintptr(basePtr) + uintptr(i+8)))
+		w2 := *(*uint64)(unsafe.Pointer(uintptr(basePtr) + uintptr(i+16)))
+		w3 := *(*uint64)(unsafe.Pointer(uintptr(basePtr) + uintptr(i+24)))
+		if ((w0 | w1 | w2 | w3) & RepeatByte0x80) != 0 {
+			break
+		}
+		i += 32
+	}
+
+	// 8-byte SWAR loop for remainder
 	for i+8 <= n {
-		word := *(*uint64)(unsafe.Pointer(&b[i]))
-		if (word & RepeatByte0x80) != 0 {
+		w := *(*uint64)(unsafe.Pointer(uintptr(basePtr) + uintptr(i)))
+		if (w & RepeatByte0x80) != 0 {
 			break
 		}
 		i += 8
 	}
+
+	runtime.KeepAlive(b)
 
 	if i == n {
 		return true
@@ -162,15 +227,26 @@ func ValidUTF8(b []byte) bool {
 
 // XORMask32 masks slice b using a 4-byte cyclic mask via SWAR 64-bit XOR.
 func XORMask32(b []byte, mask uint32) {
-	if len(b) == 0 {
+	n := len(b)
+	if n == 0 {
 		return
 	}
-
+	_ = b[n-1] // BCE
+	basePtr := unsafe.Pointer(unsafe.SliceData(b))
 	mask64 := uint64(mask) | (uint64(mask) << 32)
 	i := 0
 
-	for i+8 <= len(b) {
-		*(*uint64)(unsafe.Pointer(&b[i])) ^= mask64
+	// 4x unrolled 32-byte SWAR XOR
+	for i+32 <= n {
+		*(*uint64)(unsafe.Pointer(uintptr(basePtr) + uintptr(i))) ^= mask64
+		*(*uint64)(unsafe.Pointer(uintptr(basePtr) + uintptr(i+8))) ^= mask64
+		*(*uint64)(unsafe.Pointer(uintptr(basePtr) + uintptr(i+16))) ^= mask64
+		*(*uint64)(unsafe.Pointer(uintptr(basePtr) + uintptr(i+24))) ^= mask64
+		i += 32
+	}
+
+	for i+8 <= n {
+		*(*uint64)(unsafe.Pointer(uintptr(basePtr) + uintptr(i))) ^= mask64
 		i += 8
 	}
 
@@ -181,9 +257,10 @@ func XORMask32(b []byte, mask uint32) {
 		byte(mask >> 24),
 	}
 
-	for ; i < len(b); i++ {
-		b[i] ^= maskBytes[i&3]
+	for ; i < n; i++ {
+		*(*byte)(unsafe.Pointer(uintptr(basePtr) + uintptr(i))) ^= maskBytes[i&3]
 	}
+	runtime.KeepAlive(b)
 }
 
 // PrefetchL1 issues a prefetch instruction for the memory address.
