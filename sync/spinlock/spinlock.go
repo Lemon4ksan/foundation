@@ -52,7 +52,7 @@ func (s *Lock) lockSlow() {
 		if atomic.CompareAndSwapUint32(&s.state, 0, 1) {
 			return
 		}
-		
+
 		// Reset backoff on failed CAS
 		backoff = 1
 	}

@@ -21,8 +21,10 @@ var months = [...]string{
 // HTTPDateLength is the exact length in bytes of an RFC 7231 HTTP-date string (29 bytes).
 const HTTPDateLength = 29
 
-var errInvalidHTTPDateLength = errors.New("timekit: invalid HTTP-date length")
-var errInvalidHTTPDateValue = errors.New("timekit: invalid HTTP-date value")
+var (
+	errInvalidHTTPDateLength = errors.New("timekit: invalid HTTP-date length")
+	errInvalidHTTPDateValue  = errors.New("timekit: invalid HTTP-date value")
+)
 
 // AppendHTTPDate appends an RFC 7231 / RFC 9110 compliant HTTP-date (e.g. "Sun, 06 Nov 1994 08:49:37 GMT")
 // to dst without heap allocations.

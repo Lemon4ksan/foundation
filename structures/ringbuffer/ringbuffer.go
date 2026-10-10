@@ -136,10 +136,7 @@ func (r *Buffer[T]) Drain() iter.Seq[T] {
 	return func(yield func(T) bool) {
 		for !r.Empty() {
 			item := r.PopFront()
-			cont := yield(item)
-			var zero T
-			item = zero
-			if !cont {
+			if !yield(item) {
 				return
 			}
 		}

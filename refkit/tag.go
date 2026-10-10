@@ -156,7 +156,8 @@ func parseTagASCII(tagStr string) Tag {
 				optCount++
 			}
 		}
-		if optCount == 1 {
+		switch optCount {
+		case 1:
 			for _, opt := range allParts[1:] {
 				if opt = strings.TrimSpace(opt); opt != "" {
 					switch opt {
@@ -172,7 +173,7 @@ func parseTagASCII(tagStr string) Tag {
 					break
 				}
 			}
-		} else if optCount == 2 {
+		case 2:
 			var opts [2]string
 			idx := 0
 			for _, opt := range allParts[1:] {
@@ -183,18 +184,21 @@ func parseTagASCII(tagStr string) Tag {
 					}
 				}
 			}
-			if opts[0] == "omitempty" && opts[1] == "inline" {
+			switch {
+			case opts[0] == "omitempty" && opts[1] == "inline":
 				options = optOmitemptyInline
-			} else if opts[0] == "inline" && opts[1] == "omitempty" {
+			case opts[0] == "inline" && opts[1] == "omitempty":
 				options = optInlineOmitempty
-			} else {
+			default:
 				options = []string{opts[0], opts[1]}
 			}
-		} else if optCount > 0 {
-			options = make([]string, 0, optCount)
-			for _, opt := range allParts[1:] {
-				if opt = strings.TrimSpace(opt); opt != "" {
-					options = append(options, opt)
+		default:
+			if optCount > 0 {
+				options = make([]string, 0, optCount)
+				for _, opt := range allParts[1:] {
+					if opt = strings.TrimSpace(opt); opt != "" {
+						options = append(options, opt)
+					}
 				}
 			}
 		}

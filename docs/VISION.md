@@ -24,24 +24,24 @@ Six projects of mine depend on `foundation`. Each package is supposed to be need
 
 | Project | What it is | Foundation packages it leans on most |
 | :--- | :--- | :--- |
-| `aoni` | Network protocol stack and HTTP client | `silicon/bytesconv`, `silicon/pool`, `iokit`, `codec/json`, `borrow`, `net/quic`, `net/urlkit`, `async/ctxkit` |
-| `mach` | Protocol engines (HTTP/1.1, HTTP/2, HTTP/3, HPACK, QPACK) used by `aoni` and `sein` | `silicon/bytesconv`, `silicon/pool`, `silicon/simd`, `borrow`, `net/quic`, `encoding/varint` |
-| `sein` | Server network stack and web framework | `net/quic`, `encoding/varint`, `silicon/endian`, `timekit`, `types/uuid`, `async/logkit` |
+| `aoni` | Network protocol stack and HTTP client | `silicon/bytesconv`, `silicon/pool`, `iokit`, `codec/json`, `borrow`, `net/urlkit`, `async/ctxkit` |
+| `mach` | Protocol engines (HTTP/1.1, HTTP/2, HTTP/3, HPACK, QPACK) used by `aoni` and `sein` | `silicon/bytesconv`, `silicon/pool`, `silicon/simd`, `borrow`, `encoding/varint` |
+| `sein` | Server network stack and web framework | `encoding/varint`, `silicon/endian`, `timekit`, `types/uuid`, `async/logkit` |
 | `g-man` | Steam client SDK and automation framework | `async/logkit`, `async/event`, `async/fsm`, `async/lifecycle`, `async/rate`, `codec/json` |
 | `dawn` | Database protocol drivers and data access layer | `silicon/endian`, `silicon/bytesconv`, `silicon/simd`, `bufkit` |
-| `seal` | Fault-tolerant archive and container format (EON) | `codec/compress/*`, `codec/filter/*`, `crypto/*`, `bufkit`, `fskit`, `pathkit`, `argkit`, `tuikit` |
+| `seal` | Fault-tolerant archive and container format (EON) | `crypto/*`, `bufkit`, `fskit`, `pathkit` |
 
 All of them also use `generic` and the `testing/*` helpers. The table comes from their imports and READMEs and lives only here. A package that no project imports needs a reason to stay.
 
 ## What belongs here, and what does not
 
-In: building blocks that know nothing about any one product: memory, concurrency, data structures, codecs, cryptography, and transport up to L4 and QUIC.
+In: building blocks that know nothing about any one product: memory, concurrency, data structures, codecs, cryptography, and transport up to L4 (TCP/UDP, DNS wire, TLS certs).
 
 Out:
 
 - Application protocols (HTTP/1.1, HTTP/2, HTTP/3, HPACK, QPACK, WebSocket, gRPC, the Steam protocol). They live in `mach` or in the project that needs them. See [ADR-0006](adr/0006-l7-boundary-and-mach.md).
 - Application logic: domain models, ORMs, query builders, database drivers.
-- UI. `tuikit` is for developer tools in a terminal and nothing more.
+- UI and CLI frameworks: terminal UI and command argument parsing belong in `ctrl`.
 - Convenience that hides an allocation on a hot path.
 
 ## How the code is organised

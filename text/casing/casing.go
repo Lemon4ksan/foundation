@@ -294,4 +294,3 @@ func titleWord(w string) string {
 
 	return string(runes)
 }
-

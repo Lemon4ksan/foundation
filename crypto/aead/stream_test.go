@@ -216,6 +216,7 @@ func (m mockShortNonceAEAD) Overhead() int  { return 16 }
 func (m mockShortNonceAEAD) Seal(dst, nonce, plaintext, additionalData []byte) []byte {
 	return append(dst, plaintext...)
 }
+
 func (m mockShortNonceAEAD) Open(dst, nonce, ciphertext, additionalData []byte) ([]byte, error) {
 	return append(dst, ciphertext...), nil
 }
@@ -314,6 +315,3 @@ func TestRepro_StreamAEAD_PartialWriter(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, payload, dec)
 }
-
-
-

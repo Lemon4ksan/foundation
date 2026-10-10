@@ -273,4 +273,3 @@ func BenchmarkCoarseNow(b *testing.B) {
 		_ = CoarseNow()
 	}
 }
-

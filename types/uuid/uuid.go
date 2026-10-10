@@ -81,6 +81,7 @@ func IsValid(s string) bool {
 
 // Parse parses a standard 36-character "8-4-4-4-12" hex-and-dash UUID string (RFC 9562 §4)
 // into a 16-byte [UUID] value. It accepts lowercase, uppercase, and mixed-case hexadecimal characters.
+//
 //go:inline
 func Parse(s string) (UUID, error) {
 	if len(s) != StringLength {
@@ -203,6 +204,7 @@ func formatScalar(u *UUID, dst *[StringLength]byte) {
 }
 
 // Format formats the UUID into standard 36-character hex-and-dash format directly in dst.
+//
 //go:inline
 func (u UUID) Format(dst *[StringLength]byte) {
 	formatVector(&u, dst)

@@ -183,25 +183,7 @@ func checkGenDecl(fset *token.FileSet, gd *ast.GenDecl, pkgName, relPath string,
 
 			// Check backward-compatibility type aliases: type Old = New
 			if ts.Assign.IsValid() && ts.Name.IsExported() {
-				// Detect legacy aliases
-				isLegacyAlias := false
-				if strings.HasPrefix(relPath, "net/quic/interface.go") {
-					switch typeName {
-					case "Connection", "Session", "EarlyConnection", "TokenGeneratorKey":
-						isLegacyAlias = true
-					}
-				}
-				if isLegacyAlias {
-					*violations = append(*violations, Violation{
-						Category:  CategoryTypeAlias,
-						Milestone: "M4",
-						Package:   pkgName,
-						File:      relPath,
-						Line:      line,
-						Symbol:    typeName,
-						Details:   "Backward-compatibility type alias masks modern Conn/Token name; must be removed in-place",
-					})
-				}
+				// Detect legacy aliases if any exist in the repository
 			}
 
 			// Check interface methods for Get* getters
@@ -442,12 +424,8 @@ func isDomainClarityViolation(typeName, pkgName, relPath string) (string, bool) 
 		return "async/task.Manager is overly generic; should be Tracker", true
 	case strings.Contains(relPath, "async/event") && typeName == "BaseEvent":
 		return "async/event.BaseEvent should be Envelope", true
-	case strings.Contains(relPath, "tuikit") && typeName == "SimpleCommand":
-		return "tuikit.SimpleCommand is overly generic; should be FuncCommand", true
 	case strings.Contains(relPath, "testing/mock") && typeName == "TestHelper":
 		return "testing/mock.TestHelper should be TestingT", true
-	case strings.Contains(relPath, "text/diff") && typeName == "DriftItem":
-		return "text/diff.DriftItem should be Drift", true
 	}
 	return "", false
 }
@@ -460,7 +438,7 @@ func determineMilestone(relPath string) string {
 	case strings.HasPrefix(relPath, "sync/") || strings.HasPrefix(relPath, "async/") || strings.HasPrefix(relPath, "generic/"):
 		return "M2"
 	case strings.HasPrefix(relPath, "codec/") || strings.HasPrefix(relPath, "encoding/") ||
-		strings.HasPrefix(relPath, "text/") || strings.HasPrefix(relPath, "tuikit/") || strings.HasPrefix(relPath, "testing/"):
+		strings.HasPrefix(relPath, "text/") || strings.HasPrefix(relPath, "testing/"):
 		return "M3"
 	case strings.HasPrefix(relPath, "net/"):
 		return "M4"

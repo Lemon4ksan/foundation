@@ -188,4 +188,3 @@ func TestHeap_Reserve(t *testing.T) {
 	})
 	require.Equal(t, float64(0), allocs)
 }
-

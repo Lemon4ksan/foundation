@@ -201,7 +201,7 @@ func TestSlabAllocator_InvalidFree_Ignored(t *testing.T) {
 	// Freeing nil must not panic.
 	assert.NotPanics(t, func() { slab.Free(nil) })
 
-// Stats must be unchanged.
+	// Stats must be unchanged.
 	assert.Equal(t, 8, slab.Available())
 }
 

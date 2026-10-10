@@ -196,4 +196,3 @@ func TestRepro_PBKDF2_MemoryAllocationLimitOverflow(t *testing.T) {
 		t.Fatalf("expected nil for excessive keyLen, got len %d", len(k))
 	}
 }
-

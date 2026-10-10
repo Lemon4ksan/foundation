@@ -439,7 +439,6 @@ func TestPool_ConcurrentSubmitClose(t *testing.T) {
 	}
 }
 
-
 func BenchmarkItemsSeq(b *testing.B) {
 	ctx := context.Background()
 	p := New[int](Config{MinWorkers: 4, MaxWorkers: 4, QueueLimit: 50})

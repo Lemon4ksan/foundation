@@ -22,7 +22,6 @@ import (
 	"github.com/lemon4ksan/foundation/async/pool"
 	"github.com/lemon4ksan/foundation/async/rate"
 	"github.com/lemon4ksan/foundation/async/task"
-	"github.com/lemon4ksan/foundation/net/netutil"
 	"github.com/lemon4ksan/foundation/net/urlkit"
 	"github.com/lemon4ksan/foundation/silicon/clock"
 	"github.com/lemon4ksan/foundation/sync/breaker"
@@ -124,7 +123,7 @@ func BenchmarkCompare_CleanHost_Unicode(b *testing.B) {
 	b.ReportAllocs()
 
 	for b.Loop() {
-		res := netutil.CleanHost(internationalDomain)
+		res := urlkit.CleanHost(internationalDomain)
 		if !strings.HasPrefix(res, "xn--") {
 			b.Fatal("unexpected result")
 		}
@@ -135,7 +134,7 @@ func BenchmarkCompare_CleanHost_ASCII_FastPath(b *testing.B) {
 	b.ReportAllocs()
 
 	for b.Loop() {
-		res := netutil.CleanHost(asciiDomain)
+		res := urlkit.CleanHost(asciiDomain)
 		if res != asciiDomain {
 			b.Fatal("unexpected result")
 		}

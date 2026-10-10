@@ -197,7 +197,7 @@ func (c *BatchUDPConn) SetGSO(segmentSize int) error {
 	}
 	raw, err := sysConn.SyscallConn()
 	if err != nil {
-		return nil
+		return err
 	}
 
 	var sysErr error
@@ -215,7 +215,7 @@ func (c *BatchUDPConn) SetGRO(enable bool) error {
 	}
 	raw, err := sysConn.SyscallConn()
 	if err != nil {
-		return nil
+		return err
 	}
 
 	var sysErr error

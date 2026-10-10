@@ -20,8 +20,8 @@ import (
 type ArenaPool struct {
 	pool         sync.Pool
 	pageSize     int
-	activeArenas  atomic.Int64
-	totalCreated  atomic.Int64
+	activeArenas atomic.Int64
+	totalCreated atomic.Int64
 }
 
 // NewArenaPool creates an [ArenaPool] that provisions arenas of pageSize bytes each.

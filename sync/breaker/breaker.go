@@ -91,10 +91,10 @@ func (c *Config) ResolveDefaults() {
 	}
 }
 
-// Breaker wraps synchronous operations with a fail-fast state machine to protect 
+// Breaker wraps synchronous operations with a fail-fast state machine to protect
 // upstream services from cascading failures.
 //
-// The zero value is invalid and will transition to an open state on the first request; 
+// The zero value is invalid and will transition to an open state on the first request;
 // instances must be instantiated via [New].
 // All exported methods are safe for concurrent use.
 //

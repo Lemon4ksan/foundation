@@ -515,7 +515,7 @@ func (c *Chain) Release() {
 
 var (
 	// ErrBufferFull indicates that the buffer has reached its maximum capacity.
-	ErrBufferFull  = errors.New("bufkit: buffer is full")
+	ErrBufferFull = errors.New("bufkit: buffer is full")
 	// ErrBufferEmpty indicates that the buffer contains no data.
 	ErrBufferEmpty = errors.New("bufkit: buffer is empty")
 )

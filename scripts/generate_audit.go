@@ -256,9 +256,9 @@ func getDomainForPath(relPath string) (string, string) {
 	case "encoding":
 		return "audit_encoding.md", "Binary Encodings & Varint"
 	case "codec":
-		return "audit_codec.md", "Codecs & Compression"
+		return "audit_codec.md", "Codecs & JSON Serialization"
 	case "net":
-		return "audit_net.md", "Networking & QUIC Protocol"
+		return "audit_net.md", "Networking & Wire Codecs"
 	default:
 		return "audit_core.md", "Core Kits & Base Primitives"
 	}
