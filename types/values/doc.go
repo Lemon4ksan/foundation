@@ -7,7 +7,7 @@
 // Modern distributed systems frequently encounter inconsistent JSON payload schemas where numeric,
 // boolean, or temporal fields arrive alternatively as quoted strings (e.g., "123", "true", "null")
 // or native JSON literals. This package defines specialized scalar wrappers that implement
-// standard JSON unmarshaling to seamlessly coerce these types into predictable Go primitives.
+// standard JSON unmarshaling to coerce these types into predictable Go primitives.
 // These wrappers eliminate manual string-to-number transformation boilerplate in webhook handlers
 // and legacy API clients.
 //

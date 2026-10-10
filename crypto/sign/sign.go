@@ -68,6 +68,7 @@ func NewKeyFromSeed(seed []byte) (PublicKey, PrivateKey, error) {
 }
 
 // Sign signs the given message using the private key and returns the 64-byte signature.
+// It panics if len(privKey) is not PrivateKeySize (64 bytes).
 func Sign(privKey PrivateKey, message []byte) []byte {
 	if len(privKey) != PrivateKeySize {
 		panic(fmt.Sprintf("sign: invalid private key length %d", len(privKey)))

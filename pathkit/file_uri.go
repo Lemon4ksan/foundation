@@ -16,10 +16,7 @@ import (
 var ErrInvalidFileURI = errors.New("pathkit: invalid file:// URI")
 
 // AppendPathToURI converts a local OS file path into an RFC 8089 compliant file:// URI,
-// appending the result into dst.
-//
-// Concurrency & Zero-Allocation Semantics:
-// When dst has sufficient capacity, AppendPathToURI performs strictly zero heap allocations.
+// appending the result into dst. When dst has sufficient capacity, it appends without heap allocations.
 func AppendPathToURI(dst []byte, osPath string) []byte {
 	if osPath == "" {
 		return dst
@@ -104,12 +101,9 @@ func PathToURI(osPath string) string {
 }
 
 // AppendURIToPath converts an RFC 8089 file:// URI into a local OS file path,
-// appending the result into dst.
+// appending the result into dst. When dst has sufficient capacity, it appends without heap allocations.
 // On Windows, "file:///C:/foo/bar" becomes "C:\foo\bar".
 // On Unix, "file:///etc/hosts" becomes "/etc/hosts".
-//
-// Concurrency & Zero-Allocation Semantics:
-// When dst has sufficient capacity, AppendURIToPath performs strictly zero heap allocations.
 func AppendURIToPath(dst []byte, uriStr string) ([]byte, error) {
 	if uriStr == "" {
 		return dst, nil

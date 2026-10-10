@@ -14,25 +14,26 @@ import (
 // are swapped to nil immediately, preventing memory leaks of unreferenced objects.
 func TestChallenge_GCLeakVerification(t *testing.T) {
 	type trackedObj struct {
-		id int
+		payload [64]byte
+		id      int
 	}
 
 	var finalized atomic.Int32
 
 	buf := New[trackedObj](4)
-	obj := &trackedObj{id: 42}
+	func() {
+		obj := &trackedObj{id: 42}
 
-	runtime.AddCleanup(obj, func(counter *atomic.Int32) {
-		counter.Add(1)
-	}, &finalized)
+		runtime.AddCleanup(obj, func(counter *atomic.Int32) {
+			counter.Add(1)
+		}, &finalized)
 
-	require.True(t, buf.Push(obj))
-	obj = nil // Clear local reference
+		require.True(t, buf.Push(obj))
 
-	popped := buf.Pop()
-	require.NotNil(t, popped)
-	require.Equal(t, 42, popped.id)
-	popped = nil // Clear popped reference
+		popped := buf.Pop()
+		require.NotNil(t, popped)
+		require.Equal(t, 42, popped.id)
+	}()
 
 	// Force multiple GC cycles
 	for range 5 {

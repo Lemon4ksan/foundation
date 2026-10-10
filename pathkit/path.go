@@ -21,8 +21,6 @@ type Path struct {
 }
 
 // New creates a new [Path] from a raw string, automatically classifying its scheme and structure.
-//
-// Concurrency & Zero-Allocation Semantics:
 // When s contains no backslashes and already has a normalized scheme, New performs zero heap allocations.
 func New(s string) Path {
 	s = strings.TrimSpace(s)
@@ -121,10 +119,7 @@ func (p Path) String() string {
 	return p.raw
 }
 
-// Append appends the normalized string representation of p to dst.
-//
-// Concurrency & Zero-Allocation Semantics:
-// Strictly zero heap allocations when dst has capacity.
+// Append appends the normalized string representation of p to dst without heap allocations when dst has capacity.
 func (p Path) Append(dst []byte) []byte {
 	return append(dst, p.raw...)
 }
@@ -394,10 +389,7 @@ func (p Path) URI() string {
 
 // Segments returns an iterator over the non-empty path segments of pathStr.
 // Iteration stops immediately when yield returns false.
-//
-// Concurrency & Zero-Allocation Semantics:
 // Segments operates purely by slicing substrings without heap allocations across all operating systems.
-// It is fully thread-safe and safe for concurrent execution.
 func Segments(pathStr string) iter.Seq[string] {
 	return func(yield func(string) bool) {
 		p := pathStr
@@ -442,9 +434,6 @@ func (p Path) Segments() iter.Seq[string] {
 }
 
 // Segments2 returns a push iterator over index and segment pairs of p.
-//
-// Concurrency & Zero-Allocation Semantics:
-// Strictly zero heap allocations.
 func (p Path) Segments2() iter.Seq2[int, string] {
 	return func(yield func(int, string) bool) {
 		idx := 0
@@ -459,9 +448,6 @@ func (p Path) Segments2() iter.Seq2[int, string] {
 
 // Ancestors returns a push iterator yielding directory ancestors from immediate parent up to the root.
 // For example, for "/a/b/c", yields "/a/b", "/a", and "/".
-//
-// Concurrency & Zero-Allocation Semantics:
-// Strictly zero heap allocations.
 func (p Path) Ancestors() iter.Seq[Path] {
 	return func(yield func(Path) bool) {
 		curr := p.Dir()
@@ -543,8 +529,6 @@ func volume(raw string) string {
 
 // Rel computes the relative path from base to p.
 // If the paths do not share a common base or have incompatible schemes, returns (Path{}, false).
-//
-// Concurrency & Zero-Allocation Semantics:
 // When paths are identical or incompatible, Rel performs strictly zero heap allocations.
 // Parallel segment traversal uses iter.Pull without slice allocations.
 func (p Path) Rel(base Path) (Path, bool) {

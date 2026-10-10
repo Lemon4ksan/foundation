@@ -40,3 +40,18 @@ func Base64EncodeURL(src, dst []byte) int {
 
 	return reqLen
 }
+
+// URLEncodedLen returns the unpadded URL-safe Base64 encoded length for n source bytes.
+// It provides an idiomatic, non-stuttering entry point to [Base64URLEncodedLen].
+func URLEncodedLen(n int) int {
+	return Base64URLEncodedLen(n)
+}
+
+// EncodeURL writes the unpadded URL-safe Base64 representation of src into dst.
+// Returns the number of bytes written to dst.
+// It provides an idiomatic, non-stuttering entry point to [Base64EncodeURL].
+//
+// It panics if len(dst) < URLEncodedLen(len(src)).
+func EncodeURL(src, dst []byte) int {
+	return Base64EncodeURL(src, dst)
+}

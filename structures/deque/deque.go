@@ -16,6 +16,9 @@ type Deque[T any] struct {
 	len  int // number of queued elements
 }
 
+// Queue is an alias for [Deque] to eliminate package stuttering.
+type Queue[T any] = Deque[T]
+
 // New creates an empty [Deque].
 //
 // Backing storage is lazily allocated on the first push operation.

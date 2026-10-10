@@ -73,12 +73,12 @@ func (b *ByteBuffer) WriteString(s string) (int, error) {
 	return len(s), nil
 }
 
-// Set sets ByteBuffer.B to p.
+// Set replaces the buffer contents with p.
 func (b *ByteBuffer) Set(p []byte) {
 	b.B = append(b.B[:0], p...)
 }
 
-// SetString sets ByteBuffer.B to s.
+// SetString replaces the buffer contents with s.
 func (b *ByteBuffer) SetString(s string) {
 	b.B = append(b.B[:0], s...)
 }
@@ -162,4 +162,20 @@ func AcquireByteBuffer() *ByteBuffer {
 // ReleaseByteBuffer puts a ByteBuffer back into the default pool.
 func ReleaseByteBuffer(b *ByteBuffer) {
 	defaultByteBufferPool.Put(b)
+}
+
+// Buffer is an alias for [ByteBuffer] to eliminate package stuttering.
+type Buffer = ByteBuffer
+
+// BufferPool is an alias for [ByteBufferPool] to eliminate package stuttering.
+type BufferPool = ByteBufferPool
+
+// AcquireBuffer gets a [Buffer] from the default pool without package stuttering.
+func AcquireBuffer() *Buffer {
+	return AcquireByteBuffer()
+}
+
+// ReleaseBuffer puts a [Buffer] back into the default pool without package stuttering.
+func ReleaseBuffer(b *Buffer) {
+	ReleaseByteBuffer(b)
 }
