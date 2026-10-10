@@ -47,6 +47,15 @@ func TestHTTPDate_FormatAndParse(t *testing.T) {
 	}
 }
 
+func TestFormatHTTPDate_NegativeYear(t *testing.T) {
+	dt := time.Date(-1, 1, 1, 0, 0, 0, 0, time.UTC)
+	formatted := FormatHTTPDate(dt)
+	expected := "Fri, 01 Jan 0001 00:00:00 GMT"
+	if formatted != expected {
+		t.Fatalf("expected %q, got %q", expected, formatted)
+	}
+}
+
 func TestRFC3339_Format(t *testing.T) {
 	tm := time.Date(2026, time.August, 26, 16, 30, 45, 0, time.UTC)
 	formatted := FormatRFC3339(tm)
@@ -207,12 +216,11 @@ func BenchmarkRangeSeq_ZeroAlloc(b *testing.B) {
 	}
 }
 
-func TestReproduce_ISO8601NegativeYearBug(t *testing.T) {
-	// ISO8601 formatting breaks on negative years due to modulo operations on negative numbers.
+func TestFormatRFC3339_NegativeYear(t *testing.T) {
 	tm := time.Date(-1, time.January, 1, 0, 0, 0, 0, time.UTC)
 	formatted := FormatRFC3339(tm)
-	
+
 	if formatted != "0001-01-01T00:00:00Z" {
-		t.Fatalf("expected fixed behavior '0001-01-01T00:00:00Z', got %q", formatted)
+		t.Fatalf("expected '0001-01-01T00:00:00Z', got %q", formatted)
 	}
 }

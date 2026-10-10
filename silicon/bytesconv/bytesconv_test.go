@@ -156,12 +156,15 @@ func TestParseUintFast(t *testing.T) {
 
 	tests := []struct {
 		in      string
-		wantVal int64
+		wantVal uint64
 		wantOK  bool
 	}{
 		{"200", 200, true},
 		{"0", 0, true},
 		{"1234567890", 1234567890, true},
+		{"9223372036854775808", 9223372036854775808, true},
+		{"18446744073709551615", 18446744073709551615, true},
+		{"18446744073709551616", 0, false},
 		{"", 0, false},
 		{"abc", 0, false},
 		{"12a34", 0, false},
@@ -384,20 +387,13 @@ func BenchmarkFastHash64_Unaligned(b *testing.B) {
 	}
 }
 
-func TestReproduce_ParseUintFastOverflowBug(t *testing.T) {
-	// 9223372036854775808 is MaxInt64 + 1. It is a valid uint64.
-	// Because ParseUintFast returns int64 and lacks overflow checks, this rolls over to -9223372036854775808.
+func TestParseUintFast_ValidUint64(t *testing.T) {
 	input := []byte("9223372036854775808")
 	val, ok := ParseUintFast(input)
-	
-	// Ensure the bug actually triggers as described.
-	if ok && val > 0 {
-		t.Fatalf("expected bug where val overflows into negative, got positive: %d", val)
-	}
 	if !ok {
 		t.Fatalf("expected to parse successfully, got ok=false")
 	}
-	if val != -9223372036854775808 {
-		t.Fatalf("expected exact overflow value -9223372036854775808, got %d", val)
+	if val != 9223372036854775808 {
+		t.Fatalf("expected 9223372036854775808, got %d", val)
 	}
 }

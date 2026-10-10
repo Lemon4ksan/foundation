@@ -285,3 +285,32 @@ func TestScenario_CodecTagBasedFieldFiltering(t *testing.T) {
 	assert.Equal(t, "timeout,sec=30", routeFields["Timeout"])
 	assert.Equal(t, 2, len(routeFields))
 }
+
+type PointerEmbedTarget struct {
+	Pad [1024]byte
+	Val int
+}
+
+type PointerEmbedHolder struct {
+	*PointerEmbedTarget
+}
+
+func TestSchemaCache_PointerEmbeddedOffset(t *testing.T) {
+	t.Parallel()
+
+	cache := refkit.NewSchemaCache()
+	schema, err := cache.Get(reflect.TypeFor[PointerEmbedHolder]())
+	require.NoError(t, err)
+
+	for _, f := range schema.Fields {
+		if f.Field.Name == "Val" {
+			// A pointer-embedded field cannot have a contiguous offset relative to holder.
+			if f.Offset == 1024 {
+				t.Fatalf("bug: computed contiguous offset %d for pointer-embedded field Val", f.Offset)
+			}
+			assert.True(t, f.Indirect)
+			assert.Equal(t, refkit.OffsetInvalid, f.Offset)
+		}
+	}
+}
+

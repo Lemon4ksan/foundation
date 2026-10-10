@@ -148,6 +148,11 @@ func AppendSanitize(dst []byte, p string) []byte {
 		return dst
 	}
 
+	// Strip Windows volume name / drive letter (e.g. "C:", "D:") if present
+	if len(p) >= 2 && p[1] == ':' && ((p[0] >= 'a' && p[0] <= 'z') || (p[0] >= 'A' && p[0] <= 'Z')) {
+		p = p[2:]
+	}
+
 	// Convert any backslashes to slashes and ensure leading slash for safe traversal stripping
 	startLen := len(dst)
 

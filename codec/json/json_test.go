@@ -946,3 +946,19 @@ func FuzzJSONUnmarshal(f *testing.F) {
 		}
 	})
 }
+
+type TagTest struct {
+	Field string `json:"custom"`
+}
+
+func TestStructTag_IgnoresOriginalName(t *testing.T) {
+	jsonPayload := []byte(`{"Field": "violation"}`)
+
+	var fnd TagTest
+	err := json.Unmarshal(jsonPayload, &fnd)
+	require.NoError(t, err)
+
+	if fnd.Field != "" {
+		t.Fatalf("expected 'Field' to be ignored due to json:\"custom\" tag, got: %s", fnd.Field)
+	}
+}

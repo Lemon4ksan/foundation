@@ -52,11 +52,16 @@ func AppendHTTPDate(dst []byte, t time.Time) []byte {
 	buf[10] = month[2]
 	buf[11] = ' '
 
+	y := year
+	if y < 0 {
+		y = -y
+	}
+
 	// "1994 "
-	buf[12] = byte('0' + (year/1000)%10)
-	buf[13] = byte('0' + (year/100)%10)
-	buf[14] = byte('0' + (year/10)%10)
-	buf[15] = byte('0' + year%10)
+	buf[12] = byte('0' + (y/1000)%10)
+	buf[13] = byte('0' + (y/100)%10)
+	buf[14] = byte('0' + (y/10)%10)
+	buf[15] = byte('0' + y%10)
 	buf[16] = ' '
 
 	// "08:49:37 GMT"

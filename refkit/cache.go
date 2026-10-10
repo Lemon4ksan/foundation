@@ -13,11 +13,16 @@ import (
 	"sync"
 )
 
+// OffsetInvalid is assigned to [FieldSchema.Offset] when a field is accessed via
+// an embedded pointer and cannot be addressed via a single contiguous offset from the root struct.
+const OffsetInvalid uintptr = ^uintptr(0)
+
 // FieldSchema represents the cached layout and tag metadata of a struct field.
 type FieldSchema struct {
-	Field  reflect.StructField // StructField descriptor
-	Offset uintptr             // Cumulative byte offset from the root struct
-	Tag    Tag                 // Pre-parsed tag metadata
+	Field    reflect.StructField // StructField descriptor
+	Offset   uintptr             // Cumulative byte offset from the root struct (OffsetInvalid if Indirect)
+	Indirect bool                // True if accessing this field requires dereferencing an embedded pointer
+	Tag      Tag                 // Pre-parsed tag metadata
 }
 
 // StructSchema represents the cached memory layout of a struct type.
@@ -76,21 +81,34 @@ func (c *SchemaCache) Get(t reflect.Type) (*StructSchema, error) {
 	var fields []FieldSchema
 	for f := range VisibleFields(target) {
 		var offset uintptr
+		var indirect bool
 		curr := target
-		for _, idx := range f.Index {
+		for i, idx := range f.Index {
 			sf := curr.Field(idx)
+			if indirect {
+				curr = sf.Type
+				if curr.Kind() == reflect.Pointer {
+					curr = curr.Elem()
+				}
+				continue
+			}
 			offset += sf.Offset
 			curr = sf.Type
 			if curr.Kind() == reflect.Pointer {
 				curr = curr.Elem()
+				if i < len(f.Index)-1 {
+					indirect = true
+					offset = OffsetInvalid
+				}
 			}
 		}
 
 		tag := parseFieldTag(f.Tag)
 		fields = append(fields, FieldSchema{
-			Field:  f,
-			Offset: offset,
-			Tag:    tag,
+			Field:    f,
+			Offset:   offset,
+			Indirect: indirect,
+			Tag:      tag,
 		})
 	}
 

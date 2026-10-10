@@ -182,6 +182,11 @@ func (g *Group[K, V]) DoChan(ctx context.Context, key K, callFn CallFn[V]) <-cha
 	if !ok {
 		c, initCh := g.startWorker(key, callFn)
 		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					ch <- Result[V]{Err: ErrWorkerPanicked, PanicVal: r}
+				}
+			}()
 			val, err := g.wait(ctx, key, c, initCh)
 			ch <- Result[V]{Val: val, Err: err}
 		}()
@@ -208,6 +213,11 @@ func (g *Group[K, V]) DoChan(ctx context.Context, key K, callFn CallFn[V]) <-cha
 	g.mu.Unlock()
 
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				ch <- Result[V]{Err: ErrWorkerPanicked, PanicVal: r}
+			}
+		}()
 		val, err := g.wait(ctx, key, c, waiterCh)
 		ch <- Result[V]{Val: val, Err: err}
 	}()

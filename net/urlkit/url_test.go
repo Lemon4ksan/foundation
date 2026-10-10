@@ -781,17 +781,14 @@ func BenchmarkIsSameDomainOrSubdomain(b *testing.B) {
 	}
 }
 
-func TestReproduce_URLViewQueryValueKeyEncodingBug(t *testing.T) {
+func TestURLView_QueryValue_EncodedKey(t *testing.T) {
 	u, err := urlkit.ParseView("http://example.com?my%20key=value")
 	if err != nil {
 		t.Fatal(err)
 	}
-	
-	// QueryValue should find "my key", but it only checks raw equality,
-	// missing the percent-encoded key.
+
 	val, ok := u.QueryValue("my key")
-	
-	if !ok {
-		t.Fatalf("Bug triggered! QueryValue failed to find a percent-encoded key. val=%q", val)
+	if !ok || val != "value" {
+		t.Fatalf("expected QueryValue to find percent-encoded key with value %q, got %q, ok=%v", "value", val, ok)
 	}
 }

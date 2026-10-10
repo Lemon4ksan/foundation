@@ -375,3 +375,44 @@ func TestAdversarial_Mock_VerificationFailures(t *testing.T) {
 		assert.Equal(t, 1, rep.ErrorCount())
 	})
 }
+
+func TestMock_VariadicDoAndReturn(t *testing.T) {
+	t.Parallel()
+	ctrl := mock.NewController(t)
+	defer ctrl.Finish()
+
+	call := ctrl.RecordCall("receiver", "VariadicMethod", "hello", nil, nil)
+	var executed bool
+	call.DoAndReturn(func(a string, b ...*int) string {
+		executed = true
+		assert.Equal(t, "hello", a)
+		assert.Equal(t, 2, len(b))
+		assert.Nil(t, b[0])
+		assert.Nil(t, b[1])
+		return "ok"
+	})
+
+	rets := ctrl.Call("receiver", "VariadicMethod", "hello", nil, nil)
+	assert.True(t, executed)
+	assert.Equal(t, []any{"ok"}, rets)
+}
+
+func TestMock_VariadicDo(t *testing.T) {
+	t.Parallel()
+	ctrl := mock.NewController(t)
+	defer ctrl.Finish()
+
+	call := ctrl.RecordCall("receiver", "VariadicMethod", "hello", nil, nil)
+	var executed bool
+	call.Do(func(a string, b ...*int) {
+		executed = true
+		assert.Equal(t, "hello", a)
+		assert.Equal(t, 2, len(b))
+		assert.Nil(t, b[0])
+		assert.Nil(t, b[1])
+	}).Return("ok")
+
+	rets := ctrl.Call("receiver", "VariadicMethod", "hello", nil, nil)
+	assert.True(t, executed)
+	assert.Equal(t, []any{"ok"}, rets)
+}

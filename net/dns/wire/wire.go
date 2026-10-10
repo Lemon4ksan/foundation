@@ -174,11 +174,11 @@ type DNSRecord struct {
 // NormalizeTTL normalizes a raw 32-bit DNS wire TTL adhering strictly to RFC 2181 §8 and RFC 8767 §4.
 //
 // Behavior:
-// - If the sign bit (MSB / bit 31) is set, RFC 2181 §8 interprets it as 0 unless clamped per RFC 8767.
+// - If the sign bit (MSB / bit 31) is set, RFC 2181 §8 mandates that it MUST be treated as 0.
 // - Clamps the resulting duration to the standard 7-day cap (604,800s / MaxTTLCap per RFC 8767 §4).
 func NormalizeTTL(rawTTL uint32) time.Duration {
 	if (rawTTL & 0x80000000) != 0 {
-		rawTTL &= MaxRFC2181TTL
+		return 0
 	}
 
 	maxSeconds := uint32(MaxTTLCap / time.Second)

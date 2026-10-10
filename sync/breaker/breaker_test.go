@@ -315,3 +315,37 @@ func TestBreakerAllocations(t *testing.T) {
 		t.Errorf("expected 0 amortized allocations, got %v", allocs)
 	}
 }
+
+func TestBreaker_SlidingWindowCapacityRetention(t *testing.T) {
+	cb := New[int](Config{
+		FailureThreshold: 0.5,
+		Cooldown:         1 * time.Second,
+		MinRequests:      5,
+		Window:           10 * time.Millisecond,
+	})
+
+	ctx := context.Background()
+
+	// Push 10 items
+	for range 10 {
+		_, _ = cb.Do(ctx, func(ctx context.Context) (int, error) {
+			return 1, nil
+		})
+	}
+
+	initialCap := cap(cb.records)
+
+	// Wait for items to expire
+	time.Sleep(20 * time.Millisecond)
+
+	// Push more items so pruneRecords is called
+	for range 10 {
+		_, _ = cb.Do(ctx, func(ctx context.Context) (int, error) {
+			return 1, nil
+		})
+	}
+
+	if cap(cb.records) < initialCap {
+		t.Fatalf("capacity leaked from %d to %d", initialCap, cap(cb.records))
+	}
+}

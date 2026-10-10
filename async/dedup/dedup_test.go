@@ -613,6 +613,22 @@ func TestGroup_NilReceiver(t *testing.T) {
 	}
 }
 
+func TestDoChan_WorkerPanic_SafeDelivery(t *testing.T) {
+	g := &Group[string, string]{}
+
+	ch := g.DoChan(context.Background(), "panic-key", func(ctx context.Context) (string, error) {
+		panic("boom")
+	})
+
+	res := <-ch
+	if !errors.Is(res.Err, ErrWorkerPanicked) {
+		t.Fatalf("expected ErrWorkerPanicked, got: %v", res.Err)
+	}
+	if res.PanicVal != "boom" {
+		t.Fatalf("expected PanicVal 'boom', got: %v", res.PanicVal)
+	}
+}
+
 func BenchmarkKeysSeq_Empty(b *testing.B) {
 	g := &Group[string, int]{}
 

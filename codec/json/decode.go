@@ -674,9 +674,11 @@ func compileStructFieldDecoders(t reflect.Type, baseOffset uintptr, fieldMap map
 
 		if opts.name != "" {
 			fieldMap[opts.name] = sfd
+			fieldMap[strings.ToLower(opts.name)] = sfd
+		} else {
+			fieldMap[sf.Name] = sfd
+			fieldMap[strings.ToLower(sf.Name)] = sfd
 		}
-		fieldMap[sf.Name] = sfd
-		fieldMap[strings.ToLower(sf.Name)] = sfd
 	}
 	return nil
 }

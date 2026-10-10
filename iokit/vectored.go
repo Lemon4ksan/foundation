@@ -22,6 +22,7 @@ const DefaultMaxVectoredSlices = 16
 // via a single writev (POSIX) or WSASend (Windows) syscall without flattening/copying memory.
 type BufferQueue struct {
 	bufs       net.Buffers
+	raw        net.Buffers
 	totalBytes int64
 	maxSlices  int
 }
@@ -37,8 +38,10 @@ func WithMaxSlices(maxSlices int) *BufferQueue {
 		maxSlices = DefaultMaxVectoredSlices
 	}
 
+	b := make(net.Buffers, 0, maxSlices)
 	return &BufferQueue{
-		bufs:      make(net.Buffers, 0, maxSlices),
+		bufs:      b,
+		raw:       b,
 		maxSlices: maxSlices,
 	}
 }
@@ -54,6 +57,7 @@ func (q *BufferQueue) Push(b []byte) {
 	}
 
 	q.bufs = append(q.bufs, b)
+	q.raw = q.bufs
 	q.totalBytes += int64(len(b))
 }
 
@@ -94,8 +98,16 @@ func (q *BufferQueue) WriteTo(w io.Writer) (int64, error) {
 
 // Reset clears the queue for reuse without releasing underlying slice capacity.
 func (q *BufferQueue) Reset() {
-	q.bufs = q.bufs[:0]
+	for i := range q.raw {
+		q.raw[i] = nil
+	}
+	q.bufs = q.raw[:0]
 	q.totalBytes = 0
+}
+
+// Cap returns the underlying slice capacity of the buffer queue.
+func (q *BufferQueue) Cap() int {
+	return cap(q.bufs)
 }
 
 // Buffers yields all queued byte slices in FIFO order without mutating the queue.

@@ -7,8 +7,6 @@ package casing
 import (
 	"strings"
 	"unicode"
-
-	"github.com/lemon4ksan/foundation/silicon/bytesconv"
 )
 
 // Kind identifies a string casing convention.
@@ -134,25 +132,14 @@ func convertDelimited(s string, delimiter byte, screaming bool) string {
 		if i > 0 {
 			sb.WriteByte(delimiter)
 		}
-		for j := 0; j < len(w); j++ {
-			c := w[j]
-			if screaming {
-				sb.WriteByte(uppercaseByte(c))
-			} else {
-				sb.WriteByte(bytesconv.LowercaseByte(c))
-			}
+		if screaming {
+			sb.WriteString(strings.ToUpper(w))
+		} else {
+			sb.WriteString(strings.ToLower(w))
 		}
 	}
 
 	return sb.String()
-}
-
-func uppercaseByte(c byte) byte {
-	if c >= 'a' && c <= 'z' {
-		return c - ('a' - 'A')
-	}
-
-	return c
 }
 
 func titleWord(w string) string {

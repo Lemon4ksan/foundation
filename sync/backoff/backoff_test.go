@@ -255,18 +255,14 @@ func TestExponential_Allocations(t *testing.T) {
 	}
 }
 
-func TestReproduce_ExponentialBackoffDecreaseBug(t *testing.T) {
-	// If max is 0, it defaults to 30s. If initial is larger than the default max (e.g., 60s),
-	// the fallback logic in NewExponential fails to clamp initial or bump max to match initial.
-	// As a result, Initial=60s and Max=30s.
+func TestExponential_DefaultMaxClamping(t *testing.T) {
+	// If initial is larger than the default max, max should be adjusted to match initial.
 	bo := backoff.NewExponential(60*time.Second, 0, 2.0)
 
 	delay1 := bo.NextDelay(1)
 	delay2 := bo.NextDelay(2)
 
-	// A backoff delay should never decrease as attempt increases.
-	// However, due to this bug, delay1 is 60s and delay2 gets clamped to Max (30s).
 	if delay2 < delay1 {
-		t.Fatalf("Bug triggered: delay decreased from %v to %v!", delay1, delay2)
+		t.Fatalf("expected delay2 >= delay1, got delay1=%v, delay2=%v", delay1, delay2)
 	}
 }

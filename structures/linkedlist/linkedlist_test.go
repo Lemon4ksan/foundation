@@ -715,24 +715,20 @@ func BenchmarkList_IteratorsBackward(b *testing.B) {
 	}
 }
 
-func TestReproduce_LinkedListMemoryLeak(t *testing.T) {
+func TestList_ChunkRecyclingAllocations(t *testing.T) {
 	l := list.New[int]()
-	
+
 	allocs := testing.AllocsPerRun(10, func() {
 		for i := 0; i < 1000; i++ {
 			e := l.PushBack(i)
 			l.Remove(e)
 		}
-		
-		// At this point, l.allocs has falsely grown by 1000.
-		// If we do one PushBack now, l.free is -1, so it uses l.allocs (1000).
-		// It checks 1000/256 = 3 >= len(chunks). It will allocate a NEW chunk!
-		// Even though the list is empty and the first chunk has 255 free slots!
+
 		e := l.PushBack(1)
 		l.Remove(e)
 	})
 
 	if allocs > 0 {
-		t.Fatalf("Bug triggered! Expected 0 heap allocations for chunk recycling, got %f allocations/run. The free list implementation leaks chunks!", allocs)
+		t.Fatalf("expected 0 heap allocations for chunk recycling, got %f allocations/run", allocs)
 	}
 }

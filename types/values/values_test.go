@@ -304,13 +304,18 @@ func TestValues_Unmarshaling_NumericAndString(t *testing.T) {
 }
 
 type myCustomFloat float64
+type myCustomFloat32 float32
+type myCustomUint uint64
 
-func TestReproduce_NumberStringCustomFloatTruncationBug(t *testing.T) {
-	// Custom float types are not exactly float64, so the type switch in NumberString
-	// falls into the default case, formatting them as int64.
+func TestNumberString_CustomTypes(t *testing.T) {
+	t.Parallel()
+
 	val := myCustomFloat(3.14159)
-	
-	// We expect this to ideally be "3.14159", but due to the bug it returns "3"
-	// This proves the truncation bug exists for custom float types.
-	assert.Equal(t, "3", values.NumberString(val))
+	assert.Equal(t, "3.14159", values.NumberString(val))
+
+	val32 := myCustomFloat32(2.5)
+	assert.Equal(t, "2.5", values.NumberString(val32))
+
+	valUint := myCustomUint(18446744073709551615)
+	assert.Equal(t, "18446744073709551615", values.NumberString(valUint))
 }
