@@ -19,6 +19,12 @@ func AcquireTimer(d time.Duration) *time.Timer {
 	}
 
 	t := v.(*time.Timer)
+	if !t.Stop() {
+		select {
+		case <-t.C:
+		default:
+		}
+	}
 	t.Reset(d)
 
 	return t

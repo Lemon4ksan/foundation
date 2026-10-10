@@ -26,10 +26,10 @@ type SPSCRingBuffer[T any] struct {
 	_          cpu.CacheLinePad
 	head       atomic.Uint64 // Written ONLY by Producer thread
 	cachedTail uint64        // Local to Producer thread; refreshed from tail only when queue appears full
-	_          cpu.CacheLinePad
+	_          [2]cpu.CacheLinePad
 	tail       atomic.Uint64 // Written ONLY by Consumer thread
 	cachedHead uint64        // Local to Consumer thread; refreshed from head only when queue appears empty
-	_          cpu.CacheLinePad
+	_          [2]cpu.CacheLinePad
 
 	mask   uint64
 	buffer []atomic.Pointer[T]
@@ -43,8 +43,11 @@ func NewSPSCRingBuffer[T any](capacity int) *SPSCRingBuffer[T] {
 	}
 
 	capPow2 := uint64(1)
-	for capPow2 < uint64(capacity) {
+	for capPow2 < uint64(capacity) && capPow2 != 0 {
 		capPow2 <<= 1
+	}
+	if capPow2 == 0 {
+		capPow2 = 1 << 62
 	}
 
 	return &SPSCRingBuffer[T]{
@@ -82,9 +85,9 @@ func (s *SPSCRingBuffer[T]) Push(item *T) bool {
 func (s *SPSCRingBuffer[T]) Pop() *T {
 	tail := s.tail.Load()
 
-	if s.cachedHead <= tail {
+	if s.cachedHead == tail {
 		s.cachedHead = s.head.Load()
-		if s.cachedHead <= tail {
+		if s.cachedHead == tail {
 			return nil // Buffer is empty
 		}
 	}
@@ -103,11 +106,15 @@ func (s *SPSCRingBuffer[T]) Len() int {
 	head := s.head.Load()
 	tail := s.tail.Load()
 
-	if head >= tail {
-		return int(head - tail)
-	}
+	return int(head - tail)
+}
 
-	return 0
+// Clear removes and drops all elements from the ring buffer, zeroing all pointer slots.
+//
+// Thread Safety Invariant: Must be invoked from EXACTLY ONE Consumer goroutine.
+func (s *SPSCRingBuffer[T]) Clear() {
+	for s.Pop() != nil {
+	}
 }
 
 // Cap returns the total power-of-two storage capacity of the ring buffer.

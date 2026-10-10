@@ -44,6 +44,32 @@ func TestTimerPool(t *testing.T) {
 	pool.ReleaseTimer(timer3)
 }
 
+func TestTimerPool_ZeroAlloc(t *testing.T) {
+	tm := pool.AcquireTimer(time.Hour)
+	pool.ReleaseTimer(tm)
+
+	allocs := testing.AllocsPerRun(100, func() {
+		timer := pool.AcquireTimer(time.Hour)
+		pool.ReleaseTimer(timer)
+	})
+	assert.Equal(t, float64(0), allocs)
+}
+
+func TestPerCorePool_ZeroAlloc(t *testing.T) {
+	p := pool.NewPerCorePool(func() *[64]byte {
+		return &[64]byte{}
+	})
+	// Prewarm
+	item := p.Get()
+	p.Put(item)
+
+	allocs := testing.AllocsPerRun(100, func() {
+		obj := p.Get()
+		p.Put(obj)
+	})
+	assert.Equal(t, float64(0), allocs)
+}
+
 func TestRequestArena(t *testing.T) {
 	t.Parallel()
 

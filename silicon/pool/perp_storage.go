@@ -70,31 +70,42 @@ func (p *PerCorePool[T]) Get() T {
 	numShards := uint64(len(p.shards))
 	startIdx := uint64(fastrand()) & p.mask
 
-	for i := range numShards {
-		idx := (startIdx + i) & p.mask
-		shard := &p.shards[idx]
+	var contended bool
+	for pass := 0; pass < 2; pass++ {
+		for i := range numShards {
+			idx := (startIdx + i) & p.mask
+			shard := &p.shards[idx]
 
-		// Lockless Shared-state pre-check: skip empty shards without CAS bus lock
-		if shard.head.Load() == 0 {
-			continue
-		}
-
-		if shard.mu.CompareAndSwap(0, 1) {
-			head := shard.head.Load()
-			if head > 0 {
-				item := shard.items[head-1]
-
-				var zero T
-
-				shard.items[head-1] = zero
-				shard.head.Store(head - 1)
-				shard.mu.Store(0)
-
-				return item
+			// Lockless Shared-state pre-check: skip empty shards without CAS bus lock
+			if shard.head.Load() == 0 {
+				continue
 			}
 
-			shard.mu.Store(0)
+			if shard.mu.CompareAndSwap(0, 1) {
+				head := shard.head.Load()
+				if head > 0 {
+					item := shard.items[head-1]
+
+					var zero T
+
+					shard.items[head-1] = zero
+					shard.head.Store(head - 1)
+					shard.mu.Store(0)
+
+					return item
+				}
+
+				shard.mu.Store(0)
+			} else {
+				contended = true
+			}
 		}
+
+		if !contended {
+			break
+		}
+		contended = false
+		runtime.Gosched()
 	}
 
 	if p.factory != nil {
@@ -111,26 +122,37 @@ func (p *PerCorePool[T]) Put(item T) {
 	numShards := uint64(len(p.shards))
 	startIdx := uint64(fastrand()) & p.mask
 
-	for i := range numShards {
-		idx := (startIdx + i) & p.mask
-		shard := &p.shards[idx]
+	var contended bool
+	for pass := 0; pass < 2; pass++ {
+		for i := range numShards {
+			idx := (startIdx + i) & p.mask
+			shard := &p.shards[idx]
 
-		// Lockless Shared-state pre-check: skip full shards without CAS bus lock
-		if shard.head.Load() >= shardCapacity {
-			continue
-		}
-
-		if shard.mu.CompareAndSwap(0, 1) {
-			head := shard.head.Load()
-			if head < shardCapacity {
-				shard.items[head] = item
-				shard.head.Store(head + 1)
-				shard.mu.Store(0)
-
-				return
+			// Lockless Shared-state pre-check: skip full shards without CAS bus lock
+			if shard.head.Load() >= shardCapacity {
+				continue
 			}
 
-			shard.mu.Store(0)
+			if shard.mu.CompareAndSwap(0, 1) {
+				head := shard.head.Load()
+				if head < shardCapacity {
+					shard.items[head] = item
+					shard.head.Store(head + 1)
+					shard.mu.Store(0)
+
+					return
+				}
+
+				shard.mu.Store(0)
+			} else {
+				contended = true
+			}
 		}
+
+		if !contended {
+			break
+		}
+		contended = false
+		runtime.Gosched()
 	}
 }

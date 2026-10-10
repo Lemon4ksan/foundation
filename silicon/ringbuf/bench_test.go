@@ -13,7 +13,6 @@ import (
 // TestChallenge_GCLeakVerification proves that popped elements in Buffer[T]
 // are swapped to nil immediately, preventing memory leaks of unreferenced objects.
 func TestChallenge_GCLeakVerification(t *testing.T) {
-	t.Skip("TODO: Adversarial challenge failing")
 	type trackedObj struct {
 		id int
 	}

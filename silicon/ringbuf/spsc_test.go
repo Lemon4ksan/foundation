@@ -5,9 +5,11 @@
 package ringbuf_test
 
 import (
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/lemon4ksan/foundation/silicon/ringbuf"
 	"github.com/lemon4ksan/foundation/testing/assert"
@@ -274,4 +276,76 @@ func BenchmarkSPSCRingBuffer_Concurrent_Cap65536(b *testing.B) {
 	b.StopTimer()
 	active.Store(false)
 	wg.Wait()
+}
+
+func TestSPSCRingBuffer_Clear(t *testing.T) {
+	buf := ringbuf.NewSPSCRingBuffer[int](8)
+	vals := []int{10, 20, 30}
+	for i := range vals {
+		require.True(t, buf.Push(&vals[i]))
+	}
+	require.Equal(t, 3, buf.Len())
+
+	buf.Clear()
+	require.Equal(t, 0, buf.Len())
+	require.True(t, buf.IsEmpty())
+	require.Nil(t, buf.Pop())
+}
+
+func TestSPSCRingBuffer_GCLeak(t *testing.T) {
+	type trackedObj struct {
+		payload [64]byte
+		val     int
+	}
+
+	buf := ringbuf.NewSPSCRingBuffer[trackedObj](8)
+	var finalized atomic.Int32
+
+	obj := &trackedObj{val: 99}
+	runtime.AddCleanup(obj, func(counter *atomic.Int32) {
+		counter.Add(1)
+	}, &finalized)
+
+	require.True(t, buf.Push(obj))
+	obj = nil
+
+	popped := buf.Pop()
+	require.NotNil(t, popped)
+	require.Equal(t, 99, popped.val)
+	popped = nil
+
+	for range 5 {
+		runtime.GC()
+		if finalized.Load() > 0 {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	require.Equal(t, int32(1), finalized.Load(), "object reference was retained in SPSCRingBuffer slot")
+}
+
+func TestSPSCRingBuffer_WrapAround(t *testing.T) {
+	buf := ringbuf.NewSPSCRingBuffer[int](4)
+	val := 123
+	// Cycle through multiple buffer wrap boundaries
+	for range 100 {
+		require.True(t, buf.Push(&val))
+		p := buf.Pop()
+		require.NotNil(t, p)
+		require.Equal(t, 123, *p)
+	}
+	require.Equal(t, 0, buf.Len())
+	require.True(t, buf.IsEmpty())
+}
+
+func TestSPSCRingBuffer_ZeroAlloc(t *testing.T) {
+	buf := ringbuf.NewSPSCRingBuffer[int](64)
+	val := 42
+
+	allocs := testing.AllocsPerRun(100, func() {
+		buf.Push(&val)
+		_ = buf.Pop()
+	})
+	require.Equal(t, float64(0), allocs)
 }

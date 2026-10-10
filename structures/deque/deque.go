@@ -72,6 +72,29 @@ func (d *Deque[T]) Clear() {
 	d.len = 0
 }
 
+// ShrinkToFit reduces the capacity of the backing buffer to fit the current length.
+// If the deque is empty, the backing buffer is released to nil.
+// Returns the deque for method chaining.
+//
+// Complies with ADR-0003 by providing explicit capacity reclamation,
+// avoiding steady-state reallocation oscillation during alternating push/pop operations.
+func (d *Deque[T]) ShrinkToFit() *Deque[T] {
+	if d == nil || d.len == len(d.buf) {
+		return d
+	}
+	if d.len == 0 {
+		d.buf = nil
+		d.head = 0
+		return d
+	}
+	newBuf := make([]T, d.len)
+	n := copy(newBuf, d.buf[d.head:])
+	copy(newBuf[n:], d.buf[:d.head])
+	d.buf = newBuf
+	d.head = 0
+	return d
+}
+
 // PushBack appends elem to the back of the deque.
 func (d *Deque[T]) PushBack(elem T) {
 	if d.len == len(d.buf) {
@@ -294,7 +317,11 @@ func (d *Deque[T]) Drain() iter.Seq[T] {
 
 // grow doubles the buffer capacity and unwraps elements into contiguous FIFO order.
 func (d *Deque[T]) grow() {
-	newBuf := make([]T, max(len(d.buf)*2, 4))
+	newCap := max(len(d.buf)*2, 4)
+	if newCap <= len(d.buf) {
+		panic("deque: capacity overflow")
+	}
+	newBuf := make([]T, newCap)
 	n := copy(newBuf, d.buf[d.head:])
 	copy(newBuf[n:], d.buf[:d.head])
 	d.buf = newBuf

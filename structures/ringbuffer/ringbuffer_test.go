@@ -179,7 +179,6 @@ func BenchmarkRingBufferWrapped(b *testing.B) {
 // TestChallenge_GCLeakVerification proves that popped elements or cleared elements
 // do not remain referenced in the backing slice, preventing memory leaks.
 func TestChallenge_GCLeakVerification(t *testing.T) {
-	t.Skip("TODO: Adversarial challenge failing")
 	type trackedObj struct {
 		id int
 	}

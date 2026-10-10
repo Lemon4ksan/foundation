@@ -2427,3 +2427,95 @@ func TestChallenge_ConcurrentTortureWithRace(t *testing.T) {
 	require.Equal(t, totalPushed.Load(), totalPopped.Load(), "every pushed item must be accounted for")
 	require.True(t, d.Empty())
 }
+
+func TestDeque_ShrinkToFit(t *testing.T) {
+	d := NewWithCapacity[int](1024)
+	require.Equal(t, 1024, d.Cap())
+	require.Equal(t, 0, d.Len())
+
+	// Shrinking empty deque releases backing slice to nil
+	d.ShrinkToFit()
+	require.Equal(t, 0, d.Cap())
+	require.Equal(t, 0, d.Len())
+	require.True(t, d.Empty())
+
+	// Push items
+	for i := range 100 {
+		d.PushBack(i)
+	}
+	require.GreaterOrEqual(t, d.Cap(), 100)
+	require.Equal(t, 100, d.Len())
+
+	// Shrink to fit with wrapped buffer
+	// Pop 30 from front, push 30 to back
+	for range 30 {
+		d.PopFront()
+	}
+	for i := 100; i < 130; i++ {
+		d.PushBack(i)
+	}
+	require.Equal(t, 100, d.Len())
+
+	d.ShrinkToFit()
+	require.Equal(t, 100, d.Cap())
+	require.Equal(t, 100, d.Len())
+
+	// Verify order
+	for i := range 100 {
+		require.Equal(t, 30+i, d.At(i))
+	}
+
+	// Pop all and shrink to fit
+	for !d.Empty() {
+		d.PopFront()
+	}
+	d.ShrinkToFit()
+	require.Equal(t, 0, d.Cap())
+}
+
+func TestDeque_ShrinkToFit_GCLeak(t *testing.T) {
+	type item struct {
+		data [64]byte
+	}
+	d := New[*item]()
+	for range 1000 {
+		d.PushBack(&item{})
+	}
+	require.GreaterOrEqual(t, d.Cap(), 1000)
+
+	// Pop 900
+	for range 900 {
+		d.PopFront()
+	}
+	require.Equal(t, 100, d.Len())
+
+	// ShrinkToFit drops the excess 900+ capacity
+	d.ShrinkToFit()
+	require.Equal(t, 100, d.Cap())
+	require.Equal(t, 100, d.Len())
+
+	for range 100 {
+		val, ok := d.PopFront()
+		require.True(t, ok)
+		require.NotNil(t, val)
+	}
+	d.ShrinkToFit()
+	require.Equal(t, 0, d.Cap())
+}
+
+func TestDeque_ZeroAllocInvariants(t *testing.T) {
+	d := NewWithCapacity[int](128)
+	for i := range 64 {
+		d.PushBack(i)
+	}
+
+	allocs := testing.AllocsPerRun(100, func() {
+		d.PushBack(42)
+		d.PopFront()
+		_, _ = d.Front()
+		_, _ = d.Back()
+		_ = d.At(10)
+		d.Set(10, 99)
+	})
+	require.Equal(t, float64(0), allocs, "steady-state operations must be 0-alloc")
+}
