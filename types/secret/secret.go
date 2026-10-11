@@ -12,31 +12,43 @@ import (
 	"sync"
 )
 
+type secretData[T any] struct {
+	mu  sync.RWMutex
+	val T
+}
+
 // Secret wraps sensitive data (passwords, bearer tokens, API keys) to prevent accidental leakage in logs and JSON dumps.
 //
 // The zero value is empty and ready to use.
 type Secret[T any] struct {
-	mu  *sync.RWMutex
-	val T
+	data *secretData[T]
 }
 
 // New creates a new protected [Secret] container wrapping sensitive value val.
 func New[T any](val T) Secret[T] {
 	return Secret[T]{
-		mu:  new(sync.RWMutex),
-		val: val,
+		data: &secretData[T]{
+			val: val,
+		},
 	}
+}
+
+func (s *Secret[T]) init() *secretData[T] {
+	if s.data == nil {
+		s.data = new(secretData[T])
+	}
+	return s.data
 }
 
 // Value returns the raw sensitive value for authorized networking operations.
 func (s Secret[T]) Value() T {
-	if s.mu != nil {
-		s.mu.RLock()
+	if s.data == nil {
+		var zero T
+		return zero
 	}
-	val := s.val
-	if s.mu != nil {
-		s.mu.RUnlock()
-	}
+	s.data.mu.RLock()
+	val := s.data.val
+	s.data.mu.RUnlock()
 	return val
 }
 
@@ -50,23 +62,23 @@ func (s Secret[T]) Expose() T {
 // If the wrapped value implements a Wipe or Destroy method, it is invoked.
 // The secret container is then reset to its zero value.
 func (s *Secret[T]) Wipe() {
-	if s.mu != nil {
-		s.mu.Lock()
+	if s == nil || s.data == nil {
+		return
 	}
-	if b, ok := any(s.val).([]byte); ok {
+	s.data.mu.Lock()
+	defer s.data.mu.Unlock()
+
+	if b, ok := any(s.data.val).([]byte); ok {
 		for i := range b {
 			b[i] = 0
 		}
-	} else if w, ok := any(s.val).(interface{ Wipe() }); ok && w != nil {
+	} else if w, ok := any(s.data.val).(interface{ Wipe() }); ok && w != nil {
 		w.Wipe()
-	} else if d, ok := any(s.val).(interface{ Destroy() }); ok && d != nil {
+	} else if d, ok := any(s.data.val).(interface{ Destroy() }); ok && d != nil {
 		d.Destroy()
 	}
 	var zero T
-	s.val = zero
-	if s.mu != nil {
-		s.mu.Unlock()
-	}
+	s.data.val = zero
 }
 
 // String masks the secret when formatted with %s, %v, or fmt.Println.
@@ -101,12 +113,10 @@ func (s Secret[T]) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON deserializes a raw value into the protected container.
 func (s *Secret[T]) UnmarshalJSON(data []byte) error {
-	if s.mu == nil {
-		s.mu = new(sync.RWMutex)
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return json.Unmarshal(data, &s.val)
+	d := s.init()
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return json.Unmarshal(data, &d.val)
 }
 
 // MarshalText implements [encoding.TextMarshaler] to safely mask the secret in text serialization (e.g. YAML, TOML, XML).
@@ -116,13 +126,11 @@ func (s Secret[T]) MarshalText() ([]byte, error) {
 
 // UnmarshalText implements [encoding.TextUnmarshaler] to deserialize text into the secret container.
 func (s *Secret[T]) UnmarshalText(text []byte) error {
-	if s.mu == nil {
-		s.mu = new(sync.RWMutex)
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	d := s.init()
+	d.mu.Lock()
+	defer d.mu.Unlock()
 
-	switch v := any(&s.val).(type) {
+	switch v := any(&d.val).(type) {
 	case *string:
 		*v = string(text)
 		return nil
@@ -132,10 +140,10 @@ func (s *Secret[T]) UnmarshalText(text []byte) error {
 	case encoding.TextUnmarshaler:
 		return v.UnmarshalText(text)
 	default:
-		if err := json.Unmarshal(text, &s.val); err == nil {
+		if err := json.Unmarshal(text, &d.val); err == nil {
 			return nil
 		}
-		return json.Unmarshal([]byte(`"`+string(text)+`"`), &s.val)
+		return json.Unmarshal([]byte(`"`+string(text)+`"`), &d.val)
 	}
 }
 
@@ -146,13 +154,11 @@ func (s Secret[T]) MarshalBinary() ([]byte, error) {
 
 // UnmarshalBinary implements [encoding.BinaryUnmarshaler] to deserialize binary data into the secret container.
 func (s *Secret[T]) UnmarshalBinary(data []byte) error {
-	if s.mu == nil {
-		s.mu = new(sync.RWMutex)
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	d := s.init()
+	d.mu.Lock()
+	defer d.mu.Unlock()
 
-	switch v := any(&s.val).(type) {
+	switch v := any(&d.val).(type) {
 	case *string:
 		*v = string(data)
 		return nil
@@ -162,6 +168,6 @@ func (s *Secret[T]) UnmarshalBinary(data []byte) error {
 	case encoding.BinaryUnmarshaler:
 		return v.UnmarshalBinary(data)
 	default:
-		return json.Unmarshal(data, &s.val)
+		return json.Unmarshal(data, &d.val)
 	}
 }
