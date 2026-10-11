@@ -281,7 +281,6 @@ func TestLookup_SkipGroup(t *testing.T) {
 	assert.Equal(t, len(groupBuf), n)
 }
 
-
 func TestLookup_FindFieldAndTypedExtractors(t *testing.T) {
 	t.Parallel()
 
@@ -677,4 +676,3 @@ func BenchmarkThroughput_ScanMapEntry(b *testing.B) {
 		}
 	}
 }
-

@@ -352,4 +352,3 @@ func FuzzProtoRecursive(f *testing.F) {
 		})
 	})
 }
-

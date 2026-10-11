@@ -50,7 +50,7 @@ func ScanMessage(data []byte, maxDepth int, visit MessageVisitor) error {
 	return err
 }
 
-func scanMessageDepth(data []byte, depth int, maxDepth int, budget *int, visit MessageVisitor) error {
+func scanMessageDepth(data []byte, depth, maxDepth int, budget *int, visit MessageVisitor) error {
 	for f, err := range Scan(data) {
 		if err != nil {
 			return err

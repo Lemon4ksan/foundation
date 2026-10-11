@@ -386,4 +386,3 @@ func TestSecurity_CircularAndRecursiveMessages(t *testing.T) {
 	})
 	require.ErrorIs(t, err, proto.ErrRecursionBudgetExceeded)
 }
-
