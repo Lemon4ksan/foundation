@@ -840,3 +840,97 @@ func TestAdversarial_Pipeline_HighWorkerContention(t *testing.T) {
 		assert.Equal(t, i^0x5A5A, outputs[i])
 	}
 }
+
+func TestRepro_Pipeline_EdgeCasesAndPanicCoverage(t *testing.T) {
+	ctx := context.Background()
+
+	// 1. Nil pipeline receiver in Transform
+	var nilP *Pipeline[int, int]
+	_, err := nilP.Transform(ctx, []int{1}, func(ctx context.Context, in int) (int, error) {
+		return in, nil
+	})
+	assert.Error(t, err)
+
+	// 2. Nil mapper error handling in Map, ForEach, TransformSeq, Stream
+	_, err = Map[int, int](ctx, Config{}, []int{1}, nil)
+	assert.Error(t, err)
+
+	err = ForEach[int](ctx, Config{}, []int{1}, nil)
+	assert.Error(t, err)
+
+	for _, err := range TransformSeq[int, int](ctx, Config{}, nil, nil) {
+		assert.Error(t, err)
+	}
+
+	p := New[int, int](Config{Workers: 1})
+	_, errCh := p.Stream(ctx, nil, nil)
+	err = <-errCh
+	assert.Error(t, err)
+
+	// 3. Panic recovery in package-level TransformSeq
+	inputs := func(yield func(int) bool) {
+		yield(1)
+	}
+	var panickedErr error
+	for _, err := range TransformSeq(ctx, Config{Workers: 1}, inputs, func(ctx context.Context, in int) (int, error) {
+		panic("transformseq-panic-test")
+	}) {
+		if err != nil {
+			panickedErr = err
+		}
+	}
+	assert.NotNil(t, panickedErr)
+
+	// 4. Panic recovery in Stream with FailFast: true
+	pFailFast := New[int, int](Config{Workers: 1, FailFast: true})
+	inCh := make(chan int, 1)
+	inCh <- 1
+	close(inCh)
+	sOut, sErr := pFailFast.Stream(ctx, inCh, func(ctx context.Context, in int) (int, error) {
+		panic("stream-panic-test")
+	})
+	for range sOut {
+	}
+	var streamErrs []error
+	for err := range sErr {
+		streamErrs = append(streamErrs, err)
+	}
+	assert.NotEmpty(t, streamErrs)
+
+	// 5. Rate limiter error in Stream
+	ctxCancel, cancel := context.WithCancel(context.Background())
+	pLimiter := New[int, int](Config{Workers: 1, RPS: 0.001, Burst: 1, FailFast: true})
+	inCh2 := make(chan int, 2)
+	inCh2 <- 1
+	inCh2 <- 2
+	close(inCh2)
+	go func() {
+		time.Sleep(5 * time.Millisecond)
+		cancel()
+	}()
+	sOut2, sErr2 := pLimiter.Stream(ctxCancel, inCh2, func(ctx context.Context, in int) (int, error) {
+		return in, nil
+	})
+	for range sOut2 {
+	}
+	var limiterErrs []error
+	for err := range sErr2 {
+		limiterErrs = append(limiterErrs, err)
+	}
+	assert.NotEmpty(t, limiterErrs)
+
+	// 6. Saturated errs channel in Stream to trigger non-blocking drop
+	pDrop := New[int, int](Config{Workers: 1, FailFast: false})
+	inCh3 := make(chan int, 5)
+	for i := range 5 {
+		inCh3 <- i
+	}
+	close(inCh3)
+	sOut3, sErr3 := pDrop.Stream(ctx, inCh3, func(ctx context.Context, in int) (int, error) {
+		return 0, errors.New("saturated-error")
+	})
+	for range sOut3 {
+	}
+	for range sErr3 {
+	}
+}
