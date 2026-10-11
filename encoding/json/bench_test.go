@@ -8,7 +8,7 @@ import (
 	stdjson "encoding/json"
 	"testing"
 
-	"github.com/lemon4ksan/foundation/codec/json"
+	"github.com/lemon4ksan/foundation/encoding/json"
 )
 
 var benchUser = User{

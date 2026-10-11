@@ -25,7 +25,7 @@ var targets = []fuzzTarget{
 	{"./net/urlkit", "FuzzReplaceVar"},
 	{"./net/urlkit", "FuzzFastAppendQuery"},
 	{"./types/uuid", "FuzzUUIDParse"},
-	{"./codec/json", "FuzzJSONUnmarshal"},
+	{"./encoding/json", "FuzzJSONUnmarshal"},
 	{"./silicon/hexkit", "FuzzHexEncodeDecode"},
 	{"./silicon/hexkit", "FuzzHexDecodeArbitrary"},
 	{"./silicon/bytesconv", "FuzzEqualFoldASCII"},
