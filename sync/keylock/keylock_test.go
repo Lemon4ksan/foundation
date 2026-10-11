@@ -397,17 +397,74 @@ func TestKeyLock_ForceUnlock_Concurrent(t *testing.T) {
 	wg.Wait()
 }
 
-func TestKeyLock_TryLock_Contention(t *testing.T) {
+func TestKeyLock_DeterministicEdgeCases(t *testing.T) {
+	t.Parallel()
+
+	// 1. IsLocked: key exists in map but ref.held is false
 	km := New[string]()
+	km.mu.Lock()
+	km.locks["unheld"] = &refCounter{count: 1, held: false}
+	km.mu.Unlock()
+	if km.IsLocked("unheld") {
+		t.Fatal("expected IsLocked to return false for unheld key")
+	}
 
-	km.Lock("leak")
+	// 2. ForceUnlock: key exists in map but !ref.held (early return)
+	km.ForceUnlock("unheld")
+	km.mu.Lock()
+	if _, ok := km.locks["unheld"]; !ok {
+		km.mu.Unlock()
+		t.Fatal("expected unheld key to remain untouched by ForceUnlock")
+	}
+	delete(km.locks, "unheld")
+	km.mu.Unlock()
 
-	var wg sync.WaitGroup
+	// 3. ForceUnlock: key held with active waiter (ref.count > 1) -> ref.count decremented, not recycled
+	kmForce := New[string]()
+	refWait := &refCounter{count: 2, held: true}
+	refWait.mu.Lock()
+	kmForce.locks["waiter"] = refWait
+	kmForce.ForceUnlock("waiter")
+	if refWait.count != 1 {
+		t.Fatalf("expected ref.count 1, got %d", refWait.count)
+	}
+	if _, ok := kmForce.locks["waiter"]; !ok {
+		t.Fatal("expected key to remain in map when waiters exist")
+	}
+	delete(kmForce.locks, "waiter")
 
-	wg.Go(func() {
-		km.TryLock("leak")
-	})
+	// 5. Unlock with active waiter (ref.count > 1) -> ref.count decremented, not recycled
+	kmUnlock := New[string]()
+	refUnlockWait := &refCounter{count: 2, held: true}
+	refUnlockWait.mu.Lock()
+	kmUnlock.locks["waiter-unlock"] = refUnlockWait
+	kmUnlock.Unlock("waiter-unlock")
+	if refUnlockWait.count != 1 {
+		t.Fatalf("expected ref.count 1, got %d", refUnlockWait.count)
+	}
+	if _, ok := kmUnlock.locks["waiter-unlock"]; !ok {
+		t.Fatal("expected key to remain in map when waiters exist")
+	}
+	delete(kmUnlock.locks, "waiter-unlock")
 
-	km.Unlock("leak")
-	wg.Wait()
+	// 6. TryLock failure with ref.count > 1 (decrement, toRecycle == false)
+	kmNoRecycle := New[string]()
+	kmNoRecycle.Lock("no-recycle")
+	if kmNoRecycle.TryLock("no-recycle") {
+		t.Fatal("expected TryLock to fail on locked key")
+	}
+	kmNoRecycle.Unlock("no-recycle")
+
+	// 7. TryLock failure with ref.count == 0 (decrement, toRecycle == true, recycling lines 186 and 193)
+	kmRecycle := New[string]()
+	refRecycle := &refCounter{count: 0, held: true}
+	refRecycle.mu.Lock()
+	kmRecycle.locks["recycle"] = refRecycle
+	if kmRecycle.TryLock("recycle") {
+		t.Fatal("expected TryLock to fail on locked key")
+	}
+	refRecycle.mu.Unlock() // unlock mutex before pool reuse
+	if _, ok := kmRecycle.locks["recycle"]; ok {
+		t.Fatal("expected key to be deleted and recycled when ref.count reaches 0")
+	}
 }
