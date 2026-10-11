@@ -481,9 +481,9 @@ func TestParseHexUint64(t *testing.T) {
 		{"", 0, 0, true},
 		{"xyz", 0, 0, true},
 		{";foo", 0, 0, true},
-		{"10000000000000000", 0, 0, true}, // 17 digits overflow
-		{"fffffffffffffffff", 0, 0, true}, // 17 F's overflow
-		{"ffffffffffffffff0", 0, 0, true}, // overflow
+		{"10000000000000000", 0, 0, true},                 // 17 digits overflow
+		{"fffffffffffffffff", 0, 0, true},                 // 17 F's overflow
+		{"ffffffffffffffff0", 0, 0, true},                 // overflow
 		{"000000000000000010000000000000000", 0, 0, true}, // overflow with leading zeros
 	}
 
