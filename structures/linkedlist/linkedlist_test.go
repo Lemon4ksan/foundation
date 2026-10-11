@@ -719,7 +719,7 @@ func TestList_ChunkRecyclingAllocations(t *testing.T) {
 	l := list.New[int]()
 
 	allocs := testing.AllocsPerRun(10, func() {
-		for i := 0; i < 1000; i++ {
+		for i := range 1000 {
 			e := l.PushBack(i)
 			l.Remove(e)
 		}
@@ -739,7 +739,7 @@ func TestList_MemoryRetention_Init(t *testing.T) {
 	}
 
 	l := list.New[*largeObj]()
-	for i := 0; i < 500; i++ {
+	for range 500 {
 		l.PushBack(&largeObj{})
 	}
 
@@ -798,7 +798,7 @@ func TestList_NilSafety(t *testing.T) {
 
 func TestList_IteratorZeroAllocs(t *testing.T) {
 	l := list.New[int]()
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		l.PushBack(i)
 	}
 

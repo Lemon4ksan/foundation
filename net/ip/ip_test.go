@@ -162,14 +162,14 @@ func TestNextForFamily_Concurrent(t *testing.T) {
 
 	// 1 IPv4 at index 1, 9 IPv6 addresses
 	addrs := []string{"2001:db8::1", "192.168.1.1"}
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		addrs = append(addrs, fmt.Sprintf("2001:db8::%x", i+2))
 	}
 
 	rotator, err := ip.NewSourceRotator(addrs)
 	require.NoError(t, err)
 
-	for iter := 0; iter < 100; iter++ {
+	for iter := range 100 {
 		const goroutines = 50
 		var wg sync.WaitGroup
 		var missed atomic.Int32

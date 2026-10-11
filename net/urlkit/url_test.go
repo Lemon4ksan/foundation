@@ -113,6 +113,21 @@ func TestURLView_Hostname_IPv6Zone(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "fe80::2", v2.Hostname())
 	assert.Equal(t, "", v2.Port())
+
+	// Unescaped zone normalization
+	u3, err := urlkit.Parse("http://[fe80::1%eth0]:8080/foo")
+	require.NoError(t, err)
+	assert.Equal(t, "[fe80::1%eth0]:8080", u3.Host)
+
+	// Empty zone
+	_, _ = urlkit.Parse("http://[fe80::1%]:8080/foo")
+
+	// IPv4 with zone inside brackets
+	_, _ = urlkit.Parse("http://[127.0.0.1%eth0]:8080/foo")
+
+	// Malformed bracket escape
+	_, err = urlkit.Parse("0[%]")
+	assert.Error(t, err)
 }
 
 func TestURLView_ParseView_InvalidHost(t *testing.T) {

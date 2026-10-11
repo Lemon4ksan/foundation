@@ -489,7 +489,7 @@ func DecodePackedFixed32(data []byte, dst []uint32) ([]uint32, error) {
 	if isLittleEndian {
 		copy(unsafe.Slice((*byte)(unsafe.Pointer(unsafe.SliceData(dst))), n), data)
 	} else {
-		for i := 0; i < count; i++ {
+		for i := range count {
 			dst[i] = binary.LittleEndian.Uint32(data[i*4 : (i+1)*4])
 		}
 	}
@@ -514,7 +514,7 @@ func DecodePackedFixed64(data []byte, dst []uint64) ([]uint64, error) {
 	if isLittleEndian {
 		copy(unsafe.Slice((*byte)(unsafe.Pointer(unsafe.SliceData(dst))), n), data)
 	} else {
-		for i := 0; i < count; i++ {
+		for i := range count {
 			dst[i] = binary.LittleEndian.Uint64(data[i*8 : (i+1)*8])
 		}
 	}
@@ -539,7 +539,7 @@ func DecodePackedFloat32(data []byte, dst []float32) ([]float32, error) {
 	if isLittleEndian {
 		copy(unsafe.Slice((*byte)(unsafe.Pointer(unsafe.SliceData(dst))), n), data)
 	} else {
-		for i := 0; i < count; i++ {
+		for i := range count {
 			dst[i] = math.Float32frombits(binary.LittleEndian.Uint32(data[i*4 : (i+1)*4]))
 		}
 	}
@@ -564,7 +564,7 @@ func DecodePackedFloat64(data []byte, dst []float64) ([]float64, error) {
 	if isLittleEndian {
 		copy(unsafe.Slice((*byte)(unsafe.Pointer(unsafe.SliceData(dst))), n), data)
 	} else {
-		for i := 0; i < count; i++ {
+		for i := range count {
 			dst[i] = math.Float64frombits(binary.LittleEndian.Uint64(data[i*8 : (i+1)*8]))
 		}
 	}

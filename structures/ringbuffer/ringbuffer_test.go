@@ -373,3 +373,16 @@ func TestChallenge_ZeroValueUsability(t *testing.T) {
 	require.Equal(t, "alpha", r.PopFront())
 	require.True(t, r.Empty())
 }
+
+func TestBuffer_Drain_EarlyBreak(t *testing.T) {
+	var r Buffer[int]
+	r.PushBack(1)
+	r.PushBack(2)
+	r.PushBack(3)
+	for v := range r.Drain() {
+		if v == 1 {
+			break
+		}
+	}
+	require.Equal(t, 2, r.Len())
+}

@@ -34,10 +34,10 @@ func IndexByteSWAR(b []byte, target byte) int {
 
 	// Unrolled 32-byte SWAR loop with coalesced zero-byte check
 	for i+32 <= n {
-		w0 := *(*uint64)(unsafe.Pointer(uintptr(basePtr) + uintptr(i)))
-		w1 := *(*uint64)(unsafe.Pointer(uintptr(basePtr) + uintptr(i+8)))
-		w2 := *(*uint64)(unsafe.Pointer(uintptr(basePtr) + uintptr(i+16)))
-		w3 := *(*uint64)(unsafe.Pointer(uintptr(basePtr) + uintptr(i+24)))
+		w0 := *(*uint64)(unsafe.Add(basePtr, i))
+		w1 := *(*uint64)(unsafe.Add(basePtr, (i + 8)))
+		w2 := *(*uint64)(unsafe.Add(basePtr, (i + 16)))
+		w3 := *(*uint64)(unsafe.Add(basePtr, (i + 24)))
 
 		x0 := w0 ^ targetWord
 		x1 := w1 ^ targetWord
@@ -75,7 +75,7 @@ func IndexByteSWAR(b []byte, target byte) int {
 
 	// 8-byte uint64 remainder chunks
 	for i+8 <= n {
-		word := *(*uint64)(unsafe.Pointer(uintptr(basePtr) + uintptr(i)))
+		word := *(*uint64)(unsafe.Add(basePtr, i))
 		xor := word ^ targetWord
 		hasZero := (xor - RepeatByte0x01) &^ xor & RepeatByte0x80
 		if hasZero != 0 {
@@ -88,7 +88,7 @@ func IndexByteSWAR(b []byte, target byte) int {
 
 	// Scalar tail processing
 	for ; i < n; i++ {
-		if *(*byte)(unsafe.Pointer(uintptr(basePtr) + uintptr(i))) == target {
+		if *(*byte)(unsafe.Add(basePtr, i)) == target {
 			runtime.KeepAlive(b)
 			return i
 		}
@@ -114,7 +114,7 @@ func IndexByteTwoSWAR(b []byte, target1, target2 byte) int {
 
 	// 8-byte uint64 SWAR chunks
 	for i+8 <= n {
-		word := *(*uint64)(unsafe.Pointer(uintptr(basePtr) + uintptr(i)))
+		word := *(*uint64)(unsafe.Add(basePtr, i))
 		xor1 := word ^ w1
 		hasZero1 := (xor1 - RepeatByte0x01) &^ xor1 & RepeatByte0x80
 
@@ -132,7 +132,7 @@ func IndexByteTwoSWAR(b []byte, target1, target2 byte) int {
 	}
 
 	for ; i < n; i++ {
-		c := *(*byte)(unsafe.Pointer(uintptr(basePtr) + uintptr(i)))
+		c := *(*byte)(unsafe.Add(basePtr, i))
 		if c == target1 || c == target2 {
 			runtime.KeepAlive(b)
 			return i
@@ -196,10 +196,10 @@ func ValidUTF8(b []byte) bool {
 
 	// Fast 32-byte SWAR loop for ASCII runs
 	for i+32 <= n {
-		w0 := *(*uint64)(unsafe.Pointer(uintptr(basePtr) + uintptr(i)))
-		w1 := *(*uint64)(unsafe.Pointer(uintptr(basePtr) + uintptr(i+8)))
-		w2 := *(*uint64)(unsafe.Pointer(uintptr(basePtr) + uintptr(i+16)))
-		w3 := *(*uint64)(unsafe.Pointer(uintptr(basePtr) + uintptr(i+24)))
+		w0 := *(*uint64)(unsafe.Add(basePtr, i))
+		w1 := *(*uint64)(unsafe.Add(basePtr, (i + 8)))
+		w2 := *(*uint64)(unsafe.Add(basePtr, (i + 16)))
+		w3 := *(*uint64)(unsafe.Add(basePtr, (i + 24)))
 		if ((w0 | w1 | w2 | w3) & RepeatByte0x80) != 0 {
 			break
 		}
@@ -208,7 +208,7 @@ func ValidUTF8(b []byte) bool {
 
 	// 8-byte SWAR loop for remainder
 	for i+8 <= n {
-		w := *(*uint64)(unsafe.Pointer(uintptr(basePtr) + uintptr(i)))
+		w := *(*uint64)(unsafe.Add(basePtr, i))
 		if (w & RepeatByte0x80) != 0 {
 			break
 		}
@@ -238,15 +238,15 @@ func XORMask32(b []byte, mask uint32) {
 
 	// 4x unrolled 32-byte SWAR XOR
 	for i+32 <= n {
-		*(*uint64)(unsafe.Pointer(uintptr(basePtr) + uintptr(i))) ^= mask64
-		*(*uint64)(unsafe.Pointer(uintptr(basePtr) + uintptr(i+8))) ^= mask64
-		*(*uint64)(unsafe.Pointer(uintptr(basePtr) + uintptr(i+16))) ^= mask64
-		*(*uint64)(unsafe.Pointer(uintptr(basePtr) + uintptr(i+24))) ^= mask64
+		*(*uint64)(unsafe.Add(basePtr, i)) ^= mask64
+		*(*uint64)(unsafe.Add(basePtr, (i + 8))) ^= mask64
+		*(*uint64)(unsafe.Add(basePtr, (i + 16))) ^= mask64
+		*(*uint64)(unsafe.Add(basePtr, (i + 24))) ^= mask64
 		i += 32
 	}
 
 	for i+8 <= n {
-		*(*uint64)(unsafe.Pointer(uintptr(basePtr) + uintptr(i))) ^= mask64
+		*(*uint64)(unsafe.Add(basePtr, i)) ^= mask64
 		i += 8
 	}
 
@@ -258,7 +258,7 @@ func XORMask32(b []byte, mask uint32) {
 	}
 
 	for ; i < n; i++ {
-		*(*byte)(unsafe.Pointer(uintptr(basePtr) + uintptr(i))) ^= maskBytes[i&3]
+		*(*byte)(unsafe.Add(basePtr, i)) ^= maskBytes[i&3]
 	}
 	runtime.KeepAlive(b)
 }

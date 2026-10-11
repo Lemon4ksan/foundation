@@ -830,7 +830,7 @@ func lookupStructField(
 		}
 		if len(keyRaw) <= 64 {
 			var lowerBuf [64]byte
-			for i := 0; i < len(keyRaw); i++ {
+			for i := range keyRaw {
 				c := keyRaw[i]
 				if c >= 'A' && c <= 'Z' {
 					c += 32

@@ -403,12 +403,10 @@ func TestKeyLock_TryLock_Contention(t *testing.T) {
 	km.Lock("leak")
 
 	var wg sync.WaitGroup
-	wg.Add(1)
 
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		km.TryLock("leak")
-	}()
+	})
 
 	km.Unlock("leak")
 	wg.Wait()

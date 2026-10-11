@@ -154,7 +154,7 @@ func TestHeap_CapacityAndShrinkToFit(t *testing.T) {
 	require.Equal(t, 0, h.Len())
 	require.Equal(t, 100, h.Cap())
 
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		h.Push(i, "val")
 	}
 	require.Equal(t, 50, h.Len())
@@ -179,12 +179,44 @@ func TestHeap_Reserve(t *testing.T) {
 	require.True(t, h.Cap() >= 64)
 
 	allocs := testing.AllocsPerRun(10, func() {
-		for i := 0; i < 64; i++ {
+		for i := range 64 {
 			h.Push(i, i)
 		}
-		for i := 0; i < 64; i++ {
+		for range 64 {
 			h.Pop()
 		}
 	})
 	require.Equal(t, float64(0), allocs)
+}
+
+func TestHeap_BoundaryEdgeCases(t *testing.T) {
+	// Zero / negative capacity
+	emptyH := NewWithCapacity[int, string](0)
+	require.Nil(t, emptyH)
+
+	negH := NewWithCapacity[int, string](-5)
+	require.Nil(t, negH)
+
+	// Zero / negative reserve
+	var h Heap[int, string]
+	h.Reserve(0)
+	h.Reserve(-1)
+	require.Equal(t, 0, h.Cap())
+
+	// Early break in Values()
+	h.Push(1, "one")
+	h.Push(2, "two")
+	for v := range h.Values() {
+		if v == "one" {
+			break
+		}
+	}
+
+	// Early break in Drain()
+	for k := range h.Drain() {
+		if k == 1 {
+			break
+		}
+	}
+	require.Equal(t, 1, h.Len())
 }

@@ -35,10 +35,7 @@ func appendUvarintSlow(dst []byte, x uint64) []byte {
 	if needed <= cap(dst) {
 		dst = dst[:needed]
 	} else {
-		newCap := 2 * cap(dst)
-		if newCap < needed {
-			newCap = needed
-		}
+		newCap := max(2*cap(dst), needed)
 		newDst := make([]byte, needed, newCap)
 		copy(newDst, dst)
 		dst = newDst

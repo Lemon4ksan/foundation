@@ -865,3 +865,72 @@ func TestEventsSeq_ContextCancellation(t *testing.T) {
 		t.Fatal("should not yield")
 	}
 }
+
+func TestEvent_CoverageEdgeCases(t *testing.T) {
+	// 1. Envelope methods
+	var env Envelope
+	env.SetContext(context.Background())
+	assert.NotNil(t, env.Context())
+	env.isEvent()
+
+	// 2. SubscribeTyped on closed bus
+	closedBus := New()
+	closedBus.Close()
+	tsClosed := closedBus.SubscribeTyped[CustomTestEvent](10)
+	require.NotNil(t, tsClosed)
+	tsClosed.Unsubscribe()
+
+	// 3. SubscribeTyped for value type when pointer event is published
+	bus := New()
+	defer bus.Close()
+	subVal := bus.SubscribeTyped[CustomTestEvent](10)
+	defer subVal.Unsubscribe()
+
+	bus.Publish(&CustomTestEvent{Data: "ptr-to-val"})
+	select {
+	case ev := <-subVal.C():
+		assert.Equal(t, "ptr-to-val", ev.Data)
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for event")
+	}
+
+	// 4. EventsSeq early exit
+	subRaw := bus.Subscribe(CustomTestEvent{})
+	defer subRaw.Unsubscribe()
+	bus.Publish(CustomTestEvent{Data: "early-raw"})
+	for range subRaw.EventsSeq(context.Background()) {
+		break
+	}
+
+	subTyped2 := bus.SubscribeTyped[CustomTestEvent]()
+	defer subTyped2.Unsubscribe()
+	bus.Publish(CustomTestEvent{Data: "early-typed"})
+	for range subTyped2.EventsSeq(context.Background()) {
+		break
+	}
+
+	// 5. SubscribeTo nil edge cases
+	cancelNil := SubscribeTo[*utilTestEvent](nil, nil, nil)
+	cancelNil()
+
+	cancelNilH := SubscribeTo[*utilTestEvent](context.Background(), bus, nil)
+	cancelNilH()
+
+	cancelNilCtx := SubscribeTo[*utilTestEvent](nil, bus, func(ev *utilTestEvent) {})
+	cancelNilCtx()
+
+	// 6. SubscribeSeq nil and pre-canceled ctx
+	go func() {
+		time.Sleep(10 * time.Millisecond)
+		bus.Publish(&utilTestEvent{})
+	}()
+	for range SubscribeSeq[*utilTestEvent](nil, bus) {
+		break
+	}
+
+	canceledCtx, cancelC := context.WithCancel(context.Background())
+	cancelC()
+	for range SubscribeSeq[*utilTestEvent](canceledCtx, bus) {
+		break
+	}
+}

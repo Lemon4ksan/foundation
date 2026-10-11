@@ -140,7 +140,7 @@ func isASCII(s string) bool {
 func forEachWordASCII(s string, yield func(word string)) {
 	n := len(s)
 	start := 0
-	for i := 0; i < n; i++ {
+	for i := range n {
 		c := s[i]
 		if c == '_' || c == '-' || c == ' ' || c == '.' || c == '/' {
 			if i > start {
@@ -171,7 +171,7 @@ func forEachWordUnicode(s string, yield func(word string)) {
 	runes := []rune(s)
 	n := len(runes)
 	start := 0
-	for i := 0; i < n; i++ {
+	for i := range n {
 		r := runes[i]
 		if r == '_' || r == '-' || r == ' ' || r == '.' || r == '/' {
 			if i > start {

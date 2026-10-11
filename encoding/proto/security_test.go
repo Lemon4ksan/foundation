@@ -47,7 +47,7 @@ func TestRepro_VarintOverflow_MoreThan10Bytes(t *testing.T) {
 
 	// 10 bytes where 10th byte has bit 1 set (overflows 64-bit uint)
 	bufOverflowVal := make([]byte, 10)
-	for i := 0; i < 9; i++ {
+	for i := range 9 {
 		bufOverflowVal[i] = 0x80
 	}
 	bufOverflowVal[9] = 0x02 // bit 1 set, > 1
@@ -204,7 +204,7 @@ func TestSecurity_DeeplyNestedMessages(t *testing.T) {
 	// Build 100 levels of nested length-delimited messages
 	payload := proto.AppendVarint(nil, 1, 42) // inner payload: field 1 = 42
 
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		var outer []byte
 		outer = proto.AppendBytes(outer, 1, payload)
 		payload = outer
@@ -212,7 +212,7 @@ func TestSecurity_DeeplyNestedMessages(t *testing.T) {
 
 	// Iteratively peel back each layer
 	curr := payload
-	for depth := 0; depth < 100; depth++ {
+	for range 100 {
 		seenField := false
 		for f, err := range proto.Scan(curr) {
 			require.NoError(t, err)
@@ -339,7 +339,7 @@ func TestSecurity_ZeroAllocUnderStress(t *testing.T) {
 func TestSecurity_CircularAndRecursiveMessages(t *testing.T) {
 	// 1. Deep nesting exceeding DefaultMaxDepth (64)
 	inner := proto.AppendVarint(nil, 1, 42)
-	for i := 0; i < 70; i++ {
+	for range 70 {
 		inner = proto.AppendMessage(nil, 1, inner)
 	}
 
@@ -373,7 +373,7 @@ func TestSecurity_CircularAndRecursiveMessages(t *testing.T) {
 	// 4. Billion Laughs / Exponential DAG Bomb Defense
 	// Build a branching payload where each level contains 2 references to child
 	leaf := proto.AppendVarint(nil, 1, 99)
-	for i := 0; i < 20; i++ { // 2^20 = 1,048,576 operations if unbudgeted!
+	for range 20 { // 2^20 = 1,048,576 operations if unbudgeted!
 		var branch []byte
 		branch = proto.AppendMessage(branch, 1, leaf)
 		branch = proto.AppendMessage(branch, 2, leaf)

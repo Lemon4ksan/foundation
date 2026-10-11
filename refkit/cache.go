@@ -7,6 +7,7 @@ package refkit
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"reflect"
 	"slices"
 	"strings"
@@ -131,9 +132,7 @@ func (c *SchemaCache) Get(t reflect.Type) (*StructSchema, error) {
 	}
 	newMap := make(map[reflect.Type]*StructSchema, oldLen+1)
 	if currMap != nil {
-		for k, v := range *currMap {
-			newMap[k] = v
-		}
+		maps.Copy(newMap, *currMap)
 	}
 	newMap[target] = schema
 	c.schemas.Store(&newMap)
