@@ -7,7 +7,7 @@ package json_test
 import (
 	"fmt"
 
-	"github.com/lemon4ksan/foundation/codec/json"
+	"github.com/lemon4ksan/foundation/encoding/json"
 )
 
 type Config struct {
