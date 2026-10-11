@@ -125,7 +125,7 @@ func TestBufferQueue_CapacityRetention(t *testing.T) {
 	t.Parallel()
 
 	q := iokit.NewBufferQueue()
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		q.Push([]byte("test"))
 		var buf bytes.Buffer
 		_, err := q.WriteTo(&buf)

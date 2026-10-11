@@ -647,7 +647,7 @@ func TestFreezeDataRace(t *testing.T) {
 	box := borrow.NewBox(&val)
 	defer box.Release()
 
-	for i := 0; i < 500; i++ {
+	for range 500 {
 		mut, err := box.TryBorrowMut()
 		require.NoError(t, err)
 

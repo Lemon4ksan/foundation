@@ -14,12 +14,13 @@ github.com/lemon4ksan/foundation/async/scheduler                   85.8%
 github.com/lemon4ksan/foundation/async/task                        98.1%
 github.com/lemon4ksan/foundation/borrow                            91.7%
 github.com/lemon4ksan/foundation/bufkit                            98.0%
-github.com/lemon4ksan/foundation/codec/json                        79.6%
 github.com/lemon4ksan/foundation/crypto/aead                       87.0%
 github.com/lemon4ksan/foundation/crypto/kdf                        93.6%
 github.com/lemon4ksan/foundation/crypto/sign                       89.9%
 github.com/lemon4ksan/foundation/encoding/base64                   74.2%
 github.com/lemon4ksan/foundation/encoding/bin                      80.4%
+github.com/lemon4ksan/foundation/encoding/json                     79.6%
+github.com/lemon4ksan/foundation/encoding/proto                    78.9%
 github.com/lemon4ksan/foundation/encoding/varint                   78.9%
 github.com/lemon4ksan/foundation/fskit                             89.7%
 github.com/lemon4ksan/foundation/generic                           86.6%

@@ -131,7 +131,7 @@ func BenchmarkSkipField_ZeroAlloc(b *testing.B) {
 
 func BenchmarkScan_Throughput_4KB(b *testing.B) {
 	var buf []byte
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		buf = proto.AppendVarint(buf, uint32(i%15+1), uint64(i*10))
 		buf = proto.AppendFixed32(buf, uint32(i%15+1), uint32(i*100))
 		buf = proto.AppendFixed64(buf, uint32(i%15+1), uint64(i*1000))
@@ -153,7 +153,7 @@ func BenchmarkScan_Throughput_4KB(b *testing.B) {
 func BenchmarkScan_Throughput_64KB(b *testing.B) {
 	var buf []byte
 	payload := make([]byte, 128)
-	for i := 0; i < 500; i++ {
+	for i := range 500 {
 		buf = proto.AppendVarint(buf, 1, uint64(i))
 		buf = proto.AppendFixed64(buf, 2, uint64(i*100))
 		buf = proto.AppendBytes(buf, 3, payload)

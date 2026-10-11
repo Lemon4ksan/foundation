@@ -470,7 +470,7 @@ func BenchmarkScanMapEntry_ZeroAlloc(b *testing.B) {
 
 func BenchmarkScanMapEntries_ZeroAlloc(b *testing.B) {
 	var msg []byte
-	for i := 0; i < 8; i++ {
+	for range 8 {
 		msg = proto.AppendMapEntryStringString(msg, 1, "k", "v")
 	}
 

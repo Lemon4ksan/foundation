@@ -122,14 +122,14 @@ func TestRepro_Secret_SerializationLeakPrevention(t *testing.T) {
 }
 
 func TestRepro_Secret_ConcurrentExposeAndWipeRace(t *testing.T) {
-	for iter := 0; iter < 100; iter++ {
+	for range 100 {
 		sec := secret.New([]byte("concurrent-wipe-expose-secret"))
 		var wg sync.WaitGroup
 		wg.Add(2)
 
 		go func() {
 			defer wg.Done()
-			for i := 0; i < 50; i++ {
+			for range 50 {
 				_ = sec.Expose()
 			}
 		}()
@@ -141,4 +141,101 @@ func TestRepro_Secret_ConcurrentExposeAndWipeRace(t *testing.T) {
 
 		wg.Wait()
 	}
+}
+
+type customWiper struct {
+	wiped bool
+}
+
+func (c *customWiper) Wipe() {
+	c.wiped = true
+}
+
+type customDestroyer struct {
+	destroyed bool
+}
+
+func (c *customDestroyer) Destroy() {
+	c.destroyed = true
+}
+
+type customTextCodec struct {
+	val string
+}
+
+func (c *customTextCodec) UnmarshalText(text []byte) error {
+	c.val = string(text)
+	return nil
+}
+
+type customBinaryCodec struct {
+	val []byte
+}
+
+func (c *customBinaryCodec) UnmarshalBinary(data []byte) error {
+	c.val = append([]byte(nil), data...)
+	return nil
+}
+
+func TestSecret_ExtendedCoverage(t *testing.T) {
+	// Zero value behavior
+	var zeroSec secret.Secret[string]
+	assert.Equal(t, "", zeroSec.Value())
+	assert.Equal(t, "", zeroSec.Expose())
+	zeroSec.Wipe()
+
+	var nilSec *secret.Secret[string]
+	nilSec.Wipe()
+
+	// Custom Wiper
+	wiper := &customWiper{}
+	wSec := secret.New(wiper)
+	wSec.Wipe()
+	assert.True(t, wiper.wiped)
+
+	// Custom Destroyer
+	destroyer := &customDestroyer{}
+	dSec := secret.New(destroyer)
+	dSec.Wipe()
+	assert.True(t, destroyer.destroyed)
+
+	// Byte slice unmarshaling
+	var byteSec secret.Secret[[]byte]
+	err := byteSec.UnmarshalText([]byte("text-bytes"))
+	require.NoError(t, err)
+	assert.Equal(t, "text-bytes", string(byteSec.Value()))
+
+	err = byteSec.UnmarshalBinary([]byte("bin-bytes"))
+	require.NoError(t, err)
+	assert.Equal(t, "bin-bytes", string(byteSec.Value()))
+
+	// Custom TextUnmarshaler
+	var textSec secret.Secret[customTextCodec]
+	err = textSec.UnmarshalText([]byte("custom-text-data"))
+	require.NoError(t, err)
+	assert.Equal(t, "custom-text-data", textSec.Value().val)
+
+	// Custom BinaryUnmarshaler
+	var binSec secret.Secret[customBinaryCodec]
+	err = binSec.UnmarshalBinary([]byte("custom-bin-data"))
+	require.NoError(t, err)
+	assert.Equal(t, "custom-bin-data", string(binSec.Value().val))
+
+	// Numeric text unmarshaler fallback
+	var intSec secret.Secret[int]
+	err = intSec.UnmarshalText([]byte("12345"))
+	require.NoError(t, err)
+	assert.Equal(t, 12345, intSec.Value())
+
+	// String unmarshaling fallback
+	var strSec secret.Secret[string]
+	err = strSec.UnmarshalText([]byte("simple-text"))
+	require.NoError(t, err)
+	assert.Equal(t, "simple-text", strSec.Value())
+
+	// Slog and GoString
+	sec := secret.New("test-secret")
+	assert.Equal(t, "secret.Secret(******)", sec.GoString())
+	logVal := sec.LogValue()
+	assert.Equal(t, "******", logVal.String())
 }

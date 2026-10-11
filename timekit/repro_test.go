@@ -39,7 +39,7 @@ func TestRepro_YearBoundaries_Formatting(t *testing.T) {
 	minTm := time.Date(math.MinInt/1000000000000, 1, 1, 0, 0, 0, 0, time.UTC)
 	s1 := timekit.FormatRFC3339(minTm)
 	assert.Len(t, s1, 20)
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		assert.True(t, s1[i] >= '0' && s1[i] <= '9', "expected year digit in RFC3339")
 	}
 
@@ -47,7 +47,7 @@ func TestRepro_YearBoundaries_Formatting(t *testing.T) {
 	maxTm := time.Date(12345, 1, 1, 0, 0, 0, 0, time.UTC)
 	s2 := timekit.FormatRFC3339(maxTm)
 	assert.Len(t, s2, 20)
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		assert.True(t, s2[i] >= '0' && s2[i] <= '9', "expected year digit in RFC3339")
 	}
 }

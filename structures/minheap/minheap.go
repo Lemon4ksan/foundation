@@ -51,10 +51,7 @@ func (h *Heap[K, V]) Reserve(additional int) {
 	}
 	needed := len(*h) + additional
 	if needed > cap(*h) {
-		newCap := cap(*h) * 2
-		if newCap < needed {
-			newCap = needed
-		}
+		newCap := max(cap(*h)*2, needed)
 		newH := make(Heap[K, V], len(*h), newCap)
 		copy(newH, *h)
 		*h = newH

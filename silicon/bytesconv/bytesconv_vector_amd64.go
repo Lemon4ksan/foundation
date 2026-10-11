@@ -54,7 +54,7 @@ func toLowerVector(dst, src []byte) {
 			i += 32
 			continue
 		}
-		for j := 0; j < 32; j++ {
+		for j := range 32 {
 			dst[i+j] = toLowerTable[src[i+j]]
 		}
 		i += 32
@@ -65,7 +65,7 @@ func toLowerVector(dst, src []byte) {
 		if (v & 0x8080808080808080) == 0 {
 			*(*uint64)(unsafe.Pointer(&dst[i])) = toLowerSWAR64(v)
 		} else {
-			for j := 0; j < 8; j++ {
+			for j := range 8 {
 				dst[i+j] = toLowerTable[src[i+j]]
 			}
 		}
@@ -102,7 +102,7 @@ func toUpperVector(dst, src []byte) {
 			i += 32
 			continue
 		}
-		for j := 0; j < 32; j++ {
+		for j := range 32 {
 			dst[i+j] = toUpperTable[src[i+j]]
 		}
 		i += 32
@@ -113,7 +113,7 @@ func toUpperVector(dst, src []byte) {
 		if (v & 0x8080808080808080) == 0 {
 			*(*uint64)(unsafe.Pointer(&dst[i])) = toUpperSWAR64(v)
 		} else {
-			for j := 0; j < 8; j++ {
+			for j := range 8 {
 				dst[i+j] = toUpperTable[src[i+j]]
 			}
 		}

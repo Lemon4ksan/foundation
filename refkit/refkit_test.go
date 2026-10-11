@@ -164,6 +164,17 @@ func TestAlloc_EnsureAlloc(t *testing.T) {
 	// EnsureAlloc on invalid Value
 	_, allocInvalid := refkit.EnsureAlloc(reflect.Value{})
 	assert.False(t, allocInvalid)
+
+	// EnsureAlloc on unsettable nil pointer
+	var nilPtr *int
+	_, allocUnsettable := refkit.EnsureAlloc(reflect.ValueOf(nilPtr))
+	assert.False(t, allocUnsettable)
+
+	// EnsureAlloc on non-nil interface wrapping pointer
+	var iface any = &nonPtr
+	elemIface, allocIface := refkit.EnsureAlloc(reflect.ValueOf(&iface).Elem())
+	assert.False(t, allocIface)
+	assert.Equal(t, int64(42), elemIface.Int())
 }
 
 func TestTag_Parsing_And_Getters(t *testing.T) {

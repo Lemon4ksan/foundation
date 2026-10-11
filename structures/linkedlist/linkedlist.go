@@ -133,10 +133,7 @@ func (l *List[T]) ShrinkToFit() *List[T] {
 		return l
 	}
 
-	needed := (l.allocs + chunkSize - 1) / chunkSize
-	if needed < 1 {
-		needed = 1
-	}
+	needed := max((l.allocs+chunkSize-1)/chunkSize, 1)
 	if needed < len(l.chunks) {
 		clear(l.chunks[needed:])
 		l.chunks = l.chunks[:needed]

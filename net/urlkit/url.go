@@ -7,6 +7,7 @@ package urlkit
 import (
 	"errors"
 	"iter"
+	"net/netip"
 	"net/url"
 	"strings"
 	"sync"
@@ -236,7 +237,9 @@ func (u URLView) String() string {
 	return string(u.AppendTo(buf))
 }
 
-// ToURL converts the view to a standard [*url.URL].
+// normalizeIPv6Zone normalizes an unescaped IPv6 zone identifier (e.g. "[fe80::1%eth0]")
+// to RFC 6874 format ("[fe80::1%25eth0]"). It strictly verifies that the bracketed host
+// contains a valid IPv6 address before escaping the percent sign.
 func normalizeIPv6Zone(s string) string {
 	start := strings.Index(s, "[")
 	if start < 0 {
@@ -249,6 +252,15 @@ func normalizeIPv6Zone(s string) string {
 	ipv6 := s[start : start+end+1]
 	pct := strings.Index(ipv6, "%")
 	if pct < 0 || strings.HasPrefix(ipv6[pct:], "%25") {
+		return s
+	}
+	zone := ipv6[pct+1 : len(ipv6)-1]
+	if zone == "" {
+		return s
+	}
+	ipPart := ipv6[1:pct]
+	addr, err := netip.ParseAddr(ipPart)
+	if err != nil || !addr.Is6() {
 		return s
 	}
 	normalizedIPv6 := ipv6[:pct] + "%25" + ipv6[pct+1:]

@@ -225,14 +225,14 @@ func FuzzProtoPacked(f *testing.F) {
 
 	// Seed 3: Packed fixed32
 	var seedFixed32 []byte
-	for i := uint32(0); i < 5; i++ {
+	for i := range uint32(5) {
 		seedFixed32 = binary.LittleEndian.AppendUint32(seedFixed32, i*100)
 	}
 	f.Add(seedFixed32)
 
 	// Seed 4: Packed fixed64
 	var seedFixed64 []byte
-	for i := uint64(0); i < 4; i++ {
+	for i := range uint64(4) {
 		seedFixed64 = binary.LittleEndian.AppendUint64(seedFixed64, i*1000)
 	}
 	f.Add(seedFixed64)

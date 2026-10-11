@@ -955,7 +955,7 @@ func TestStress_CircularGrowthAllHeadPositions(t *testing.T) {
 				d := NewWithCapacity[int](initCap)
 
 				// Step 1: Advance head position to headOffset
-				for i := 0; i < headOffset; i++ {
+				for range headOffset {
 					d.PushBack(-1)
 					d.PopFront()
 				}
@@ -992,7 +992,7 @@ func TestStress_CircularGrowthAllHeadPositions(t *testing.T) {
 				d := NewWithCapacity[int](initCap)
 
 				// Advance head position to headOffset
-				for i := 0; i < headOffset; i++ {
+				for range headOffset {
 					d.PushBack(-1)
 					d.PopFront()
 				}

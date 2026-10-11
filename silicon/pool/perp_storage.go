@@ -71,7 +71,7 @@ func (p *PerCorePool[T]) Get() T {
 	startIdx := uint64(fastrand()) & p.mask
 
 	var contended bool
-	for pass := 0; pass < 2; pass++ {
+	for range 2 {
 		for i := range numShards {
 			idx := (startIdx + i) & p.mask
 			shard := &p.shards[idx]
@@ -123,7 +123,7 @@ func (p *PerCorePool[T]) Put(item T) {
 	startIdx := uint64(fastrand()) & p.mask
 
 	var contended bool
-	for pass := 0; pass < 2; pass++ {
+	for range 2 {
 		for i := range numShards {
 			idx := (startIdx + i) & p.mask
 			shard := &p.shards[idx]

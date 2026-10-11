@@ -27,6 +27,12 @@ func (s *pkgStats) Coverage() float64 {
 	return float64(s.CoveredStmts) / float64(s.TotalStmts) * 100.0
 }
 
+type blockInfo struct {
+	pkgPath string
+	numStmt int
+	count   int
+}
+
 func parseCoverageProfile(profilePath string) (map[string]*pkgStats, error) {
 	f, err := os.Open(profilePath)
 	if err != nil {
@@ -35,7 +41,7 @@ func parseCoverageProfile(profilePath string) (map[string]*pkgStats, error) {
 	defer f.Close()
 
 	scanner := bufio.NewScanner(f)
-	stats := make(map[string]*pkgStats)
+	blocks := make(map[string]*blockInfo)
 
 	lineNum := 0
 	for scanner.Scan() {
@@ -64,20 +70,35 @@ func parseCoverageProfile(profilePath string) (map[string]*pkgStats, error) {
 			continue
 		}
 
-		st, exists := stats[pkgPath]
+		key := fields[0]
+		b, exists := blocks[key]
 		if !exists {
-			st = &pkgStats{}
-			stats[pkgPath] = st
-		}
-
-		st.TotalStmts += numStmt
-		if count > 0 {
-			st.CoveredStmts += numStmt
+			blocks[key] = &blockInfo{
+				pkgPath: pkgPath,
+				numStmt: numStmt,
+				count:   count,
+			}
+		} else {
+			b.count += count
 		}
 	}
 
 	if err := scanner.Err(); err != nil {
 		return nil, fmt.Errorf("error reading coverage profile: %w", err)
+	}
+
+	stats := make(map[string]*pkgStats)
+	for _, b := range blocks {
+		st, exists := stats[b.pkgPath]
+		if !exists {
+			st = &pkgStats{}
+			stats[b.pkgPath] = st
+		}
+
+		st.TotalStmts += b.numStmt
+		if b.count > 0 {
+			st.CoveredStmts += b.numStmt
+		}
 	}
 
 	return stats, nil

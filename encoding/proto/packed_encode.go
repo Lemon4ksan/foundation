@@ -26,10 +26,7 @@ func growSlice(dst []byte, extra int) []byte {
 	if needed <= cap(dst) {
 		return dst[:needed]
 	}
-	newCap := 2 * cap(dst)
-	if newCap < needed {
-		newCap = needed
-	}
+	newCap := max(2*cap(dst), needed)
 	newDst := make([]byte, needed, newCap)
 	copy(newDst, dst)
 	return newDst
