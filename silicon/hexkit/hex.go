@@ -6,6 +6,8 @@ package hexkit
 
 import (
 	"errors"
+	"math"
+	"math/bits"
 	"unsafe"
 )
 
@@ -14,6 +16,8 @@ var (
 	ErrInvalidLength  = errors.New("hex: odd length hex string")
 	ErrInvalidByte    = errors.New("hex: invalid byte in hex string")
 	ErrBufferTooSmall = errors.New("hex: destination buffer too small")
+	ErrEmptyHexNum    = errors.New("hex: empty hex number")
+	ErrHexOverflow    = errors.New("hex: integer overflow")
 )
 
 const hextable = "0123456789abcdef"
@@ -252,4 +256,88 @@ func Decode16[T ~[8]byte](dst *T, s string) bool {
 		d[i] = (hi << 4) | lo
 	}
 	return true
+}
+
+// FormatHexUint writes the lowercase hexadecimal representation of val into buf
+// without heap allocations, returning the number of bytes written (RFC 9112 §7.1).
+// FormatHexUint panics if val is negative.
+//
+//go:inline
+func FormatHexUint(buf *[16]byte, val int) int {
+	if val < 0 {
+		panic("FormatHexUint: int must be positive")
+	}
+	if val == 0 {
+		buf[0] = '0'
+		return 1
+	}
+
+	u := uint64(val)
+	count := (67 - bits.LeadingZeros64(u)) >> 2
+
+	i := count - 1
+	for u >= 0x100 {
+		pair := hexLUT16[byte(u)]
+		buf[i] = byte(pair >> 8)
+		buf[i-1] = byte(pair)
+		u >>= 8
+		i -= 2
+	}
+	for u >= 16 {
+		buf[i] = hextable[u&0x0F]
+		u >>= 4
+		i--
+	}
+	buf[i] = hextable[u]
+
+	return count
+}
+
+// ParseHexUint parses a hex-encoded uint from src for chunk-size decoding (RFC 9112 §7.1).
+// Prevents parsing errors due to integer overflow.
+// Returns the parsed integer, number of bytes consumed, or an error.
+//
+//go:inline
+func ParseHexUint(src []byte) (int, int, error) {
+	n := len(src)
+	if n == 0 {
+		return 0, 0, ErrEmptyHexNum
+	}
+
+	c0 := src[0]
+	d0 := decodeLUT[c0]
+	if d0 > 0x0F {
+		return 0, 0, ErrEmptyHexNum
+	}
+
+	val := int(d0)
+	i := 1
+
+	// Fast-path: up to 15 hex digits (60 bits) cannot overflow math.MaxInt (63 bits)
+	maxSafe := min(n, 15)
+	for i < maxSafe {
+		c := src[i]
+		d := decodeLUT[c]
+		if d > 0x0F {
+			return val, i, nil
+		}
+		val = (val << 4) | int(d)
+		i++
+	}
+
+	// Remainder checks for overflow
+	for i < n {
+		c := src[i]
+		d := decodeLUT[c]
+		if d > 0x0F {
+			return val, i, nil
+		}
+		if val > (math.MaxInt-int(d))>>4 {
+			return 0, 0, ErrHexOverflow
+		}
+		val = (val << 4) | int(d)
+		i++
+	}
+
+	return val, i, nil
 }

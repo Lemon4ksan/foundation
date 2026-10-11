@@ -270,3 +270,148 @@ func PrefetchL1(_ unsafe.Pointer) {}
 func StreamCopy256(dst, src []byte) int {
 	return copy(dst, src)
 }
+
+const (
+	spaceWordSWAR = RepeatByte0x01 * 0x20
+	tabWordSWAR   = RepeatByte0x01 * 0x09
+)
+
+// TrimLeadingSpaceSWAR strips leading ASCII spaces (' ') and tabs ('\t') from b
+// using 64-bit SWAR vector processing.
+func TrimLeadingSpaceSWAR(b []byte) []byte {
+	n := len(b)
+	if n == 0 {
+		return b
+	}
+	basePtr := unsafe.Pointer(unsafe.SliceData(b))
+	i := 0
+
+	// 32-byte unrolled SWAR loop
+	for i+32 <= n {
+		w0 := *(*uint64)(unsafe.Add(basePtr, i))
+		w1 := *(*uint64)(unsafe.Add(basePtr, i+8))
+		w2 := *(*uint64)(unsafe.Add(basePtr, i+16))
+		w3 := *(*uint64)(unsafe.Add(basePtr, i+24))
+
+		x0s := w0 ^ spaceWordSWAR
+		z0s := (x0s - RepeatByte0x01) &^ x0s & RepeatByte0x80
+		x0t := w0 ^ tabWordSWAR
+		z0t := (x0t - RepeatByte0x01) &^ x0t & RepeatByte0x80
+		not0 := (^(z0s | z0t)) & RepeatByte0x80
+
+		x1s := w1 ^ spaceWordSWAR
+		z1s := (x1s - RepeatByte0x01) &^ x1s & RepeatByte0x80
+		x1t := w1 ^ tabWordSWAR
+		z1t := (x1t - RepeatByte0x01) &^ x1t & RepeatByte0x80
+		not1 := (^(z1s | z1t)) & RepeatByte0x80
+
+		x2s := w2 ^ spaceWordSWAR
+		z2s := (x2s - RepeatByte0x01) &^ x2s & RepeatByte0x80
+		x2t := w2 ^ tabWordSWAR
+		z2t := (x2t - RepeatByte0x01) &^ x2t & RepeatByte0x80
+		not2 := (^(z2s | z2t)) & RepeatByte0x80
+
+		x3s := w3 ^ spaceWordSWAR
+		z3s := (x3s - RepeatByte0x01) &^ x3s & RepeatByte0x80
+		x3t := w3 ^ tabWordSWAR
+		z3t := (x3t - RepeatByte0x01) &^ x3t & RepeatByte0x80
+		not3 := (^(z3s | z3t)) & RepeatByte0x80
+
+		if (not0 | not1 | not2 | not3) != 0 {
+			if not0 != 0 {
+				idx := i + (bits.TrailingZeros64(not0) >> 3)
+				runtime.KeepAlive(b)
+				return b[idx:]
+			}
+			if not1 != 0 {
+				idx := i + 8 + (bits.TrailingZeros64(not1) >> 3)
+				runtime.KeepAlive(b)
+				return b[idx:]
+			}
+			if not2 != 0 {
+				idx := i + 16 + (bits.TrailingZeros64(not2) >> 3)
+				runtime.KeepAlive(b)
+				return b[idx:]
+			}
+			idx := i + 24 + (bits.TrailingZeros64(not3) >> 3)
+			runtime.KeepAlive(b)
+			return b[idx:]
+		}
+		i += 32
+	}
+
+	for i+8 <= n {
+		w := *(*uint64)(unsafe.Add(basePtr, i))
+		xs := w ^ spaceWordSWAR
+		zs := (xs - RepeatByte0x01) &^ xs & RepeatByte0x80
+		xt := w ^ tabWordSWAR
+		zt := (xt - RepeatByte0x01) &^ xt & RepeatByte0x80
+		not := (^(zs | zt)) & RepeatByte0x80
+		if not != 0 {
+			idx := i + (bits.TrailingZeros64(not) >> 3)
+			runtime.KeepAlive(b)
+			return b[idx:]
+		}
+		i += 8
+	}
+
+	for ; i < n; i++ {
+		c := *(*byte)(unsafe.Add(basePtr, i))
+		if c != ' ' && c != '\t' {
+			runtime.KeepAlive(b)
+			return b[i:]
+		}
+	}
+	runtime.KeepAlive(b)
+	return b[n:]
+}
+
+// TrimTrailingSpaceSWAR strips trailing ASCII spaces (' ') and tabs ('\t') from b
+// using 64-bit SWAR vector processing.
+func TrimTrailingSpaceSWAR(b []byte) []byte {
+	n := len(b)
+	if n == 0 {
+		return b
+	}
+	basePtr := unsafe.Pointer(unsafe.SliceData(b))
+
+	for n >= 8 {
+		w := *(*uint64)(unsafe.Add(basePtr, n-8))
+		xs := w ^ spaceWordSWAR
+		zs := (xs - RepeatByte0x01) &^ xs & RepeatByte0x80
+		xt := w ^ tabWordSWAR
+		zt := (xt - RepeatByte0x01) &^ xt & RepeatByte0x80
+		not := (^(zs | zt)) & RepeatByte0x80
+		if not != 0 {
+			lz := bits.LeadingZeros64(not)
+			pos := 7 - (lz >> 3)
+			runtime.KeepAlive(b)
+			return b[:(n-8)+pos+1]
+		}
+		n -= 8
+	}
+
+	for n > 0 {
+		c := *(*byte)(unsafe.Add(basePtr, n-1))
+		if c != ' ' && c != '\t' {
+			break
+		}
+		n--
+	}
+	runtime.KeepAlive(b)
+	return b[:n]
+}
+
+// TrimSpaceSWAR strips both leading and trailing ASCII spaces and tabs from b.
+//
+//go:inline
+func TrimSpaceSWAR(b []byte) []byte {
+	return TrimTrailingSpaceSWAR(TrimLeadingSpaceSWAR(b))
+}
+
+// IndexColonSWAR locates the first ':' in b using 64-bit SWAR.
+//
+//go:inline
+func IndexColonSWAR(b []byte) int {
+	return IndexByteSWAR(b, ':')
+}

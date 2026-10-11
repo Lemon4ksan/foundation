@@ -207,3 +207,77 @@ func BenchmarkStdHexEncode1KB(b *testing.B) {
 		stdhex.Encode(out, data)
 	}
 }
+
+func TestFormatHexUint(t *testing.T) {
+	var buf [16]byte
+	tests := []struct {
+		val  int
+		want string
+	}{
+		{0, "0"},
+		{1, "1"},
+		{15, "f"},
+		{16, "10"},
+		{255, "ff"},
+		{0x1A2B, "1a2b"},
+		{0x1A2B3C, "1a2b3c"},
+		{0x7FFFFFFFFFFFFFFF, "7fffffffffffffff"},
+	}
+
+	for _, tc := range tests {
+		n := hexkit.FormatHexUint(&buf, tc.val)
+		got := string(buf[:n])
+		if got != tc.want {
+			t.Errorf("FormatHexUint(%x) = %s; want %s", tc.val, got, tc.want)
+		}
+	}
+
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("expected panic on negative val")
+		}
+	}()
+	hexkit.FormatHexUint(&buf, -1)
+}
+
+func TestParseHexUint(t *testing.T) {
+	tests := []struct {
+		input   string
+		wantVal int
+		wantN   int
+		wantErr bool
+	}{
+		{"0", 0, 1, false},
+		{"a", 10, 1, false},
+		{"A", 10, 1, false},
+		{"ff", 255, 2, false},
+		{"1a2b", 0x1a2b, 4, false},
+		{"1A2B", 0x1a2b, 4, false},
+		{"1a2b;ext=foo", 0x1a2b, 4, false},
+		{"00001a", 0x1a, 6, false},
+		{"", 0, 0, true},
+		{"xyz", 0, 0, true},
+		{"7fffffffffffffff0", 0, 0, true}, // overflow
+	}
+
+	for _, tc := range tests {
+		val, n, err := hexkit.ParseHexUint([]byte(tc.input))
+		if (err != nil) != tc.wantErr {
+			t.Errorf("ParseHexUint(%q) err = %v, wantErr = %v", tc.input, err, tc.wantErr)
+			continue
+		}
+		if !tc.wantErr {
+			if val != tc.wantVal || n != tc.wantN {
+				t.Errorf("ParseHexUint(%q) = (%d, %d); want (%d, %d)", tc.input, val, n, tc.wantVal, tc.wantN)
+			}
+		}
+	}
+}
+
+func BenchmarkFormatHexUint(b *testing.B) {
+	var buf [16]byte
+	b.ReportAllocs()
+	for b.Loop() {
+		_ = hexkit.FormatHexUint(&buf, 0x1A2B3C)
+	}
+}
