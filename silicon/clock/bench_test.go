@@ -59,8 +59,18 @@ func TestRDTSC_CalibrationStability(t *testing.T) {
 	freqGHz := float64(scaled) / 1024.0
 	t.Logf("Initial calibrated frequency: %.4f GHz (scaled=%d)", freqGHz, scaled)
 
-	if freqGHz < 1.0 || freqGHz > 6.0 {
-		t.Fatalf("Calibrated frequency %.4f GHz is outside realistic range [1.0 GHz, 6.0 GHz]", freqGHz)
+	// x86 invariant TSC runs at core frequencies [1.0, 6.0] GHz.
+	// ARM64 CNTVCT_EL0 runs at fixed reference frequencies [0.01, 1.0] GHz (e.g. 24 MHz on Apple Silicon).
+	minFreq, maxFreq := 1.0, 6.0
+	if runtime.GOARCH == "arm64" {
+		minFreq, maxFreq = 0.01, 1.0
+	}
+
+	if freqGHz < minFreq || freqGHz > maxFreq {
+		t.Fatalf(
+			"Calibrated frequency %.4f GHz is outside realistic range [%.2f GHz, %.2f GHz]",
+			freqGHz, minFreq, maxFreq,
+		)
 	}
 
 	// 2. Perform repeated calibrations with 100ms spin-wait and verify stability across runs
@@ -74,8 +84,11 @@ func TestRDTSC_CalibrationStability(t *testing.T) {
 		sampleGHz := float64(s) / 1024.0
 		t.Logf("Calibration run %d: %.4f GHz (scaled=%d)", i+1, sampleGHz, s)
 
-		if sampleGHz < 1.0 || sampleGHz > 6.0 {
-			t.Fatalf("Calibration run %d: %.4f GHz is outside realistic range [1.0 GHz, 6.0 GHz]", i+1, sampleGHz)
+		if sampleGHz < minFreq || sampleGHz > maxFreq {
+			t.Fatalf(
+				"Calibration run %d: %.4f GHz is outside realistic range [%.2f GHz, %.2f GHz]",
+				i+1, sampleGHz, minFreq, maxFreq,
+			)
 		}
 		samples = append(samples, sampleGHz)
 	}
@@ -98,12 +111,16 @@ func TestRDTSC_CalibrationStability(t *testing.T) {
 }
 
 func TestElapsedCycles_Positive(t *testing.T) {
-	// Verify that serialized RDTSC via LFENCE guarantees positive elapsed cycle measurement
+	// Verify that serialized RDTSC guarantees non-negative elapsed duration
 	for i := range 100_000 {
 		start := rdtsc()
 		dur := ElapsedCycles(start)
-		if dur <= 0 {
-			t.Fatalf("iteration %d: expected positive elapsed duration, got %v", i, dur)
+		if dur < 0 {
+			t.Fatalf("iteration %d: expected non-negative elapsed duration, got %v", i, dur)
+		}
+		// On amd64, serialized LFENCE guarantees positive cycle progression
+		if runtime.GOARCH == "amd64" && dur <= 0 {
+			t.Fatalf("iteration %d: expected positive elapsed duration on amd64, got %v", i, dur)
 		}
 	}
 }
@@ -111,17 +128,25 @@ func TestElapsedCycles_Positive(t *testing.T) {
 func TestElapsedCycles_SmallWorkload(t *testing.T) {
 	for i := range 10_000 {
 		start := rdtsc()
-		// Micro-workload: 10 nanosleep or simple arithmetic
+		// Micro-workload exceeding hardware clock tick resolution (> 42ns on 24MHz ARM64)
 		var x uint64
-		for j := range 100 {
+		for j := range 2000 {
 			x += uint64(j)
 		}
 		dur := ElapsedCycles(start)
 		if dur <= 0 {
-			t.Fatalf(
-				"iteration %d: expected positive elapsed duration with workload, got %v (workload result: %d)",
-				i, dur, x,
-			)
+			// Spin-wait briefly if sampled within the exact same timer tick
+			for range 50 {
+				if dur = ElapsedCycles(start); dur > 0 {
+					break
+				}
+			}
+			if dur <= 0 {
+				t.Fatalf(
+					"iteration %d: expected positive elapsed duration with workload, got %v (workload result: %d)",
+					i, dur, x,
+				)
+			}
 		}
 	}
 }
