@@ -592,7 +592,8 @@ func TestGCLeak_Clear_WeakPointers(t *testing.T) {
 }
 
 type trackedNode struct {
-	id int
+	payload [64]byte
+	id      int
 }
 
 func TestGCLeak_Finalizers(t *testing.T) {
@@ -614,6 +615,7 @@ func TestGCLeak_Finalizers(t *testing.T) {
 	for range count {
 		popOneDeque(t, d)
 	}
+	clearStack()
 
 	// Trigger GC repeatedly
 	deadline := time.Now().Add(2 * time.Second)
@@ -923,8 +925,15 @@ func TestChallenge_BoundaryIndexTable(t *testing.T) {
 
 //go:noinline
 func popOneDeque(t *testing.T, d *Deque[*trackedNode]) {
-	_, ok := d.PopFront()
+	v, ok := d.PopFront()
 	require.True(t, ok)
+	_ = v
+	v = nil
+}
+
+//go:noinline
+func clearStack() [64]uintptr {
+	return [64]uintptr{}
 }
 
 // -----------------------------------------------------------------------------
