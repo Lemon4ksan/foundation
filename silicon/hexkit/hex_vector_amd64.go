@@ -10,11 +10,11 @@ import (
 	"runtime"
 	"unsafe"
 
-	"github.com/lemon4ksan/foundation/silicon/cpukit"
+	"golang.org/x/sys/cpu"
 )
 
 func encodeVector(dst, src []byte) int {
-	if len(src) < 16 || !cpukit.HasAVX2() {
+	if len(src) < 16 || !cpu.X86.HasAVX2 {
 		return encodeScalar(dst, src)
 	}
 
@@ -34,7 +34,7 @@ func encodeVector(dst, src []byte) int {
 }
 
 func decodeVector(dst, src []byte) (int, error) {
-	if len(src) < 32 || !cpukit.HasAVX2() {
+	if len(src) < 32 || !cpu.X86.HasAVX2 {
 		return decodeScalar(dst, src)
 	}
 
