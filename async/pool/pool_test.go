@@ -117,12 +117,18 @@ func TestPool_ScaleDown(t *testing.T) {
 	wg.Wait()
 	close(blockCh) // Release all tasks to make workers idle.
 
-	// Wait for idle timeout and worker scale down.
-	time.Sleep(30 * time.Millisecond)
-
-	p.mu.Lock()
-	workers := p.currentWorkers
-	p.mu.Unlock()
+	// Wait for idle timeout and worker scale down (polling with timeout to avoid scheduling jitter).
+	deadline := time.Now().Add(2 * time.Second)
+	var workers int
+	for time.Now().Before(deadline) {
+		p.mu.Lock()
+		workers = p.currentWorkers
+		p.mu.Unlock()
+		if workers == 1 {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
 
 	if workers != 1 {
 		t.Errorf("expected pool to scale down to 1 worker, got %d", workers)

@@ -6,6 +6,11 @@ package sign_test
 
 import (
 	"bytes"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"strings"
 	"testing"
@@ -344,4 +349,81 @@ func TestRepro_Sign_SeedDerivationBoundaryConditions(t *testing.T) {
 	assert.Equal(t, sign.PublicKeySize, len(pubFF))
 	assert.Equal(t, sign.PrivateKeySize, len(privFF))
 	assert.False(t, bytes.Equal(pub0, pubFF))
+}
+
+func TestRepro_Sign_EdgeCasesAndValidationCoverage(t *testing.T) {
+	// 1. Sign panics on invalid private key length
+	func() {
+		defer func() {
+			r := recover()
+			if r == nil {
+				t.Errorf("Sign must panic on invalid private key length")
+			}
+		}()
+		sign.Sign([]byte("invalid-short-key"), []byte("msg"))
+	}()
+
+	// 2. Fingerprints & Hex formatters return empty string on invalid public key length
+	assert.Equal(t, "", sign.FingerprintSHA256([]byte("short-pub")))
+	assert.Equal(t, "", sign.FingerprintHex([]byte("short-pub")))
+	assert.Equal(t, "", sign.PublicKeyHex([]byte("short-pub")))
+
+	// 3. ParsePublicKeyHex errors on invalid length after hex decode
+	_, err := sign.ParsePublicKeyHex("0102030405")
+	assert.Error(t, err)
+	assert.True(t, errors.Is(err, sign.ErrInvalidKeyLength))
+
+	// 4. DecodePrivateKeyPEM with valid PEM wrapper but corrupt PKCS#8 DER bytes
+	corruptPrivPEM := pem.EncodeToMemory(&pem.Block{
+		Type:  "PRIVATE KEY",
+		Bytes: []byte("definitely-not-valid-pkcs8-der"),
+	})
+	_, err = sign.DecodePrivateKeyPEM(corruptPrivPEM)
+	assert.Error(t, err)
+
+	// 5. DecodePrivateKeyPEM with valid PKCS#8 DER bytes of a non-Ed25519 key (ECDSA)
+	ecdsaKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+	ecdsaPrivDER, err := x509.MarshalPKCS8PrivateKey(ecdsaKey)
+	require.NoError(t, err)
+	ecdsaPrivPEM := pem.EncodeToMemory(&pem.Block{
+		Type:  "PRIVATE KEY",
+		Bytes: ecdsaPrivDER,
+	})
+	_, err = sign.DecodePrivateKeyPEM(ecdsaPrivPEM)
+	assert.Error(t, err)
+
+	// 6. DecodePublicKeyPEM with valid PEM wrapper but corrupt PKIX DER bytes
+	corruptPubPEM := pem.EncodeToMemory(&pem.Block{
+		Type:  "PUBLIC KEY",
+		Bytes: []byte("definitely-not-valid-pkix-der"),
+	})
+	_, err = sign.DecodePublicKeyPEM(corruptPubPEM)
+	assert.Error(t, err)
+
+	// 7. DecodePublicKeyPEM with valid PKIX DER bytes of a non-Ed25519 key (ECDSA)
+	ecdsaPubDER, err := x509.MarshalPKIXPublicKey(&ecdsaKey.PublicKey)
+	require.NoError(t, err)
+	ecdsaPubPEM := pem.EncodeToMemory(&pem.Block{
+		Type:  "PUBLIC KEY",
+		Bytes: ecdsaPubDER,
+	})
+	_, err = sign.DecodePublicKeyPEM(ecdsaPubPEM)
+	assert.Error(t, err)
+
+	// 8. Canonical public key branch coverage:
+	// 8a. yHigh == 0x7F, but a high-order byte pub[i] != 0xFF (canonical, returns true)
+	canPub1 := make([]byte, 32)
+	canPub1[31] = 0x7F
+	canPub1[30] = 0xFE // not 0xFF -> canonical
+	assert.False(t, sign.Verify(canPub1, []byte("m"), make([]byte, 64)))
+
+	// 8b. yHigh == 0x7F, pub[1..30] == 0xFF, but pub[0] < 0xED (canonical, returns true)
+	canPub2 := make([]byte, 32)
+	for i := 1; i <= 30; i++ {
+		canPub2[i] = 0xFF
+	}
+	canPub2[31] = 0x7F
+	canPub2[0] = 0xEC // 0xEC < 0xED -> canonical
+	assert.False(t, sign.Verify(canPub2, []byte("m"), make([]byte, 64)))
 }
