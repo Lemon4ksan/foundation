@@ -934,3 +934,101 @@ func TestEvent_CoverageEdgeCases(t *testing.T) {
 		break
 	}
 }
+
+func TestRepro_Event_EdgeCasesAndCoverage(t *testing.T) {
+	// 1. SubscribeBuffer with non-positive bufferSize defaults to 128
+	b := New()
+	subBuf0 := b.SubscribeBuffer(0)
+	assert.Equal(t, 128, cap(subBuf0.C()))
+	subBufNeg := b.SubscribeBuffer(-5)
+	assert.Equal(t, 128, cap(subBufNeg.C()))
+	b.Close()
+
+	// 2. Unsubscribe on an already closed bus returns immediately (double-close safety)
+	subBuf0.Unsubscribe()
+
+	// 3. SubscribeTyped converting value to pointer
+	b2 := New()
+	defer b2.Close()
+
+	type SimpleValEvent struct {
+		Envelope
+		Msg string
+	}
+	tsPtr := b2.SubscribeTyped[*SimpleValEvent](10)
+	defer tsPtr.Unsubscribe()
+
+	b2.Publish(SimpleValEvent{Msg: "val-to-ptr"})
+
+	select {
+	case ev := <-tsPtr.C():
+		assert.NotNil(t, ev)
+		assert.Equal(t, "val-to-ptr", ev.Msg)
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for val-to-ptr event")
+	}
+
+	// 4. SubscribeTyped full buffer non-blocking drop
+	tsDrop := b2.SubscribeTyped[SimpleValEvent](1)
+	defer tsDrop.Unsubscribe()
+	b2.Publish(SimpleValEvent{Msg: "drop1"})
+	b2.Publish(SimpleValEvent{Msg: "drop2"})
+	b2.Publish(SimpleValEvent{Msg: "drop3"})
+
+	// 5. EventsSeq loop termination when subscription channel is closed
+	subSeqClose := b2.Subscribe(SimpleValEvent{})
+	doneSeq := make(chan struct{})
+	go func() {
+		for range subSeqClose.EventsSeq(context.Background()) {
+		}
+		close(doneSeq)
+	}()
+	time.Sleep(10 * time.Millisecond)
+	subSeqClose.Unsubscribe()
+	select {
+	case <-doneSeq:
+	case <-time.After(time.Second):
+		t.Fatal("EventsSeq did not terminate on channel close")
+	}
+
+	// 6. TypedSubscription EventsSeq loop termination when channel is closed
+	tsSeqClose := b2.SubscribeTyped[SimpleValEvent]()
+	doneTSeq := make(chan struct{})
+	go func() {
+		for range tsSeqClose.EventsSeq(context.Background()) {
+		}
+		close(doneTSeq)
+	}()
+	time.Sleep(10 * time.Millisecond)
+	tsSeqClose.Unsubscribe()
+	select {
+	case <-doneTSeq:
+	case <-time.After(time.Second):
+		t.Fatal("Typed EventsSeq did not terminate on channel close")
+	}
+
+	// 7. SubscribeTo termination when channel closes
+	b3 := New()
+	SubscribeTo[SimpleValEvent](context.Background(), b3, func(ev SimpleValEvent) {
+	})
+	b3.Close()
+
+	// 8. SubscribeSeq context cancellation mid-stream
+	b4 := New()
+	defer b4.Close()
+	ctxCancel, cancelFn := context.WithCancel(context.Background())
+	doneSubSeq := make(chan struct{})
+	go func() {
+		for range SubscribeSeq[SimpleValEvent](ctxCancel, b4) {
+			cancelFn()
+		}
+		close(doneSubSeq)
+	}()
+	time.Sleep(10 * time.Millisecond)
+	b4.Publish(SimpleValEvent{Msg: "trigger-cancel"})
+	select {
+	case <-doneSubSeq:
+	case <-time.After(time.Second):
+		t.Fatal("SubscribeSeq did not terminate on context cancel")
+	}
+}

@@ -1115,3 +1115,70 @@ func TestChallenge_IndexByteSWAR_UnalignedMemorySafety(t *testing.T) {
 
 	wg.Wait()
 }
+
+func TestSWARSpaceTrimming(t *testing.T) {
+	tests := []struct {
+		input       string
+		wantLeading string
+		wantTrail   string
+		wantBoth    string
+	}{
+		{"", "", "", ""},
+		{"   ", "", "", ""},
+		{"\t\t\t", "", "", ""},
+		{" \t \t ", "", "", ""},
+		{"hello", "hello", "hello", "hello"},
+		{"   hello", "hello", "   hello", "hello"},
+		{"hello   ", "hello   ", "hello", "hello"},
+		{"   hello   ", "hello   ", "   hello", "hello"},
+		{
+			"\t\tContent-Type: text/plain\t ",
+			"Content-Type: text/plain\t ",
+			"\t\tContent-Type: text/plain",
+			"Content-Type: text/plain",
+		},
+		{
+			"                                a                                ",
+			"a                                ",
+			"                                a",
+			"a",
+		},
+	}
+
+	for _, tc := range tests {
+		gotLead := string(simd.TrimLeadingSpaceSWAR([]byte(tc.input)))
+		if gotLead != tc.wantLeading {
+			t.Errorf("TrimLeadingSpaceSWAR(%q) = %q; want %q", tc.input, gotLead, tc.wantLeading)
+		}
+
+		gotTrail := string(simd.TrimTrailingSpaceSWAR([]byte(tc.input)))
+		if gotTrail != tc.wantTrail {
+			t.Errorf("TrimTrailingSpaceSWAR(%q) = %q; want %q", tc.input, gotTrail, tc.wantTrail)
+		}
+
+		gotBoth := string(simd.TrimSpaceSWAR([]byte(tc.input)))
+		if gotBoth != tc.wantBoth {
+			t.Errorf("TrimSpaceSWAR(%q) = %q; want %q", tc.input, gotBoth, tc.wantBoth)
+		}
+	}
+}
+
+func TestIndexColonSWAR(t *testing.T) {
+	tests := []struct {
+		input string
+		want  int
+	}{
+		{"", -1},
+		{"Host: localhost", 4},
+		{":authority", 0},
+		{"Content-Length: 100", 14},
+		{"No colon here", -1},
+	}
+
+	for _, tc := range tests {
+		got := simd.IndexColonSWAR([]byte(tc.input))
+		if got != tc.want {
+			t.Errorf("IndexColonSWAR(%q) = %d; want %d", tc.input, got, tc.want)
+		}
+	}
+}

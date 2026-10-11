@@ -6,6 +6,9 @@ package hexkit
 
 import (
 	"errors"
+	"math"
+	"math/bits"
+	"slices"
 	"unsafe"
 )
 
@@ -14,9 +17,14 @@ var (
 	ErrInvalidLength  = errors.New("hex: odd length hex string")
 	ErrInvalidByte    = errors.New("hex: invalid byte in hex string")
 	ErrBufferTooSmall = errors.New("hex: destination buffer too small")
+	ErrEmptyHexNum    = errors.New("hex: empty hex number")
+	ErrHexOverflow    = errors.New("hex: integer overflow")
 )
 
-const hextable = "0123456789abcdef"
+const (
+	hextable      = "0123456789abcdef"
+	UpperHexTable = "0123456789ABCDEF"
+)
 
 // hexLUT16 maps every uint8 value (0..255) to its 2-byte lowercase ASCII representation in Little-Endian.
 var hexLUT16 [256]uint16
@@ -72,6 +80,33 @@ func FromHexChar(c byte) (byte, bool) {
 	return val, true
 }
 
+// IsHex reports whether c is an ASCII hexadecimal digit ('0'-'9', 'a'-'f', 'A'-'F').
+//
+//go:inline
+func IsHex(c byte) bool {
+	return decodeLUT[c] <= 0x0F
+}
+
+// DecodeByte decodes two ASCII hex characters into a single byte using a fast branchless check.
+// Returns (val, true) on success, or (0, false) if either character is invalid hex.
+//
+//go:inline
+func DecodeByte(hi, lo byte) (byte, bool) {
+	h := decodeLUT[hi]
+	l := decodeLUT[lo]
+	if (h | l) > 0x0F {
+		return 0, false
+	}
+	return (h << 4) | l, true
+}
+
+// ToHexUpper returns uppercase ASCII hex bytes for b (RFC 3986 percent-encoding).
+//
+//go:inline
+func ToHexUpper(b byte) (hi, lo byte) {
+	return UpperHexTable[b>>4], UpperHexTable[b&0x0F]
+}
+
 // Encode encodes src into dst using hardware SIMD vectorization or 16-bit LUT stores.
 // dst must have length of at least EncodedLen(len(src)).
 //
@@ -82,6 +117,21 @@ func Encode(dst, src []byte) int {
 		return 0
 	}
 	return encodeVector(dst, src)
+}
+
+// AppendEncode encodes src into lowercase hex and appends directly to dst,
+// pre-growing the slice to avoid multiple reallocations.
+//
+//go:inline
+func AppendEncode(dst, src []byte) []byte {
+	needed := len(src) * 2
+	if needed == 0 {
+		return dst
+	}
+	start := len(dst)
+	dst = slices.Grow(dst, needed)[:start+needed]
+	Encode(dst[start:], src)
+	return dst
 }
 
 func encodeScalar(dst, src []byte) int {
@@ -252,4 +302,147 @@ func Decode16[T ~[8]byte](dst *T, s string) bool {
 		d[i] = (hi << 4) | lo
 	}
 	return true
+}
+
+// FormatHexUint writes the lowercase hexadecimal representation of val into buf
+// without heap allocations, returning the number of bytes written (RFC 9112 §7.1).
+// FormatHexUint panics if val is negative.
+//
+//go:inline
+func FormatHexUint(buf *[16]byte, val int) int {
+	if val < 0 {
+		panic("FormatHexUint: int must be positive")
+	}
+	if val == 0 {
+		buf[0] = '0'
+		return 1
+	}
+
+	u := uint64(val)
+	count := (67 - bits.LeadingZeros64(u)) >> 2
+
+	i := count - 1
+	for u >= 0x100 {
+		pair := hexLUT16[byte(u)]
+		buf[i] = byte(pair >> 8)
+		buf[i-1] = byte(pair)
+		u >>= 8
+		i -= 2
+	}
+	for u >= 16 {
+		buf[i] = hextable[u&0x0F]
+		u >>= 4
+		i--
+	}
+	buf[i] = hextable[u]
+
+	return count
+}
+
+// AppendHexUint formats val as lowercase hexadecimal and appends directly to dst.
+// FormatHexUint panics if val is negative.
+//
+//go:inline
+func AppendHexUint(dst []byte, val int) []byte {
+	var buf [16]byte
+	n := FormatHexUint(&buf, val)
+	return append(dst, buf[:n]...)
+}
+
+// ParseHexUint parses a hex-encoded uint from src for chunk-size decoding (RFC 9112 §7.1).
+// Prevents parsing errors due to integer overflow.
+// Returns the parsed integer, number of bytes consumed, or an error.
+//
+//go:inline
+func ParseHexUint(src []byte) (int, int, error) {
+	n := len(src)
+	if n == 0 {
+		return 0, 0, ErrEmptyHexNum
+	}
+
+	c0 := src[0]
+	d0 := decodeLUT[c0]
+	if d0 > 0x0F {
+		return 0, 0, ErrEmptyHexNum
+	}
+
+	val := int(d0)
+	i := 1
+
+	// Fast-path: up to 15 hex digits (60 bits) cannot overflow math.MaxInt (63 bits)
+	maxSafe := min(n, 15)
+	for i < maxSafe {
+		c := src[i]
+		d := decodeLUT[c]
+		if d > 0x0F {
+			return val, i, nil
+		}
+		val = (val << 4) | int(d)
+		i++
+	}
+
+	// Remainder checks for overflow
+	for i < n {
+		c := src[i]
+		d := decodeLUT[c]
+		if d > 0x0F {
+			return val, i, nil
+		}
+		if val > (math.MaxInt-int(d))>>4 {
+			return 0, 0, ErrHexOverflow
+		}
+		val = (val << 4) | int(d)
+		i++
+	}
+
+	return val, i, nil
+}
+
+// ParseHexUint64 parses a hex-encoded uint64 from src.
+// Prevents parsing errors due to integer overflow against math.MaxUint64.
+// Returns the parsed integer, number of bytes consumed, or an error.
+//
+//go:inline
+func ParseHexUint64(src []byte) (uint64, int, error) {
+	n := len(src)
+	if n == 0 {
+		return 0, 0, ErrEmptyHexNum
+	}
+
+	c0 := src[0]
+	d0 := decodeLUT[c0]
+	if d0 > 0x0F {
+		return 0, 0, ErrEmptyHexNum
+	}
+
+	val := uint64(d0)
+	i := 1
+
+	// Fast-path: up to 16 hex digits (64 bits) cannot overflow uint64
+	maxSafe := min(n, 16)
+	for i < maxSafe {
+		c := src[i]
+		d := decodeLUT[c]
+		if d > 0x0F {
+			return val, i, nil
+		}
+		val = (val << 4) | uint64(d)
+		i++
+	}
+
+	// Remainder checks for overflow
+	for i < n {
+		c := src[i]
+		d := decodeLUT[c]
+		if d > 0x0F {
+			return val, i, nil
+		}
+		if val > (math.MaxUint64-uint64(d))>>4 {
+			return 0, 0, ErrHexOverflow
+		}
+		val = (val << 4) | uint64(d)
+		i++
+	}
+
+	return val, i, nil
 }
