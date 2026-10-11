@@ -245,5 +245,3 @@ func BenchmarkScanPacked_Throughput_Fixed64(b *testing.B) {
 		}
 	}
 }
-
-

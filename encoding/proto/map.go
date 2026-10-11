@@ -22,7 +22,7 @@ type MapEntry struct {
 //
 // If a key or value field is omitted in data, the returned Field has Num=1 or Num=2
 // with default zero values.
-func ScanMapEntry(data []byte) (key Field, val Field, err error) {
+func ScanMapEntry(data []byte) (key, val Field, err error) {
 	key.Num = 1
 	val.Num = 2
 
@@ -146,7 +146,7 @@ func ScanMap(data []byte, mapFieldNum uint32) iter.Seq2[MapEntry, error] {
 }
 
 // ForEachMapEntry iterates over all map entries for mapFieldNum in data.
-func ForEachMapEntry(data []byte, mapFieldNum uint32, fn func(key Field, val Field) error) error {
+func ForEachMapEntry(data []byte, mapFieldNum uint32, fn func(key, val Field) error) error {
 	for entry, err := range ScanMapEntries(data, mapFieldNum) {
 		if err != nil {
 			return err
@@ -160,7 +160,7 @@ func ForEachMapEntry(data []byte, mapFieldNum uint32, fn func(key Field, val Fie
 
 // MapEntry parses f.Data as a map entry submessage, returning (key, val, err).
 // Returns ErrInvalidWireType if f.Type != WireBytes.
-func (f Field) MapEntry() (key Field, val Field, err error) {
+func (f Field) MapEntry() (key, val Field, err error) {
 	if f.Type != WireBytes {
 		return Field{}, Field{}, ErrInvalidWireType
 	}
@@ -168,7 +168,7 @@ func (f Field) MapEntry() (key Field, val Field, err error) {
 }
 
 // AppendMapEntry appends a map entry submessage (field 1 = key, field 2 = val) under mapFieldNum to dst.
-func AppendMapEntry(dst []byte, mapFieldNum uint32, key Field, val Field) []byte {
+func AppendMapEntry(dst []byte, mapFieldNum uint32, key, val Field) []byte {
 	key.Num = 1
 	val.Num = 2
 
@@ -181,7 +181,7 @@ func AppendMapEntry(dst []byte, mapFieldNum uint32, key Field, val Field) []byte
 }
 
 // AppendMapEntryPayload encodes only the map entry payload (field 1 = key, field 2 = val) without outer tag/length.
-func AppendMapEntryPayload(dst []byte, key Field, val Field) []byte {
+func AppendMapEntryPayload(dst []byte, key, val Field) []byte {
 	key.Num = 1
 	val.Num = 2
 	dst = AppendField(dst, key)
@@ -190,7 +190,7 @@ func AppendMapEntryPayload(dst []byte, key Field, val Field) []byte {
 }
 
 // AppendMapEntryStringString appends a map entry with string key and string value to dst.
-func AppendMapEntryStringString(dst []byte, mapFieldNum uint32, key string, val string) []byte {
+func AppendMapEntryStringString(dst []byte, mapFieldNum uint32, key, val string) []byte {
 	kLen := len(key)
 	vLen := len(val)
 	entryLen := 1 + VarintLen(uint64(kLen)) + kLen + 1 + VarintLen(uint64(vLen)) + vLen
@@ -261,7 +261,7 @@ func AppendMapEntryInt64String(dst []byte, mapFieldNum uint32, key int64, val st
 }
 
 // AppendMapEntryVarintVarint appends a map entry with varint key and varint value to dst.
-func AppendMapEntryVarintVarint(dst []byte, mapFieldNum uint32, key uint64, val uint64) []byte {
+func AppendMapEntryVarintVarint(dst []byte, mapFieldNum uint32, key, val uint64) []byte {
 	kLen := VarintLen(key)
 	vLen := VarintLen(val)
 	entryLen := 1 + kLen + 1 + vLen
@@ -276,6 +276,6 @@ func AppendMapEntryVarintVarint(dst []byte, mapFieldNum uint32, key uint64, val 
 }
 
 // AppendMapEntryInt64Int64 appends a map entry with int64 key and int64 value to dst.
-func AppendMapEntryInt64Int64(dst []byte, mapFieldNum uint32, key int64, val int64) []byte {
+func AppendMapEntryInt64Int64(dst []byte, mapFieldNum uint32, key, val int64) []byte {
 	return AppendMapEntryVarintVarint(dst, mapFieldNum, uint64(key), uint64(val))
 }

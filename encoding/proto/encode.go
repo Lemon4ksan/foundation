@@ -166,7 +166,7 @@ func Uint64Field(num uint32, val uint64) Field {
 // Uint32Field constructs a WireVarint Field from a uint32.
 //
 //go:inline
-func Uint32Field(num uint32, val uint32) Field {
+func Uint32Field(num, val uint32) Field {
 	return Field{Num: num, Type: WireVarint, Raw: uint64(val)}
 }
 
@@ -198,7 +198,7 @@ func BoolField(num uint32, val bool) Field {
 // Fixed32Field constructs a WireFixed32 Field.
 //
 //go:inline
-func Fixed32Field(num uint32, val uint32) Field {
+func Fixed32Field(num, val uint32) Field {
 	return Field{Num: num, Type: WireFixed32, Raw: uint64(val)}
 }
 
