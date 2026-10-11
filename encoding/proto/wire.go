@@ -29,6 +29,9 @@ const (
 	WireFixed32 WireType = 5
 )
 
+// MaxFieldNumber is the maximum permitted Protocol Buffers field number (2^29 - 1).
+const MaxFieldNumber uint32 = (1 << 29) - 1
+
 // Common wire decoding errors.
 var (
 	ErrTruncated       = errors.New("proto: unexpected end of buffer")
@@ -49,4 +52,18 @@ func Tag(fieldNum uint32, wireType WireType) uint32 {
 //go:inline
 func SplitTag(tag uint32) (uint32, WireType) {
 	return tag >> 3, WireType(tag & 0x7)
+}
+
+// VarintLen returns the number of bytes required to encode x as a Protocol Buffers varint.
+//
+//go:inline
+func VarintLen(x uint64) int {
+	return SizeVarint(x)
+}
+
+// TagSize returns the encoded byte size of a field tag.
+//
+//go:inline
+func TagSize(fieldNum uint32, wireType WireType) int {
+	return SizeVarint(uint64(Tag(fieldNum, wireType)))
 }
