@@ -47,17 +47,9 @@ func (a *RequestArena) Alloc(n int) []byte {
 	}
 
 	alignedN := (n + 7) &^ 7
-	if a.off+alignedN <= len(a.buf) {
-		start := a.off
-		a.off += alignedN
-
-		return a.buf[start : start+n : start+n]
-	}
-
-	// Tail allocation: when n bytes fit within remaining arena capacity but alignedN
-	// extends past len(a.buf), saturate a.off to len(a.buf) and return the slice without heap fallback.
 	start := a.off
-	a.off = len(a.buf)
+	a.off += alignedN
+
 	return a.buf[start : start+n : start+n]
 }
 

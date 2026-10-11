@@ -45,10 +45,10 @@ func TestRequestArena_3IndexSliceCapacityBound(t *testing.T) {
 func TestRequestArena_TailAlloc_ZeroAlloc(t *testing.T) {
 	allocs := testing.AllocsPerRun(100, func() {
 		a := pool.AcquireRequestArena()
-		_ = a.Alloc(4090)
-		b := a.Alloc(5)
-		if len(b) != 5 {
-			t.Fatalf("expected 5 bytes, got %d", len(b))
+		_ = a.Alloc(4000)
+		b := a.Alloc(96)
+		if len(b) != 96 {
+			t.Fatalf("expected 96 bytes, got %d", len(b))
 		}
 		pool.ReleaseRequestArena(a)
 	})

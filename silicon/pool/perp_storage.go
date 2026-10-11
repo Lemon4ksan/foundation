@@ -50,7 +50,10 @@ func nextPowerOfTwo(n int) int {
 
 // NewPerCorePool constructs a PerCorePool sharded according to runtime.GOMAXPROCS(0) rounded to a power of 2.
 func NewPerCorePool[T any](factory func() T) *PerCorePool[T] {
-	n := runtime.GOMAXPROCS(0)
+	return newPerCorePoolWithShards(runtime.GOMAXPROCS(0), factory)
+}
+
+func newPerCorePoolWithShards[T any](n int, factory func() T) *PerCorePool[T] {
 	if n <= 0 {
 		n = 1
 	}
