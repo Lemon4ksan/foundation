@@ -36,9 +36,10 @@ var targets = []fuzzTarget{
 	{"./silicon/offheap", "FuzzOffHeapBuffer"},
 	{"./silicon/trie", "FuzzRadixTree"},
 	{"./text/casing", "FuzzCasingConversions"},
-	{"./cmd/c2plan9", "FuzzDisassembleARM64Raw"},
-	{"./cmd/c2plan9", "FuzzCleanPlan9ARM64Syntax"},
-	{"./text/encoding/charmap", "FuzzCharmapDecode"},
+	{"./encoding/proto", "FuzzProtoScan"},
+	{"./encoding/proto", "FuzzProtoSkip"},
+	{"./encoding/proto", "FuzzProtoPacked"},
+	{"./encoding/proto", "FuzzProtoRecursive"},
 }
 
 func main() {
