@@ -24,10 +24,10 @@ Six projects of mine depend on `foundation`. Each package is supposed to be need
 
 | Project | What it is | Foundation packages it leans on most |
 | :--- | :--- | :--- |
-| `aoni` | Network protocol stack and HTTP client | `silicon/bytesconv`, `silicon/pool`, `iokit`, `codec/json`, `borrow`, `net/urlkit`, `async/ctxkit` |
-| `mach` | Protocol engines (HTTP/1.1, HTTP/2, HTTP/3, HPACK, QPACK) used by `aoni` and `sein` | `silicon/bytesconv`, `silicon/pool`, `silicon/simd`, `borrow`, `encoding/varint` |
-| `sein` | Server network stack and web framework | `encoding/varint`, `silicon/endian`, `timekit`, `types/uuid`, `async/logkit` |
-| `g-man` | Steam client SDK and automation framework | `async/logkit`, `async/event`, `async/fsm`, `async/lifecycle`, `async/rate`, `codec/json` |
+| `aoni` | Network protocol stack and HTTP client | `silicon/bytesconv`, `silicon/pool`, `iokit`, `encoding/json`, `encoding/proto`, `borrow`, `net/urlkit`, `async/ctxkit` |
+| `mach` | Protocol engines (HTTP/1.1, HTTP/2, HTTP/3, HPACK, QPACK) used by `aoni` and `sein` | `silicon/bytesconv`, `silicon/pool`, `silicon/simd`, `borrow`, `encoding/varint`, `encoding/proto` |
+| `sein` | Server network stack and web framework | `encoding/varint`, `encoding/json`, `silicon/endian`, `timekit`, `types/uuid`, `async/logkit` |
+| `g-man` | Steam client SDK and automation framework | `async/logkit`, `async/event`, `async/fsm`, `async/lifecycle`, `async/rate`, `encoding/json`, `encoding/proto` |
 | `dawn` | Database protocol drivers and data access layer | `silicon/endian`, `silicon/bytesconv`, `silicon/simd`, `bufkit` |
 | `seal` | Fault-tolerant archive and container format (EON) | `crypto/*`, `bufkit`, `fskit`, `pathkit` |
 

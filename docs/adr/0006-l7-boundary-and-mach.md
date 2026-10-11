@@ -13,7 +13,7 @@ We strictly exclude all high-level application protocols, heavy data-transformat
 - Heavy data sealing and compression (`codec/compress`, `text/encoding`) belong in `seal`.
 - Terminal UI and command argument routing (`tuikit`, `argkit`) belong in `ctrl`.
 
-`foundation` provides strictly the bare systems substrate: memory (`silicon`), data structures, concurrency (`async`, `sync`), raw I/O, base TCP/UDP/IP, and essential serialization (`codec/json`).
+`foundation` provides strictly the bare systems substrate: memory (`silicon`), data structures, concurrency (`async`, `sync`), raw I/O, base TCP/UDP/IP, and essential serialization (`encoding/json`, `encoding/proto`).
 
 ## Consequences
 The repository stays mathematically focused, lean, and avoids churn from application-level changes. We pay by needing to coordinate dependency trees across `foundation`, `mach`, `seal`, and `ctrl`.
