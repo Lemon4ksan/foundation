@@ -9,8 +9,10 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"errors"
 	"io"
 	"net"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -771,4 +773,395 @@ func TestMultiReadBody_ClosedAfterReallyClose(t *testing.T) {
 
 	cErr := mrb.Close()
 	assert.Error(t, cErr)
+}
+
+func TestStripBOM_ComprehensiveEdgeCases(t *testing.T) {
+	t.Parallel()
+
+	// 1. nil reader
+	assert.Nil(t, StripBOM(nil))
+
+	// 2. bufio.Reader with UTF-16BE
+	bom16BE := []byte{0xFE, 0xFF, 'A', 'B'}
+	r16BE := bufio.NewReader(bytes.NewReader(bom16BE))
+	out16BE, err := io.ReadAll(StripBOM(r16BE))
+	require.NoError(t, err)
+	assert.Equal(t, "AB", string(out16BE))
+
+	// 3. bufio.Reader with short content (< 2 bytes)
+	rShort := bufio.NewReader(bytes.NewReader([]byte{'Z'}))
+	outShort, err := io.ReadAll(StripBOM(rShort))
+	require.NoError(t, err)
+	assert.Equal(t, "Z", string(outShort))
+
+	// 4. bufio.Reader empty
+	rEmpty := bufio.NewReader(bytes.NewReader(nil))
+	outEmpty, err := io.ReadAll(StripBOM(rEmpty))
+	require.NoError(t, err)
+	assert.Equal(t, "", string(outEmpty))
+
+	// 5. non-bufio reader with empty stream (n == 0)
+	type unbufferedWrapper struct{ io.Reader }
+	rawEmpty := &unbufferedWrapper{Reader: bytes.NewReader(nil)}
+	outRawEmpty, err := io.ReadAll(StripBOM(rawEmpty))
+	require.NoError(t, err)
+	assert.Equal(t, "", string(outRawEmpty))
+
+	// 6. non-bufio reader with UTF-16BE
+	raw16BE := &unbufferedWrapper{Reader: bytes.NewReader([]byte{0xFE, 0xFF, 'h', 'i'})}
+	outRaw16BE, err := io.ReadAll(StripBOM(raw16BE))
+	require.NoError(t, err)
+	assert.Equal(t, "hi", string(outRaw16BE))
+
+	// 7. non-bufio reader with UTF-16LE
+	raw16LE := &unbufferedWrapper{Reader: bytes.NewReader([]byte{0xFF, 0xFE, 'o', 'k'})}
+	outRaw16LE, err := io.ReadAll(StripBOM(raw16LE))
+	require.NoError(t, err)
+	assert.Equal(t, "ok", string(outRaw16LE))
+
+	// 8. non-bufio reader exact UTF-8 BOM only (off == n)
+	rawExact8 := &unbufferedWrapper{Reader: bytes.NewReader([]byte{0xEF, 0xBB, 0xBF})}
+	outExact8, err := io.ReadAll(StripBOM(rawExact8))
+	require.NoError(t, err)
+	assert.Equal(t, "", string(outExact8))
+
+	// 9. non-bufio reader exact UTF-16 BOM only (off == n)
+	rawExact16 := &unbufferedWrapper{Reader: bytes.NewReader([]byte{0xFF, 0xFE})}
+	outExact16, err := io.ReadAll(StripBOM(rawExact16))
+	require.NoError(t, err)
+	assert.Equal(t, "", string(outExact16))
+
+	// 10. non-bufio reader non-BOM bytes (off == 0)
+	rawNonBOM := &unbufferedWrapper{Reader: bytes.NewReader([]byte{1, 2, 3, 4})}
+	outNonBOM, err := io.ReadAll(StripBOM(rawNonBOM))
+	require.NoError(t, err)
+	assert.Equal(t, []byte{1, 2, 3, 4}, outNonBOM)
+}
+
+func TestCopyZeroAlloc_EdgeCases(t *testing.T) {
+	t.Parallel()
+
+	// 1. nil reader or nil writer
+	n, err := CopyZeroAlloc(nil, strings.NewReader("foo"))
+	require.NoError(t, err)
+	assert.Equal(t, int64(0), n)
+
+	var buf bytes.Buffer
+	n, err = CopyZeroAlloc(&buf, nil)
+	require.NoError(t, err)
+	assert.Equal(t, int64(0), n)
+
+	// 2. WriterTo reader to a non-ReaderFrom writer
+	type plainWriter struct{ io.Writer }
+	pw := &plainWriter{Writer: &buf}
+	buf.Reset()
+	wt := strings.NewReader("payload-writer-to")
+	n, err = CopyZeroAlloc(pw, wt)
+	require.NoError(t, err)
+	assert.Equal(t, int64(17), n)
+	assert.Equal(t, "payload-writer-to", buf.String())
+}
+
+type failWriter struct {
+	err error
+}
+
+func (f *failWriter) Write(_ []byte) (int, error) {
+	return 0, f.err
+}
+
+func TestCopyWithLimit_Errors(t *testing.T) {
+	t.Parallel()
+
+	testErr := errors.New("read fault")
+	errR := &ioErrorReader{data: []byte("partial"), err: testErr}
+	var buf bytes.Buffer
+
+	// Reader returns error during copyWithLimit
+	_, err := copyWithLimit(&buf, io.NopCloser(errR), 1024)
+	assert.ErrorIs(t, err, testErr)
+
+	// Writer returns error during copyWithLimit
+	writeErr := errors.New("write fault")
+	fw := &failWriter{err: writeErr}
+	_, err = copyWithLimit(fw, io.NopCloser(strings.NewReader("some data")), 1024)
+	assert.ErrorIs(t, err, writeErr)
+}
+
+type failingReplayableBody struct {
+	io.ReadCloser
+}
+
+func (f *failingReplayableBody) Reset()                 {}
+func (f *failingReplayableBody) BufferedPrefix() []byte { return nil }
+
+func TestReadAllString_And_ReadAllBytes_NilAndErrors(t *testing.T) {
+	t.Parallel()
+
+	// 1. nil ReplayableBody
+	s, err := ReadAllString(nil)
+	require.NoError(t, err)
+	assert.Equal(t, "", s)
+
+	b, err := ReadAllBytes(nil)
+	require.NoError(t, err)
+	assert.Nil(t, b)
+
+	// 2. error during read
+	readErr := errors.New("replayable read fault")
+	failing := &failingReplayableBody{ReadCloser: io.NopCloser(&ioErrorReader{err: readErr})}
+
+	s, err = ReadAllString(failing)
+	assert.ErrorIs(t, err, readErr)
+	assert.Equal(t, "", s)
+
+	b, err = ReadAllBytes(failing)
+	assert.ErrorIs(t, err, readErr)
+	assert.Nil(t, b)
+}
+
+func TestNewReplayableBody_EdgeCases(t *testing.T) {
+	t.Parallel()
+
+	// 1. nil
+	rb, err := NewReplayableBody(nil)
+	require.NoError(t, err)
+	assert.Nil(t, rb)
+
+	// 2. Already a ReplayableBody wrapped inside an Unwrap closer
+	mrb, err := NewMultiReadBody(io.NopCloser(strings.NewReader("nested")), 1024, false)
+	require.NoError(t, err)
+	wrapped := &customReadCloserWrapper{ReadCloser: mrb}
+	rb2, err := NewReplayableBody(wrapped)
+	require.NoError(t, err)
+	assert.NotNil(t, rb2)
+
+	// 3. Reader error during NewReplayableBody
+	readErr := errors.New("source read error")
+	_, err = NewReplayableBody(io.NopCloser(&ioErrorReader{err: readErr}))
+	assert.ErrorIs(t, err, readErr)
+}
+
+type customReadCloserWrapper struct {
+	io.ReadCloser
+}
+
+func (c *customReadCloserWrapper) Unwrap() io.Closer {
+	return c.ReadCloser
+}
+
+func TestProgressReader_CloserEdgeCases(t *testing.T) {
+	t.Parallel()
+
+	// Reader does NOT implement io.Closer
+	pr := &ProgressReader{
+		Reader:     strings.NewReader("hello"),
+		OnProgress: func(_, _ int64) {},
+		Total:      5,
+	}
+	assert.NoError(t, pr.Close())
+}
+
+type errorCloser struct {
+	io.Reader
+	err error
+}
+
+func (e *errorCloser) Close() error {
+	return e.err
+}
+
+func TestDecompressReadCloser_UnwrapAndErrors(t *testing.T) {
+	t.Parallel()
+
+	closer := &mockTrackedCloser{Reader: strings.NewReader("payload")}
+	d := &DecompressReadCloser{
+		Reader: strings.NewReader("payload"),
+		Closer: closer,
+	}
+
+	// Unwrap
+	assert.Same(t, closer, d.Unwrap())
+
+	// Close when Reader is not io.Closer
+	assert.NoError(t, d.Close())
+	assert.True(t, closer.closed)
+
+	// Close when Reader fails
+	rErr := errors.New("reader close error")
+	cErr := errors.New("closer close error")
+	dErr1 := &DecompressReadCloser{
+		Reader: &errorCloser{err: rErr},
+		Closer: io.NopCloser(nil),
+	}
+	assert.ErrorIs(t, dErr1.Close(), rErr)
+
+	// Close when Closer fails
+	dErr2 := &DecompressReadCloser{
+		Reader: strings.NewReader("data"),
+		Closer: &errorCloser{err: cErr},
+	}
+	assert.ErrorIs(t, dErr2.Close(), cErr)
+}
+
+func TestPooledGzipReader_ErrorAndUnwrap(t *testing.T) {
+	t.Parallel()
+
+	// 1. Invalid gzip header returns error from NewPooledGzipReader
+	_, err := NewPooledGzipReader(strings.NewReader("not a valid gzip header stream"))
+	assert.Error(t, err)
+
+	// 2. Valid gzip with plain io.Reader (not io.Closer)
+	var buf bytes.Buffer
+	gw := gzip.NewWriter(&buf)
+	_, err = gw.Write([]byte("pooled gzip test"))
+	require.NoError(t, gw.Close())
+
+	type plainGzipReader struct{ io.Reader }
+	plain := &plainGzipReader{Reader: bytes.NewReader(buf.Bytes())}
+	pgr, err := NewPooledGzipReader(plain)
+	require.NoError(t, err)
+
+	// Unwrap on non-closer returns nil
+	if u, ok := pgr.(interface{ Unwrap() io.Closer }); ok {
+		assert.Nil(t, u.Unwrap())
+	}
+	assert.NoError(t, pgr.Close())
+
+	// 3. Valid gzip with io.Closer reader -> Unwrap returns it
+	buf.Reset()
+	gw = gzip.NewWriter(&buf)
+	_, err = gw.Write([]byte("pooled closer test"))
+	require.NoError(t, gw.Close())
+
+	tracked := &mockTrackedCloser{Reader: bytes.NewReader(buf.Bytes())}
+	pgrCloser, err := NewPooledGzipReader(tracked)
+	require.NoError(t, err)
+
+	if u, ok := pgrCloser.(interface{ Unwrap() io.Closer }); ok {
+		assert.Same(t, tracked, u.Unwrap())
+	}
+	assert.NoError(t, pgrCloser.Close())
+	assert.True(t, tracked.closed)
+}
+
+func TestResponseBodyReadCloser_BytesFallback(t *testing.T) {
+	t.Parallel()
+
+	rb := &ResponseBodyReadCloser{ReadCloser: io.NopCloser(strings.NewReader("test"))}
+	data, onOffHeap := rb.Bytes()
+	assert.Nil(t, data)
+	assert.False(t, onOffHeap)
+}
+
+func TestMultiReadBody_ComprehensiveEdgeCases(t *testing.T) {
+	t.Parallel()
+
+	// 1. nil ReadCloser
+	mrbNil, err := NewMultiReadBody(nil, 1024, false)
+	require.NoError(t, err)
+	assert.Nil(t, mrbNil)
+
+	// 2. OffHeap path error during copyWithLimit
+	readErr := errors.New("stream err offheap")
+	failingR := io.NopCloser(&ioErrorReader{data: []byte("initial"), err: readErr})
+	_, err = NewMultiReadBody(failingR, 70*1024, false)
+	assert.ErrorIs(t, err, readErr)
+
+	// 3. RAM path error during copyWithLimit
+	failingR2 := io.NopCloser(&ioErrorReader{data: []byte("initial"), err: readErr})
+	_, err = NewMultiReadBody(failingR2, 512, false)
+	assert.ErrorIs(t, err, readErr)
+
+	// 4. Disk-backed MultiReadBody: Reset() method and stream failure
+	diskData := strings.Repeat("D", 2048)
+	mrbDisk, err := NewMultiReadBody(io.NopCloser(strings.NewReader(diskData)), 512, false)
+	require.NoError(t, err)
+	mrbTyped, ok := mrbDisk.(*MultiReadBody)
+	require.True(t, ok)
+	mrbTyped.Reset()
+
+	bDisk, err := io.ReadAll(mrbDisk)
+	require.NoError(t, err)
+	assert.Equal(t, diskData, string(bDisk))
+	mrbTyped.ReallyClose()
+
+	// 5. Disk stream failure during writeInitialAndStreamData
+	failingDiskR := io.NopCloser(&ioErrorReader{data: []byte(strings.Repeat("X", 600)), err: readErr})
+	_, err = NewMultiReadBody(failingDiskR, 512, false)
+	assert.ErrorIs(t, err, readErr)
+
+	// 6. ReallyClose idempotence and closed checks
+	mrbRAM, err := NewMultiReadBody(io.NopCloser(strings.NewReader("ram data")), 512, false)
+	require.NoError(t, err)
+	mrbRAMTyped := mrbRAM.(*MultiReadBody)
+	mrbRAMTyped.ReallyClose()
+	mrbRAMTyped.ReallyClose() // idempotent, does not panic
+
+	var buf [10]byte
+	_, rErr := mrbRAMTyped.Read(buf[:])
+	assert.ErrorIs(t, rErr, os.ErrClosed)
+
+	cErr := mrbRAMTyped.Close()
+	assert.ErrorIs(t, cErr, os.ErrClosed)
+}
+
+func TestBufioReadCloser_EdgeCases(t *testing.T) {
+	t.Parallel()
+
+	src := strings.NewReader("sample payload")
+	closer := &mockTrackedCloser{Reader: src}
+	brc := NewBufioReadCloser(src, closer)
+
+	// Close first time
+	require.NoError(t, brc.Close())
+	assert.True(t, closer.closed)
+
+	// Read after Close -> returns 0, io.EOF
+	var buf [10]byte
+	n, err := brc.Read(buf[:])
+	assert.Equal(t, 0, n)
+	assert.ErrorIs(t, err, io.EOF)
+
+	// Peek after Close -> returns nil, io.EOF
+	peek, err := brc.Peek(4)
+	assert.Nil(t, peek)
+	assert.ErrorIs(t, err, io.EOF)
+
+	// Close second time -> returns nil
+	brc.Closer = nil
+	assert.NoError(t, brc.Close())
+
+	// ReleaseBufioReader(nil) should not panic
+	ReleaseBufioReader(nil)
+}
+
+func TestBufferedConn_BufferedReadBranch(t *testing.T) {
+	t.Parallel()
+
+	c1, c2 := net.Pipe()
+	defer c1.Close()
+	defer c2.Close()
+
+	go func() {
+		_, _ = c1.Write([]byte("peeked_and_buffered_data"))
+	}()
+
+	br := bufio.NewReader(c2)
+	// Fill buffer so br.Buffered() > 0
+	peek, err := br.Peek(6)
+	require.NoError(t, err)
+	assert.Equal(t, "peeked", string(peek))
+	assert.True(t, br.Buffered() > 0)
+
+	bConn := &BufferedConn{
+		Conn: c2,
+		R:    br,
+	}
+
+	buf := make([]byte, 6)
+	n, err := bConn.Read(buf)
+	require.NoError(t, err)
+	assert.Equal(t, 6, n)
+	assert.Equal(t, "peeked", string(buf))
 }

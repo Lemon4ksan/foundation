@@ -134,3 +134,24 @@ func TestBufferQueue_CapacityRetention(t *testing.T) {
 
 	assert.True(t, q.Cap() >= 16)
 }
+
+func TestBufferQueue_EdgeCases(t *testing.T) {
+	t.Parallel()
+
+	// 1. WithMaxSlices with non-positive values should default to DefaultMaxVectoredSlices (16)
+	qZero := iokit.WithMaxSlices(0)
+	assert.Equal(t, 16, qZero.Cap())
+
+	qNeg := iokit.WithMaxSlices(-5)
+	assert.Equal(t, 16, qNeg.Cap())
+
+	// 2. ReleaseBufferQueue with nil should not panic
+	iokit.ReleaseBufferQueue(nil)
+
+	// 3. ReleaseBufferQueue with oversized queue should not be returned to pool
+	qHuge := iokit.WithMaxSlices(128)
+	for range 100 {
+		qHuge.Push([]byte("chunk"))
+	}
+	iokit.ReleaseBufferQueue(qHuge)
+}
