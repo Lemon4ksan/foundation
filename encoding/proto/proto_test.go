@@ -93,3 +93,157 @@ func BenchmarkScan_ZeroAlloc(b *testing.B) {
 		}
 	}
 }
+
+func BenchmarkScanPacked_ZeroAlloc(b *testing.B) {
+	vals := []uint64{10, 20, 30, 40, 50, 60, 70, 80}
+	buf := proto.AppendPackedVarints(nil, 1, vals)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		for f, err := range proto.Scan(buf) {
+			if err != nil {
+				b.Fatal(err)
+			}
+			for _, vErr := range f.PackedVarints() {
+				if vErr != nil {
+					b.Fatal(vErr)
+				}
+			}
+		}
+	}
+}
+
+func BenchmarkSkipField_ZeroAlloc(b *testing.B) {
+	buf := proto.AppendString(nil, 1, "benchmark-skip-payload")
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		_, err := proto.SkipField(buf[1:], proto.WireBytes)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkScan_Throughput_4KB(b *testing.B) {
+	var buf []byte
+	for i := 0; i < 100; i++ {
+		buf = proto.AppendVarint(buf, uint32(i%15+1), uint64(i*10))
+		buf = proto.AppendFixed32(buf, uint32(i%15+1), uint32(i*100))
+		buf = proto.AppendFixed64(buf, uint32(i%15+1), uint64(i*1000))
+		buf = proto.AppendString(buf, uint32(i%15+1), "short-str-view")
+	}
+	b.SetBytes(int64(len(buf)))
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		for f, err := range proto.Scan(buf) {
+			if err != nil || f.Num == 0 {
+				b.Fatal("unexpected scan error")
+			}
+		}
+	}
+}
+
+func BenchmarkScan_Throughput_64KB(b *testing.B) {
+	var buf []byte
+	payload := make([]byte, 128)
+	for i := 0; i < 500; i++ {
+		buf = proto.AppendVarint(buf, 1, uint64(i))
+		buf = proto.AppendFixed64(buf, 2, uint64(i*100))
+		buf = proto.AppendBytes(buf, 3, payload)
+	}
+	b.SetBytes(int64(len(buf)))
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		for f, err := range proto.Scan(buf) {
+			if err != nil || f.Num == 0 {
+				b.Fatal("unexpected scan error")
+			}
+		}
+	}
+}
+
+func BenchmarkScanPacked_Throughput_Varints(b *testing.B) {
+	vals := make([]uint64, 1000)
+	for i := range vals {
+		vals[i] = uint64(i * 7)
+	}
+	buf := proto.AppendPackedVarints(nil, 1, vals)
+
+	b.SetBytes(int64(len(buf)))
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		for f, err := range proto.Scan(buf) {
+			if err != nil {
+				b.Fatal(err)
+			}
+			for _, vErr := range f.PackedVarints() {
+				if vErr != nil {
+					b.Fatal(vErr)
+				}
+			}
+		}
+	}
+}
+
+func BenchmarkScanPacked_Throughput_Fixed32(b *testing.B) {
+	vals := make([]uint32, 2000)
+	for i := range vals {
+		vals[i] = uint32(i * 1337)
+	}
+	buf := proto.AppendPackedFixed32(nil, 1, vals)
+
+	b.SetBytes(int64(len(buf)))
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		for f, err := range proto.Scan(buf) {
+			if err != nil {
+				b.Fatal(err)
+			}
+			for _, vErr := range f.PackedFixed32() {
+				if vErr != nil {
+					b.Fatal(vErr)
+				}
+			}
+		}
+	}
+}
+
+func BenchmarkScanPacked_Throughput_Fixed64(b *testing.B) {
+	vals := make([]uint64, 1000)
+	for i := range vals {
+		vals[i] = uint64(i * 1337)
+	}
+	buf := proto.AppendPackedFixed64(nil, 1, vals)
+
+	b.SetBytes(int64(len(buf)))
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		for f, err := range proto.Scan(buf) {
+			if err != nil {
+				b.Fatal(err)
+			}
+			for _, vErr := range f.PackedFixed64() {
+				if vErr != nil {
+					b.Fatal(vErr)
+				}
+			}
+		}
+	}
+}
+
+

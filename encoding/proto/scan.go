@@ -95,6 +95,13 @@ func (f Field) String() string { return bytesconv.B2S(f.Data) }
 //go:inline
 func (f Field) Message() []byte { return f.Data }
 
+// Scan returns a push iterator over fields if this field contains an embedded submessage.
+//
+//go:inline
+func (f Field) Scan() iter.Seq2[Field, error] {
+	return Scan(f.Data)
+}
+
 // Scan returns a push iterator over fields in the Protocol Buffers wire buffer.
 //
 // It performs zero allocations and yields fields until the buffer is exhausted
@@ -105,15 +112,30 @@ func Scan(data []byte) iter.Seq2[Field, error] {
 		n := len(data)
 
 		for offset < n {
-			tag, tagBytes := binary.Uvarint(data[offset:])
-			if tagBytes <= 0 {
-				yield(Field{}, ErrTruncated)
-				return
+			b0 := data[offset]
+			var tag uint64
+			var tagBytes int
+
+			if b0 < 0x80 {
+				tag = uint64(b0)
+				tagBytes = 1
+			} else {
+				var err error
+				tag, tagBytes, err = DecodeUvarint(data[offset:])
+				if err != nil {
+					yield(Field{}, err)
+					return
+				}
 			}
 			offset += tagBytes
 
+			if tag > math.MaxUint32 {
+				yield(Field{}, ErrInvalidTag)
+				return
+			}
+
 			fieldNum, wireType := SplitTag(uint32(tag))
-			if fieldNum == 0 {
+			if fieldNum == 0 || fieldNum > MaxFieldNumber {
 				yield(Field{}, ErrInvalidTag)
 				return
 			}
@@ -124,16 +146,21 @@ func Scan(data []byte) iter.Seq2[Field, error] {
 
 			switch wireType {
 			case WireVarint:
-				val, valBytes := binary.Uvarint(data[offset:])
-				if valBytes <= 0 {
-					yield(Field{}, ErrTruncated)
-					return
+				if offset < n && data[offset] < 0x80 {
+					f.Raw = uint64(data[offset])
+					offset++
+				} else {
+					val, valBytes, err := DecodeUvarint(data[offset:])
+					if err != nil {
+						yield(Field{}, err)
+						return
+					}
+					offset += valBytes
+					f.Raw = val
 				}
-				offset += valBytes
-				f.Raw = val
 
 			case WireFixed64:
-				if offset+8 > n {
+				if n-offset < 8 {
 					yield(Field{}, ErrTruncated)
 					return
 				}
@@ -141,14 +168,23 @@ func Scan(data []byte) iter.Seq2[Field, error] {
 				offset += 8
 
 			case WireBytes:
-				length, lenBytes := binary.Uvarint(data[offset:])
-				if lenBytes <= 0 {
-					yield(Field{}, ErrTruncated)
-					return
+				var length uint64
+				if offset < n && data[offset] < 0x80 {
+					length = uint64(data[offset])
+					offset++
+				} else {
+					var lenBytes int
+					var err error
+					length, lenBytes, err = DecodeUvarint(data[offset:])
+					if err != nil {
+						yield(Field{}, err)
+						return
+					}
+					offset += lenBytes
 				}
-				offset += lenBytes
 
-				if uint64(offset)+length > uint64(n) {
+				rem := n - offset
+				if length > uint64(rem) {
 					yield(Field{}, ErrTruncated)
 					return
 				}
@@ -157,7 +193,7 @@ func Scan(data []byte) iter.Seq2[Field, error] {
 				offset = end
 
 			case WireFixed32:
-				if offset+4 > n {
+				if n-offset < 4 {
 					yield(Field{}, ErrTruncated)
 					return
 				}
@@ -165,7 +201,7 @@ func Scan(data []byte) iter.Seq2[Field, error] {
 				offset += 4
 
 			case WireStartGroup, WireEndGroup:
-				// Groups are deprecated in proto3; skip remaining wire
+				// Groups are deprecated in proto3; invalid wire type
 				yield(Field{}, ErrInvalidWireType)
 				return
 
@@ -186,9 +222,12 @@ func SkipField(data []byte, wireType WireType) (int, error) {
 	n := len(data)
 	switch wireType {
 	case WireVarint:
-		_, read := binary.Uvarint(data)
-		if read <= 0 {
-			return 0, ErrTruncated
+		if n > 0 && data[0] < 0x80 {
+			return 1, nil
+		}
+		_, read, err := DecodeUvarint(data)
+		if err != nil {
+			return 0, err
 		}
 		return read, nil
 
@@ -199,15 +238,23 @@ func SkipField(data []byte, wireType WireType) (int, error) {
 		return 8, nil
 
 	case WireBytes:
-		length, read := binary.Uvarint(data)
-		if read <= 0 {
+		var length uint64
+		var read int
+		if n > 0 && data[0] < 0x80 {
+			length = uint64(data[0])
+			read = 1
+		} else {
+			var err error
+			length, read, err = DecodeUvarint(data)
+			if err != nil {
+				return 0, err
+			}
+		}
+		rem := n - read
+		if length > uint64(rem) {
 			return 0, ErrTruncated
 		}
-		total := read + int(length)
-		if total > n || total < 0 {
-			return 0, ErrTruncated
-		}
-		return total, nil
+		return read + int(length), nil
 
 	case WireFixed32:
 		if n < 4 {
@@ -218,4 +265,85 @@ func SkipField(data []byte, wireType WireType) (int, error) {
 	default:
 		return 0, ErrInvalidWireType
 	}
+}
+
+// SkipTagAndField determines the total number of bytes consumed by a tag and its field value in data.
+func SkipTagAndField(data []byte) (int, error) {
+	tag, tagBytes, err := DecodeUvarint(data)
+	if err != nil {
+		return 0, err
+	}
+	if tag > math.MaxUint32 {
+		return 0, ErrInvalidTag
+	}
+	fieldNum, wireType := SplitTag(uint32(tag))
+	if fieldNum == 0 || fieldNum > MaxFieldNumber {
+		return 0, ErrInvalidTag
+	}
+	if wireType == WireStartGroup {
+		groupLen, err := SkipGroup(data[tagBytes:], fieldNum)
+		if err != nil {
+			return 0, err
+		}
+		return tagBytes + groupLen, nil
+	}
+	valBytes, err := SkipField(data[tagBytes:], wireType)
+	if err != nil {
+		return 0, err
+	}
+	return tagBytes + valBytes, nil
+}
+
+// SkipGroup skips a group from data until the matching WireEndGroup tag with groupFieldNum is encountered.
+func SkipGroup(data []byte, groupFieldNum uint32) (int, error) {
+	return skipGroupDepth(data, groupFieldNum, 0, DefaultMaxDepth)
+}
+
+func skipGroupDepth(data []byte, groupFieldNum uint32, depth, maxDepth int) (int, error) {
+	if depth >= maxDepth {
+		return 0, ErrMaxDepthExceeded
+	}
+	offset := 0
+	n := len(data)
+
+	for offset < n {
+		tag, tagBytes, err := DecodeUvarint(data[offset:])
+		if err != nil {
+			return 0, err
+		}
+		offset += tagBytes
+
+		if tag > math.MaxUint32 {
+			return 0, ErrInvalidTag
+		}
+
+		fieldNum, wireType := SplitTag(uint32(tag))
+		if fieldNum == 0 || fieldNum > MaxFieldNumber {
+			return 0, ErrInvalidTag
+		}
+
+		if wireType == WireEndGroup {
+			if fieldNum == groupFieldNum {
+				return offset, nil
+			}
+			return 0, ErrInvalidWireType
+		}
+
+		if wireType == WireStartGroup {
+			skipped, err := skipGroupDepth(data[offset:], fieldNum, depth+1, maxDepth)
+			if err != nil {
+				return 0, err
+			}
+			offset += skipped
+			continue
+		}
+
+		skipped, err := SkipField(data[offset:], wireType)
+		if err != nil {
+			return 0, err
+		}
+		offset += skipped
+	}
+
+	return 0, ErrTruncated
 }
