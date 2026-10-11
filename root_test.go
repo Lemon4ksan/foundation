@@ -52,9 +52,7 @@ var (
 	allowedGenericImports = map[string]bool{}
 
 	// Whitelist of cross-imports within silicon/*.
-	allowedSiliconCrossImports = map[string]string{
-		"github.com/lemon4ksan/foundation/silicon/hexkit": "github.com/lemon4ksan/foundation/silicon/cpukit",
-	}
+	allowedSiliconCrossImports = map[string]string{}
 
 	// Whitelist of public packages temporarily permitted without doc.go.
 	allowedMissingDocGo = map[string]bool{}
