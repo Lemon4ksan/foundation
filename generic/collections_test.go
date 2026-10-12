@@ -437,3 +437,19 @@ func BenchmarkSet_Intersect_AsymmetricSmallReceiver(b *testing.B) {
 		_ = small.Intersect(large)
 	}
 }
+
+func TestChunkAndContains(t *testing.T) {
+	nums := []int{1, 2, 3, 4, 5}
+	chunks := Chunk(nums, 2)
+	if len(chunks) != 3 || len(chunks[0]) != 2 || len(chunks[2]) != 1 {
+		t.Fatalf("unexpected chunks: %v", chunks)
+	}
+
+	if !Contains(nums, 3) || Contains(nums, 99) {
+		t.Fatalf("Contains failed for nums")
+	}
+
+	if !ContainsFunc(nums, func(x int) bool { return x%2 == 0 }) {
+		t.Fatalf("ContainsFunc failed for even number")
+	}
+}

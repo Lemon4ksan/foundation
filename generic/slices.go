@@ -59,6 +59,23 @@ func Chunked[T any](slice []T, size int) [][]T {
 	return chunks
 }
 
+// Chunk splits a slice into multiple slices of the specified size.
+// It is an alias for Chunked.
+func Chunk[T any](slice []T, size int) [][]T {
+	return Chunked(slice, size)
+}
+
+// Contains reports whether target is present in slice.
+func Contains[T comparable](slice []T, target T) bool {
+	return slices.Contains(slice, target)
+}
+
+// ContainsFunc reports whether at least one element of the slice satisfies the predicate fn.
+// It is an alias for Any.
+func ContainsFunc[T any](slice []T, fn func(T) bool) bool {
+	return Any(slice, fn)
+}
+
 // Keys returns a slice containing all keys from the provided map.
 // The order of the keys in the returned slice is undefined.
 //
