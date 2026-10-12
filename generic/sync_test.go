@@ -226,3 +226,139 @@ func TestGuarded(t *testing.T) {
 		t.Fatalf("expected readVal 100, got %d", readVal)
 	}
 }
+
+func TestSyncMap(t *testing.T) {
+	sm := NewSyncMap[string, int]()
+	sm.Store("a", 1)
+	sm.Store("b", 2)
+
+	v, ok := sm.Load("a")
+	if !ok || v != 1 {
+		t.Fatalf("expected 1, got %v (ok=%t)", v, ok)
+	}
+
+	actual, loaded := sm.LoadOrStore("a", 99)
+	if !loaded || actual != 1 {
+		t.Fatalf("expected loaded=true, actual=1, got %v, %t", actual, loaded)
+	}
+
+	actual2, loaded2 := sm.LoadOrStore("c", 3)
+	if loaded2 || actual2 != 3 {
+		t.Fatalf("expected loaded=false, actual=3, got %v, %t", actual2, loaded2)
+	}
+
+	val, deleted := sm.LoadAndDelete("b")
+	if !deleted || val != 2 {
+		t.Fatalf("expected deleted=true, val=2, got %v, %t", val, deleted)
+	}
+
+	sm.Delete("c")
+	if _, ok := sm.Load("c"); ok {
+		t.Fatalf("expected key 'c' to be deleted")
+	}
+
+	count := 0
+	sm.Range(func(k string, v int) bool {
+		count++
+		return true
+	})
+	if count != 1 {
+		t.Fatalf("expected count 1, got %d", count)
+	}
+
+	sm.Clear()
+	if _, ok := sm.Load("a"); ok {
+		t.Fatalf("expected key 'a' to be cleared")
+	}
+}
+
+func TestLazy_Infallible(t *testing.T) {
+	var count int
+	var mu sync.Mutex
+	l := NewLazyValue(func() int {
+		mu.Lock()
+		count++
+		mu.Unlock()
+		return 42
+	})
+
+	const goroutines = 64
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+	for range goroutines {
+		go func() {
+			defer wg.Done()
+			if v := l.Value(); v != 42 {
+				t.Errorf("expected 42, got %d", v)
+			}
+		}()
+	}
+	wg.Wait()
+
+	if count != 1 {
+		t.Fatalf("expected init to be called exactly once, called %d times", count)
+	}
+
+	// Verify 0-alloc fast path
+	allocs := testing.AllocsPerRun(1000, func() {
+		_ = l.Value()
+	})
+	if allocs != 0 {
+		t.Fatalf("expected 0 allocs on cached Value(), got %f", allocs)
+	}
+}
+
+func TestLazy_FallibleAndReset(t *testing.T) {
+	errBoom := errors.New("boom")
+	shouldFail := true
+
+	l := NewLazy(func() (string, error) {
+		if shouldFail {
+			return "", errBoom
+		}
+		return "recovered", nil
+	})
+
+	val, err := l.Get()
+	if !errors.Is(err, errBoom) || val != "" {
+		t.Fatalf("expected errBoom, got %v, %v", val, err)
+	}
+
+	// Error is cached
+	val2, err2 := l.Get()
+	if !errors.Is(err2, errBoom) || val2 != "" {
+		t.Fatalf("expected cached errBoom, got %v, %v", val2, err2)
+	}
+
+	// Reset allows retry
+	shouldFail = false
+	l.Reset()
+
+	val3, err3 := l.Get()
+	if err3 != nil || val3 != "recovered" {
+		t.Fatalf("expected recovered, got %v, %v", val3, err3)
+	}
+}
+
+func TestPool_Generic(t *testing.T) {
+	p := NewPool(func() *string {
+		s := "fresh"
+		return &s
+	})
+
+	item := p.Get()
+	if *item != "fresh" {
+		t.Fatalf("expected 'fresh', got %s", *item)
+	}
+
+	*item = "recycled"
+	p.Put(item)
+
+	item2 := p.Get()
+	if *item2 != "recycled" {
+		t.Fatalf("expected 'recycled', got %s", *item2)
+	}
+
+	// Nil safety
+	p.Put(nil)
+}
