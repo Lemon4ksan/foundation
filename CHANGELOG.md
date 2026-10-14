@@ -1,5 +1,75 @@
 # Changelog
 
+## [0.2.0](https://github.com/Lemon4ksan/foundation/compare/v0.1.0...v0.2.0) (2026-10-14)
+
+
+### ⚠ BREAKING CHANGES
+
+* **async:** push iterators, test consolidation, and zero-alloc accessors
+* **fskit:** concurrent push iterators, zero-alloc media heuristics, atomic file operations and test consolidation
+* **urlkit:** zero-allocation fast-paths, query iterator, cacheline isolation and test consolidation
+* **bufkit:** cache-coherence SPSC ring, streaming chain extensions and test consolidation
+* **pathkit:** zero-allocation push iterators, caller-supplied Append forms and lexical operations
+* **refkit:** zero-allocation overhaul with iter.Seq, SchemaCache and unboxed accessors
+
+### Features
+
+* **async:** push iterators, test consolidation, and zero-alloc accessors ([ace8439](https://github.com/Lemon4ksan/foundation/commit/ace84397d57f531e2a22fc471d5fd05d8423985b))
+* **bufkit:** cache-coherence SPSC ring, streaming chain extensions and test consolidation ([91c9341](https://github.com/Lemon4ksan/foundation/commit/91c9341a44a8ee356078415bb41b22cb1834267a))
+* complete v0.2.0 modernization and semantic bug remediation ([71c4874](https://github.com/Lemon4ksan/foundation/commit/71c48743a7f18ec2f42ee449dc85f77a8bfa3b8c))
+* **encoding/proto:** baseline wire engine ([7c55d59](https://github.com/Lemon4ksan/foundation/commit/7c55d59f4d3d5dd13cbc744a3beca34f50f8a80b))
+* **encoding/proto:** Grand Synthesis of zero-allocation Protocol Buffers wire engine ([4d70242](https://github.com/Lemon4ksan/foundation/commit/4d70242ec02661bb3df51093b9036fe07a593a08))
+* **fskit:** concurrent push iterators, zero-alloc media heuristics, atomic file operations and test consolidation ([137d7eb](https://github.com/Lemon4ksan/foundation/commit/137d7ebff097cfb1af9e5f7dc1237396ccc0fc4e))
+* **generic:** add Lazy[T], monad/slice helpers and harmonize repository standards ([#8](https://github.com/Lemon4ksan/foundation/issues/8)) ([7e7fb18](https://github.com/Lemon4ksan/foundation/commit/7e7fb184973ad1c52132d0d3d6fac18833004176))
+* **net,iokit:** add dns wire/svcb codecs and vectored buffer queue ([a8ccfc7](https://github.com/Lemon4ksan/foundation/commit/a8ccfc7971e57cc710ac04abb3a87e3790d51cdc))
+* **pathkit:** zero-allocation push iterators, caller-supplied Append forms and lexical operations ([e1c0707](https://github.com/Lemon4ksan/foundation/commit/e1c07078a0e44f85acf939f00209bf5feeba7025))
+* **refkit:** zero-allocation overhaul with iter.Seq, SchemaCache and unboxed accessors ([14186cc](https://github.com/Lemon4ksan/foundation/commit/14186cc5d09cf906ad780663ae9775680e6857b2))
+* **silicon:** add zero-alloc hexkit primitives and SIMD text kernels ([8698726](https://github.com/Lemon4ksan/foundation/commit/86987264fd1cc7e56a4c90b72290dc42ca173981))
+* **urlkit:** zero-allocation fast-paths, query iterator, cacheline isolation and test consolidation ([fdc5725](https://github.com/Lemon4ksan/foundation/commit/fdc572583124166917e708fad5579ffbb4f5a56b))
+
+
+### Bug Fixes
+
+* **alloc:** ADR-0003 capacity retention in bufkit, generic.SlicePool, breaker, limiter, semaphore, iokit ([573ffcc](https://github.com/Lemon4ksan/foundation/commit/573ffcce21e37c1b4cf5fa3c73b015b8daed766a))
+* **alloc:** ADR-0003 Deque.ShrinkToFit, RequestArena tail 0-alloc, SPSC 128B prefetch false sharing elimination ([8b27d90](https://github.com/Lemon4ksan/foundation/commit/8b27d902b431260142d5c852b0c49fe7386af3e4))
+* **alloc:** ADR-0003 linkedlist, minheap, and offheap zero-alloc and memory retention fixes ([cf0b7f5](https://github.com/Lemon4ksan/foundation/commit/cf0b7f51ee36a771a7e2f13220ce05572f0a2a6e))
+* **all:** resolve all audit defects and establish clean regression test suite ([07581da](https://github.com/Lemon4ksan/foundation/commit/07581da82c2988a0108e9a93cfb8181db7b2d66b))
+* **all:** resolve critical architectural bugs from Swarm audit ([f222b33](https://github.com/Lemon4ksan/foundation/commit/f222b33e095b01c56f54b87af4df19477ad45ed4))
+* **arch:** decouple hexkit from cpukit and calibrate coverage baseline for Linux CI ([8758e13](https://github.com/Lemon4ksan/foundation/commit/8758e13a3607b322d13ff0ad241f22d6a1ab3df1))
+* **boundary:** resolve parser hangs, depth bomb, integer overflows, and validation edge cases ([b49c7c0](https://github.com/Lemon4ksan/foundation/commit/b49c7c034d0de67c7ca1eb0da608d8e67a442a0d))
+* **boundary:** resolve Unicode escapes, trailing garbage, URL null injection, SSRF authority ambiguity, and extreme year overflows ([71c245b](https://github.com/Lemon4ksan/foundation/commit/71c245b4039423f831e06e7de88c83e83f376897))
+* **encoding/json:** update internal package imports and fuzz script ([e25f33f](https://github.com/Lemon4ksan/foundation/commit/e25f33ff748ad6486ff6bd4822273c2ba42e4d31))
+* intercept -h and --help flags in app router to prevent subcommand ([9f9971e](https://github.com/Lemon4ksan/foundation/commit/9f9971e328332627de012f1d8da1a25d85f9f7ba))
+* **mutator:** fix integer overflows in bin reader, nil pointer panics, varint peeker, and dns bounds checks ([4059661](https://github.com/Lemon4ksan/foundation/commit/4059661d6df8aeeb6b34089a93f3d7fea37e9856))
+* **mutator:** fix pointer bombs in dns wire, svcb param validation, varint nil reader, and base64 length overflow ([f0111f0](https://github.com/Lemon4ksan/foundation/commit/f0111f0261ebf4d537b96e52641a2fcbffead24e))
+* **pool,sign:** eliminate TestPool_ScaleDown timing flake and boost sign coverage to 96% ([ef5ae6f](https://github.com/Lemon4ksan/foundation/commit/ef5ae6fa556ec593834a84605d59a7b17ae3ef5d))
+* **qa:** deduplicate coverage profile blocks, fix urlkit IPv6 zone fuzz discrepancy, and raise test coverage ([66b6b56](https://github.com/Lemon4ksan/foundation/commit/66b6b569129c162b0472482805a6a22d70226b69))
+* resolve critical bugs found by AI Audit Swarm ([60ee8b0](https://github.com/Lemon4ksan/foundation/commit/60ee8b0fbdba88009063fd1640a9679ab9c2a71b))
+* resolve final audit findings in parsing, SIMD, and tests ([6de6318](https://github.com/Lemon4ksan/foundation/commit/6de63181630574d76638dca63e700990fde72171))
+* resolve linkedlist out-of-bounds array allocation and remove dead simd assembly ([0790538](https://github.com/Lemon4ksan/foundation/commit/0790538cc6755b57c3e115b9bf69fbb900df3620))
+* resolve linter, typecheck, and formatting issues post-merge ([2c9532e](https://github.com/Lemon4ksan/foundation/commit/2c9532e97887665a2734f9fe12ba2cb4dc4cfa9c))
+* **scripts:** sync fuzz_all with active targets (add encoding/proto, drop removed pkgs) ([033944f](https://github.com/Lemon4ksan/foundation/commit/033944f9500cf9d0e46f538e03a5cf2850b1fc13))
+* **silicon/clock:** calibrate realistic frequency and resolution on ARM64 macOS ([8c19a83](https://github.com/Lemon4ksan/foundation/commit/8c19a83780a73d26dadaba532ea93ef0a5f771fb))
+* **silicon/pool:** eliminate dead code in Alloc and achieve 100% deterministic coverage ([b88a394](https://github.com/Lemon4ksan/foundation/commit/b88a394de14b0ab280566ff4e4a2495d71d45b52))
+* **state_breaker:** resolve AEAD framing attacks, Ed25519 signature malleability, Argon2id bounds, and secret serialization leaks ([789335d](https://github.com/Lemon4ksan/foundation/commit/789335d89a6c833d48b06aac3e80fcb6e389365d))
+* **state_breaker:** resolve slice bounds panic in PBKDF2, OpenSSH fingerprint compatibility, short nonce panic, secret wiping, and FSM invariants ([d4238bd](https://github.com/Lemon4ksan/foundation/commit/d4238bd49100bfe301e743a64133f50faa2afa86))
+* **types/secret:** prevent value receiver copy data race on concurrent Expose and Wipe ([0a66081](https://github.com/Lemon4ksan/foundation/commit/0a660816e29186fd40e788d71f3ab75d60b60e18))
+
+
+### Performance Improvements
+
+* **escape:** eliminate interface boxing, closure escapes, and tag allocations ([acec612](https://github.com/Lemon4ksan/foundation/commit/acec612f07809f8b6cad3929aacd06b663374bab))
+* **escape:** lock-free atomic SchemaCache, inlined Tag.Value, and clock duration arithmetic ([770ff9e](https://github.com/Lemon4ksan/foundation/commit/770ff9ec13d8cfe8b2c19b54e0d2e5798eff1054))
+* **escape:** zero-alloc ParseHTTPDate, UUID unmarshal/formatting, and values serialization ([b49d315](https://github.com/Lemon4ksan/foundation/commit/b49d315f78696a9cf16dd1ec5d7d7cad4f77b998))
+* **nano:** 32-byte SWAR IndexByte/ValidUTF8, 64-bit store hex packing, and deque unsigned bounds folding ([3e7eb7d](https://github.com/Lemon4ksan/foundation/commit/3e7eb7de0d5dcc4d0b1806f6b48cd1e780033637))
+* **nano:** RadixTree direct node traversal & BCE, cpukit branchless caching, and endian BCE hoisting ([82e8cc9](https://github.com/Lemon4ksan/foundation/commit/82e8cc91e90a5ebed21af234345672fbf6dfea96))
+* **nano:** SWAR, BCE elimination, zero-alloc casing and json decode optimization ([f4e28c6](https://github.com/Lemon4ksan/foundation/commit/f4e28c6f4d5cb5fb74c2aace8b3e9e8df6099db1))
+
+
+### Miscellaneous Chores
+
+* **ci:** configure release-please manifest mode and set 0.2.0 ([cfbcae0](https://github.com/Lemon4ksan/foundation/commit/cfbcae0cbeb9b1f5c23c80514a50f7bea3e50f65))
+
 ## [0.1.0](https://github.com/Lemon4ksan/foundation/compare/v0.0.1...v0.1.0) (2026-10-03)
 
 
