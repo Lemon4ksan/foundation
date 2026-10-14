@@ -386,6 +386,76 @@ func (m *ConcurrentMap[K, V]) Clear() {
 	m.m.Clear()
 }
 
+// SyncMap is an alias for [ConcurrentMap], providing a type-safe concurrent hash map.
+type SyncMap[K comparable, V any] = ConcurrentMap[K, V]
+
+// NewSyncMap constructs an empty [SyncMap].
+func NewSyncMap[K comparable, V any]() *SyncMap[K, V] {
+	return &ConcurrentMap[K, V]{}
+}
+
+// Lazy provides thread-safe, lock-free lazy initialization of an expensive resource of type T.
+type Lazy[T any] struct {
+	mu   sync.Mutex
+	init func() (T, error)
+	res  atomic.Pointer[lazyResult[T]]
+}
+
+type lazyResult[T any] struct {
+	val T
+	err error
+}
+
+// NewLazy creates a new [Lazy] container with a fallible initializer.
+func NewLazy[T any](init func() (T, error)) *Lazy[T] {
+	return &Lazy[T]{init: init}
+}
+
+// NewLazyValue creates a new [Lazy] container with an infallible initializer.
+func NewLazyValue[T any](init func() T) *Lazy[T] {
+	return &Lazy[T]{
+		init: func() (T, error) {
+			return init(), nil
+		},
+	}
+}
+
+// Get returns the computed value. If not yet initialized, Get executes the initialization
+// function and caches both the returned value and error. Subsequent calls return the cached
+// value via lock-free atomic load.
+func (l *Lazy[T]) Get() (T, error) {
+	if r := l.res.Load(); r != nil {
+		return r.val, r.err
+	}
+
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	if r := l.res.Load(); r != nil {
+		return r.val, r.err
+	}
+
+	val, err := l.init()
+	l.res.Store(&lazyResult[T]{val: val, err: err})
+	return val, err
+}
+
+// Value returns the computed value for infallible initializers. If initialization returned an error, Value panics.
+func (l *Lazy[T]) Value() T {
+	val, err := l.Get()
+	if err != nil {
+		panic(err)
+	}
+	return val
+}
+
+// Reset clears the cached state, allowing re-initialization on subsequent calls.
+func (l *Lazy[T]) Reset() {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.res.Store(nil)
+}
+
 // PanicError records a recovered panic value and stack trace.
 type PanicError struct {
 	Value any

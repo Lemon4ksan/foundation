@@ -1,0 +1,38 @@
+name: "Feature Request"
+description: "Propose a new primitive, zero-alloc data structure, or standard extension in foundation"
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for suggesting an improvement for foundation.
+        Every package must adhere to zero-allocation hot paths and strict layer isolation.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or Motivation
+      description: What limitation or use case does this proposal solve? Which consuming project needs this?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed Solution & API
+      description: Describe the design, including hypothetical Go type definitions and API signatures.
+    validations:
+      required: true
+  - type: textarea
+    id: allocation
+    attributes:
+      label: Allocation Budget & Tier Impact
+      description: How does this primitive ensure zero-allocation hot paths or fit within ADR-0003 budgets?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Any alternative approaches or existing solutions in the ecosystem?
+    validations:
+      false

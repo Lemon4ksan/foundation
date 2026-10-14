@@ -95,6 +95,34 @@ func (o Optional[T]) ValueOr(fallback T) T {
 	return o.val
 }
 
+// OrElse returns the wrapped value if present, otherwise returning the fallback value.
+// It is functionally equivalent to [Optional.ValueOr].
+func (o Optional[T]) OrElse(fallback T) T {
+	if !o.valid {
+		return fallback
+	}
+
+	return o.val
+}
+
+// Or returns the optional itself if present, or returns the fallback optional.
+func (o Optional[T]) Or(fallback Optional[T]) Optional[T] {
+	if !o.valid {
+		return fallback
+	}
+
+	return o
+}
+
+// Map applies f to the wrapped value if present and returns a new Optional containing the result.
+func (o Optional[T]) Map(f func(T) T) Optional[T] {
+	if f == nil || !o.valid {
+		return None[T]()
+	}
+
+	return Some(f(o.val))
+}
+
 // Filter returns the [Optional] containing the value if present and matching
 // the predicate, otherwise returning [None].
 //
@@ -230,6 +258,35 @@ func (r Result[T]) MustValue() T {
 	}
 
 	return r.val
+}
+
+// ValueOr returns the computed value on success, or the fallback value on failure.
+func (r Result[T]) ValueOr(fallback T) T {
+	if r.err != nil {
+		return fallback
+	}
+
+	return r.val
+}
+
+// OrElse returns the computed value on success, or the fallback value on failure.
+// It is functionally equivalent to [Result.ValueOr].
+func (r Result[T]) OrElse(fallback T) T {
+	if r.err != nil {
+		return fallback
+	}
+
+	return r.val
+}
+
+// Optional converts the [Result] into an [Optional], returning [Some](val) if successful
+// or [None] if failed.
+func (r Result[T]) Optional() Optional[T] {
+	if r.err != nil {
+		return None[T]()
+	}
+
+	return Some(r.val)
 }
 
 // Recover returns the wrapped value on success, or uses f to compute a fallback

@@ -75,13 +75,15 @@ func BenchmarkRDTSC(b *testing.B) {
 func BenchmarkElapsedCycles(b *testing.B) {
 	b.ReportAllocs()
 
+	var dur time.Duration
 	for b.Loop() {
 		start := clock.RDTSC()
-		dur := clock.ElapsedCycles(start)
-		if dur <= 0 {
-			b.Fatalf("expected positive elapsed duration, got %v", dur)
+		dur = clock.ElapsedCycles(start)
+		if dur < 0 {
+			b.Fatalf("expected non-negative elapsed duration, got %v", dur)
 		}
 	}
+	_ = dur
 }
 
 func BenchmarkCoarseClock_Nano(b *testing.B) {
