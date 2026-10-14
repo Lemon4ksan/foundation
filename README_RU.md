@@ -1,0 +1,74 @@
+# foundation
+
+[English](README.md) • Русский
+
+[![Go Version](https://img.shields.io/badge/go-1.27%2B-007d9c?logo=go&logoColor=white&style=flat-square)](https://go.dev/)
+[![Go Reference](https://img.shields.io/badge/godoc-reference-007d9c?style=flat-square)](https://pkg.go.dev/github.com/lemon4ksan/foundation)
+[![License](https://img.shields.io/badge/license-BSD--3--Clause-blue?style=flat-square)](LICENSE)
+
+`foundation` — альтернатива стандартной библиотеке Go для систем, где поведение стандартной библиотеки по умолчанию слишком медленное или производит слишком много аллокаций в куче. Проект пересматривает компромиссы пакетов `net` и `encoding`, жертвуя максимальной простотой ради SIMD-ускорения, явного управления памятью и нулевых аллокаций в горячих путях.
+
+Используется как базовый фундамент для сетевых и системных решений автора: [`aoni`](https://github.com/lemon4ksan/aoni), [`sein`](https://github.com/lemon4ksan/sein), [`mach`](https://github.com/lemon4ksan/mach), [`seal`](https://github.com/lemon4ksan/seal), [`dawn`](https://github.com/lemon4ksan/dawn), [`ctrl`](https://github.com/lemon4ksan/ctrl) и [`stasis`](https://github.com/lemon4ksan/stasis).
+
+## Архитектурные компромиссы
+
+Подробное обоснование представлено в [docs/VISION.md](docs/VISION.md) и [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+| Компромисс стандартной библиотеки | Что делает foundation | Цена решения |
+| :--- | :--- | :--- |
+| Замороженный навсегда API | Изменения фиксируются в CHANGELOG. | Версии необходимо фиксировать осознанно. |
+| Одинаковый код на любом процессоре | Аппаратный SIMD (AVX2/NEON), ассемблер `c2plan9`. | Основной упор на amd64 и arm64. |
+| Универсальная сигнатура для всех | Сигнатуры `Append*` и передача `dst []byte`. | Больший объём API, выше порог входа. |
+| Аллокации допустимы | Контракты 0 allocs, off-heap память, `borrow`. | Ручной контроль времени жизни буферов. |
+
+## Правила разработки
+
+Разработка в `foundation` подчиняется строгим Architecture Decision Records ([ADR](docs/adr/README.md)):
+
+1. **Слои ([ADR-0002](docs/adr/0002-layering-and-isolation.md))**: Кодовая база разделена на строгие слои L0-L5. Импорты направлены только сверху вниз. Пакет `silicon/` полностью изолирован.
+2. **Бюджеты аллокаций ([ADR-0003](docs/adr/0003-allocation-budgets.md))**: Каждый пакет декларирует уровень аллокаций (`zero`, `amortized`, `bounded`, `unconstrained`), что проверяется через `alloc_test.go`.
+3. **Никаких протоколов L7 ([ADR-0006](docs/adr/0006-l7-boundary-and-mach.md))**: Прикладные протоколы (HTTP, HPACK, QPACK, gRPC) вынесены в `mach` и проекты-потребители.
+4. **Документация ([ADR-0008](docs/adr/0008-doc-go-canonical-truth.md))**: Каноническая документация пакетов находится исключительно в `doc.go` и `example_test.go`.
+
+## Слои системы
+
+### Слой 0: Аппаратный субстрат (`silicon/`)
+Автономные пакеты с нулевыми внутренними зависимостями:
+* `simd`: Векторная обработка AVX2/BMI2 для сканирования фреймов и поиска совпадений.
+* `hexkit`, `bytesconv`: SIMD-кодеки (13 ГБ/с hex, 31 ГБ/с Base64).
+* `pool`, `ringbuf`, `offheap`: Арены памяти, lock-free пулы объектов, внекучевые буферы.
+* `clock`, `randkit`: Монотонные часы без системных вызовов, lock-free PRNG.
+
+### Слой 1: Память и структуры
+* `borrow`: Аффинное владение и borrow-чекеры (`Box`, `Ref`, `Mut`).
+* `structures`: Типизированные структуры данных без аллокаций (`minheap`, `deque`, `ringbuffer`, `bitset`, `linkedlist`).
+* `bufkit`, `refkit`: Буферы с выравниванием по кэш-линии (64 байта) и парсеры тегов структур без аллокаций.
+
+### Слой 2: Конкурентность
+* `sync`: Адаптивные лимитеры Vegas, страйповые мьютексы, circuit breakers, спинлоки.
+* `async`: Контексты `ctxkit` без аллокаций, топологический `lifecycle`, `fsm`, `dedup`, `logkit`.
+
+### Слой 3: Кодеки и криптография
+* `codec/json`: Потоковый SIMD JSON декодер и энкодер.
+* `crypto`: Аппаратно-ускоренные шифры AEAD (`aead`), KDF (`kdf`) и цифровые подписи (`sign`).
+* `encoding`: QUIC `varint`, `base64`, бинарная сериализация `bin`.
+* `text`: Регистр Unicode `casing`, SIMD-трансформация строк (`transform`).
+* `iokit`: Векторизованный и zero-copy ввод-вывод.
+
+### Слой 4: Сеть и транспорт (`net/`)
+* `urlkit`: Высокопроизводительный парсер представлений URL на SIMD, декодирование query, санитарная обработка хоста (`CleanHost`).
+* `dns/wire`, `dns/svcb`: L4 DNS wire кодеки и обнаружение сервисов RFC 9460 SVCB/HTTPS.
+* `tls/cert`: Парсинг сертификатов X.509 и валидация цепочек.
+* `ip`: Ротация IP-адресов без блокировок (`SourceRotator`) и генерация подсетей IPv6.
+
+### Слой 5: Утилиты и типы
+* `types`: Высокоэнтропийный `uuid`, безопасный `secret`, мягкий JSON `values`.
+* `timekit`: Форматирование дат HTTP и меток времени без аллокаций.
+* `fskit`, `pathkit`: Многопоточный обходчик ФС и неизменяемые URI.
+* `testing`: Хелперы ассертов без аллокаций (`assert`, `require`, `mock`).
+
+---
+
+## Лицензия
+
+BSD-3-Clause. Copyright (c) 2026 Lemon4ksan. All rights reserved.
