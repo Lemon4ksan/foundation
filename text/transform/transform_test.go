@@ -1363,4 +1363,3 @@ func ExampleRemoveFunc() {
 	// tschüß
 	// tschuß
 }
-
