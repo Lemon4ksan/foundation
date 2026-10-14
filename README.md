@@ -81,5 +81,6 @@ CGO overhead is avoided by compiling C/LLVM kernels directly into Plan 9 Go Asse
 | `Hex.Encode1KB` | AVX2 Hex Encoding | `78.58 ns/op` | 13.0 GB/s | 0 |
 | `json.UnmarshalNoCopy` | SIMD JSON Decoder | `916.4 ns/op` | - | 12 |
 
----
-*For contributing guidelines, see [docs/VISION.md](docs/VISION.md).*
+## 📄 License
+
+This project is licensed under the **BSD 3-Clause License**. See the [LICENSE](LICENSE) file for details.

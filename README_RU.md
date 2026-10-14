@@ -8,7 +8,7 @@
 
 `foundation` — альтернатива стандартной библиотеке Go для систем, где поведение стандартной библиотеки по умолчанию слишком медленное или производит слишком много аллокаций в куче. Проект пересматривает компромиссы пакетов `net` и `encoding`, жертвуя максимальной простотой ради SIMD-ускорения, явного управления памятью и нулевых аллокаций в горячих путях.
 
-Используется как базовый фундамент для сетевых и системных решений автора: [`aoni`](https://github.com/lemon4ksan/aoni), [`sein`](https://github.com/lemon4ksan/sein), [`mach`](https://github.com/lemon4ksan/mach), [`seal`](https://github.com/lemon4ksan/seal), [`dawn`](https://github.com/lemon4ksan/dawn), [`ctrl`](https://github.com/lemon4ksan/ctrl) и [`stasis`](https://github.com/lemon4ksan/stasis).
+Используется как базовый фундамент для сетевых и системных решений автора: [`aoni`](https://github.com/lemon4ksan/aoni), [`sein`](https://github.com/lemon4ksan/sein), [`mach`](https://github.com/lemon4ksan/mach) и [`seal`](https://github.com/lemon4ksan/seal).
 
 ## Архитектурные компромиссы
 
@@ -25,7 +25,7 @@
 
 Разработка в `foundation` подчиняется строгим Architecture Decision Records ([ADR](docs/adr/README.md)):
 
-1. **Слои ([ADR-0002](docs/adr/0002-layering-and-isolation.md))**: Кодовая база разделена на строгие слои L0-L5. Импорты направлены только сверху вниз. Пакет `silicon/` полностью изолирован.
+1. **Слои ([ADR-0002](docs/adr/0002-layering-and-isolation.md))**: Кодовая база разделена на строгие слои L0-L5. Импорты направлены только сверху вниз. Пакет `silicon/` полностью изолирован. `generic` предназначен только для внешних потребителей.
 2. **Бюджеты аллокаций ([ADR-0003](docs/adr/0003-allocation-budgets.md))**: Каждый пакет декларирует уровень аллокаций (`zero`, `amortized`, `bounded`, `unconstrained`), что проверяется через `alloc_test.go`.
 3. **Никаких протоколов L7 ([ADR-0006](docs/adr/0006-l7-boundary-and-mach.md))**: Прикладные протоколы (HTTP, HPACK, QPACK, gRPC) вынесены в `mach` и проекты-потребители.
 4. **Документация ([ADR-0008](docs/adr/0008-doc-go-canonical-truth.md))**: Каноническая документация пакетов находится исключительно в `doc.go` и `example_test.go`.
@@ -67,8 +67,20 @@
 * `fskit`, `pathkit`: Многопоточный обходчик ФС и неизменяемые URI.
 * `testing`: Хелперы ассертов без аллокаций (`assert`, `require`, `mock`).
 
----
+### Внешний уровень: Хелперы для потребителей
+* `generic`: Монадические типы (`Optional`), потокобезопасный `LRU`, ленивый `Stream` (вне графа слоев, для внешних потребителей).
 
-## Лицензия
+## SIMD-ядра (`c2plan9`)
 
-BSD-3-Clause. Copyright (c) 2026 Lemon4ksan. All rights reserved.
+Накладные расходы CGO исключены благодаря компиляции ядер C/LLVM напрямую в ассемблер Go Plan 9 через `c2plan9`.
+
+| Ядро | Описание | Задержка | Пропускная способность | Аллокации |
+| :--- | :--- | :--- | :--- | :--- |
+| `IndexCRLFCRLFVector` | Сканирование границы HTTP-заголовков (`\r\n\r\n`) | `4.82 ns/op` | 212 ГБ/с | 0 |
+| `ValidUTF8_SWAR` | 64-битный SWAR UTF-8 валидатор | `5.78 ns/op` | 12.6 ГБ/с | 0 |
+| `Hex.Encode1KB` | AVX2 кодирование Hex | `78.58 ns/op` | 13.0 ГБ/с | 0 |
+| `json.UnmarshalNoCopy` | SIMD JSON декодер | `916.4 ns/op` | - | 12 |
+
+## 📄 Лицензия
+
+Лицензировано под **BSD 3-Clause License**. Подробности в файле [LICENSE](LICENSE).
