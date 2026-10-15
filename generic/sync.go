@@ -278,13 +278,14 @@ type Pool[T any] struct {
 
 // NewPool constructs a new type-safe [Pool] with a factory producing fresh *T instances.
 func NewPool[T any](factory func() *T) *Pool[T] {
-	return &Pool[T]{
-		pool: sync.Pool{
-			New: func() any {
-				return factory()
-			},
-		},
+	p := &Pool[T]{}
+	if factory != nil {
+		p.pool.New = func() any {
+			return factory()
+		}
 	}
+
+	return p
 }
 
 // Get selects an arbitrary item from the Pool, removes it from the Pool, and returns it to the caller.

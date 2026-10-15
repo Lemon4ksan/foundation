@@ -347,18 +347,26 @@ func TestPool_Generic(t *testing.T) {
 	})
 
 	item := p.Get()
-	if *item != "fresh" {
-		t.Fatalf("expected 'fresh', got %s", *item)
+	if item == nil || *item != "fresh" {
+		t.Fatalf("expected 'fresh', got %v", item)
 	}
 
 	*item = "recycled"
 	p.Put(item)
 
 	item2 := p.Get()
-	if *item2 != "recycled" {
-		t.Fatalf("expected 'recycled', got %s", *item2)
+	// sync.Pool under -race or GC pressure may opportunistically drop cached items,
+	// invoking the factory function and returning "fresh".
+	if item2 == nil || (*item2 != "recycled" && *item2 != "fresh") {
+		t.Fatalf("unexpected pool value: %v", item2)
 	}
 
 	// Nil safety
 	p.Put(nil)
+
+	// Nil factory safety
+	nilPool := NewPool[string](nil)
+	if nilPool.Get() != nil {
+		t.Fatal("expected nil from pool with nil factory")
+	}
 }
