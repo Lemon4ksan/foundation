@@ -9,3 +9,5 @@ package sysnet
 func tuneSocketFD(_ uintptr) {}
 
 func tuneSocketFlagsFD(_ uintptr, _ uint64) {}
+
+func isWouldBlock(_ error) bool { return false }
