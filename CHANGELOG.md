@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/Lemon4ksan/foundation/compare/v0.2.0...v0.2.1) (2026-10-17)
+
+
+### Bug Fixes
+
+* **encoding/json:** handle direct 1-word struct interfaces and optimize map encoder ([#10](https://github.com/Lemon4ksan/foundation/issues/10)) ([8f87d5a](https://github.com/Lemon4ksan/foundation/commit/8f87d5aa5c2216b82cd9495107a062ad8265cc0d))
+
 ## [0.2.0](https://github.com/Lemon4ksan/foundation/compare/v0.1.0...v0.2.0) (2026-10-14)
 
 
