@@ -5,9 +5,7 @@
 package sysnet
 
 import (
-	"errors"
 	"net"
-	"syscall"
 )
 
 // TuneSocketConn applies low-latency OS syscall flags (TCP_NODELAY and socket buffer tuning) to a [net.Conn].
@@ -124,7 +122,7 @@ func writeVectorBuffersLoop(raw syscallConn, buffers [][]byte) (int64, error) {
 				remaining = advanceBuffers(remaining, written)
 			}
 			if sysErr != nil {
-				return !errors.Is(sysErr, syscall.EAGAIN) && !errors.Is(sysErr, syscall.EWOULDBLOCK)
+				return !isWouldBlock(sysErr)
 			}
 		}
 		return true

@@ -7,6 +7,7 @@
 package sysnet
 
 import (
+	"errors"
 	"syscall"
 )
 
@@ -26,4 +27,8 @@ func tuneSocketFlagsFD(fd uintptr, flags uint64) {
 	if flags&(1<<5) != 0 {
 		_ = syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, 46 /* SO_BUSY_POLL */, 50)
 	}
+}
+
+func isWouldBlock(err error) bool {
+	return errors.Is(err, syscall.EAGAIN) || errors.Is(err, syscall.EWOULDBLOCK)
 }

@@ -6,7 +6,11 @@
 
 package sysnet
 
-import "golang.org/x/sys/windows"
+import (
+	"errors"
+
+	"golang.org/x/sys/windows"
+)
 
 func tuneSocketFD(fd uintptr) {
 	_ = windows.SetsockoptInt(windows.Handle(fd), windows.IPPROTO_TCP, windows.TCP_NODELAY, 1)
@@ -14,4 +18,8 @@ func tuneSocketFD(fd uintptr) {
 
 func tuneSocketFlagsFD(fd uintptr, flags uint64) {
 	_ = windows.SetsockoptInt(windows.Handle(fd), windows.IPPROTO_TCP, windows.TCP_NODELAY, 1)
+}
+
+func isWouldBlock(err error) bool {
+	return errors.Is(err, windows.WSAEWOULDBLOCK)
 }
