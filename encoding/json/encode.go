@@ -603,11 +603,25 @@ func compileArrayEncoder(t reflect.Type) (encoderFunc, error) {
 }
 
 func compileMapEncoder(t reflect.Type) (encoderFunc, error) {
+	elemType := t.Elem()
+	var (
+		once    sync.Once
+		elemEnc encoderFunc
+		elemErr error
+	)
+
 	return func(e *encodeState, p unsafe.Pointer) error {
 		val := reflect.NewAt(t, p).Elem()
 		if val.IsNil() {
 			e.buf = append(e.buf, "null"...)
 			return nil
+		}
+
+		once.Do(func() {
+			elemEnc, elemErr = getEncoder(elemType)
+		})
+		if elemErr != nil {
+			return elemErr
 		}
 
 		e.buf = append(e.buf, '{')
@@ -627,12 +641,11 @@ func compileMapEncoder(t reflect.Type) (encoderFunc, error) {
 			e.buf = appendString(e.buf, kStr, e.escapeHTML)
 			e.buf = append(e.buf, ':')
 
-			vBytes, err := Marshal(v.Interface())
-			if err != nil {
+			vp := reflect.New(elemType)
+			vp.Elem().Set(v)
+			if err := elemEnc(e, vp.UnsafePointer()); err != nil {
 				return err
 			}
-
-			e.buf = append(e.buf, vBytes...)
 		}
 
 		e.buf = append(e.buf, '}')
