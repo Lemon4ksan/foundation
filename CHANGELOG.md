@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/Lemon4ksan/foundation/compare/v0.2.1...v0.2.2) (2026-10-17)
+
+
+### Bug Fixes
+
+* **silicon/sysnet:** resolve Windows compilation failure due to syscall.EWOULDBLOCK ([#12](https://github.com/Lemon4ksan/foundation/issues/12)) ([4f8d04d](https://github.com/Lemon4ksan/foundation/commit/4f8d04d6c2dc485b856b3380f24e8f97921cecc8))
+
 ## [0.2.1](https://github.com/Lemon4ksan/foundation/compare/v0.2.0...v0.2.1) (2026-10-17)
 
 
