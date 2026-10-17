@@ -54,6 +54,14 @@ func Marshal(v any) ([]byte, error) {
 	switch t.Kind() {
 	case reflect.Pointer, reflect.Map, reflect.Chan, reflect.Func:
 		ptr = unsafe.Pointer(&e.word)
+	case reflect.Struct, reflect.Array:
+		if t.Size() <= unsafe.Sizeof(uintptr(0)) {
+			vp := reflect.New(t)
+			vp.Elem().Set(reflect.ValueOf(v))
+			ptr = vp.UnsafePointer()
+		} else {
+			ptr = e.word
+		}
 	default:
 		ptr = e.word
 	}
@@ -91,6 +99,14 @@ func MarshalTo(dst []byte, v any) ([]byte, error) {
 	switch t.Kind() {
 	case reflect.Pointer, reflect.Map, reflect.Chan, reflect.Func:
 		ptr = unsafe.Pointer(&e.word)
+	case reflect.Struct, reflect.Array:
+		if t.Size() <= unsafe.Sizeof(uintptr(0)) {
+			vp := reflect.New(t)
+			vp.Elem().Set(reflect.ValueOf(v))
+			ptr = vp.UnsafePointer()
+		} else {
+			ptr = e.word
+		}
 	default:
 		ptr = e.word
 	}
