@@ -38,17 +38,7 @@ type SPSC[T any] struct {
 // NewSPSC constructs an [SPSC] ring buffer with the requested capacity.
 // Capacity is automatically rounded up to the next power of two.
 func NewSPSC[T any](capacity int) *SPSC[T] {
-	if capacity < 2 {
-		capacity = 2
-	}
-
-	capPow2 := uint64(1)
-	for capPow2 < uint64(capacity) && capPow2 != 0 {
-		capPow2 <<= 1
-	}
-	if capPow2 == 0 {
-		capPow2 = 1 << 62
-	}
+	capPow2 := roundUpPow2(capacity)
 
 	return &SPSC[T]{
 		mask:   capPow2 - 1,

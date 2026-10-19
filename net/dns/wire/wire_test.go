@@ -286,6 +286,88 @@ func TestExtractECHFromHTTPSResponse(t *testing.T) {
 		_, err := wire.ExtractECHFromHTTPSResponse([]byte{0x00, 0x01}, 0x0001)
 		assert.ErrorIs(t, err, wire.ErrTruncatedDNSMessage)
 	})
+
+	t.Run("https_record_with_uncompressed_target_name_and_rejected_compressed_target", func(t *testing.T) {
+		t.Parallel()
+
+		buildHTTPSMsg := func(targetName, echPayload []byte) []byte {
+			buf := bufkit.NewChain()
+			defer buf.Release()
+			_, _ = buf.Write(buildMockDNSHeader(0x4321, 0x8100, 1, 1, 0, 0))
+			_, _ = buf.Write([]byte{7, 'e', 'x', 'a', 'm', 'p', 'l', 'e', 3, 'c', 'o', 'm', 0})
+
+			var qTail [4]byte
+			binary.BigEndian.PutUint16(qTail[0:2], wire.TypeHTTPS)
+			binary.BigEndian.PutUint16(qTail[2:4], wire.ClassIN)
+			_, _ = buf.Write(qTail[:])
+			_, _ = buf.Write([]byte{0xc0, 0x0c})
+
+			var (
+				rdata    bytes.Buffer
+				priority [2]byte
+			)
+			binary.BigEndian.PutUint16(priority[:], 1)
+			rdata.Write(priority[:])
+			rdata.Write(targetName)
+
+			if len(echPayload) > 0 {
+				var otherHdr [4]byte
+				binary.BigEndian.PutUint16(otherHdr[0:2], 1) // alpn
+				binary.BigEndian.PutUint16(otherHdr[2:4], 2)
+				rdata.Write(otherHdr[:])
+				rdata.Write([]byte{'h', '2'})
+
+				var paramHeader [4]byte
+				binary.BigEndian.PutUint16(paramHeader[0:2], 5)
+				binary.BigEndian.PutUint16(paramHeader[2:4], uint16(len(echPayload)))
+				rdata.Write(paramHeader[:])
+				rdata.Write(echPayload)
+			}
+
+			rdataBytes := rdata.Bytes()
+			var ansHdr [10]byte
+			binary.BigEndian.PutUint16(ansHdr[0:2], wire.TypeHTTPS)
+			binary.BigEndian.PutUint16(ansHdr[2:4], wire.ClassIN)
+			binary.BigEndian.PutUint32(ansHdr[4:8], 300)
+			binary.BigEndian.PutUint16(ansHdr[8:10], uint16(len(rdataBytes)))
+			_, _ = buf.Write(ansHdr[:])
+			_, _ = buf.Write(rdataBytes)
+			return buf.Bytes()
+		}
+
+		// Valid multi-label uncompressed TargetName ("svc.example.com.")
+		echPayload := []byte("ech-multi-label")
+		validTarget := []byte{3, 's', 'v', 'c', 7, 'e', 'x', 'a', 'm', 'p', 'l', 'e', 3, 'c', 'o', 'm', 0}
+		got, err := wire.ExtractECHFromHTTPSResponse(buildHTTPSMsg(validTarget, echPayload), 0x4321)
+		require.NoError(t, err)
+		assert.Equal(t, echPayload, got)
+
+		// Compressed pointer in TargetName MUST be rejected per RFC 9460 §2.1
+		compressedTarget := []byte{0xc0, 0x0c}
+		_, err = wire.ExtractECHFromHTTPSResponse(buildHTTPSMsg(compressedTarget, echPayload), 0x4321)
+		assert.ErrorIs(t, err, wire.ErrECHConfigNotFound)
+
+		// Truncated TargetName (missing null terminator)
+		truncatedTarget := []byte{3, 's', 'v', 'c'}
+		_, err = wire.ExtractECHFromHTTPSResponse(buildHTTPSMsg(truncatedTarget, echPayload), 0x4321)
+		assert.ErrorIs(t, err, wire.ErrECHConfigNotFound)
+
+		// Label exceeding MaxLabelLength (64 > 63)
+		oversizedLabel := append([]byte{64}, bytes.Repeat([]byte{'a'}, 64)...)
+		oversizedLabel = append(oversizedLabel, 0)
+		_, err = wire.ExtractECHFromHTTPSResponse(buildHTTPSMsg(oversizedLabel, echPayload), 0x4321)
+		assert.ErrorIs(t, err, wire.ErrECHConfigNotFound)
+
+		// Domain exceeding MaxDomainNameLength (255 bytes)
+		var overMaxDomain []byte
+		for range 5 {
+			overMaxDomain = append(overMaxDomain, 60)
+			overMaxDomain = append(overMaxDomain, bytes.Repeat([]byte{'x'}, 60)...)
+		}
+		overMaxDomain = append(overMaxDomain, 0)
+		_, err = wire.ExtractECHFromHTTPSResponse(buildHTTPSMsg(overMaxDomain, echPayload), 0x4321)
+		assert.ErrorIs(t, err, wire.ErrECHConfigNotFound)
+	})
 }
 
 func FuzzDNSWireMessage(f *testing.F) {
@@ -331,4 +413,27 @@ func TestNormalizeTTL(t *testing.T) {
 	assert.Equal(t, time.Duration(0), wire.NormalizeTTL(rawTTL))
 
 	assert.Equal(t, 7*24*time.Hour, wire.NormalizeTTL(0x7FFFFFFF))
+
+	assert.Equal(t, time.Duration(0), wire.SelectRRSetTTL())
+	assert.Equal(t, 60*time.Second, wire.SelectRRSetTTL(300, 60, 120))
+}
+
+func TestRCodeStringAndParseResponseRecords(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, "NOERROR", wire.RCodeNoError.String())
+	assert.Equal(t, "FORMERR", wire.RCodeFormatError.String())
+	assert.Equal(t, "SERVFAIL", wire.RCodeServerFailure.String())
+	assert.Equal(t, "NXDOMAIN", wire.RCodeNameError.String())
+	assert.Equal(t, "NOTIMP", wire.RCodeNotImplemented.String())
+	assert.Equal(t, "REFUSED", wire.RCodeRefused.String())
+	assert.Equal(t, "RCODE_99", wire.RCode(99).String())
+
+	msg := []byte(
+		"\x12\x34\x81\x80\x00\x01\x00\x01\x00\x00\x00\x00\x03www\x07example\x03com\x00\x00\x01\x00\x01\xc0\x0c\x00\x01\x00\x01\x00\x00\x00\x3c\x00\x04\x5d\xb8\xd8\x22",
+	)
+	recs, err := wire.ParseResponseRecords(msg, 0x1234)
+	require.NoError(t, err)
+	require.Len(t, recs, 1)
+	assert.Equal(t, uint32(60), recs[0].TTL)
 }
