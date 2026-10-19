@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <clipPath id="iso-monolith">
+      <path d="M 29.8 10.18
+               Q 32 9 34.2 10.18
+               L 56.0 21.92
+               Q 58 23 58 25.3
+               L 58 38.7
+               Q 58 41 56.0 42.08
+               L 34.2 53.82
+               Q 32 55 29.8 53.82
+               L 8.0 42.08
+               Q 6 41 6 38.7
+               L 6 25.3
+               Q 6 23 8.0 21.92
+               Z"/>
+    </clipPath>
+
+    <linearGradient id="f-main-top" x1="8" y1="9" x2="56" y2="27" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#7DD3FC"/>
+      <stop offset="48%" stop-color="#38BDF8"/>
+      <stop offset="100%" stop-color="#00ADD8"/>
+    </linearGradient>
+    <linearGradient id="f-main-left" x1="6" y1="22" x2="14" y2="46" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#00ADD8"/>
+      <stop offset="100%" stop-color="#0369A1"/>
+    </linearGradient>
+    <linearGradient id="f-canyon-right" x1="22" y1="16" x2="22" y2="46" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0284C7"/>
+      <stop offset="100%" stop-color="#0B3556"/>
+    </linearGradient>
+    <linearGradient id="f-canyon-left" x1="42" y1="16" x2="42" y2="46" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0369A1"/>
+      <stop offset="100%" stop-color="#08243C"/>
+    </linearGradient>
+    <linearGradient id="f-outer-right" x1="51" y1="22" x2="58" y2="45" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0369A1"/>
+      <stop offset="100%" stop-color="#0C2D4A"/>
+    </linearGradient>
+
+    <linearGradient id="f-bar-top" x1="26" y1="20" x2="48" y2="31" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#7DD3FC"/>
+      <stop offset="50%" stop-color="#38BDF8"/>
+      <stop offset="100%" stop-color="#00ADD8"/>
+    </linearGradient>
+    <linearGradient id="f-bar-left" x1="26" y1="24" x2="40" y2="50" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#00ADD8"/>
+      <stop offset="100%" stop-color="#075985"/>
+    </linearGradient>
+    <linearGradient id="f-bar-right" x1="42" y1="28" x2="48" y2="50" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0369A1"/>
+      <stop offset="100%" stop-color="#0C2D4A"/>
+    </linearGradient>
+
+    <linearGradient id="l0-anvil-top" x1="16" y1="27" x2="39" y2="38" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#475569"/>
+      <stop offset="100%" stop-color="#283548"/>
+    </linearGradient>
+    <linearGradient id="l0-anvil-left" x1="16" y1="30" x2="32" y2="55" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1E293B"/>
+      <stop offset="100%" stop-color="#132035"/>
+    </linearGradient>
+    <linearGradient id="l0-anvil-right" x1="32" y1="35" x2="39" y2="55" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#152338"/>
+      <stop offset="100%" stop-color="#0D1726"/>
+    </linearGradient>
+  </defs>
+
+  <g clip-path="url(#iso-monolith)">
+    <polygon points="6.0,22.5 13.02,26.15 13.02,48.0 6.0,44.0" fill="url(#f-main-left)"/>
+    <polygon points="13.02,26.15 32.0,16.29 32.0,56.0 13.02,56.0" fill="url(#f-canyon-right)"/>
+    <polygon points="32.0,16.29 50.98,26.15 50.98,56.0 32.0,56.0" fill="url(#f-canyon-left)"/>
+    <polygon points="50.98,26.15 58.0,22.5 58.0,44.0 50.98,48.0" fill="url(#f-outer-right)"/>
+    <polygon points="32.0,9.0 58.0,22.5 50.98,26.15 32.0,16.29 13.02,26.15 6.0,22.5" fill="url(#f-main-top)"/>
+    <polygon points="26.02,23.64 41.88,31.87 41.88,54.0 26.02,45.77" fill="url(#f-bar-left)"/>
+    <polygon points="41.88,31.87 47.86,28.77 47.86,51.0 41.88,54.0" fill="url(#f-bar-right)"/>
+    <polygon points="32.0,20.53 47.86,28.77 41.88,31.87 26.02,23.64" fill="url(#f-bar-top)"/>
+    <polygon points="16.14,30.27 32.0,38.50 32.2,47.0 32.0,56.0 16.14,47.77" fill="url(#l0-anvil-left)"/>
+    <polygon points="32.0,38.50 38.76,34.99 38.76,56.0 32.0,56.0" fill="url(#l0-anvil-right)"/>
+    <polygon points="22.90,26.76 38.76,34.99 32.0,38.50 16.14,30.27" fill="url(#l0-anvil-top)"/>
+  </g>
+</svg>

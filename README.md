@@ -1,3 +1,5 @@
+<img src="assets/logo.svg" align="right" width="128" height="128" alt="foundation" />
+
 # foundation
 
 English • [Русский](README_RU.md)
