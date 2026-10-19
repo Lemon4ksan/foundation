@@ -510,6 +510,61 @@ func TestResolve(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestResolveReference(t *testing.T) {
+	t.Parallel()
+
+	base1, err := urlkit.NormalizeBaseURL("https://api.example.com/v1")
+	require.NoError(t, err)
+	assert.Equal(t, "https://api.example.com/v1/", base1.String())
+
+	// 1. Relative path without slash -> /v1/users
+	u, err := urlkit.ResolveReference(base1, "users")
+	require.NoError(t, err)
+	assert.Equal(t, "https://api.example.com/v1/users", u.String())
+
+	// 2. Relative path with leading slash -> /users (RFC 3986 §5 root-relative displacement)
+	u, err = urlkit.ResolveReference(base1, "/users")
+	require.NoError(t, err)
+	assert.Equal(t, "https://api.example.com/users", u.String())
+
+	// 3. Base without trailing slash -> last segment displaced per RFC 3986 §5.2.3
+	baseNoSlash, _ := urlkit.Parse("https://api.example.com/v1/items")
+	u, err = urlkit.ResolveReference(baseNoSlash, "orders")
+	require.NoError(t, err)
+	assert.Equal(t, "https://api.example.com/v1/orders", u.String())
+
+	// 4. Absolute URL -> bypasses base
+	u, err = urlkit.ResolveReference(base1, "https://other.com/auth")
+	require.NoError(t, err)
+	assert.Equal(t, "https://other.com/auth", u.String())
+
+	// 5. Root BaseURL fast-path
+	baseRoot, _ := urlkit.Parse("https://api.example.com")
+	u, err = urlkit.ResolveReference(baseRoot, "/users/42")
+	require.NoError(t, err)
+	assert.Equal(t, "https://api.example.com/users/42", u.String())
+
+	// 6. Empty ref against base
+	uEmpty, err := urlkit.ResolveReference(base1, "")
+	require.NoError(t, err)
+	assert.Equal(t, base1.String(), uEmpty.String())
+
+	// 7. ResolveReferenceString
+	resStr, err := urlkit.ResolveReferenceString(base1, "")
+	require.NoError(t, err)
+	assert.Equal(t, base1.String(), resStr)
+
+	resAbs, err := urlkit.ResolveReferenceString(nil, "https://api.com/users")
+	require.NoError(t, err)
+	assert.Equal(t, "https://api.com/users", resAbs)
+
+	_, err = urlkit.ResolveReference(base1, ":bad-url")
+	assert.Error(t, err)
+
+	_, err = urlkit.ResolveReferenceString(base1, ":bad-url")
+	assert.Error(t, err)
+}
+
 // ============================================================================
 // 4. Domain & Origin Matching Tests
 // ============================================================================

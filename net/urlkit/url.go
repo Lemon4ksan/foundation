@@ -555,7 +555,9 @@ func Resolve(baseURL *url.URL, ref string) (*url.URL, error) {
 	return result, nil
 }
 
-// ResolveString computes the resolved target URL string from baseURL and ref.
+// ResolveString computes the resolved target URL string from baseURL and ref,
+// preserving baseURL path prefixes. For strict RFC 3986 §5 reference resolution,
+// use [ResolveReferenceString].
 func ResolveString(baseURL *url.URL, ref string) (string, error) {
 	if IsAbsURL(ref) || baseURL == nil || baseURL.Host == "" {
 		return ref, nil
@@ -571,6 +573,60 @@ func ResolveString(baseURL *url.URL, ref string) (string, error) {
 	}
 
 	return u.String(), nil
+}
+
+// ResolveReference resolves a URI reference against baseURL according to strict
+// RFC 3986 §5 browser reference resolution rules (where a leading slash in ref
+// replaces the entire baseURL path, and a baseURL path without a trailing slash
+// has its last segment replaced).
+//
+// For backend-friendly prefix-preserving resolution, use [Resolve].
+func ResolveReference(baseURL *url.URL, ref string) (*url.URL, error) {
+	if (ref == "" || ref == "/") && baseURL != nil && baseURL.Host != "" &&
+		(ref == "" || baseURL.Path == "" || baseURL.Path == "/") {
+		return CloneURL(baseURL), nil
+	}
+
+	if IsAbsURL(ref) || baseURL == nil || baseURL.Host == "" {
+		return Parse(ref)
+	}
+
+	// Fast-path: root domain (no subpath) + root-relative path (e.g. "https://api.com" + "/users")
+	if len(ref) > 0 && ref[0] == '/' && (baseURL.Path == "" || baseURL.Path == "/") &&
+		strings.IndexByte(ref, '?') < 0 &&
+		strings.IndexByte(ref, '#') < 0 {
+		res := CloneURL(baseURL)
+		res.Path = ref
+		return res, nil
+	}
+
+	targetStr, err := ResolveReferenceString(baseURL, ref)
+	if err != nil {
+		return nil, err
+	}
+
+	return Parse(targetStr)
+}
+
+// ResolveReferenceString computes the resolved target URL string from baseURL and ref
+// according to strict RFC 3986 §5 reference resolution rules.
+//
+// For backend-friendly prefix-preserving resolution, use [ResolveString].
+func ResolveReferenceString(baseURL *url.URL, ref string) (string, error) {
+	if IsAbsURL(ref) || baseURL == nil || baseURL.Host == "" {
+		return ref, nil
+	}
+
+	if ref == "" {
+		return baseURL.String(), nil
+	}
+
+	rel, err := url.Parse(ref)
+	if err != nil {
+		return "", err
+	}
+
+	return baseURL.ResolveReference(rel).String(), nil
 }
 
 // ReplaceVar performs path variable replacement ({key} -> value) in the path.
