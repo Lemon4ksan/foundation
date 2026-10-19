@@ -32,9 +32,9 @@ Use `sync.Pool` for general-purpose reuse. It lets the GC drop idle objects, whi
 
 Use `PerCorePool` under heavy multi-core load (over roughly 100k operations a second), when CAS contention on a shared head is the problem, or when buffers should survive GC cycles (network buffers, scratch space).
 
-### Lazy values: `sync.Once` or `sync/lazy.Lazy[T]`
+### Lazy values: `sync.Once` or `sync/lazy.Value[T]`
 
-`sync.Once` is right for a one-time, permanent, void action. `Lazy[T]` caches a value and an error, can be reset, and gives readers a lock-free fast path after the first call.
+`sync.Once` is right for a one-time, permanent, void action. `Value[T]` caches a value and an error, can be reset, and gives readers a lock-free fast path after the first call.
 
 ### Lists: `container/list` or `structures/linkedlist.List[T]`
 

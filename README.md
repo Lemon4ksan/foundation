@@ -8,7 +8,7 @@ English • [Русский](README_RU.md)
 
 `foundation` is a Go standard library replacement for systems where the standard library's defaults are too slow or allocate too much. It reverses the compromises made by Go's `net` and `encoding` packages, exchanging simplicity and stability for SIMD acceleration, explicit memory management, and zero-allocation hot paths.
 
-It is used as the base layer for my other network and storage systems: [`aoni`](https://github.com/lemon4ksan/aoni), [`sein`](https://github.com/lemon4ksan/sein), [`mach`](https://github.com/lemon4ksan/mach), and [`seal`](https://github.com/lemon4ksan/seal).
+It is used as the base layer for my other network, storage, and automation systems: [`aoni`](https://github.com/lemon4ksan/aoni), [`mach`](https://github.com/lemon4ksan/mach), [`sein`](https://github.com/lemon4ksan/sein), [`g-man`](https://github.com/lemon4ksan/g-man), [`dawn`](https://github.com/lemon4ksan/dawn), and [`seal`](https://github.com/lemon4ksan/seal).
 
 ## Design tradeoffs
 
@@ -34,41 +34,40 @@ Development in `foundation` follows strict Architecture Decision Records ([ADRs]
 
 ### Layer 0: Hardware Substrate (`silicon/`)
 Autonomous packages with zero internal dependencies.
-* `simd`: AVX2/BMI2 vector processing for frame scanning and match lengths.
-* `hexkit`, `bytesconv`: SIMD codecs (13 GB/s hex, 31 GB/s Base64).
-* `pool`, `ringbuf`, `offheap`: Multi-tiered memory arenas, lock-free object pools, off-heap buffers.
-* `clock`, `randkit`: Syscall-free monotonic clocks, lock-free PRNG.
+* `simd`, `cpukit`: AVX2/BMI2/GFNI vector processing for frame scanning, bit deposit, and Galois field arithmetic.
+* `hexkit`, `bytesconv`, `endian`: SIMD hex codec (13 GB/s), zero-copy string/byte conversions, and branchless byte-order primitives.
+* `pool`, `ringbuf`, `offheap`: Multi-tiered memory arenas, lock-free SPSC/MPSC ring buffers, and off-heap kernel page buffers/slabs.
+* `clock`, `randkit`, `sysnet`: Syscall-free RDTSC/coarse clocks, lock-free PRNG, and low-level socket/vectored I/O primitives.
 
 ### Layer 1: Memory & Structures
-* `borrow`: Generational affine ownership and borrow checkers (`Box`, `Ref`, `Mut`).
-* `structures`: Zero-allocation typed data structures (`minheap`, `deque`, `ringbuffer`, `bitset`, `linkedlist`).
-* `bufkit`, `refkit`: Cacheline-aligned (64B) buffers and allocation-free struct tag parsers.
+* `borrow`: Generational affine ownership and borrow checkers (`Box`, `Cell`, `Ref`, `Mut`).
+* `structures`: Cache-friendly typed data structures (`minheap`, `deque`, `ringbuffer`, `bitset`, `disjointset`, `linkedlist`, `trie`).
+* `bufkit`, `refkit`: Cacheline-aligned (64B) ring/chain buffers and allocation-free struct tag/field accessors.
 
 ### Layer 2: Concurrency
-* `sync`: Adaptive Vegas limiters, strip locks, circuit breakers, spinlocks.
-* `async`: Zero-alloc `ctxkit`, topologically sorted `lifecycle`, `fsm`, `dedup`, and `logkit`.
+* `sync`: Adaptive Vegas limiters, per-key mutexes (`keylock`), circuit breakers, semaphores, backoff, lazy values, and TTAS spinlocks.
+* `async`: Zero-alloc `ctxkit`, topologically sorted `lifecycle`, `fsm`, `dedup`, `pipeline`, `pool`, `rate`, `scheduler`, `task`, and `logkit`.
 
 ### Layer 3: Codecs & Cryptography
-* `codec/json`: Streaming SIMD JSON decoder and encoder.
-* `crypto`: Hardware-accelerated AEAD ciphers (`aead`), KDFs (`kdf`), and digital signatures (`sign`).
-* `encoding`: QUIC `varint`, `base64`, `bin` binary serialisation.
-* `text`: Unicode `casing`, SIMD string transformation (`transform`).
-* `iokit`: Vectored and zero-copy I/O helpers.
+* `encoding`: SIMD `json`, zero-alloc wire-format `proto` scanner/encoder, QUIC `varint`, AVX2 `base64` (31 GB/s), and binary `bin` serialization.
+* `crypto`: Hardware-accelerated AEAD ciphers (`aead`), KDFs (`kdf`), and Ed25519/HMAC digital signatures (`sign`).
+* `text`: Zero-alloc identifier `casing` and streaming byte transformations (`transform`).
+* `iokit`: Vectored, replayable, and zero-copy I/O helpers.
 
 ### Layer 4: Wire & Transport (`net/`)
-* `urlkit`: High-throughput SIMD URL view parsing, query unescaping, and host sanitisation (`CleanHost`).
-* `dns/wire`, `dns/svcb`: Layer 4 DNS wire codecs and RFC 9460 SVCB/HTTPS service discovery.
-* `tls/cert`: X.509 certificate parsing and chain validation.
-* `ip`: Lock-free IP address rotation (`SourceRotator`) and IPv6 subnet generation.
+* `urlkit`: High-throughput SIMD URL view parsing, RFC 3986 path/query escaping, and host sanitization (`CleanHost`).
+* `dns/wire`, `dns/svcb`: Layer 4 DNS wire codecs and RFC 9460 SVCB/HTTPS service discovery (including ECH extraction).
+* `tls/cert`: Lock-free hot-reloading X.509 certificates and SPKI pinning.
+* `ip`: Lock-free IP address rotation (`SourceRotator`), CIDR classification, and IPv6 `/64` subnet generation.
 
 ### Layer 5: Tooling & Utilities
-* `types`: High-entropy `uuid`, zero-leak `secret`, lenient JSON `values`.
-* `timekit`: Zero-alloc HTTP dates and timestamp formatting.
-* `fskit`, `pathkit`: Multi-threaded walkers and immutable URIs.
-* `testing`: Zero-alloc assertion helpers (`assert`, `require`, `mock`).
+* `types`: High-entropy `uuid` (v4/v7), zero-leak `secret`, and lenient `values` coercions.
+* `timekit`: Zero-alloc coarse timestamps, stopwatches, and duration formatting.
+* `fskit`, `pathkit`: Parallel directory walkers, memory-mapped files (`MmapFile`), atomic file writes, and zero-alloc path traversal.
+* `testing`: Zero-dependency assertion and mocking helpers (`assert`, `require`, `mock`, `gomock`).
 
 ### External: Consumer Helpers
-* `generic`: Monadic types (`Optional`), thread-safe `LRU`, lazy `Stream` (outside the layer graph, for external consumers).
+* `generic`: Monadic types (`Optional`, `Result`), sharded maps, thread-safe `LRU` & TTL `Cache`, `SingleFlight`, and lazy `Stream` (outside the layer graph, for external consumers).
 
 ## SIMD Kernels (`c2plan9`)
 
