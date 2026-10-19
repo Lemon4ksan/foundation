@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package spinlock implements an adaptive Silicon Spinlock utilizing TTAS (Test and Test-and-Set),
-// hardware CPU PAUSE micro-spinning, exponential backoff, and single-cycle Store-Release.
 package spinlock
 
 import (

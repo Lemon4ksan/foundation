@@ -35,9 +35,8 @@ type TransitionRule[State comparable, Event comparable] struct {
 
 // Machine is a strictly typed, thread-safe finite state machine parameterized over State and Event comparable types.
 //
-// The zero value is empty and not ready to use.
-// Read-only operations are safe for concurrent use; mutations require external synchronization unless stated otherwise.
-// Note that methods on [Machine] manage their own internal locks.
+// The zero value is ready to use with the zero value of State as its initial state.
+// All exported methods manage their own internal synchronization and are safe for concurrent use.
 type Machine[State, Event comparable] struct {
 	transMu     sync.Mutex
 	mu          sync.RWMutex

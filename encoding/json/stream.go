@@ -43,24 +43,35 @@ func (d *Decoder) UseNumber() {
 	d.cfg.UseNumber = true
 }
 
+func (d *Decoder) fill() error {
+	if d.r == nil {
+		return nil
+	}
+	data, err := io.ReadAll(d.r)
+	if err != nil && !errors.Is(err, io.EOF) {
+		d.err = err
+		return err
+	}
+	if len(data) > 0 {
+		d.buf = append(d.buf, data...)
+	}
+	return nil
+}
+
 // Decode reads the next JSON-encoded value from its input and stores it in the value pointed to by v.
 func (d *Decoder) Decode(v any) error {
 	if d.err != nil {
 		return d.err
 	}
 
-	if len(d.buf) == 0 || d.cursor >= len(d.buf) {
-		data, err := io.ReadAll(d.r)
-		if err != nil && !errors.Is(err, io.EOF) {
-			d.err = err
+	d.cursor = skipWhitespace(d.buf, d.cursor)
+	if d.cursor >= len(d.buf) {
+		if err := d.fill(); err != nil {
 			return err
 		}
-
-		d.buf = data
-		d.cursor = 0
+		d.cursor = skipWhitespace(d.buf, d.cursor)
 	}
 
-	d.cursor = skipWhitespace(d.buf, d.cursor)
 	if d.cursor >= len(d.buf) {
 		return io.EOF
 	}
@@ -94,6 +105,10 @@ func (d *Decoder) InputOffset() int64 {
 // More reports whether there is another element in the current array or object being parsed.
 func (d *Decoder) More() bool {
 	d.cursor = skipWhitespace(d.buf, d.cursor)
+	if d.cursor >= len(d.buf) && d.err == nil {
+		_ = d.fill()
+		d.cursor = skipWhitespace(d.buf, d.cursor)
+	}
 	if d.cursor >= len(d.buf) {
 		return false
 	}
@@ -139,9 +154,9 @@ func (e *Encoder) Encode(v any) error {
 	var err error
 
 	if e.indent != "" || e.prefix != "" {
-		data, err = MarshalIndent(v, e.prefix, e.indent)
+		data, err = marshalIndentWithOpts(v, e.prefix, e.indent, e.escapeHTML)
 	} else {
-		data, err = Marshal(v)
+		data, err = marshalWithOpts(v, e.escapeHTML)
 	}
 
 	if err != nil {
@@ -189,7 +204,7 @@ func Compact(dst *bytes.Buffer, src []byte) error {
 // HTMLEscape appends to dst the JSON-encoded src with <, >, &, U+2028, and U+2029
 // characters escaped inside string literals.
 func HTMLEscape(dst *bytes.Buffer, src []byte) {
-	for i := range src {
+	for i := 0; i < len(src); i++ {
 		b := src[i]
 		switch b {
 		case '<':
@@ -198,6 +213,20 @@ func HTMLEscape(dst *bytes.Buffer, src []byte) {
 			dst.WriteString(`\u003e`)
 		case '&':
 			dst.WriteString(`\u0026`)
+		case 0xe2:
+			if i+2 < len(src) && src[i+1] == 0x80 {
+				if src[i+2] == 0xa8 {
+					dst.WriteString(`\u2028`)
+					i += 2
+					continue
+				}
+				if src[i+2] == 0xa9 {
+					dst.WriteString(`\u2029`)
+					i += 2
+					continue
+				}
+			}
+			dst.WriteByte(b)
 		default:
 			dst.WriteByte(b)
 		}

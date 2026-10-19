@@ -33,9 +33,13 @@ type Number = stdjson.Number
 
 // Marshal returns the JSON encoding of v.
 func Marshal(v any) ([]byte, error) {
+	return marshalWithOpts(v, true)
+}
+
+func marshalWithOpts(v any, escapeHTML bool) ([]byte, error) {
 	state := encPool.Get().(*encodeState)
 	state.buf = state.buf[:0]
-	state.escapeHTML = true
+	state.escapeHTML = escapeHTML
 
 	defer encPool.Put(state)
 
@@ -125,7 +129,11 @@ func MarshalTo(dst []byte, v any) ([]byte, error) {
 
 // MarshalIndent is like Marshal but applies Indent to format the output.
 func MarshalIndent(v any, prefix, indent string) ([]byte, error) {
-	b, err := Marshal(v)
+	return marshalIndentWithOpts(v, prefix, indent, true)
+}
+
+func marshalIndentWithOpts(v any, prefix, indent string, escapeHTML bool) ([]byte, error) {
+	b, err := marshalWithOpts(v, escapeHTML)
 	if err != nil {
 		return nil, err
 	}

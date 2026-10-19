@@ -45,8 +45,8 @@ var (
 	lflfBytes     = []byte("\n\n")
 )
 
-// IndexCRLFCRLF searches for the position immediately after "\r\n\r\n" in buf.
-// Returns the index of the first body byte, or -1 if headers are incomplete.
+// IndexCRLFCRLF searches for the position immediately after "\r\n\r\n" (or "\n\n") in buf.
+// Returns the byte index immediately following the delimiter sequence, or -1 if not found.
 func IndexCRLFCRLF(buf []byte) int {
 	idx := bytes.Index(buf, crlfCrlfBytes)
 	if idx >= 0 {

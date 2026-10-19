@@ -22,5 +22,5 @@
 //
 // Accepted cost: Assembly code is difficult to maintain and requires architecture-specific implementations (amd64).
 //
-// Allocations: unconstrained
+// Allocations: zero
 package simd

@@ -263,12 +263,29 @@ func XORMask32(b []byte, mask uint32) {
 	runtime.KeepAlive(b)
 }
 
-// PrefetchL1 issues a prefetch instruction for the memory address.
-func PrefetchL1(_ unsafe.Pointer) {}
+// ToLowerSWAR converts ASCII uppercase characters to lowercase using 64-bit SWAR.
+func ToLowerSWAR(dst, src []byte) {
+	n := min(len(dst), len(src))
+	i := 0
 
-// StreamCopy256 performs streaming copy.
-func StreamCopy256(dst, src []byte) int {
-	return copy(dst, src)
+	for i+8 <= n {
+		v := *(*uint64)(unsafe.Pointer(&src[i]))
+		// SWAR ASCII lowercase
+		mask := v + 0x7f7f7f7f7f7f7f7f
+		mask = (mask ^ v) & 0x8080808080808080
+		mask = ((v + 0x3f3f3f3f3f3f3f3f) ^ v) & mask
+		mask = (mask >> 2) & 0x2020202020202020
+		*(*uint64)(unsafe.Pointer(&dst[i])) = v | mask
+		i += 8
+	}
+
+	for ; i < n; i++ {
+		c := src[i]
+		if c >= 'A' && c <= 'Z' {
+			c += 32
+		}
+		dst[i] = c
+	}
 }
 
 const (

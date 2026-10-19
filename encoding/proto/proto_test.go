@@ -76,6 +76,23 @@ func TestProto_SkipField(t *testing.T) {
 	assert.Greater(t, n, 0)
 }
 
+func TestProto_Int32Field_SignExtension(t *testing.T) {
+	t.Parallel()
+
+	f := proto.Int32Field(1, -1)
+	assert.Equal(t, uint64(0xFFFFFFFFFFFFFFFF), f.Raw)
+	assert.Equal(t, int32(-1), f.Int32())
+
+	var bufField []byte
+	bufField = proto.AppendField(bufField, f)
+
+	var bufDirect []byte
+	bufDirect = proto.AppendInt32(bufDirect, 1, -1)
+
+	assert.Equal(t, bufDirect, bufField)
+	assert.Equal(t, 11, len(bufField)) // 1 byte tag + 10 byte sign-extended varint
+}
+
 func BenchmarkScan_ZeroAlloc(b *testing.B) {
 	var buf []byte
 	buf = proto.AppendVarint(buf, 1, 123456)

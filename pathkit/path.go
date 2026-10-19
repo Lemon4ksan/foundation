@@ -387,40 +387,44 @@ func (p Path) URI() string {
 	return PathToURI(p.raw)
 }
 
+func stripSchemeAndAuthority(pathStr string) string {
+	if idx := strings.Index(pathStr, "://"); idx != -1 {
+		rest := pathStr[idx+3:]
+		if slash := strings.IndexAny(rest, "/\\"); slash != -1 {
+			return rest[slash:]
+		}
+		return ""
+	}
+	return pathStr
+}
+
+func nextSegment(p string, start int) (seg string, next int, ok bool) {
+	for start < len(p) && (p[start] == '/' || p[start] == '\\') {
+		start++
+	}
+	if start >= len(p) {
+		return "", len(p), false
+	}
+	end := start
+	for end < len(p) && p[end] != '/' && p[end] != '\\' {
+		end++
+	}
+	return p[start:end], end, true
+}
+
 // Segments returns an iterator over the non-empty path segments of pathStr.
 // Iteration stops immediately when yield returns false.
 // Segments operates purely by slicing substrings without heap allocations across all operating systems.
 func Segments(pathStr string) iter.Seq[string] {
 	return func(yield func(string) bool) {
-		p := pathStr
-		if idx := strings.Index(p, "://"); idx != -1 {
-			rest := p[idx+3:]
-			if slash := strings.IndexAny(rest, "/\\"); slash != -1 {
-				p = rest[slash:]
-			} else {
-				p = ""
+		p := stripSchemeAndAuthority(pathStr)
+		pos := 0
+		for {
+			seg, next, ok := nextSegment(p, pos)
+			if !ok {
+				return
 			}
-		}
-
-		for len(p) > 0 {
-			// Skip leading slashes
-			for len(p) > 0 && (p[0] == '/' || p[0] == '\\') {
-				p = p[1:]
-			}
-			if len(p) == 0 {
-				break
-			}
-
-			nextSlash := strings.IndexAny(p, "/\\")
-			var seg string
-			if nextSlash == -1 {
-				seg = p
-				p = ""
-			} else {
-				seg = p[:nextSlash]
-				p = p[nextSlash+1:]
-			}
-
+			pos = next
 			if !yield(seg) {
 				return
 			}
@@ -468,7 +472,7 @@ func isDriveSegment(s string) bool {
 }
 
 // HasPrefix reports whether p has the directory prefix prefix.
-// Both paths are compared segment by segment.
+// Both paths are compared segment by segment with zero heap allocations.
 func (p Path) HasPrefix(prefix Path) bool {
 	if p.isURL != prefix.isURL || p.scheme != prefix.scheme {
 		return false
@@ -477,23 +481,22 @@ func (p Path) HasPrefix(prefix Path) bool {
 		return false
 	}
 
-	pSegs := p.Segments()
-	prefixSegs := prefix.Segments()
-
-	pNext, pStop := iter.Pull(pSegs)
-	defer pStop()
-
-	prefixNext, prefixStop := iter.Pull(prefixSegs)
-	defer prefixStop()
+	pStr := stripSchemeAndAuthority(p.raw)
+	preStr := stripSchemeAndAuthority(prefix.raw)
+	pPos, prePos := 0, 0
 
 	for {
-		preSeg, preOk := prefixNext()
+		var preSeg string
+		var preOk bool
+		preSeg, prePos, preOk = nextSegment(preStr, prePos)
 		if !preOk {
 			// All prefix segments matched
 			return true
 		}
 
-		pSeg, pOk := pNext()
+		var pSeg string
+		var pOk bool
+		pSeg, pPos, pOk = nextSegment(pStr, pPos)
 		segMatch := pSeg == preSeg
 		if !segMatch && isDriveSegment(pSeg) && isDriveSegment(preSeg) && strings.EqualFold(pSeg, preSeg) {
 			segMatch = true
@@ -529,8 +532,7 @@ func volume(raw string) string {
 
 // Rel computes the relative path from base to p.
 // If the paths do not share a common base or have incompatible schemes, returns (Path{}, false).
-// When paths are identical or incompatible, Rel performs strictly zero heap allocations.
-// Parallel segment traversal uses iter.Pull without slice allocations.
+// Parallel segment traversal operates via zero-allocation index scanning.
 func (p Path) Rel(base Path) (Path, bool) {
 	if p.isURL != base.isURL || p.scheme != base.scheme {
 		return Path{}, false
@@ -551,22 +553,23 @@ func (p Path) Rel(base Path) (Path, bool) {
 		return Path{raw: ".", scheme: "", isURL: false}, true
 	}
 
-	baseNext, baseStop := iter.Pull(base.Segments())
-	defer baseStop()
-
-	pNext, pStop := iter.Pull(p.Segments())
-	defer pStop()
+	baseStr := stripSchemeAndAuthority(base.raw)
+	pStr := stripSchemeAndAuthority(p.raw)
+	basePos, pPos := 0, 0
 
 	var (
-		diverged  bool
-		upCount   int
-		pFirst    string
-		pHasFirst bool
+		diverged    bool
+		upCount     int
+		pFirst      string
+		pFirstStart int
+		pHasFirst   bool
 	)
 
 	for {
-		bSeg, bOk := baseNext()
-		pSeg, pOk := pNext()
+		var bSeg, pSeg string
+		var bOk, pOk bool
+		bSeg, basePos, bOk = nextSegment(baseStr, basePos)
+		pSeg, pPos, pOk = nextSegment(pStr, pPos)
 
 		if !bOk && !pOk {
 			// Both ended simultaneously without divergence
@@ -591,6 +594,7 @@ func (p Path) Rel(base Path) (Path, bool) {
 		}
 		if pOk {
 			pFirst = pSeg
+			pFirstStart = pPos - len(pSeg)
 			pHasFirst = true
 		}
 		break
@@ -602,11 +606,27 @@ func (p Path) Rel(base Path) (Path, bool) {
 
 	// Count remaining base segments that need "../"
 	for {
-		_, bOk := baseNext()
+		var bOk bool
+		_, basePos, bOk = nextSegment(baseStr, basePos)
 		if !bOk {
 			break
 		}
 		upCount++
+	}
+
+	// Fast zero-allocation paths when no strings.Builder is needed
+	if upCount == 0 && pHasFirst {
+		rem := strings.TrimRight(pStr[pFirstStart:], "/\\")
+		if strings.IndexByte(rem, '\\') == -1 && !strings.Contains(rem, "//") {
+			return Path{raw: rem, scheme: "", isURL: false}, true
+		}
+	} else if !pHasFirst {
+		switch upCount {
+		case 1:
+			return Path{raw: "..", scheme: "", isURL: false}, true
+		case 2:
+			return Path{raw: "../..", scheme: "", isURL: false}, true
+		}
 	}
 
 	var sb strings.Builder
@@ -625,7 +645,9 @@ func (p Path) Rel(base Path) (Path, bool) {
 	}
 
 	for {
-		pSeg, pOk := pNext()
+		var pSeg string
+		var pOk bool
+		pSeg, pPos, pOk = nextSegment(pStr, pPos)
 		if !pOk {
 			break
 		}

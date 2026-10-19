@@ -16,5 +16,5 @@
 //
 // Accepted cost: the [URLView] relies on underlying string slices, meaning the caller must manage lifetimes, and some URL edge cases might behave slightly differently than the standard library on malformed inputs.
 //
-// Allocations: zero
+// Allocations: amortized
 package urlkit

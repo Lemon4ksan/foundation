@@ -109,6 +109,7 @@ func stopCacheJanitor(s cacheJanitorCleanupState) {
 // Cache implements a thread-safe, in-memory key-value store with Time-To-Live (TTL) expiration
 // and automatic background memory reclamation.
 type Cache[K comparable, V any] struct {
+	mu      sync.Mutex
 	impl    *cacheImpl[K, V]
 	cleanup runtime.Cleanup
 }
@@ -159,12 +160,18 @@ func (ci *cacheImpl[K, V]) runJanitor(interval time.Duration) {
 // Close stops the background janitor goroutine and unregisters the cleanup.
 // It is safe to call multiple times.
 func (c *Cache[K, V]) Close() {
-	if c == nil || c.impl == nil {
+	if c == nil {
 		return
 	}
+	c.mu.Lock()
+	impl := c.impl
 	c.cleanup.Stop()
-	if c.impl.closed.CompareAndSwap(false, true) {
-		close(c.impl.stopJanitor)
+	c.mu.Unlock()
+	if impl == nil {
+		return
+	}
+	if impl.closed.CompareAndSwap(false, true) {
+		close(impl.stopJanitor)
 	}
 }
 
@@ -172,6 +179,8 @@ func (c *Cache[K, V]) getOrInitImpl() *cacheImpl[K, V] {
 	if c == nil {
 		return nil
 	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if c.impl == nil {
 		c.impl = &cacheImpl[K, V]{
 			data:        make(map[K]cacheItem[V]),
@@ -179,6 +188,16 @@ func (c *Cache[K, V]) getOrInitImpl() *cacheImpl[K, V] {
 		}
 	}
 	return c.impl
+}
+
+func (c *Cache[K, V]) getImpl() *cacheImpl[K, V] {
+	if c == nil {
+		return nil
+	}
+	c.mu.Lock()
+	impl := c.impl
+	c.mu.Unlock()
+	return impl
 }
 
 // Set stores a value in the cache under the specified key, with an associated TTL duration.
@@ -206,7 +225,8 @@ func (c *Cache[K, V]) Set(key K, val V, ttl time.Duration) {
 // If the key is not found, or if the associated TTL has expired, Get returns
 // the zero value of type V and false. Expired items are lazily deleted from memory.
 func (c *Cache[K, V]) Get(key K) (V, bool) {
-	if c == nil || c.impl == nil {
+	impl := c.getImpl()
+	if impl == nil {
 		var zero V
 		return zero, false
 	}
@@ -214,34 +234,34 @@ func (c *Cache[K, V]) Get(key K) (V, bool) {
 	now := time.Now()
 
 	// 1. Fast path: Optimistic read under RLock
-	c.impl.mu.RLock()
-	if c.impl.data == nil {
-		c.impl.mu.RUnlock()
+	impl.mu.RLock()
+	if impl.data == nil {
+		impl.mu.RUnlock()
 		var zero V
 		return zero, false
 	}
 
-	item, ok := c.impl.data[key]
+	item, ok := impl.data[key]
 	if !ok {
-		c.impl.mu.RUnlock()
+		impl.mu.RUnlock()
 		var zero V
 		return zero, false
 	}
 
 	if now.Before(item.expiresAt) {
 		val := item.value
-		c.impl.mu.RUnlock()
+		impl.mu.RUnlock()
 		return val, true
 	}
-	c.impl.mu.RUnlock()
+	impl.mu.RUnlock()
 
 	// 2. Slow path: Expired key. Acquire write lock to lazily evict.
-	c.impl.mu.Lock()
-	defer c.impl.mu.Unlock()
+	impl.mu.Lock()
+	defer impl.mu.Unlock()
 
 	// Double-check under write lock in case another goroutine updated key between RUnlock and Lock
-	if item, ok = c.impl.data[key]; ok && !time.Now().Before(item.expiresAt) {
-		delete(c.impl.data, key)
+	if item, ok = impl.data[key]; ok && !time.Now().Before(item.expiresAt) {
+		delete(impl.data, key)
 	}
 
 	var zero V
@@ -251,82 +271,86 @@ func (c *Cache[K, V]) Get(key K) (V, bool) {
 // Delete removes a key from the cache.
 // It returns true if the key existed and was not expired at the time of deletion.
 func (c *Cache[K, V]) Delete(key K) bool {
-	if c == nil || c.impl == nil {
+	impl := c.getImpl()
+	if impl == nil {
 		return false
 	}
 
-	c.impl.mu.Lock()
-	defer c.impl.mu.Unlock()
+	impl.mu.Lock()
+	defer impl.mu.Unlock()
 
-	if c.impl.data == nil {
+	if impl.data == nil {
 		return false
 	}
 
-	item, ok := c.impl.data[key]
+	item, ok := impl.data[key]
 	if !ok {
 		return false
 	}
 
-	delete(c.impl.data, key)
+	delete(impl.data, key)
 	return time.Now().Before(item.expiresAt)
 }
 
 // Len returns the number of active, unexpired items currently in the cache.
 // Any expired items discovered during the check are purged.
 func (c *Cache[K, V]) Len() int {
-	if c == nil || c.impl == nil {
+	impl := c.getImpl()
+	if impl == nil {
 		return 0
 	}
 
 	now := time.Now()
 
 	// 1. Optimistic read check
-	c.impl.mu.RLock()
-	if c.impl.data == nil {
-		c.impl.mu.RUnlock()
+	impl.mu.RLock()
+	if impl.data == nil {
+		impl.mu.RUnlock()
 		return 0
 	}
 
 	hasExpired := false
 	activeCount := 0
-	for _, item := range c.impl.data {
+	for _, item := range impl.data {
 		if now.Before(item.expiresAt) {
 			activeCount++
 		} else {
 			hasExpired = true
 		}
 	}
-	c.impl.mu.RUnlock()
+	impl.mu.RUnlock()
 
 	if !hasExpired {
 		return activeCount
 	}
 
 	// 2. If expired items exist, acquire write lock and purge
-	c.impl.mu.Lock()
-	defer c.impl.mu.Unlock()
-	c.impl.purgeExpiredLocked(now)
-	return len(c.impl.data)
+	impl.mu.Lock()
+	defer impl.mu.Unlock()
+	impl.purgeExpiredLocked(now)
+	return len(impl.data)
 }
 
 // Clear removes all items from the cache and reclaims underlying map memory.
 func (c *Cache[K, V]) Clear() {
-	if c == nil || c.impl == nil {
+	impl := c.getImpl()
+	if impl == nil {
 		return
 	}
 
-	c.impl.mu.Lock()
-	defer c.impl.mu.Unlock()
+	impl.mu.Lock()
+	defer impl.mu.Unlock()
 
-	c.impl.data = make(map[K]cacheItem[V])
+	impl.data = make(map[K]cacheItem[V])
 }
 
 // PurgeExpired removes all expired items from the cache and returns the number of evicted items.
 func (c *Cache[K, V]) PurgeExpired() int {
-	if c == nil || c.impl == nil {
+	impl := c.getImpl()
+	if impl == nil {
 		return 0
 	}
-	return c.impl.PurgeExpired()
+	return impl.PurgeExpired()
 }
 
 func (ci *cacheImpl[K, V]) PurgeExpired() int {

@@ -14,17 +14,10 @@ import (
 var (
 	// ErrBufferClosed is returned when operating on a released Buffer.
 	ErrBufferClosed = errors.New("offheap: buffer is already released")
-	// ErrBufferFull is returned when writing past the capacity of an Buffer.
+	// ErrBufferFull is returned when writing past the capacity of a Buffer.
 	ErrBufferFull = errors.New("offheap: buffer capacity exceeded")
 )
 
-// Buffer wraps an OS kernel memory page in a compile-time safe struct container.
-// Being a struct type, calling append(buf, ...) results in a compile-time type error.
-//
-// Buffer is NOT thread-safe. Concurrent reads and writes require external synchronization.
-//
-// Lifetime: memory is valid until [Buffer.Release] is called.
-// [Buffer.Bytes] returns a volatile slice that becomes invalid after Release.
 type kernelPageCleanupState struct {
 	ptr  unsafe.Pointer
 	size int
@@ -34,6 +27,13 @@ func freeKernelPageCleanup(s kernelPageCleanupState) {
 	_ = freeKernelPage(s.ptr, s.size)
 }
 
+// Buffer wraps an OS kernel memory page in a compile-time safe struct container.
+// Being a struct type, calling append(buf, ...) results in a compile-time type error.
+//
+// Buffer is NOT thread-safe. Concurrent reads and writes require external synchronization.
+//
+// Lifetime: memory is valid until [Buffer.Release] is called.
+// [Buffer.Bytes] returns a volatile slice that becomes invalid after Release.
 type Buffer struct {
 	ptr       unsafe.Pointer // Points into OS kernel-managed memory (mmap / VirtualAlloc)
 	readPos   int32          // Current read cursor position within [0, len)

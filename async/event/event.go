@@ -35,7 +35,7 @@ func (Envelope) isEvent() {}
 // Context returns the event's execution context, defaulting to [context.Background] if nil.
 func (b *Envelope) Context() context.Context {
 	if b.Ctx == nil {
-		b.Ctx = context.Background()
+		return context.Background()
 	}
 
 	return b.Ctx
@@ -106,9 +106,7 @@ type TypedSubscription[E any] struct {
 }
 
 // C returns the read-only channel for typed events.
-func (ts *TypedSubscription[E]) C() <-chan E {
-	return ts.ch
-}
+func (ts *TypedSubscription[E]) C() <-chan E { return ts.ch }
 
 // Unsubscribe deregisters the subscription from its bus and closes its channel.
 func (ts *TypedSubscription[E]) Unsubscribe() {
@@ -230,7 +228,8 @@ func (b *Bus) SubscribeTyped[E any](bufSize ...int) *TypedSubscription[E] {
 		size = bufSize[0]
 	}
 
-	t := reflect.TypeFor[E]()
+	targetType := reflect.TypeFor[E]()
+	t := targetType
 	if t.Kind() == reflect.Pointer {
 		t = t.Elem()
 	}
@@ -264,25 +263,17 @@ func (b *Bus) SubscribeTyped[E any](bufSize ...int) *TypedSubscription[E] {
 	go func() {
 		defer close(ts.ch)
 		for raw := range sub.C() {
-			var typed E
-			var ok bool
-			if v, isExact := raw.(E); isExact {
-				typed = v
-				ok = true
-			} else {
-				rv := reflect.ValueOf(raw)
-				rt := reflect.TypeFor[E]()
-				if rv.Kind() != reflect.Pointer && rt.Kind() == reflect.Pointer {
-					if rv.Type() == rt.Elem() {
+			typed, ok := raw.(E)
+			if !ok {
+				if typedPtr, isPtr := any(raw).(*E); isPtr && typedPtr != nil {
+					typed = *typedPtr
+					ok = true
+				} else if targetType.Kind() == reflect.Pointer {
+					rv := reflect.ValueOf(raw)
+					if rv.IsValid() && rv.Kind() != reflect.Pointer && rv.Type() == targetType.Elem() {
 						ptr := reflect.New(rv.Type())
 						ptr.Elem().Set(rv)
 						typed = ptr.Interface().(E)
-						ok = true
-					}
-				} else if rv.Kind() == reflect.Pointer && rt.Kind() != reflect.Pointer {
-					val := rv.Elem()
-					if val.Type() == rt {
-						typed = val.Interface().(E)
 						ok = true
 					}
 				}
@@ -292,11 +283,7 @@ func (b *Bus) SubscribeTyped[E any](bufSize ...int) *TypedSubscription[E] {
 				select {
 				case ts.ch <- typed:
 				default:
-				}
-			} else if typedPtr, ok := any(raw).(*E); ok && typedPtr != nil {
-				select {
-				case ts.ch <- *typedPtr:
-				default:
+					b.notifyDropped(raw, sub.id)
 				}
 			}
 		}
@@ -410,6 +397,15 @@ func (b *Bus) directSend(sub *Subscription, ev Event) {
 		if b.onDropped != nil {
 			b.onDropped(ev, sub.id)
 		}
+	}
+}
+
+func (b *Bus) notifyDropped(ev Event, subID uint64) {
+	b.mu.RLock()
+	fn := b.onDropped
+	b.mu.RUnlock()
+	if fn != nil {
+		fn(ev, subID)
 	}
 }
 

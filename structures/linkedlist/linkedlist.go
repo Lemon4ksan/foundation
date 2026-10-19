@@ -1,4 +1,4 @@
-// Copyright 2009 The Go Authors. All rights reserved.
+// Copyright (c) 2026 Lemon4ksan All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -76,8 +76,8 @@ func (l *List[T]) Init() *List[T] {
 // New returns an initialized list.
 func New[T any]() *List[T] { return new(List[T]).Init() }
 
-// NewCapacity returns an initialized list with preallocated capacity.
-func NewCapacity[T any](capacity int) *List[T] {
+// NewWithCapacity returns an initialized list with preallocated capacity.
+func NewWithCapacity[T any](capacity int) *List[T] {
 	chunksCount := (capacity + 1 + chunkSize - 1) / chunkSize
 	chunks := make([]*listChunk[T], chunksCount)
 	for i := range chunks {

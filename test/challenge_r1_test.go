@@ -449,7 +449,7 @@ func TestChallenge_Tracking_AddCleanup(t *testing.T) {
 	}
 
 	for !rb.Empty() {
-		_ = rb.PopFront()
+		_, _ = rb.PopFront()
 	}
 
 	for range 5 {

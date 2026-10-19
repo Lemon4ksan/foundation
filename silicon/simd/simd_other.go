@@ -16,6 +16,19 @@ func ParallelExtract64(val, mask uint64) uint64 {
 	return extractBitsSWAR(val, mask)
 }
 
+// ParallelDeposit64 falls back to SWAR bit deposit on non-amd64 architectures.
+func ParallelDeposit64(val, mask uint64) uint64 {
+	return depositBitsSWAR(val, mask)
+}
+
+// PrefetchL1 issues a prefetch instruction for the memory address.
+func PrefetchL1(_ unsafe.Pointer) {}
+
+// StreamCopy256 performs streaming copy.
+func StreamCopy256(dst, src []byte) int {
+	return copy(dst, src)
+}
+
 // EqualFoldVector compares byte slices a and b case-insensitively on non-amd64 architectures.
 func EqualFoldVector(a, b []byte) bool {
 	if len(a) != len(b) {
@@ -86,30 +99,6 @@ func MaskCRLF(b []byte) {
 		if b[i] == '\r' || b[i] == '\n' {
 			b[i] = ' '
 		}
-	}
-}
-
-// ToLowerSWAR converts ASCII uppercase characters to lowercase using 64-bit SWAR on non-amd64.
-func ToLowerSWAR(dst, src []byte) {
-	n := min(len(dst), len(src))
-	i := 0
-
-	for i+8 <= n {
-		v := *(*uint64)(unsafe.Pointer(&src[i]))
-		mask := v + 0x7f7f7f7f7f7f7f7f
-		mask = (mask ^ v) & 0x8080808080808080
-		mask = ((v + 0x3f3f3f3f3f3f3f3f) ^ v) & mask
-		mask = (mask >> 2) & 0x2020202020202020
-		*(*uint64)(unsafe.Pointer(&dst[i])) = v | mask
-		i += 8
-	}
-
-	for ; i < n; i++ {
-		c := src[i]
-		if c >= 'A' && c <= 'Z' {
-			c += 32
-		}
-		dst[i] = c
 	}
 }
 

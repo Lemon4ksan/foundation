@@ -262,8 +262,8 @@ func ValueOr[T any](ctx context.Context, key any, defaultVal T) T {
 
 // Pool provides object pooling for [Context] instances in extreme high-throughput pipelines.
 //
-// The zero value is empty and not ready to use.
-// Read-only operations are safe for concurrent use; mutations require external synchronization.
+// The zero value is empty and not ready to use; use [NewPool] to initialize.
+// All exported methods are safe for concurrent use.
 type Pool struct {
 	pool sync.Pool
 }

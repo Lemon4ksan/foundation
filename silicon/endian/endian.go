@@ -15,10 +15,6 @@ type Indexer interface {
 	~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr
 }
 
-// -----------------------------------------------------------------------------
-// Little-Endian Primitives (LE)
-// -----------------------------------------------------------------------------
-
 // Load8 loads a single byte from b at offset i.
 //
 //go:inline
@@ -47,18 +43,18 @@ func Load64[I Indexer](b []byte, i I) uint64 {
 	return *(*uint64)(unsafe.Add(unsafe.Pointer(unsafe.SliceData(b)), i))
 }
 
-// Store16 stores a little-endian uint16 into b at offset 0.
+// Store16 stores a little-endian uint16 into b at offset i.
 //
 //go:inline
-func Store16(b []byte, v uint16) {
-	*(*uint16)(unsafe.Pointer(unsafe.SliceData(b))) = v
+func Store16[I Indexer](b []byte, i I, v uint16) {
+	*(*uint16)(unsafe.Add(unsafe.Pointer(unsafe.SliceData(b)), i)) = v
 }
 
-// Store32 stores a little-endian uint32 into b at offset 0.
+// Store32 stores a little-endian uint32 into b at offset i.
 //
 //go:inline
-func Store32(b []byte, v uint32) {
-	*(*uint32)(unsafe.Pointer(unsafe.SliceData(b))) = v
+func Store32[I Indexer](b []byte, i I, v uint32) {
+	*(*uint32)(unsafe.Add(unsafe.Pointer(unsafe.SliceData(b)), i)) = v
 }
 
 // Store64 stores a little-endian uint64 into b at offset i.
@@ -89,18 +85,18 @@ func LoadLE64[I Indexer](b []byte, i I) uint64 {
 	return Load64(b, i)
 }
 
-// StoreLE16 stores a little-endian uint16 into b at offset 0.
+// StoreLE16 stores a little-endian uint16 into b at offset i.
 //
 //go:inline
-func StoreLE16(b []byte, v uint16) {
-	Store16(b, v)
+func StoreLE16[I Indexer](b []byte, i I, v uint16) {
+	Store16(b, i, v)
 }
 
-// StoreLE32 stores a little-endian uint32 into b at offset 0.
+// StoreLE32 stores a little-endian uint32 into b at offset i.
 //
 //go:inline
-func StoreLE32(b []byte, v uint32) {
-	Store32(b, v)
+func StoreLE32[I Indexer](b []byte, i I, v uint32) {
+	Store32(b, i, v)
 }
 
 // StoreLE64 stores a little-endian uint64 into b at offset i.
@@ -118,26 +114,10 @@ func Uint16(b []byte) uint16 {
 	return binary.LittleEndian.Uint16(b)
 }
 
-// Uint16LE returns a little-endian uint16 from b.
-//
-//go:inline
-func Uint16LE(b []byte) uint16 {
-	_ = b[1]
-	return binary.LittleEndian.Uint16(b)
-}
-
 // Uint32 returns a little-endian uint32 from b.
 //
 //go:inline
 func Uint32(b []byte) uint32 {
-	_ = b[3]
-	return binary.LittleEndian.Uint32(b)
-}
-
-// Uint32LE returns a little-endian uint32 from b.
-//
-//go:inline
-func Uint32LE(b []byte) uint32 {
 	_ = b[3]
 	return binary.LittleEndian.Uint32(b)
 }
@@ -150,26 +130,10 @@ func Uint64(b []byte) uint64 {
 	return binary.LittleEndian.Uint64(b)
 }
 
-// Uint64LE returns a little-endian uint64 from b.
-//
-//go:inline
-func Uint64LE(b []byte) uint64 {
-	_ = b[7]
-	return binary.LittleEndian.Uint64(b)
-}
-
 // PutUint16 encodes a little-endian uint16 into b.
 //
 //go:inline
 func PutUint16(b []byte, v uint16) {
-	_ = b[1]
-	binary.LittleEndian.PutUint16(b, v)
-}
-
-// PutUint16LE encodes a little-endian uint16 into b.
-//
-//go:inline
-func PutUint16LE(b []byte, v uint16) {
 	_ = b[1]
 	binary.LittleEndian.PutUint16(b, v)
 }
@@ -182,14 +146,6 @@ func PutUint32(b []byte, v uint32) {
 	binary.LittleEndian.PutUint32(b, v)
 }
 
-// PutUint32LE encodes a little-endian uint32 into b.
-//
-//go:inline
-func PutUint32LE(b []byte, v uint32) {
-	_ = b[3]
-	binary.LittleEndian.PutUint32(b, v)
-}
-
 // PutUint64 encodes a little-endian uint64 into b.
 //
 //go:inline
@@ -198,18 +154,6 @@ func PutUint64(b []byte, v uint64) {
 	binary.LittleEndian.PutUint64(b, v)
 }
 
-// PutUint64LE encodes a little-endian uint64 into b.
-//
-//go:inline
-func PutUint64LE(b []byte, v uint64) {
-	_ = b[7]
-	binary.LittleEndian.PutUint64(b, v)
-}
-
-// -----------------------------------------------------------------------------
-// Big-Endian Primitives (BE)
-// -----------------------------------------------------------------------------
-
 // LoadBE16 loads a big-endian uint16 from b at offset i.
 //
 //go:inline
@@ -217,7 +161,7 @@ func LoadBE16[I Indexer](b []byte, i I) uint16 {
 	return bits.ReverseBytes16(Load16(b, i))
 }
 
-// LoadBE24 loads a 24-bit big-endian integer from b at offset i (common in HTTP/2 and TLS).
+// LoadBE24 loads a 24-bit big-endian integer from b at offset i.
 //
 //go:inline
 func LoadBE24[I Indexer](b []byte, i I) uint32 {
@@ -244,29 +188,29 @@ func LoadBE64[I Indexer](b []byte, i I) uint64 {
 	return bits.ReverseBytes64(Load64(b, i))
 }
 
-// StoreBE16 stores a big-endian uint16 into b at offset 0.
+// StoreBE16 stores a big-endian uint16 into b at offset i.
 //
 //go:inline
-func StoreBE16(b []byte, v uint16) {
-	Store16(b, bits.ReverseBytes16(v))
+func StoreBE16[I Indexer](b []byte, i I, v uint16) {
+	Store16(b, i, bits.ReverseBytes16(v))
 }
 
-// StoreBE24 stores a 24-bit big-endian integer into b at offset 0 (e.g. HTTP/2 frame length).
+// StoreBE24 stores a 24-bit big-endian integer into b at offset i.
 //
 //go:inline
-func StoreBE24(b []byte, v uint32) {
-	_ = b[2]
-	ptr := unsafe.Pointer(unsafe.SliceData(b))
+func StoreBE24[I Indexer](b []byte, i I, v uint32) {
+	_ = b[int(i)+2]
+	ptr := unsafe.Add(unsafe.Pointer(unsafe.SliceData(b)), i)
 	*(*byte)(ptr) = byte(v >> 16)
 	*(*byte)(unsafe.Add(ptr, 1)) = byte(v >> 8)
 	*(*byte)(unsafe.Add(ptr, 2)) = byte(v)
 }
 
-// StoreBE32 stores a big-endian uint32 into b at offset 0.
+// StoreBE32 stores a big-endian uint32 into b at offset i.
 //
 //go:inline
-func StoreBE32(b []byte, v uint32) {
-	Store32(b, bits.ReverseBytes32(v))
+func StoreBE32[I Indexer](b []byte, i I, v uint32) {
+	Store32(b, i, bits.ReverseBytes32(v))
 }
 
 // StoreBE64 stores a big-endian uint64 into b at offset i.

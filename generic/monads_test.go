@@ -33,19 +33,17 @@ func TestOptionalChainingAndFilter(t *testing.T) {
 	})
 	assert.Equal(t, "flat", flatMap.ValueOr("default"))
 
-	// OrElse and Or
-	assert.Equal(t, 10, opt.OrElse(99))
-	assert.Equal(t, 99, None[int]().OrElse(99))
+	// ValueOr and Or
+	assert.Equal(t, 10, opt.ValueOr(99))
+	assert.Equal(t, 99, None[int]().ValueOr(99))
 	assert.Equal(t, 10, opt.Or(Some(99)).MustValue())
 	assert.Equal(t, 99, None[int]().Or(Some(99)).MustValue())
 
-	// Result ValueOr, OrElse, and Optional
+	// Result ValueOr and Optional
 	resSuccess := Success("hello")
 	resFail := Failure[string](errors.New("boom"))
 	assert.Equal(t, "hello", resSuccess.ValueOr("world"))
 	assert.Equal(t, "world", resFail.ValueOr("world"))
-	assert.Equal(t, "hello", resSuccess.OrElse("world"))
-	assert.Equal(t, "world", resFail.OrElse("world"))
 	assert.True(t, resSuccess.Optional().IsPresent())
 	assert.Equal(t, "hello", resSuccess.Optional().MustValue())
 	assert.False(t, resFail.Optional().IsPresent())
@@ -53,10 +51,9 @@ func TestOptionalChainingAndFilter(t *testing.T) {
 	// Verify 0-alloc
 	allocs := testing.AllocsPerRun(1000, func() {
 		o := From("fast", true)
-		_ = o.OrElse("fallback")
+		_ = o.ValueOr("fallback")
 		r := ToResult(123, nil)
 		_ = r.ValueOr(456)
-		_ = r.OrElse(456)
 	})
 	assert.Equal(t, float64(0), allocs)
 }

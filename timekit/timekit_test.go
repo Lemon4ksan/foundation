@@ -20,6 +20,9 @@ func TestCoarseClock(t *testing.T) {
 	if unix <= 0 {
 		t.Fatalf("expected positive unix timestamp, got %d", unix)
 	}
+	if CoarseUnixMilli() <= 0 || CoarseUnixNano() <= 0 {
+		t.Fatalf("expected positive coarse milli and nano timestamps")
+	}
 
 	time.Sleep(5 * time.Millisecond)
 	now2 := CoarseNow()
@@ -77,13 +80,17 @@ func TestRFC3339_Format(t *testing.T) {
 }
 
 func TestStopwatch(t *testing.T) {
-	sw := StartStopwatch()
+	sw := Start()
 	time.Sleep(5 * time.Millisecond)
 
 	elapsed := sw.Elapsed()
 	if elapsed < 4*time.Millisecond {
 		t.Fatalf("expected >= 4ms elapsed, got %v", elapsed)
 	}
+	if sw.ElapsedMicro() <= 0 || sw.ElapsedNano() <= 0 {
+		t.Fatalf("expected positive micro and nano elapsed")
+	}
+	sw.Reset()
 }
 
 func BenchmarkAppendHTTPDate(b *testing.B) {

@@ -37,7 +37,7 @@ func (e *Entry) Name() string {
 	return e.Path
 }
 
-// Size returns the length in bytes for a regular file.
+// SizeBytes returns the length in bytes for a regular file.
 func (e *Entry) SizeBytes() int64 {
 	return e.Size
 }
@@ -53,9 +53,9 @@ func (e *Entry) Mode() fs.FileMode {
 	return 0o644
 }
 
-// ModTime returns the modification time.
+// ModTimeUTC returns the modification time in UTC.
 func (e *Entry) ModTimeUTC() time.Time {
-	return e.ModTime
+	return e.ModTime.UTC()
 }
 
 // Sys returns underlying data source (always nil).

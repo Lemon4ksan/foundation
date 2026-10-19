@@ -39,16 +39,20 @@ func hashString(s string) uint64 {
 }
 
 // Tag represents a parsed struct tag value (e.g. `json:"user_id,omitempty,inline"`).
+//
+// Options is read-only and may share backing memory with cached or interned tag entries;
+// callers must not mutate the Options slice in-place.
 type Tag struct {
 	Name    string   // Primary field identifier or "-"
-	Options []string // Subsequent comma-separated directive flags
+	Options []string // Subsequent comma-separated directive flags (read-only)
 }
 
 // ParseTag parses a struct tag string into a structured [Tag], respecting nested brackets and quotes.
 //
 // For standard ASCII tags, ParseTag executes an optimized lock-free and zero-copy
-// scanning path without allocating rune slices. For simple tags without directives,
-// ParseTag achieves 0 heap allocations.
+// scanning path without allocating rune slices. For simple tags without directives
+// or cached tags, ParseTag achieves 0 heap allocations. The returned Tag.Options slice
+// is read-only and must not be modified by the caller.
 func ParseTag(tagStr string) Tag {
 	if tagStr == "" {
 		return Tag{}

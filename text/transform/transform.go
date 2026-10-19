@@ -2,10 +2,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package transform provides reader and writer wrappers that transform the
-// bytes passing through as well as various transformations. Example
-// transformations provided by other packages include normalization and
-// conversion between character sets.
 package transform // import "github.com/lemon4ksan/foundation/text/transform"
 
 import (
@@ -201,8 +197,6 @@ func (r *Reader) Read(p []byte) (int, error) {
 	}
 }
 
-// TODO: implement ReadByte (and ReadRune??).
-
 // Writer wraps another io.Writer by transforming the bytes read.
 // The user needs to call Close to flush unwritten bytes that may
 // be buffered.
@@ -235,7 +229,6 @@ func (w *Writer) Write(data []byte) (n int, err error) {
 	src := data
 	if w.n > 0 {
 		// Append bytes from data to the last remainder.
-		// TODO: limit the amount copied on first try.
 		n = copy(w.src[w.n:], data)
 		w.n += n
 		src = w.src[:w.n]
@@ -401,8 +394,6 @@ func (c *chain) Reset() {
 	}
 }
 
-// TODO: make chain use Span (is going to be fun to implement!)
-
 // Transform applies the transformers of c in sequence.
 func (c *chain) Transform(dst, src []byte, atEOF bool) (nDst, nSrc int, err error) {
 	// Set up src and dst in the chain.
@@ -493,7 +484,7 @@ func (c *chain) Transform(dst, src []byte, atEOF bool) (nDst, nSrc int, err erro
 	return dstL.n, srcL.p, err
 }
 
-// Deprecated: Use runes.Remove instead.
+// RemoveFunc returns a Transformer that removes runes r for which f(r) is true.
 func RemoveFunc(f func(r rune) bool) Transformer {
 	return removeF(f)
 }
@@ -602,8 +593,6 @@ func String(t Transformer, s string) (result string, n int, err error) {
 		pDst += nDst
 		pSrc += nSrc
 
-		// TODO:  let transformers implement an optional Spanner interface, akin
-		// to norm's QuickSpan. This would even allow us to avoid any allocation.
 		if !bytes.Equal(dst[:nDst], src[:nSrc]) {
 			break
 		}

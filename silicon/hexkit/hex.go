@@ -14,11 +14,11 @@ import (
 
 // Common hex errors.
 var (
-	ErrInvalidLength  = errors.New("hex: odd length hex string")
-	ErrInvalidByte    = errors.New("hex: invalid byte in hex string")
-	ErrBufferTooSmall = errors.New("hex: destination buffer too small")
-	ErrEmptyHexNum    = errors.New("hex: empty hex number")
-	ErrHexOverflow    = errors.New("hex: integer overflow")
+	ErrInvalidLength  = errors.New("hexkit: odd length hex string")
+	ErrInvalidByte    = errors.New("hexkit: invalid byte in hex string")
+	ErrBufferTooSmall = errors.New("hexkit: destination buffer too small")
+	ErrEmptyHexNum    = errors.New("hexkit: empty hex number")
+	ErrHexOverflow    = errors.New("hexkit: integer overflow")
 )
 
 const (
@@ -100,7 +100,7 @@ func DecodeByte(hi, lo byte) (byte, bool) {
 	return (h << 4) | l, true
 }
 
-// ToHexUpper returns uppercase ASCII hex bytes for b (RFC 3986 percent-encoding).
+// ToHexUpper returns uppercase ASCII hex bytes for b (e.g. for percent-encoding).
 //
 //go:inline
 func ToHexUpper(b byte) (hi, lo byte) {
@@ -305,7 +305,7 @@ func Decode16[T ~[8]byte](dst *T, s string) bool {
 }
 
 // FormatHexUint writes the lowercase hexadecimal representation of val into buf
-// without heap allocations, returning the number of bytes written (RFC 9112 §7.1).
+// without heap allocations, returning the number of bytes written.
 // FormatHexUint panics if val is negative.
 //
 //go:inline
@@ -340,7 +340,7 @@ func FormatHexUint(buf *[16]byte, val int) int {
 }
 
 // AppendHexUint formats val as lowercase hexadecimal and appends directly to dst.
-// FormatHexUint panics if val is negative.
+// AppendHexUint panics if val is negative.
 //
 //go:inline
 func AppendHexUint(dst []byte, val int) []byte {
@@ -349,7 +349,7 @@ func AppendHexUint(dst []byte, val int) []byte {
 	return append(dst, buf[:n]...)
 }
 
-// ParseHexUint parses a hex-encoded uint from src for chunk-size decoding (RFC 9112 §7.1).
+// ParseHexUint parses a hex-encoded unsigned integer from src.
 // Prevents parsing errors due to integer overflow.
 // Returns the parsed integer, number of bytes consumed, or an error.
 //

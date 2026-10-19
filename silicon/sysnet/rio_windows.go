@@ -17,8 +17,8 @@ import (
 )
 
 var (
-	ErrRIONotSupported = errors.New("rio: Registered I/O extensions not supported on this OS")
-	ErrRIOFailed       = errors.New("rio: RIORegisterBuffer kernel syscall failed")
+	ErrRIONotSupported = errors.New("sysnet: Registered I/O extensions not supported on this OS")
+	ErrRIOFailed       = errors.New("sysnet: RIORegisterBuffer kernel syscall failed")
 
 	modkernel32       = syscall.NewLazyDLL("kernel32.dll")
 	procVirtualLock   = modkernel32.NewProc("VirtualLock")

@@ -418,15 +418,13 @@ func TestMultiReadBody_RAM(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, payload, string(b1))
 
-	require.NoError(t, mrb.Close())
+	require.NoError(t, mrb.Rewind())
 
 	b2, err := io.ReadAll(mrb)
 	require.NoError(t, err)
 	assert.Equal(t, payload, string(b2))
 
-	if respCloser, ok := mrb.(interface{ ReallyClose() }); ok {
-		respCloser.ReallyClose()
-	}
+	require.NoError(t, mrb.Close())
 }
 
 func TestMultiReadBody_DiskSpill(t *testing.T) {
@@ -443,15 +441,13 @@ func TestMultiReadBody_DiskSpill(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, payload, string(b1))
 
-	require.NoError(t, mrb.Close())
+	require.NoError(t, mrb.Rewind())
 
 	b2, err := io.ReadAll(mrb)
 	require.NoError(t, err)
 	assert.Equal(t, payload, string(b2))
 
-	if respCloser, ok := mrb.(interface{ ReallyClose() }); ok {
-		respCloser.ReallyClose()
-	}
+	require.NoError(t, mrb.Close())
 }
 
 func TestMultiReadBody_LimitExceededNoDisk(t *testing.T) {
@@ -628,13 +624,13 @@ func TestMultiReadBody_OffHeap_And_ResponseBodyReadCloser(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, largeData, string(b1))
 
-	// Reset via Close
-	assert.NoError(t, mrb.Close())
+	// Reset via Rewind
+	assert.NoError(t, mrb.Rewind())
 	b2, err := io.ReadAll(mrb)
 	require.NoError(t, err)
 	assert.Equal(t, largeData, string(b2))
 
-	// ReallyClose via ResponseBodyReadCloser.Close()
+	// Teardown via ResponseBodyReadCloser.Close()
 	assert.NoError(t, respBody.Close())
 
 	// 2. OffHeap exceeding threshold by 1 byte with disableDisk=true
@@ -652,10 +648,7 @@ func TestMultiReadBody_OffHeap_And_ResponseBodyReadCloser(t *testing.T) {
 	bDisk, err := io.ReadAll(mrbDisk)
 	require.NoError(t, err)
 	assert.Equal(t, overflowData, string(bDisk))
-	_ = mrbDisk.Close()
-	if rc, ok := mrbDisk.(interface{ ReallyClose() }); ok {
-		rc.ReallyClose()
-	}
+	require.NoError(t, mrbDisk.Close())
 }
 
 func TestBufferedConn(t *testing.T) {
@@ -763,13 +756,14 @@ func TestMultiReadBody_ClosedAfterReallyClose(t *testing.T) {
 	mrb, err := NewMultiReadBody(inner, 512, false)
 	require.NoError(t, err)
 
-	reallyCloser, ok := mrb.(interface{ ReallyClose() })
-	require.True(t, ok)
-	reallyCloser.ReallyClose()
+	require.NoError(t, mrb.ReallyClose())
 
 	var buf [10]byte
 	_, rErr := mrb.Read(buf[:])
 	assert.Error(t, rErr)
+
+	rewErr := mrb.Rewind()
+	assert.Error(t, rewErr)
 
 	cErr := mrb.Close()
 	assert.Error(t, cErr)
@@ -1077,32 +1071,32 @@ func TestMultiReadBody_ComprehensiveEdgeCases(t *testing.T) {
 	diskData := strings.Repeat("D", 2048)
 	mrbDisk, err := NewMultiReadBody(io.NopCloser(strings.NewReader(diskData)), 512, false)
 	require.NoError(t, err)
-	mrbTyped, ok := mrbDisk.(*MultiReadBody)
-	require.True(t, ok)
-	mrbTyped.Reset()
+	mrbDisk.Reset()
 
 	bDisk, err := io.ReadAll(mrbDisk)
 	require.NoError(t, err)
 	assert.Equal(t, diskData, string(bDisk))
-	mrbTyped.ReallyClose()
+	require.NoError(t, mrbDisk.ReallyClose())
 
 	// 5. Disk stream failure during writeInitialAndStreamData
 	failingDiskR := io.NopCloser(&ioErrorReader{data: []byte(strings.Repeat("X", 600)), err: readErr})
 	_, err = NewMultiReadBody(failingDiskR, 512, false)
 	assert.ErrorIs(t, err, readErr)
 
-	// 6. ReallyClose idempotence and closed checks
+	// 6. Close/ReallyClose errors when already closed
 	mrbRAM, err := NewMultiReadBody(io.NopCloser(strings.NewReader("ram data")), 512, false)
 	require.NoError(t, err)
-	mrbRAMTyped := mrbRAM.(*MultiReadBody)
-	mrbRAMTyped.ReallyClose()
-	mrbRAMTyped.ReallyClose() // idempotent, does not panic
+	require.NoError(t, mrbRAM.ReallyClose())
+	assert.ErrorIs(t, mrbRAM.ReallyClose(), os.ErrClosed)
 
 	var buf [10]byte
-	_, rErr := mrbRAMTyped.Read(buf[:])
+	_, rErr := mrbRAM.Read(buf[:])
 	assert.ErrorIs(t, rErr, os.ErrClosed)
 
-	cErr := mrbRAMTyped.Close()
+	rewErr := mrbRAM.Rewind()
+	assert.ErrorIs(t, rewErr, os.ErrClosed)
+
+	cErr := mrbRAM.Close()
 	assert.ErrorIs(t, cErr, os.ErrClosed)
 }
 

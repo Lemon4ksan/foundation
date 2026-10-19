@@ -101,8 +101,6 @@ func (l *LRU[K, V]) Len() int {
 	return len(l.items)
 }
 
-// Cap returns the maximum capacity of the cache.
-
 // Values returns a slice of all values currently in the cache in order from
 // most recently used to least recently used.
 func (l *LRU[K, V]) Values() []V {
@@ -117,6 +115,7 @@ func (l *LRU[K, V]) Values() []V {
 	return vals
 }
 
+// Cap returns the maximum capacity of the cache.
 func (l *LRU[K, V]) Cap() int {
 	return l.capacity
 }

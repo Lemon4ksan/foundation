@@ -32,8 +32,7 @@ func Every(interval time.Duration) Limit {
 // Limiter controls how frequently events are allowed to happen.
 //
 // The zero value is valid but rejects all events.
-// Read-only operations are safe for concurrent use; mutations require external synchronization unless stated otherwise.
-// Note that methods on [Limiter] manage their own internal locks.
+// All exported methods manage their own internal synchronization and are safe for concurrent use.
 type Limiter struct {
 	mu     sync.Mutex
 	limit  Limit

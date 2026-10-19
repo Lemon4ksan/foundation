@@ -305,9 +305,14 @@ func (p *Pool[T]) Put(v *T) {
 	}
 }
 
-// ConcurrentMap is a type-safe, concurrent hash map wrapping [sync.Map] with zero runtime type assertion overhead.
+// ConcurrentMap is a type-safe, concurrent hash map wrapping [sync.Map].
 type ConcurrentMap[K comparable, V any] struct {
 	m sync.Map
+}
+
+// NewConcurrentMap constructs an empty [ConcurrentMap].
+func NewConcurrentMap[K comparable, V any]() *ConcurrentMap[K, V] {
+	return &ConcurrentMap[K, V]{}
 }
 
 // Load returns the value stored in the map for a key, or zero V if no value is present.
@@ -385,14 +390,6 @@ func (m *ConcurrentMap[K, V]) Range(fn func(key K, val V) bool) {
 // Clear removes all entries from the map.
 func (m *ConcurrentMap[K, V]) Clear() {
 	m.m.Clear()
-}
-
-// SyncMap is an alias for [ConcurrentMap], providing a type-safe concurrent hash map.
-type SyncMap[K comparable, V any] = ConcurrentMap[K, V]
-
-// NewSyncMap constructs an empty [SyncMap].
-func NewSyncMap[K comparable, V any]() *SyncMap[K, V] {
-	return &ConcurrentMap[K, V]{}
 }
 
 // Lazy provides thread-safe, lock-free lazy initialization of an expensive resource of type T.

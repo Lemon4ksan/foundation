@@ -8,7 +8,7 @@ package sysnet
 
 import "errors"
 
-var ErrRIONotSupported = errors.New("rio: Registered I/O extensions not supported on this OS")
+var ErrRIONotSupported = errors.New("sysnet: Registered I/O extensions not supported on this OS")
 
 // BufferRegistration is a stub for non-Windows platforms.
 type BufferRegistration struct {

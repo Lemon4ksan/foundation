@@ -138,7 +138,7 @@ type Config struct {
 	// JSON, if true, outputs logs as structured JSON lines instead of human-readable text.
 	JSON bool
 
-	// OmitFields defines a list of field keys to exclude from the printed output (e.g., "account", "steam_id").
+	// OmitFields defines a list of field keys to exclude from the printed output (e.g., "password", "token").
 	OmitFields []string
 
 	// MaxStringLen, if greater than 0, truncates string and error field representations to this byte limit.

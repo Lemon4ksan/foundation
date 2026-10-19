@@ -155,16 +155,6 @@ func AppendToUpper(dst, src []byte) []byte {
 	return dst
 }
 
-// Base64Encode encodes src into dst using hardware vector acceleration.
-func Base64Encode(dst, src []byte) int {
-	return base64EncodeVector(dst, src)
-}
-
-// Base64Decode decodes Base64 data from src into dst using hardware vector acceleration.
-func Base64Decode(dst, src []byte) (int, error) {
-	return base64DecodeVector(dst, src)
-}
-
 // TrimQuotes strips leading and trailing JSON double-quote characters from b with zero allocations and BCE hints.
 //
 //go:inline

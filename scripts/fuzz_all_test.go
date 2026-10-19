@@ -10,6 +10,10 @@ import (
 )
 
 func TestFuzzTargetsConfiguration(t *testing.T) {
+	targets, err := discoverFuzzTargets("..")
+	if err != nil {
+		t.Fatalf("discoverFuzzTargets failed: %v", err)
+	}
 	if len(targets) == 0 {
 		t.Fatal("expected targets list to be populated")
 	}

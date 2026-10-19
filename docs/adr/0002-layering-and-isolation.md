@@ -28,9 +28,9 @@ Layer 3: Codecs & Cryptography    [codec/*, crypto/*, encoding/*, text/*, iokit]
    ▲
 Layer 2: Concurrency & Scheduling [sync/*, async/*]
    ▲
-Layer 1: Memory & Structures      [borrow, structures/*, refkit, bufkit]
+Layer 1: Memory & Structures      [borrow, structures/* (bitset, deque, disjointset, linkedlist, minheap, ringbuffer, trie), refkit, bufkit]
    ▲
-Layer 0: Silicon Substrate        [silicon/* (cpukit, endian, hexkit, pool, ringbuf, simd, trie)]
+Layer 0: Silicon Substrate        [silicon/* (bytesconv, clock, cpukit, endian, hexkit, offheap, pool, randkit, ringbuf, simd, sysnet)]
 -----------------------------------------------------------------------------------------
 Isolated Boundary: generic/       (Public high-level monads & slice helpers for consumers;
                                    NEVER imported by any package inside foundation)

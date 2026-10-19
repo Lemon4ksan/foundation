@@ -8,6 +8,7 @@ package urlkit
 
 import (
 	"errors"
+	"runtime"
 	"unsafe"
 
 	"golang.org/x/sys/cpu"
@@ -29,6 +30,8 @@ func unescapeVector(dst, src []byte, mode UnescapeMode) (int, error) {
 			uint64(uintptr(unsafe.Pointer(&dst[0]))),
 			0, 0, 0,
 		)
+		runtime.KeepAlive(src)
+		runtime.KeepAlive(dst)
 		n := int(int64(res))
 		if n < 0 {
 			return 0, ErrInvalidEscape

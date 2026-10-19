@@ -18,5 +18,5 @@
 //
 // Accepted cost: manual explicit extraction of the raw material when it is actually needed
 //
-// Allocations: zero
+// Allocations: amortized
 package secret

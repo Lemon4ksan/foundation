@@ -98,11 +98,21 @@ func TestStreamCopy256(t *testing.T) {
 	assert.Equal(t, 128, n)
 	assert.Equal(t, src, dst)
 
-	// Remainder unaligned copy
+	// Remainder unaligned copy (head + vector + tail)
 	srcOdd := make([]byte, 100)
-	dstOdd := make([]byte, 100)
-	nOdd := simd.StreamCopy256(dstOdd, srcOdd)
+	for i := range srcOdd {
+		srcOdd[i] = byte(i + 1)
+	}
+	dstOdd := make([]byte, 105)
+	nOdd := simd.StreamCopy256(dstOdd[3:103], srcOdd)
 	assert.Equal(t, 100, nOdd)
+	assert.Equal(t, srcOdd, dstOdd[3:103])
+
+	// Short copy (< 32 bytes)
+	shortDst := make([]byte, 16)
+	nShort := simd.StreamCopy256(shortDst, src[:16])
+	assert.Equal(t, 16, nShort)
+	assert.Equal(t, src[:16], shortDst)
 
 	// Zero length
 	assert.Equal(t, 0, simd.StreamCopy256(nil, nil))

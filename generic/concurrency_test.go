@@ -615,3 +615,13 @@ func TestParallelMap_ContextCancellation_NoZombies(t *testing.T) {
 		}
 	})
 }
+
+func TestBackoffSubMillisecond(t *testing.T) {
+	b := NewBackoff(100*time.Microsecond, 10*time.Millisecond, 2.0, 0)
+	if d := b.Next(); d != 100*time.Microsecond {
+		t.Fatalf("expected 100us, got %v", d)
+	}
+	if d := b.Next(); d != 200*time.Microsecond {
+		t.Fatalf("expected 200us, got %v", d)
+	}
+}

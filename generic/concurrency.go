@@ -214,25 +214,19 @@ func (f *Future[T]) Set(val T, err error) {
 	})
 }
 
-type sfCall[T any] struct {
-	wg    sync.WaitGroup
-	val   T
-	err   error
-	panic *PanicError
-}
-
 // SingleFlight prevents duplicate concurrent executions of identical tasks (De-duplicator).
 //
 // It ensures that concurrent requests for the same key execute the payload function only once,
 // sharing the resulting value and error. SingleFlight is safe for concurrent use.
 type SingleFlight[T any] struct {
-	mu sync.Mutex
-	m  map[string]*sfCall[T]
+	sf Singleflight[string, T]
 }
 
 // NewSingleFlight creates a new [SingleFlight] instance.
 func NewSingleFlight[T any]() *SingleFlight[T] {
-	return &SingleFlight[T]{m: make(map[string]*sfCall[T])}
+	return &SingleFlight[T]{
+		sf: Singleflight[string, T]{m: make(map[string]*singleflightCall[T])},
+	}
 }
 
 // Do executes the function fn for the given key, suppressing duplicate concurrent calls.
@@ -242,55 +236,7 @@ func (g *SingleFlight[T]) Do(key string, fn func() (T, error)) (T, error) {
 		return zero, errors.New("singleflight is nil")
 	}
 
-	if fn == nil {
-		var zero T
-		return zero, errors.New("singleflight fn is nil")
-	}
-
-	g.mu.Lock()
-	if g.m == nil {
-		g.m = make(map[string]*sfCall[T])
-	}
-
-	if c, ok := g.m[key]; ok {
-		g.mu.Unlock()
-		c.wg.Wait()
-
-		if c.panic != nil {
-			var zero T
-			return zero, c.panic
-		}
-		return c.val, c.err
-	}
-
-	c := new(sfCall[T])
-	c.wg.Add(1)
-	g.m[key] = c
-	g.mu.Unlock()
-
-	var panicked bool
-	defer func() {
-		if r := recover(); r != nil {
-			panicked = true
-			c.panic = newPanicError(r)
-			c.err = c.panic
-		}
-
-		g.mu.Lock()
-		if g.m[key] == c {
-			delete(g.m, key)
-		}
-		g.mu.Unlock()
-
-		c.wg.Done()
-
-		if panicked {
-			panic(c.panic)
-		}
-	}()
-
-	c.val, c.err = fn()
-	return c.val, c.err
+	return g.sf.Do(key, fn)
 }
 
 // RetryConfig defines the parameters for generic execution retries.
@@ -335,7 +281,7 @@ func Retry(ctx context.Context, cfg RetryConfig, fn func(ctx context.Context) er
 	return err
 }
 
-// Backoff implements a thread-safe exponential backoff with randomized jitter (AWS Full Jitter algorithm).
+// Backoff implements a thread-safe exponential backoff with proportional randomized jitter.
 type Backoff struct {
 	mu       sync.Mutex
 	min      time.Duration
@@ -372,25 +318,25 @@ func (b *Backoff) Next() time.Duration {
 	b.attempts++
 	b.mu.Unlock()
 
-	ms := float64(b.min.Milliseconds()) * math.Pow(b.factor, float64(attempts))
+	ns := float64(b.min) * math.Pow(b.factor, float64(attempts))
 	if b.jitter > 0 {
-		deviation := math.Floor(rand.Float64() * b.jitter * ms) //nolint:gosec
-		if rand.IntN(2) == 0 {                                  //nolint:gosec
-			ms -= deviation
+		deviation := rand.Float64() * b.jitter * ns //nolint:gosec
+		if rand.IntN(2) == 0 {                      //nolint:gosec
+			ns -= deviation
 		} else {
-			ms += deviation
+			ns += deviation
 		}
 	}
 
-	if ms > float64(b.max.Milliseconds()) {
-		ms = float64(b.max.Milliseconds())
+	if b.max > 0 && ns > float64(b.max) {
+		ns = float64(b.max)
 	}
 
-	if ms < 0 {
-		ms = 0
+	if ns < 0 {
+		ns = 0
 	}
 
-	return time.Duration(ms) * time.Millisecond
+	return time.Duration(ns)
 }
 
 // Reset resets the attempt counter of the backoff back to zero.

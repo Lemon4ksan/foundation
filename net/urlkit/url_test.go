@@ -294,12 +294,13 @@ func TestQueryEscape_And_UnescapeBytes(t *testing.T) {
 func TestPathEscape_And_UnescapeBytes(t *testing.T) {
 	t.Parallel()
 
-	raw := "user/profile with spaces+symbols"
+	raw := "user/profile with spaces+symbols:!$&'()*,;=@"
 	escapedBytes := urlkit.AppendPathEscape(nil, []byte(raw))
 	escapedStr := urlkit.AppendPathEscapeString(nil, raw)
 	assert.Equal(t, escapedBytes, escapedStr)
+	assert.Equal(t, "user%2Fprofile%20with%20spaces+symbols:!$&'()*,;=@", string(escapedBytes))
 
-	// PathUnescapeBytes preserves '+'
+	// PathUnescapeBytes preserves '+' and unescapes %20 and %2F
 	unescapedBytes, err := urlkit.PathUnescapeBytes(nil, escapedBytes)
 	require.NoError(t, err)
 	assert.Equal(t, []byte(raw), unescapedBytes)

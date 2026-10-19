@@ -524,6 +524,10 @@ func (s *errorStore[K, T]) All(ctx context.Context) (map[K]*Entry[T], error) {
 }
 
 func TestJobs_NextID(t *testing.T) {
+	type customUint uint64
+	type customInt int64
+	type customStr string
+
 	assert.Equal(t, uint64(1), NewTracker[uint64, string](0).NextID())
 	assert.Equal(t, int64(1), NewTracker[int64, string](0).NextID())
 	assert.Equal(t, uint32(1), NewTracker[uint32, string](0).NextID())
@@ -531,6 +535,9 @@ func TestJobs_NextID(t *testing.T) {
 	assert.Equal(t, uint(1), NewTracker[uint, string](0).NextID())
 	assert.Equal(t, int(1), NewTracker[int, string](0).NextID())
 	assert.Equal(t, "1", NewTracker[string, string](0).NextID())
+	assert.Equal(t, customUint(1), NewTracker[customUint, string](0).NextID())
+	assert.Equal(t, customInt(1), NewTracker[customInt, string](0).NextID())
+	assert.Equal(t, customStr("1"), NewTracker[customStr, string](0).NextID())
 	assert.Equal(t, struct{}{}, NewTracker[struct{}, string](0).NextID())
 }
 

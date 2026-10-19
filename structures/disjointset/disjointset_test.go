@@ -323,17 +323,47 @@ func TestConcurrentReaders_CountLen(t *testing.T) {
 	for i := range 500 {
 		d.Union(i, i+500)
 	}
+	// Create a multi-hop chain: 500 -> 0 -> ... wait, 0 is root of {0, 500}.
+	// If we set parent[500] = 0 (already true), let's also union(0, 1) so 1 -> 0 and 501 -> 1 -> 0 (2 hops!).
+	d.Union(0, 1)
 
 	var wg sync.WaitGroup
-	for range 32 {
-		wg.Go(func() {
-			for range 1000 {
+	for g := range 32 {
+		wg.Add(1)
+		go func(gId int) {
+			defer wg.Done()
+			for i := range 1000 {
+				idx := (gId*31 + i) % 500
 				_ = d.Len()
 				_ = d.Count()
+				require.Equal(t, d.FindReadOnly(idx), d.FindReadOnly(idx+500))
+				require.True(t, d.ConnectedReadOnly(idx, idx+500))
+				if idx >= 2 {
+					require.Equal(t, 2, d.SizeReadOnly(idx))
+				} else {
+					require.Equal(t, 4, d.SizeReadOnly(idx))
+				}
 			}
-		})
+		}(g)
 	}
 	wg.Wait()
+
+	var nilD *Set
+	require.PanicsWithError(t, "disjointset: index out of range", func() {
+		nilD.FindReadOnly(0)
+	})
+	require.PanicsWithError(t, "disjointset: index out of range", func() {
+		nilD.ConnectedReadOnly(0, 0)
+	})
+	require.PanicsWithError(t, "disjointset: index out of range", func() {
+		nilD.SizeReadOnly(0)
+	})
+	require.PanicsWithError(t, "disjointset: index out of range", func() {
+		d.FindReadOnly(-1)
+	})
+	require.PanicsWithError(t, "disjointset: index out of range", func() {
+		d.FindReadOnly(1000)
+	})
 }
 
 func TestConcurrentSynchronizedWriters(t *testing.T) {

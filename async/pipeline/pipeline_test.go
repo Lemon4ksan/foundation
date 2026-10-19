@@ -934,3 +934,54 @@ func TestRepro_Pipeline_EdgeCasesAndPanicCoverage(t *testing.T) {
 	for range sErr3 {
 	}
 }
+
+func TestTransformSeq_FailFastAndRateLimit(t *testing.T) {
+	t.Run("FailFast", func(t *testing.T) {
+		cfg := Config{
+			Workers:  1,
+			FailFast: true,
+		}
+		errDummy := errors.New("seq fail fast")
+		var processed atomic.Int32
+
+		seq := TransformSeq(context.Background(), cfg, intSeq(50), func(ctx context.Context, in int) (int, error) {
+			processed.Add(1)
+			if in == 2 {
+				return 0, errDummy
+			}
+			time.Sleep(5 * time.Millisecond)
+			return in * 2, nil
+		})
+
+		var errs []error
+		for _, err := range seq {
+			if err != nil {
+				errs = append(errs, err)
+			}
+		}
+
+		require.NotEmpty(t, errs)
+		assert.ErrorIs(t, errs[0], errDummy)
+		assert.LessOrEqual(t, processed.Load(), int32(5))
+	})
+
+	t.Run("RateLimiting", func(t *testing.T) {
+		cfg := Config{
+			Workers: 2,
+			RPS:     50, // 20ms per request
+			Burst:   1,
+		}
+		start := time.Now()
+		count := 0
+		for out, err := range TransformSeq(context.Background(), cfg, intSeq(3), func(ctx context.Context, in int) (int, error) {
+			return in, nil
+		}) {
+			require.NoError(t, err)
+			_ = out
+			count++
+		}
+		elapsed := time.Since(start)
+		assert.Equal(t, 3, count)
+		assert.GreaterOrEqual(t, elapsed, 35*time.Millisecond)
+	})
+}

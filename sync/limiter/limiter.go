@@ -46,6 +46,14 @@ func NewAdaptive(initialLimit float64) *Adaptive {
 // It returns nil on success, or ctx.Err() if the context expires before a slot is available.
 // Acquire panics if ctx is nil.
 func (l *Adaptive) Acquire(ctx context.Context) error {
+	if ctx == nil {
+		panic("limiter: nil context")
+	}
+
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
 	l.mu.Lock()
 	if l.active < int(l.limit) {
 		l.active++

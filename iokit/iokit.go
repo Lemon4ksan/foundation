@@ -23,10 +23,10 @@ import (
 
 var (
 	// ErrBufferLimitExceeded indicates that replayable payload size exceeded RAM bounds with disk backing disabled.
-	ErrBufferLimitExceeded = errors.New("io: replayable buffer threshold exceeded")
+	ErrBufferLimitExceeded = errors.New("iokit: replayable buffer threshold exceeded")
 
 	// ErrResponseTooLarge indicates that response payload length exceeded configured maximum bounds.
-	ErrResponseTooLarge = errors.New("io: response size limit exceeded")
+	ErrResponseTooLarge = errors.New("iokit: response size limit exceeded")
 )
 
 // ProgressFunc represents a callback triggered periodically to monitor stream transfer progress.
@@ -264,7 +264,7 @@ func NewReplayableBody(rc io.ReadCloser) (ReplayableBody, error) {
 		return nil, err
 	}
 
-	return rcBody.(ReplayableBody), nil
+	return rcBody, nil
 }
 
 // AsReplayable wraps rc into a [ReplayableBody] using active buffers or [MultiReadBody].
@@ -413,8 +413,8 @@ type ResponseBodyReadCloser struct {
 // Close closes the underlying ReadCloser and performs any necessary cleanup.
 func (r *ResponseBodyReadCloser) Close() error {
 	err := r.ReadCloser.Close()
-	if rb, ok := UnwrapBody(r.ReadCloser).(interface{ ReallyClose() }); ok {
-		rb.ReallyClose()
+	if rb, ok := UnwrapBody(r.ReadCloser).(interface{ ReallyClose() error }); ok {
+		_ = rb.ReallyClose()
 	}
 
 	return err
@@ -437,8 +437,8 @@ func (r *ResponseBodyReadCloser) Unwrap() io.Closer { return r.ReadCloser }
 // Lifecycle & RAM/Disk Transition Invariants:
 // - Payload is initially buffered in RAM (or direct kernel off-heap memory if threshold >= 64KB).
 // - If the payload exceeds threshold and disableDisk is false, it spills to a temporary disk file.
-// - Calling Close() merely rewinds the read cursor to 0, allowing repeated reads of the response body.
-// - ReallyClose() performs actual resource teardown: unmaps off-heap memory and deletes temporary files.
+// - Calling Rewind() or Reset() rewinds the read cursor to 0, allowing repeated reads of the response body.
+// - Calling Close() (or ReallyClose()) performs actual resource teardown: unmaps off-heap memory and deletes temporary files.
 type MultiReadBody struct {
 	tmpFile *os.File
 	reader  io.Reader
@@ -450,13 +450,13 @@ type MultiReadBody struct {
 }
 
 // Bytes returns the buffered payload data and whether the backing store is off-heap.
-// For off-heap buffers, callers must copy the data before [ReallyClose] is invoked.
+// For off-heap buffers, callers must copy the data before [MultiReadBody.Close] is invoked.
 func (m *MultiReadBody) Bytes() (data []byte, onOffHeap bool) {
 	return m.data, m.offBuf != nil
 }
 
 // NewMultiReadBody creates a [MultiReadBody] wrapping rc using RAM or disk buffers.
-func NewMultiReadBody(rc io.ReadCloser, threshold int64, disableDisk bool) (io.ReadCloser, error) {
+func NewMultiReadBody(rc io.ReadCloser, threshold int64, disableDisk bool) (*MultiReadBody, error) {
 	if rc == nil {
 		return nil, nil
 	}
@@ -531,7 +531,7 @@ func NewMultiReadBody(rc io.ReadCloser, threshold int64, disableDisk bool) (io.R
 	return createDiskBackedMultiReadBody(rc, buf.Bytes())
 }
 
-func createDiskBackedMultiReadBody(rc io.ReadCloser, initialBytes []byte) (io.ReadCloser, error) {
+func createDiskBackedMultiReadBody(rc io.ReadCloser, initialBytes []byte) (*MultiReadBody, error) {
 	defer rc.Close()
 
 	tmpFile, err := os.CreateTemp("", "foundation-multiread-*")
@@ -582,11 +582,11 @@ func (m *MultiReadBody) Read(p []byte) (int, error) {
 
 // Reset resets the read cursor so the body can be read again.
 func (m *MultiReadBody) Reset() {
-	_ = m.Close()
+	_ = m.Rewind()
 }
 
-// Close resets the read cursor so the body can be read again.
-func (m *MultiReadBody) Close() error {
+// Rewind resets the read cursor to 0 so the body can be read again.
+func (m *MultiReadBody) Rewind() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -595,24 +595,25 @@ func (m *MultiReadBody) Close() error {
 	}
 
 	if m.tmpFile != nil {
-		_, _ = m.tmpFile.Seek(0, io.SeekStart)
+		_, err := m.tmpFile.Seek(0, io.SeekStart)
 		m.reader = m.tmpFile
-	} else {
-		// Reuse the embedded bytes.Reader - no heap allocation.
-		m.bytesRd.Reset(m.data)
-		m.reader = &m.bytesRd
+		return err
 	}
+
+	// Reuse the embedded bytes.Reader - no heap allocation.
+	m.bytesRd.Reset(m.data)
+	m.reader = &m.bytesRd
 
 	return nil
 }
 
-// ReallyClose performs actual resource teardown: closes and removes temporary files.
-func (m *MultiReadBody) ReallyClose() {
+// Close performs actual resource teardown: releases off-heap memory and closes/removes temporary files.
+func (m *MultiReadBody) Close() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	if m.closed {
-		return
+		return os.ErrClosed
 	}
 
 	m.closed = true
@@ -625,11 +626,24 @@ func (m *MultiReadBody) ReallyClose() {
 		m.offBuf = nil
 	}
 
+	var firstErr error
 	if m.tmpFile != nil {
-		_ = m.tmpFile.Close()
-		_ = os.Remove(m.tmpFile.Name())
+		name := m.tmpFile.Name()
+		if err := m.tmpFile.Close(); err != nil {
+			firstErr = err
+		}
+		if err := os.Remove(name); err != nil && firstErr == nil {
+			firstErr = err
+		}
 		m.tmpFile = nil
 	}
+
+	return firstErr
+}
+
+// ReallyClose is an alias for [MultiReadBody.Close] retained for compatibility.
+func (m *MultiReadBody) ReallyClose() error {
+	return m.Close()
 }
 
 // JitterReader applies artificial delay prior to initial stream reads.

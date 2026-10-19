@@ -387,29 +387,37 @@ func TestStreamHelpers_Compact_HTMLEscape(t *testing.T) {
 	require.NoError(t, json.Compact(&compactBuf, srcJSON))
 	assert.Equal(t, `{"key":"value"}`, compactBuf.String())
 
-	// 2. HTMLEscape
+	// 2. HTMLEscape (including U+2028 and U+2029)
 	var htmlBuf bytes.Buffer
-	srcHTML := []byte(`{"tag":"<script>&foo</script>"}`)
+	srcHTML := []byte("{\"tag\":\"<script>&foo\u2028\u2029</script>\"}")
 	json.HTMLEscape(&htmlBuf, srcHTML)
-	assert.Contains(t, htmlBuf.String(), `\u003cscript\u003e\u0026foo\u003c/script\u003e`)
+	assert.Contains(t, htmlBuf.String(), `\u003cscript\u003e\u0026foo\u2028\u2029\u003c/script\u003e`)
 
-	// 3. Decoder More and InputOffset
+	// 3. Decoder More (before first Decode) and InputOffset
 	dec := json.NewDecoder(strings.NewReader(`[1, 2, 3]`))
 	dec.UseNumber()
 	dec.DisallowUnknownFields()
 	assert.Equal(t, int64(0), dec.InputOffset())
+	assert.True(t, dec.More())
 
 	var nums []int
 	require.NoError(t, dec.Decode(&nums))
 	assert.Equal(t, []int{1, 2, 3}, nums)
 	assert.Greater(t, dec.InputOffset(), int64(0))
+	assert.False(t, dec.More())
 
 	// 4. Encoder SetEscapeHTML
 	var encBuf bytes.Buffer
 	enc := json.NewEncoder(&encBuf)
 	enc.SetEscapeHTML(false)
-	require.NoError(t, enc.Encode(map[string]string{"tag": "test"}))
-	assert.Contains(t, encBuf.String(), `"tag":"test"`)
+	require.NoError(t, enc.Encode(map[string]string{"tag": "<script>&foo</script>"}))
+	assert.Contains(t, encBuf.String(), `"tag":"<script>&foo</script>"`)
+
+	var encEscBuf bytes.Buffer
+	encEsc := json.NewEncoder(&encEscBuf)
+	encEsc.SetEscapeHTML(true)
+	require.NoError(t, encEsc.Encode(map[string]string{"tag": "<script>&foo</script>"}))
+	assert.Contains(t, encEscBuf.String(), `\u003cscript\u003e\u0026foo\u003c/script\u003e`)
 }
 
 type RecursiveNode struct {

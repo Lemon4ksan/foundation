@@ -397,29 +397,9 @@ func (c *Chain) Bytes() []byte {
 // AppendBytes appends all unread bytes in the chain to dst and returns the resulting slice,
 // avoiding allocations if dst has sufficient capacity.
 func (c *Chain) AppendBytes(dst []byte) []byte {
-	if c.length == 0 {
-		return dst
+	for chunk := range c.ChunksSeq() {
+		dst = append(dst, chunk...)
 	}
-
-	for i, chunk := range c.chunks {
-		var start, end int
-		if i == 0 {
-			start = c.headIdx
-		} else {
-			start = 0
-		}
-
-		if i == len(c.chunks)-1 {
-			end = c.tailIdx
-		} else {
-			end = DefaultChunkSize
-		}
-
-		if end > start {
-			dst = append(dst, chunk[start:end]...)
-		}
-	}
-
 	return dst
 }
 
@@ -435,27 +415,8 @@ func (c *Chain) Chunks() [][]byte {
 // AppendChunks appends slices of all active chunks to dst and returns the resulting slice,
 // avoiding allocations if dst has sufficient capacity.
 func (c *Chain) AppendChunks(dst [][]byte) [][]byte {
-	if c.length == 0 {
-		return dst
-	}
-
-	for i, chunk := range c.chunks {
-		var start, end int
-		if i == 0 {
-			start = c.headIdx
-		} else {
-			start = 0
-		}
-
-		if i == len(c.chunks)-1 {
-			end = c.tailIdx
-		} else {
-			end = DefaultChunkSize
-		}
-
-		if end > start {
-			dst = append(dst, chunk[start:end])
-		}
+	for chunk := range c.ChunksSeq() {
+		dst = append(dst, chunk)
 	}
 	return dst
 }
@@ -512,10 +473,3 @@ func (c *Chain) Reset() {
 func (c *Chain) Release() {
 	c.Reset()
 }
-
-var (
-	// ErrBufferFull indicates that the buffer has reached its maximum capacity.
-	ErrBufferFull = errors.New("bufkit: buffer is full")
-	// ErrBufferEmpty indicates that the buffer contains no data.
-	ErrBufferEmpty = errors.New("bufkit: buffer is empty")
-)

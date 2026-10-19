@@ -8,6 +8,8 @@ import (
 	"iter"
 	"math/bits"
 	"sync/atomic"
+
+	"golang.org/x/sys/cpu"
 )
 
 // Ring represents a lock-free, cacheline-aligned generic circular ring buffer.
@@ -22,12 +24,12 @@ type Ring[T any] struct {
 	// Producer cacheline
 	tail       atomic.Uint64
 	cachedHead uint64
-	_          [48]byte
+	_          cpu.CacheLinePad
 
 	// Consumer cacheline
 	head       atomic.Uint64
 	cachedTail uint64
-	_          [48]byte
+	_          cpu.CacheLinePad
 
 	// Read-only shared cacheline
 	mask     uint64
@@ -209,8 +211,23 @@ func (r *Ring[T]) Reset() {
 	r.cachedHead = 0
 }
 
-// All returns an iterator over elements currently in the ring buffer in FIFO order without popping them.
-func (r *Ring[T]) All() iter.Seq[T] {
+// All returns an iterator yielding logical index (0 to len-1) and element in FIFO order without popping them.
+func (r *Ring[T]) All() iter.Seq2[int, T] {
+	return func(yield func(int, T) bool) {
+		head := r.head.Load()
+		tail := r.tail.Load()
+		idx := 0
+		for i := head; i < tail; i++ {
+			if !yield(idx, r.slots[i&r.mask]) {
+				return
+			}
+			idx++
+		}
+	}
+}
+
+// Values returns an iterator over elements currently in the ring buffer in FIFO order without popping them.
+func (r *Ring[T]) Values() iter.Seq[T] {
 	return func(yield func(T) bool) {
 		head := r.head.Load()
 		tail := r.tail.Load()
@@ -220,12 +237,6 @@ func (r *Ring[T]) All() iter.Seq[T] {
 			}
 		}
 	}
-}
-
-// Values returns an iterator over elements currently in the ring buffer in FIFO order without popping them;
-// it is an alias for [Ring.All].
-func (r *Ring[T]) Values() iter.Seq[T] {
-	return r.All()
 }
 
 // Drain pops and yields all items from the ring buffer in FIFO order until empty or early termination.

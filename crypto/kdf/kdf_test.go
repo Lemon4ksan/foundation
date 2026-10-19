@@ -46,6 +46,11 @@ func TestHKDF_RFC5869TestCase1(t *testing.T) {
 	if err != nil || !bytes.Equal(derived, expectedOKM) {
 		t.Fatalf("DeriveKey mismatch")
 	}
+
+	_, err = kdf.Expand(sha256.New, prk, info, -1)
+	if err == nil || err.Error() != "kdf: requested key length exceeds maximum limit" {
+		t.Fatalf("expected kdf: error prefix, got %v", err)
+	}
 }
 
 func TestPBKDF2_RFC6070TestCase1(t *testing.T) {

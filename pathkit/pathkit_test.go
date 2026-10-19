@@ -528,6 +528,15 @@ func TestPath_ZeroAllocGuarantees(t *testing.T) {
 		_, _ = pIdentical.Rel(pIncompat)
 	})
 	assert.Equal(t, 0.0, allocsRelIncompat)
+
+	// 9. HasPrefix and Rel zero-alloc on multi-segment paths
+	pBase := pathkit.New("/var/log")
+	allocsHasPrefix := testing.AllocsPerRun(1000, func() {
+		_ = pIdentical.HasPrefix(pBase)
+		_, _ = pIdentical.Rel(pBase)
+		_, _ = pBase.Rel(pIdentical)
+	})
+	assert.Equal(t, 0.0, allocsHasPrefix)
 }
 
 func BenchmarkSegmentsSeq_ZeroAlloc(b *testing.B) {

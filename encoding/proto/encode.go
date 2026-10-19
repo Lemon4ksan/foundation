@@ -153,7 +153,7 @@ func Int64Field(num uint32, val int64) Field {
 //
 //go:inline
 func Int32Field(num uint32, val int32) Field {
-	return Field{Num: num, Type: WireVarint, Raw: uint64(uint32(val))}
+	return Field{Num: num, Type: WireVarint, Raw: uint64(val)}
 }
 
 // Uint64Field constructs a WireVarint Field from a uint64.

@@ -16,5 +16,5 @@
 //
 // Accepted cost: manual offset arithmetic and in-situ byte parsing
 //
-// Allocations: zero
+// Allocations: amortized
 package wire

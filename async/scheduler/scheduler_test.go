@@ -423,3 +423,86 @@ func TestAllocations(t *testing.T) {
 		t.Fatalf("expected 0 allocs, got %v", allocs)
 	}
 }
+
+func TestScheduler_SetMaxConcurrency_Race(t *testing.T) {
+	sched := New()
+	sched.SetMaxConcurrency(2)
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	go sched.Start(ctx)
+
+	var executed atomic.Int32
+	for i := range 20 {
+		task := sched.AcquireTask()
+		task.Priority = PriorityHigh
+		task.NextRun = time.Now()
+		task.Execute = func(ctx context.Context) error {
+			time.Sleep(2 * time.Millisecond)
+			executed.Add(1)
+			return nil
+		}
+		sched.Schedule(task)
+		if i%3 == 0 {
+			sched.SetMaxConcurrency((i % 4) + 1)
+		} else if i%5 == 0 {
+			sched.SetMaxConcurrency(0)
+		}
+	}
+
+	deadline := time.Now().Add(2 * time.Second)
+	for executed.Load() < 20 && time.Now().Before(deadline) {
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	cancel()
+	if executed.Load() != 20 {
+		t.Fatalf("expected 20 tasks executed, got %d", executed.Load())
+	}
+}
+
+func TestScheduler_CancelPeriodicTaskWhileRunning(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		sched := New()
+		ctx, cancel := context.WithCancel(t.Context())
+		defer cancel()
+
+		var runs atomic.Int32
+		started := make(chan struct{})
+		proceed := make(chan struct{})
+
+		task := sched.AcquireTask()
+		task.ID = "periodic-cancel-mid"
+		task.Priority = PriorityHigh
+		task.Interval = 1 * time.Hour
+		task.FixedRate = true
+		task.NextRun = time.Now().Add(1 * time.Hour)
+		task.Execute = func(ctx context.Context) error {
+			if runs.Add(1) == 1 {
+				close(started)
+				<-proceed
+			}
+			return nil
+		}
+
+		sched.Schedule(task)
+		go sched.Start(ctx)
+
+		time.Sleep(1 * time.Hour)
+		<-started
+
+		// Cancel while task.Execute is actively running
+		sched.CancelTask("periodic-cancel-mid")
+		sched.CancelTask("") // no-op coverage
+		close(proceed)
+
+		time.Sleep(5 * time.Hour)
+		cancel()
+		synctest.Wait()
+
+		if got := runs.Load(); got != 1 {
+			t.Fatalf("expected periodic task cancelled mid-run to execute only once, got %d", got)
+		}
+	})
+}

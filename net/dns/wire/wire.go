@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package wire provides low-level utilities, constants, encoders, and decoders
-// for standard RFC 1035, RFC 2181, RFC 3596, RFC 6891, and RFC 9460 DNS wire messages.
 package wire
 
 import (
@@ -698,7 +696,7 @@ func parseHTTPSRecord(msg []byte, offset int) ([]byte, int, error) {
 	rdata := msg[rdataOffset : rdataOffset+rdLength]
 	svcOffset := 2 // Skip SvcPriority
 
-	svcOffset, err = SkipDomainName(rdata, svcOffset)
+	svcOffset, err = skipUncompressedDomainName(rdata, svcOffset)
 	if err != nil {
 		return nil, totalConsumed, nil //nolint:nilerr
 	}
@@ -723,4 +721,31 @@ func parseHTTPSRecord(msg []byte, offset int) ([]byte, int, error) {
 	}
 
 	return nil, totalConsumed, nil
+}
+
+// skipUncompressedDomainName advances past an uncompressed DNS domain name per RFC 9460 §2.1,
+// rejecting any compression pointers (b&0xC0 != 0).
+func skipUncompressedDomainName(data []byte, offset int) (int, error) {
+	curr := offset
+	totalLen := 0
+	for {
+		if curr >= len(data) {
+			return 0, ErrTruncatedDNSMessage
+		}
+		length := int(data[curr])
+		if (length & 0xc0) != 0 {
+			return 0, ErrTruncatedDNSMessage
+		}
+		if length == 0 {
+			return curr + 1, nil
+		}
+		if length > MaxLabelLength || curr+1+length > len(data) {
+			return 0, ErrTruncatedDNSMessage
+		}
+		totalLen += 1 + length
+		if totalLen+1 > MaxDomainNameLength {
+			return 0, ErrTruncatedDNSMessage
+		}
+		curr += 1 + length
+	}
 }

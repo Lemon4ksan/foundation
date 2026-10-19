@@ -16,7 +16,7 @@ import (
 	"github.com/lemon4ksan/foundation/testing/require"
 )
 
-func TestBase64EncodeURL(t *testing.T) {
+func TestEncodeURL(t *testing.T) {
 	t.Parallel()
 
 	testData := [][]byte{
@@ -32,42 +32,42 @@ func TestBase64EncodeURL(t *testing.T) {
 
 	for _, data := range testData {
 		expected := stdbase64.RawURLEncoding.EncodeToString(data)
-		dst := make([]byte, base64.Base64URLEncodedLen(len(data)))
-		n := base64.Base64EncodeURL(data, dst)
+		dst := make([]byte, base64.URLEncodedLen(len(data)))
+		n := base64.EncodeURL(data, dst)
 		assert.Equal(t, len(expected), n)
 		assert.Equal(t, expected, string(dst[:n]))
 	}
 }
 
-func TestBase64EncodeURL_DstTooSmall(t *testing.T) {
+func TestEncodeURL_DstTooSmall(t *testing.T) {
 	t.Parallel()
 
 	defer func() {
 		r := recover()
 		assert.NotNil(t, r, "expected panic for small dst buffer")
-		assert.Equal(t, "base64: dst buffer too small for Base64EncodeURL", r)
+		assert.Equal(t, "base64: dst buffer too small for EncodeURL", r)
 	}()
 
 	src := []byte("hello world")
 	dst := make([]byte, 2) // too small
-	_ = base64.Base64EncodeURL(src, dst)
+	_ = base64.EncodeURL(src, dst)
 }
 
-func BenchmarkBase64EncodeURL_SHA256(b *testing.B) {
+func BenchmarkEncodeURL_SHA256(b *testing.B) {
 	sum := sha256.Sum256([]byte("dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"))
 	dst := make([]byte, 64)
 
 	b.ReportAllocs()
 
 	for b.Loop() {
-		_ = base64.Base64EncodeURL(sum[:], dst)
+		_ = base64.EncodeURL(sum[:], dst)
 	}
 }
 
-func TestBase64EncodeURL_Adversarial_PanicContract(t *testing.T) {
+func TestEncodeURL_Adversarial_PanicContract(t *testing.T) {
 	t.Parallel()
 
-	expectedPanicMsg := "base64: dst buffer too small for Base64EncodeURL"
+	expectedPanicMsg := "base64: dst buffer too small for EncodeURL"
 
 	lengths := []int{1, 2, 3, 4, 10, 64, 128, 1024, 8192}
 
@@ -78,7 +78,7 @@ func TestBase64EncodeURL_Adversarial_PanicContract(t *testing.T) {
 				src[i] = byte(i % 256)
 			}
 
-			reqLen := base64.Base64URLEncodedLen(srcLen)
+			reqLen := base64.URLEncodedLen(srcLen)
 
 			// Exact 1 byte less than required must panic with exact message
 			t.Run("one_byte_short_panics", func(t *testing.T) {
@@ -88,7 +88,7 @@ func TestBase64EncodeURL_Adversarial_PanicContract(t *testing.T) {
 					require.NotNil(t, r, "must panic when dst is 1 byte too short")
 					assert.Equal(t, expectedPanicMsg, r)
 				}()
-				_ = base64.Base64EncodeURL(src, dst)
+				_ = base64.EncodeURL(src, dst)
 			})
 
 			// 0-length dst must panic
@@ -99,13 +99,13 @@ func TestBase64EncodeURL_Adversarial_PanicContract(t *testing.T) {
 					require.NotNil(t, r, "must panic when dst is 0 length")
 					assert.Equal(t, expectedPanicMsg, r)
 				}()
-				_ = base64.Base64EncodeURL(src, dst)
+				_ = base64.EncodeURL(src, dst)
 			})
 
 			// Exactly required length must NOT panic
 			t.Run("exact_length_succeeds", func(t *testing.T) {
 				dst := make([]byte, reqLen)
-				n := base64.Base64EncodeURL(src, dst)
+				n := base64.EncodeURL(src, dst)
 				assert.Equal(t, reqLen, n)
 
 				expected := stdbase64.RawURLEncoding.EncodeToString(src)
@@ -115,7 +115,7 @@ func TestBase64EncodeURL_Adversarial_PanicContract(t *testing.T) {
 			// Larger length must NOT panic
 			t.Run("larger_length_succeeds", func(t *testing.T) {
 				dst := make([]byte, reqLen+10)
-				n := base64.Base64EncodeURL(src, dst)
+				n := base64.EncodeURL(src, dst)
 				assert.Equal(t, reqLen, n)
 
 				expected := stdbase64.RawURLEncoding.EncodeToString(src)
@@ -128,12 +128,12 @@ func TestBase64EncodeURL_Adversarial_PanicContract(t *testing.T) {
 		// When src is empty, reqLen is 0, so dst of length 0 must succeed without panic
 		var src []byte
 		var dst []byte
-		n := base64.Base64EncodeURL(src, dst)
+		n := base64.EncodeURL(src, dst)
 		assert.Equal(t, 0, n)
 	})
 }
 
-func TestBase64EncodeURL_Adversarial_Concurrency(t *testing.T) {
+func TestEncodeURL_Adversarial_Concurrency(t *testing.T) {
 	t.Parallel()
 
 	var wg sync.WaitGroup
@@ -144,10 +144,10 @@ func TestBase64EncodeURL_Adversarial_Concurrency(t *testing.T) {
 		go func(workerID int) {
 			defer wg.Done()
 			src := []byte(fmt.Sprintf("worker data payload for thread id %d with arbitrary values", workerID))
-			reqLen := base64.Base64URLEncodedLen(len(src))
+			reqLen := base64.URLEncodedLen(len(src))
 			dst := make([]byte, reqLen)
 
-			n := base64.Base64EncodeURL(src, dst)
+			n := base64.EncodeURL(src, dst)
 			assert.Equal(t, reqLen, n)
 
 			expected := stdbase64.RawURLEncoding.EncodeToString(src)
@@ -158,16 +158,16 @@ func TestBase64EncodeURL_Adversarial_Concurrency(t *testing.T) {
 	wg.Wait()
 }
 
-func TestBase64EncodeURL_Adversarial_ZeroAlloc(t *testing.T) {
+func TestEncodeURL_Adversarial_ZeroAlloc(t *testing.T) {
 	src := []byte("hello world zero allocation base64 test buffer")
-	reqLen := base64.Base64URLEncodedLen(len(src))
+	reqLen := base64.URLEncodedLen(len(src))
 	dst := make([]byte, reqLen)
 
 	allocs := testing.AllocsPerRun(100, func() {
-		n := base64.Base64EncodeURL(src, dst)
+		n := base64.EncodeURL(src, dst)
 		if n != reqLen {
 			t.Fatal("length mismatch")
 		}
 	})
-	assert.Equal(t, float64(0), allocs, "Base64EncodeURL must be 0 allocs/op")
+	assert.Equal(t, float64(0), allocs, "EncodeURL must be 0 allocs/op")
 }

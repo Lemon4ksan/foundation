@@ -129,9 +129,6 @@ func (u URLView) IsAbs() bool {
 	return u.Scheme != ""
 }
 
-// QueryValue returns the first value associated with the given key in the raw query, or an empty string and false.
-//
-// If the key exists without percent encoding, it returns a slice directly.
 func unescapeQueryComponent(s string) string {
 	if strings.IndexByte(s, '%') >= 0 || strings.IndexByte(s, '+') >= 0 {
 		if unesc, err := QueryUnescape(s); err == nil {
@@ -783,18 +780,37 @@ func AppendQueryEscapeString(dst []byte, src string) []byte {
 	return AppendQueryEscape(dst, bytesconv.S2B(src))
 }
 
-// AppendPathEscape appends percent-encoded bytes of src to dst according to RFC 3986 §3.3.
-//
-//go:inline
-func AppendPathEscape(dst, src []byte) []byte {
-	return AppendQueryEscape(dst, src)
+var noEscapePathTable = [256]bool{
+	'-': true, '.': true, '_': true, '~': true,
+	'!': true, '$': true, '&': true, '\'': true, '(': true, ')': true,
+	'*': true, '+': true, ',': true, ';': true, '=': true, ':': true, '@': true,
+	'0': true, '1': true, '2': true, '3': true, '4': true, '5': true, '6': true, '7': true, '8': true, '9': true,
+	'A': true, 'B': true, 'C': true, 'D': true, 'E': true, 'F': true, 'G': true, 'H': true, 'I': true, 'J': true,
+	'K': true, 'L': true, 'M': true, 'N': true, 'O': true, 'P': true, 'Q': true, 'R': true, 'S': true, 'T': true,
+	'U': true, 'V': true, 'W': true, 'X': true, 'Y': true, 'Z': true,
+	'a': true, 'b': true, 'c': true, 'd': true, 'e': true, 'f': true, 'g': true, 'h': true, 'i': true, 'j': true,
+	'k': true, 'l': true, 'm': true, 'n': true, 'o': true, 'p': true, 'q': true, 'r': true, 's': true, 't': true,
+	'u': true, 'v': true, 'w': true, 'x': true, 'y': true, 'z': true,
 }
 
-// AppendPathEscapeString appends percent-encoded bytes of string src to dst.
+// AppendPathEscape appends percent-encoded bytes of src to dst according to RFC 3986 §3.3.
+func AppendPathEscape(dst, src []byte) []byte {
+	for _, b := range src {
+		if noEscapePathTable[b] {
+			dst = append(dst, b)
+		} else {
+			dst = append(dst, '%', hexDigits[b>>4], hexDigits[b&15])
+		}
+	}
+
+	return dst
+}
+
+// AppendPathEscapeString appends percent-encoded bytes of string src to dst according to RFC 3986 §3.3.
 //
 //go:inline
 func AppendPathEscapeString(dst []byte, src string) []byte {
-	return AppendQueryEscape(dst, bytesconv.S2B(src))
+	return AppendPathEscape(dst, bytesconv.S2B(src))
 }
 
 // QueryUnescape unescapes URL percent-encoded characters (%XX) and replaces '+' with ' '.

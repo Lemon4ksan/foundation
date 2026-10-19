@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package gomock provides drop-in GoMock compatibility by re-exporting
-// the mock package under the gomock package name.
 package gomock
 
 import (

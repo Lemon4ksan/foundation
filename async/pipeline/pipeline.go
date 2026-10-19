@@ -91,6 +91,21 @@ func TransformSeq[In, Out any](
 	in iter.Seq[In],
 	mapper func(context.Context, In) (Out, error),
 ) iter.Seq2[Out, error] {
+	cfg.resolveDefaults()
+	var lim *rate.Limiter
+	if cfg.RPS > 0 {
+		lim = rate.NewLimiter(rate.Limit(cfg.RPS), cfg.Burst)
+	}
+	return transformSeq(ctx, cfg, lim, in, mapper)
+}
+
+func transformSeq[In, Out any](
+	ctx context.Context,
+	cfg Config,
+	limiter *rate.Limiter,
+	in iter.Seq[In],
+	mapper func(context.Context, In) (Out, error),
+) iter.Seq2[Out, error] {
 	return func(yield func(Out, error) bool) {
 		if mapper == nil {
 			var zero Out
@@ -126,9 +141,13 @@ func TransformSeq[In, Out any](
 			workerWg.Go(func() {
 				defer func() {
 					if r := recover(); r != nil {
+						err := fmt.Errorf("pipeline: mapper panicked: %v", r)
 						select {
 						case <-runCtx.Done():
-						case outCh <- resItem{err: fmt.Errorf("pipeline: mapper panicked: %v", r)}:
+						case outCh <- resItem{err: err}:
+						}
+						if cfg.FailFast {
+							cancel()
 						}
 					}
 				}()
@@ -138,11 +157,27 @@ func TransformSeq[In, Out any](
 						return
 					default:
 					}
+					if limiter != nil {
+						if err := limiter.Wait(runCtx); err != nil {
+							select {
+							case <-runCtx.Done():
+							case outCh <- resItem{err: err}:
+							}
+							if cfg.FailFast {
+								cancel()
+							}
+							return
+						}
+					}
 					out, err := mapper(runCtx, item)
 					select {
 					case <-runCtx.Done():
 						return
 					case outCh <- resItem{out: out, err: err}:
+					}
+					if err != nil && cfg.FailFast {
+						cancel()
+						return
 					}
 				}
 			})
@@ -155,6 +190,10 @@ func TransformSeq[In, Out any](
 
 		for res := range outCh {
 			if !yield(res.out, res.err) {
+				cancel()
+				break
+			}
+			if res.err != nil && cfg.FailFast {
 				cancel()
 				break
 			}
@@ -373,7 +412,7 @@ func (p *Pipeline[In, Out]) TransformSeq(
 	in iter.Seq[In],
 	mapper func(context.Context, In) (Out, error),
 ) iter.Seq2[Out, error] {
-	return TransformSeq(ctx, p.config, in, mapper)
+	return transformSeq(ctx, p.config, p.limiter, in, mapper)
 }
 
 // Stream processes items from the input channel concurrently and sends results to the returned channels.

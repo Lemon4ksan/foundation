@@ -11,10 +11,14 @@ import (
 )
 
 func TestHeap(t *testing.T) {
-	var h Heap[int, string]
+	h := New[int, string]()
 	require.True(t, h.Empty())
 	require.Panics(t, func() { h.Peek() })
 	require.Panics(t, func() { h.Pop() })
+	_, _, ok := h.TryPeek()
+	require.False(t, ok)
+	_, _, ok = h.TryPop()
+	require.False(t, ok)
 
 	h.Push(4, "four")
 	h.Push(1, "one")
@@ -24,12 +28,17 @@ func TestHeap(t *testing.T) {
 	key, value := h.Peek()
 	require.Equal(t, 1, key)
 	require.Equal(t, "one", value)
+	key, value, ok = h.TryPeek()
+	require.True(t, ok)
+	require.Equal(t, 1, key)
+	require.Equal(t, "one", value)
 
 	for _, expected := range []struct {
 		key   int
 		value string
 	}{{1, "one"}, {2, "two"}, {3, "three"}, {4, "four"}} {
-		key, value = h.Pop()
+		key, value, ok = h.TryPop()
+		require.True(t, ok)
 		require.Equal(t, expected.key, key)
 		require.Equal(t, expected.value, value)
 	}

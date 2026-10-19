@@ -145,9 +145,8 @@ func ThrottleFn[T any](interval time.Duration, fn func(T)) func(T) {
 
 // Scheduler coordinates prioritized, time-exact task execution.
 //
-// The zero value is empty and not ready to use.
-// Read-only operations are safe for concurrent use; mutations require external synchronization unless stated otherwise.
-// Note that methods on [Scheduler] manage their own internal locks.
+// The zero value is empty and not ready to use; use [New] to initialize.
+// All exported methods manage their own internal synchronization and are safe for concurrent use.
 type Scheduler struct {
 	mu        sync.Mutex
 	tasks     taskHeap
@@ -198,6 +197,7 @@ func (s *Scheduler) ReleaseTask(t *Task) {
 	}
 
 	t.ID = ""
+	t.Priority = PriorityLow
 	t.Execute = nil
 	t.Interval = 0
 	t.NextRun = time.Time{}
@@ -324,21 +324,26 @@ func (s *Scheduler) Start(ctx context.Context) {
 		}
 
 		task := heap.Pop(&s.tasks).(*Task)
-		if task.ID != "" {
-			delete(s.tasksByID, task.ID)
-		}
 
 		// O(1) Lazy cancellation handling
 		if task.canceled {
+			if task.ID != "" && s.tasksByID[task.ID] == task {
+				delete(s.tasksByID, task.ID)
+			}
 			s.mu.Unlock()
 			s.ReleaseTask(task)
 			continue
 		}
 
+		if task.Interval <= 0 && task.ID != "" && s.tasksByID[task.ID] == task {
+			delete(s.tasksByID, task.ID)
+		}
+
+		sem := s.workerSem
 		s.mu.Unlock()
 
 		s.wg.Add(1)
-		go s.runTask(ctx, task)
+		go s.runTask(ctx, task, sem)
 	}
 }
 
@@ -350,13 +355,13 @@ func (s *Scheduler) triggerWake() {
 }
 
 // runTask executes the work payload of a task, safely recovering from panics.
-func (s *Scheduler) runTask(ctx context.Context, t *Task) {
+func (s *Scheduler) runTask(ctx context.Context, t *Task, sem chan struct{}) {
 	defer s.wg.Done()
 
 	// Enforce bounded concurrency if configured
-	if s.workerSem != nil {
-		s.workerSem <- struct{}{}
-		defer func() { <-s.workerSem }()
+	if sem != nil {
+		sem <- struct{}{}
+		defer func() { <-sem }()
 	}
 
 	defer func() {
@@ -374,9 +379,8 @@ func (s *Scheduler) runTask(ctx context.Context, t *Task) {
 }
 
 func (s *Scheduler) rescheduleOrRelease(t *Task) {
+	s.mu.Lock()
 	if t.Interval > 0 && !t.canceled {
-		s.mu.Lock()
-
 		if t.FixedRate {
 			// Drift-free: calculate strictly from the last scheduled time
 			t.NextRun = t.NextRun.Add(t.Interval)
@@ -397,9 +401,15 @@ func (s *Scheduler) rescheduleOrRelease(t *Task) {
 		s.mu.Unlock()
 
 		s.triggerWake()
-	} else {
-		s.ReleaseTask(t)
+		return
 	}
+
+	if t.ID != "" && s.tasksByID[t.ID] == t {
+		delete(s.tasksByID, t.ID)
+	}
+	s.mu.Unlock()
+
+	s.ReleaseTask(t)
 }
 
 type taskHeap []*Task

@@ -42,20 +42,9 @@ func NewBoxPtr[T any](ptr *T, slot *Slot) Box[T] {
 	}
 }
 
-// Borrow borrows the boxed value as an immutable reference.
-// It acquires a shared immutable borrow on the underlying slot,
-// panicking if the slot is already exclusively borrowed or invalid.
-func (b Box[T]) Borrow() Ref[T] {
-	ref, err := b.TryBorrow()
-	if err != nil {
-		panic(err)
-	}
-	return ref
-}
-
-// TryBorrow attempts to borrow the boxed value as an immutable reference.
+// Borrow attempts to borrow the boxed value as an immutable reference.
 // Returns an error if the resource is already exclusively borrowed or invalid.
-func (b Box[T]) TryBorrow() (Ref[T], error) {
+func (b Box[T]) Borrow() (Ref[T], error) {
 	if b.slot != nil {
 		if err := b.slot.TryAcquireShared(b.gen); err != nil {
 			return Ref[T]{}, err
@@ -64,20 +53,20 @@ func (b Box[T]) TryBorrow() (Ref[T], error) {
 	return Ref[T](b), nil
 }
 
-// BorrowMut borrows the boxed value as an exclusive mutable reference.
-// It acquires an exclusive mutable borrow on the underlying slot,
-// panicking if the slot is already borrowed or invalid.
-func (b *Box[T]) BorrowMut() Mut[T] {
-	mut, err := b.TryBorrowMut()
+// MustBorrow borrows the boxed value as an immutable reference.
+// It acquires a shared immutable borrow on the underlying slot,
+// panicking if the slot is already exclusively borrowed or invalid.
+func (b Box[T]) MustBorrow() Ref[T] {
+	ref, err := b.Borrow()
 	if err != nil {
 		panic(err)
 	}
-	return mut
+	return ref
 }
 
-// TryBorrowMut attempts to borrow the boxed value as an exclusive mutable reference.
+// BorrowMut attempts to borrow the boxed value as an exclusive mutable reference.
 // Returns an error if the resource is actively borrowed or invalid.
-func (b *Box[T]) TryBorrowMut() (Mut[T], error) {
+func (b *Box[T]) BorrowMut() (Mut[T], error) {
 	if b.slot != nil {
 		if err := b.slot.TryAcquireExclusive(b.gen); err != nil {
 			return Mut[T]{}, err
@@ -88,6 +77,17 @@ func (b *Box[T]) TryBorrowMut() (Mut[T], error) {
 		slot: b.slot,
 		gen:  b.gen,
 	}, nil
+}
+
+// MustBorrowMut borrows the boxed value as an exclusive mutable reference.
+// It acquires an exclusive mutable borrow on the underlying slot,
+// panicking if the slot is already borrowed or invalid.
+func (b *Box[T]) MustBorrowMut() Mut[T] {
+	mut, err := b.BorrowMut()
+	if err != nil {
+		panic(err)
+	}
+	return mut
 }
 
 // Get returns the underlying pointer after verifying generation validity.

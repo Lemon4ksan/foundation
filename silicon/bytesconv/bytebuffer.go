@@ -163,19 +163,3 @@ func AcquireByteBuffer() *ByteBuffer {
 func ReleaseByteBuffer(b *ByteBuffer) {
 	defaultByteBufferPool.Put(b)
 }
-
-// Buffer is an alias for [ByteBuffer] to eliminate package stuttering.
-type Buffer = ByteBuffer
-
-// BufferPool is an alias for [ByteBufferPool] to eliminate package stuttering.
-type BufferPool = ByteBufferPool
-
-// AcquireBuffer gets a [Buffer] from the default pool without package stuttering.
-func AcquireBuffer() *Buffer {
-	return AcquireByteBuffer()
-}
-
-// ReleaseBuffer puts a [Buffer] back into the default pool without package stuttering.
-func ReleaseBuffer(b *Buffer) {
-	ReleaseByteBuffer(b)
-}

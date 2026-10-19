@@ -236,11 +236,11 @@ func TestListSelfOperationsAndNoops(t *testing.T) {
 }
 
 func TestListPushListConcatenation(t *testing.T) {
-	l1 := list.NewCapacity[string](12)
+	l1 := list.NewWithCapacity[string](12)
 	l1.PushBack("a")
 	l1.PushBack("b")
 
-	l2 := list.NewCapacity[string](6)
+	l2 := list.NewWithCapacity[string](6)
 	l2.PushBack("c")
 	l2.PushBack("d")
 
@@ -250,7 +250,7 @@ func TestListPushListConcatenation(t *testing.T) {
 	checkListPointers(t, l2, []string{"c", "d"})
 
 	// PushFrontList with non-empty list
-	l3 := list.NewCapacity[string](6)
+	l3 := list.NewWithCapacity[string](6)
 	l3.PushBack("x")
 	l3.PushBack("y")
 
@@ -265,14 +265,14 @@ func TestListPushListConcatenation(t *testing.T) {
 	checkListPointers(t, l1, []string{"x", "y", "a", "b", "c", "d"})
 
 	// Self concatenation at back
-	lSelf := list.NewCapacity[int](10)
+	lSelf := list.NewWithCapacity[int](10)
 	lSelf.PushBack(1)
 	lSelf.PushBack(2)
 	lSelf.PushBackList(lSelf)
 	checkListPointers(t, lSelf, []int{1, 2, 1, 2})
 
 	// Self concatenation at front
-	lSelfFront := list.NewCapacity[int](10)
+	lSelfFront := list.NewWithCapacity[int](10)
 	lSelfFront.PushBack(1)
 	lSelfFront.PushBack(2)
 	lSelfFront.PushFrontList(lSelfFront)
@@ -292,7 +292,7 @@ func TestListIterators(t *testing.T) {
 		t.Fatalf("emptyList.Backward() yielded item")
 	}
 
-	l := list.NewCapacity[int](8)
+	l := list.NewWithCapacity[int](8)
 	for i := 1; i <= 5; i++ {
 		l.PushBack(i * 10)
 	}
@@ -411,7 +411,7 @@ func TestListTableDriven(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			l := list.NewCapacity[int](16)
+			l := list.NewWithCapacity[int](16)
 			for idx, s := range tc.steps {
 				switch s.op {
 				case "push_back":
@@ -462,7 +462,7 @@ func TestListTableDriven(t *testing.T) {
 
 func TestListPropertyBasedRandomOps(t *testing.T) {
 	const maxCap = 80
-	l := list.NewCapacity[int](maxCap)
+	l := list.NewWithCapacity[int](maxCap)
 	var model []int
 
 	rng := rand.New(rand.NewSource(42))
@@ -604,7 +604,7 @@ func TestListPropertyBasedRandomOps(t *testing.T) {
 // -----------------------------------------------------------------------------
 
 func BenchmarkList_PushBack(b *testing.B) {
-	l := list.NewCapacity[int](b.N)
+	l := list.NewWithCapacity[int](b.N)
 	b.ReportAllocs()
 	b.ResetTimer()
 
@@ -616,7 +616,7 @@ func BenchmarkList_PushBack(b *testing.B) {
 }
 
 func BenchmarkList_PushFront(b *testing.B) {
-	l := list.NewCapacity[int](b.N)
+	l := list.NewWithCapacity[int](b.N)
 	b.ReportAllocs()
 	b.ResetTimer()
 
@@ -628,7 +628,7 @@ func BenchmarkList_PushFront(b *testing.B) {
 }
 
 func BenchmarkList_PushBackRemove(b *testing.B) {
-	l := list.NewCapacity[int](16)
+	l := list.NewWithCapacity[int](16)
 	b.ReportAllocs()
 	b.ResetTimer()
 
@@ -639,7 +639,7 @@ func BenchmarkList_PushBackRemove(b *testing.B) {
 }
 
 func BenchmarkList_PushFrontRemove(b *testing.B) {
-	l := list.NewCapacity[int](16)
+	l := list.NewWithCapacity[int](16)
 	b.ReportAllocs()
 	b.ResetTimer()
 
@@ -650,7 +650,7 @@ func BenchmarkList_PushFrontRemove(b *testing.B) {
 }
 
 func BenchmarkList_MoveToFrontMoveToBack(b *testing.B) {
-	l := list.NewCapacity[int](1024)
+	l := list.NewWithCapacity[int](1024)
 	for i := range 1024 {
 		l.PushBack(i)
 	}
@@ -665,7 +665,7 @@ func BenchmarkList_MoveToFrontMoveToBack(b *testing.B) {
 }
 
 func BenchmarkList_IteratorsValues(b *testing.B) {
-	l := list.NewCapacity[int](1000)
+	l := list.NewWithCapacity[int](1000)
 	for i := range 1000 {
 		l.PushBack(i)
 	}
@@ -682,7 +682,7 @@ func BenchmarkList_IteratorsValues(b *testing.B) {
 }
 
 func BenchmarkList_IteratorsAll(b *testing.B) {
-	l := list.NewCapacity[int](1000)
+	l := list.NewWithCapacity[int](1000)
 	for i := range 1000 {
 		l.PushBack(i)
 	}
@@ -699,7 +699,7 @@ func BenchmarkList_IteratorsAll(b *testing.B) {
 }
 
 func BenchmarkList_IteratorsBackward(b *testing.B) {
-	l := list.NewCapacity[int](1000)
+	l := list.NewWithCapacity[int](1000)
 	for i := range 1000 {
 		l.PushBack(i)
 	}
