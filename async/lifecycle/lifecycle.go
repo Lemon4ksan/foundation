@@ -47,9 +47,8 @@ type Dependent interface {
 
 // Orchestrator coordinates the initialization, startup, and graceful shutdown of registered [Service] instances.
 //
-// The zero value is empty and not ready to use.
-// Read-only operations are safe for concurrent use; mutations require external synchronization unless stated otherwise.
-// Note that methods on [Orchestrator] manage their own internal locks.
+// The zero value is empty and not ready to use; use [NewOrchestrator] to initialize.
+// All exported methods manage their own internal synchronization and are safe for concurrent use.
 type Orchestrator struct {
 	mu       sync.RWMutex
 	services map[string]Service

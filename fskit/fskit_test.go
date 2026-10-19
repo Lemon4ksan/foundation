@@ -225,7 +225,7 @@ func TestWalk_Direct(t *testing.T) {
 		if e.SizeBytes() != e.Size {
 			t.Errorf("size mismatch: %d vs %d", e.SizeBytes(), e.Size)
 		}
-		if e.ModTimeUTC() != e.ModTime {
+		if e.ModTimeUTC() != e.ModTime.UTC() {
 			t.Errorf("modtime mismatch")
 		}
 		if e.Sys() != nil {

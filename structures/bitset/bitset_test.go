@@ -552,21 +552,36 @@ func TestIterators(t *testing.T) {
 	}
 	require.Equal(t, indices[:3], early)
 
-	// All() and Values() alias parity
-	var allYielded, valYielded []int
-	for idx := range b.All() {
+	// All() and Values() parity
+	var allOrds, allYielded, valYielded []int
+	for ord, idx := range b.All() {
+		allOrds = append(allOrds, ord)
 		allYielded = append(allYielded, idx)
 	}
 	for idx := range b.Values() {
 		valYielded = append(valYielded, idx)
 	}
+	require.Equal(t, []int{0, 1, 2, 3, 4, 5, 6, 7}, allOrds)
 	require.Equal(t, indices, allYielded)
 	require.Equal(t, indices, valYielded)
+
+	// Early exit on All()
+	var earlyAll []int
+	for _, idx := range b.All() {
+		earlyAll = append(earlyAll, idx)
+		if len(earlyAll) == 2 {
+			break
+		}
+	}
+	require.Equal(t, indices[:2], earlyAll)
 
 	// Empty bitset iterator
 	bEmpty := New(0)
 	for range bEmpty.Bits() {
 		t.Fatal("empty bitset should yield no items")
+	}
+	for range bEmpty.All() {
+		t.Fatal("empty bitset All() should yield no items")
 	}
 }
 

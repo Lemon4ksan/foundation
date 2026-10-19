@@ -19,7 +19,7 @@ import (
 func TestSPSCRingBuffer_BasicOperations(t *testing.T) {
 	t.Parallel()
 
-	buf := ringbuf.NewSPSCRingBuffer[int](4)
+	buf := ringbuf.NewSPSC[int](4)
 	assert.Equal(t, 4, buf.Cap())
 	assert.Equal(t, 0, buf.Len())
 	assert.True(t, buf.IsEmpty())
@@ -69,7 +69,7 @@ func TestSPSCRingBuffer_BasicOperations(t *testing.T) {
 func TestSPSCRingBuffer_Drain(t *testing.T) {
 	t.Parallel()
 
-	buf := ringbuf.NewSPSCRingBuffer[int](8)
+	buf := ringbuf.NewSPSC[int](8)
 	// Empty drain
 	for range buf.Drain() {
 		t.Fatal("expected empty drain")
@@ -102,7 +102,7 @@ func TestSPSCRingBuffer_ConcurrentProducerConsumer(t *testing.T) {
 
 	const itemCount = 100_000
 
-	buf := ringbuf.NewSPSCRingBuffer[int](1024)
+	buf := ringbuf.NewSPSC[int](1024)
 
 	var wg sync.WaitGroup
 
@@ -147,7 +147,7 @@ func TestSPSCRingBuffer_ConcurrentProducerConsumer(t *testing.T) {
 func TestSPSCRingBuffer_LocalCacheCoherency(t *testing.T) {
 	t.Parallel()
 
-	buf := ringbuf.NewSPSCRingBuffer[int](8)
+	buf := ringbuf.NewSPSC[int](8)
 
 	// Step 1: Fill the buffer completely (8 items).
 	// Under local caching, producer never loads consumer's tail until buffer is full.
@@ -189,7 +189,7 @@ func TestSPSCRingBuffer_LocalCacheCoherency(t *testing.T) {
 }
 
 func BenchmarkSPSCRingBuffer_PushPop(b *testing.B) {
-	buf := ringbuf.NewSPSCRingBuffer[int](1024)
+	buf := ringbuf.NewSPSC[int](1024)
 	val := 42
 
 	b.ReportAllocs()
@@ -201,7 +201,7 @@ func BenchmarkSPSCRingBuffer_PushPop(b *testing.B) {
 }
 
 func BenchmarkSPSCRingBuffer_Concurrent(b *testing.B) {
-	buf := ringbuf.NewSPSCRingBuffer[int](1024)
+	buf := ringbuf.NewSPSC[int](1024)
 	val := 42
 
 	var active atomic.Bool
@@ -227,7 +227,7 @@ func BenchmarkSPSCRingBuffer_Concurrent(b *testing.B) {
 }
 
 func BenchmarkSPSCRingBuffer_Concurrent_Cap64(b *testing.B) {
-	buf := ringbuf.NewSPSCRingBuffer[int](64)
+	buf := ringbuf.NewSPSC[int](64)
 	val := 42
 
 	var active atomic.Bool
@@ -253,7 +253,7 @@ func BenchmarkSPSCRingBuffer_Concurrent_Cap64(b *testing.B) {
 }
 
 func BenchmarkSPSCRingBuffer_Concurrent_Cap65536(b *testing.B) {
-	buf := ringbuf.NewSPSCRingBuffer[int](65536)
+	buf := ringbuf.NewSPSC[int](65536)
 	val := 42
 
 	var active atomic.Bool
@@ -279,7 +279,7 @@ func BenchmarkSPSCRingBuffer_Concurrent_Cap65536(b *testing.B) {
 }
 
 func TestSPSCRingBuffer_Clear(t *testing.T) {
-	buf := ringbuf.NewSPSCRingBuffer[int](8)
+	buf := ringbuf.NewSPSC[int](8)
 	vals := []int{10, 20, 30}
 	for i := range vals {
 		require.True(t, buf.Push(&vals[i]))
@@ -298,7 +298,7 @@ func TestSPSCRingBuffer_GCLeak(t *testing.T) {
 		val     int
 	}
 
-	buf := ringbuf.NewSPSCRingBuffer[trackedObj](8)
+	buf := ringbuf.NewSPSC[trackedObj](8)
 	var finalized atomic.Int32
 
 	obj := &trackedObj{val: 99}
@@ -326,7 +326,7 @@ func TestSPSCRingBuffer_GCLeak(t *testing.T) {
 }
 
 func TestSPSCRingBuffer_WrapAround(t *testing.T) {
-	buf := ringbuf.NewSPSCRingBuffer[int](4)
+	buf := ringbuf.NewSPSC[int](4)
 	val := 123
 	// Cycle through multiple buffer wrap boundaries
 	for range 100 {
@@ -340,7 +340,7 @@ func TestSPSCRingBuffer_WrapAround(t *testing.T) {
 }
 
 func TestSPSCRingBuffer_ZeroAlloc(t *testing.T) {
-	buf := ringbuf.NewSPSCRingBuffer[int](64)
+	buf := ringbuf.NewSPSC[int](64)
 	val := 42
 
 	allocs := testing.AllocsPerRun(100, func() {

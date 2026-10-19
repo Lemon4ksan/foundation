@@ -15,17 +15,28 @@ import (
 )
 
 func TestPushPeekPop(t *testing.T) {
-	r := Buffer[int]{}
+	r := New[int]()
 	require.Equal(t, 0, len(r.ring))
-	require.Panics(t, func() { r.PopFront() })
+	v, ok := r.PopFront()
+	require.False(t, ok)
+	require.Equal(t, 0, v)
+	v, ok = r.PeekFront()
+	require.False(t, ok)
+	require.Equal(t, 0, v)
+	require.Panics(t, func() { r.MustPopFront() })
+	require.Panics(t, func() { r.MustPeekFront() })
 	r.PushBack(1)
 	r.PushBack(2)
 	r.PushBack(3)
-	require.Equal(t, 1, r.PeekFront())
-	require.Equal(t, 1, r.PeekFront())
-	require.Equal(t, 1, r.PopFront())
-	require.Equal(t, 2, r.PeekFront())
-	require.Equal(t, 2, r.PopFront())
+	require.Equal(t, 1, r.MustPeekFront())
+	v, ok = r.PeekFront()
+	require.True(t, ok)
+	require.Equal(t, 1, v)
+	require.Equal(t, 1, r.MustPopFront())
+	require.Equal(t, 2, r.MustPeekFront())
+	v, ok = r.PopFront()
+	require.True(t, ok)
+	require.Equal(t, 2, v)
 	r.PushBack(4)
 	r.PushBack(5)
 	require.Equal(t, 3, r.Len())
@@ -33,11 +44,11 @@ func TestPushPeekPop(t *testing.T) {
 	require.Equal(t, 4, r.Len())
 	r.PushBack(7) // grow with the buffer wrapped around
 	require.Equal(t, 5, r.Len())
-	require.Equal(t, 3, r.PopFront())
-	require.Equal(t, 4, r.PopFront())
-	require.Equal(t, 5, r.PopFront())
-	require.Equal(t, 6, r.PopFront())
-	require.Equal(t, 7, r.PopFront())
+	require.Equal(t, 3, r.MustPopFront())
+	require.Equal(t, 4, r.MustPopFront())
+	require.Equal(t, 5, r.MustPopFront())
+	require.Equal(t, 6, r.MustPopFront())
+	require.Equal(t, 7, r.MustPopFront())
 }
 
 func TestPanicOnEmptyBuffer(t *testing.T) {
@@ -50,7 +61,7 @@ func TestPanicOnEmptyBuffer(t *testing.T) {
 			val := recover()
 			require.Equal(t, "ringbuffer: peek from an empty queue", val)
 		}()
-		r.PeekFront()
+		r.MustPeekFront()
 		t.Fatal("expected peek to panic")
 	}()
 
@@ -59,14 +70,13 @@ func TestPanicOnEmptyBuffer(t *testing.T) {
 			val := recover()
 			require.Equal(t, "ringbuffer: pop from an empty queue", val)
 		}()
-		r.PopFront()
+		r.MustPopFront()
 		t.Fatal("expected pop to panic")
 	}()
 }
 
 func TestRingBuffer_Iterators(t *testing.T) {
-	var r Buffer[int]
-	r.Init(4)
+	r := NewWithCapacity[int](4)
 
 	// Empty iterators
 	count := 0
@@ -88,17 +98,30 @@ func TestRingBuffer_Iterators(t *testing.T) {
 	// Push items with wrap-around
 	r.PushBack(10)
 	r.PushBack(20)
-	require.Equal(t, 10, r.PopFront())
+	require.Equal(t, 10, r.MustPopFront())
 	r.PushBack(30)
 	r.PushBack(40)
 	r.PushBack(50) // Now elements: 20, 30, 40, 50 (wrapped)
 
 	// All() non-destructive
 	var items []int
-	for v := range r.All() {
+	var indices []int
+	for i, v := range r.All() {
+		indices = append(indices, i)
 		items = append(items, v)
 		if len(items) == 2 {
 			break // test early exit
+		}
+	}
+	require.Equal(t, []int{0, 1}, indices)
+	require.Equal(t, []int{20, 30}, items)
+
+	// Values() non-destructive early exit
+	items = nil
+	for v := range r.Values() {
+		items = append(items, v)
+		if len(items) == 2 {
+			break
 		}
 	}
 	require.Equal(t, []int{20, 30}, items)
@@ -146,7 +169,7 @@ func TestClear(t *testing.T) {
 	r.Clear()
 	require.True(t, r.Empty())
 	r.PushBack(3)
-	require.Equal(t, 3, r.PopFront())
+	require.Equal(t, 3, r.MustPopFront())
 }
 
 func BenchmarkRingBuffer(b *testing.B) {
@@ -155,7 +178,7 @@ func BenchmarkRingBuffer(b *testing.B) {
 	var val int
 	for b.Loop() {
 		r.PushBack(val)
-		r.PopFront()
+		_, _ = r.PopFront()
 
 		val++
 	}
@@ -172,7 +195,7 @@ func BenchmarkRingBufferWrapped(b *testing.B) {
 	var val int
 	for b.Loop() {
 		r.PushBack(val)
-		val = r.PopFront()
+		val, _ = r.PopFront()
 	}
 }
 
@@ -191,7 +214,7 @@ func TestChallenge_GCLeakVerification(t *testing.T) {
 		{
 			name: "PopFront clears reference",
 			op: func(r *Buffer[*trackedObj]) {
-				_ = r.PopFront()
+				_, _ = r.PopFront()
 			},
 		},
 		{
@@ -277,8 +300,11 @@ func TestChallenge_DifferentialFuzz(t *testing.T) {
 					oracle = oracle[1:]
 
 					require.False(t, r.Empty())
-					require.Equal(t, expected, r.PeekFront())
-					actual := r.PopFront()
+					peekVal, ok := r.PeekFront()
+					require.True(t, ok)
+					require.Equal(t, expected, peekVal)
+					actual, ok := r.PopFront()
+					require.True(t, ok)
 					require.Equal(t, expected, actual)
 				}
 
@@ -287,7 +313,8 @@ func TestChallenge_DifferentialFuzz(t *testing.T) {
 				require.Equal(t, len(oracle) == 0, r.Empty())
 
 				allItems := make([]int, 0, r.Len())
-				for v := range r.All() {
+				for idx, v := range r.All() {
+					require.Equal(t, len(allItems), idx)
 					allItems = append(allItems, v)
 				}
 				require.Equal(t, oracle, allItems)
@@ -337,7 +364,7 @@ func TestChallenge_WrapAroundGrowTransitions(t *testing.T) {
 			// Advance head position by pushing and popping headOffset times
 			for i := 0; i < headOffset; i++ {
 				r.PushBack(i)
-				_ = r.PopFront()
+				_, _ = r.PopFront()
 			}
 
 			// Now fill the buffer to capacity
@@ -352,9 +379,9 @@ func TestChallenge_WrapAroundGrowTransitions(t *testing.T) {
 
 			// Verify all elements are returned in strict FIFO order
 			for i := 0; i < initCap; i++ {
-				require.Equal(t, 100+i, r.PopFront())
+				require.Equal(t, 100+i, r.MustPopFront())
 			}
-			require.Equal(t, 999, r.PopFront())
+			require.Equal(t, 999, r.MustPopFront())
 			require.True(t, r.Empty())
 		}
 	}
@@ -369,8 +396,8 @@ func TestChallenge_ZeroValueUsability(t *testing.T) {
 	r.PushBack("alpha")
 	require.False(t, r.Empty())
 	require.Equal(t, 1, r.Len())
-	require.Equal(t, "alpha", r.PeekFront())
-	require.Equal(t, "alpha", r.PopFront())
+	require.Equal(t, "alpha", r.MustPeekFront())
+	require.Equal(t, "alpha", r.MustPopFront())
 	require.True(t, r.Empty())
 }
 

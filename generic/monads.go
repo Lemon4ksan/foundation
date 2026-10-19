@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"reflect"
 )
 
 var (
@@ -88,16 +87,6 @@ func (o Optional[T]) MustValue() T {
 
 // ValueOr returns the wrapped value if present, otherwise returning the fallback value.
 func (o Optional[T]) ValueOr(fallback T) T {
-	if !o.valid {
-		return fallback
-	}
-
-	return o.val
-}
-
-// OrElse returns the wrapped value if present, otherwise returning the fallback value.
-// It is functionally equivalent to [Optional.ValueOr].
-func (o Optional[T]) OrElse(fallback T) T {
 	if !o.valid {
 		return fallback
 	}
@@ -269,16 +258,6 @@ func (r Result[T]) ValueOr(fallback T) T {
 	return r.val
 }
 
-// OrElse returns the computed value on success, or the fallback value on failure.
-// It is functionally equivalent to [Result.ValueOr].
-func (r Result[T]) OrElse(fallback T) T {
-	if r.err != nil {
-		return fallback
-	}
-
-	return r.val
-}
-
 // Optional converts the [Result] into an [Optional], returning [Some](val) if successful
 // or [None] if failed.
 func (r Result[T]) Optional() Optional[T] {
@@ -382,7 +361,7 @@ func SuccessTyped[T any, E error](v T) TypedResult[T, E] {
 func FailureTyped[T any, E error](err E) TypedResult[T, E] {
 	// If the error type itself is a nil interface value, prevent false-positive failures
 	// by dynamically checking its interface reflection status.
-	if isInterfaceNil(err) {
+	if isNil(err) {
 		return TypedResult[T, E]{hasErr: false}
 	}
 
@@ -393,7 +372,7 @@ func FailureTyped[T any, E error](err E) TypedResult[T, E] {
 //
 // If err is not nil (or non-zero error), it returns [FailureTyped](err). Otherwise, it returns [SuccessTyped](v).
 func FromTypedResult[T any, E error](v T, err E) TypedResult[T, E] {
-	if isInterfaceNil(err) {
+	if isNil(err) {
 		return SuccessTyped[T, E](v)
 	}
 
@@ -486,28 +465,6 @@ func FlatMapTypedResult[T, U any, E error](r TypedResult[T, E], f func(T) TypedR
 	}
 
 	return f(r.val)
-}
-
-// isInterfaceNil performs a dynamic reflection check to determine if the given error E
-// wraps a nil concrete pointer under its interface.
-func isInterfaceNil(err error) bool {
-	val := reflect.ValueOf(err)
-	if !val.IsValid() {
-		return true
-	}
-
-	switch val.Kind() {
-	case reflect.Chan,
-		reflect.Func,
-		reflect.Map,
-		reflect.Pointer,
-		reflect.UnsafePointer,
-		reflect.Interface,
-		reflect.Slice:
-		return val.IsNil()
-	default:
-		return false
-	}
 }
 
 // Either represents a value of one of two possible types (a disjoint union).

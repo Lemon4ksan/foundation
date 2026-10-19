@@ -45,13 +45,13 @@ var (
 
 var (
 	// ErrInvalidLength is returned when a UUID string has an invalid length (RFC 9562 §4).
-	ErrInvalidLength = errors.New("foundation/uuid: invalid UUID string length")
+	ErrInvalidLength = errors.New("uuid: invalid UUID string length")
 
 	// ErrInvalidFormat is returned when a UUID string does not conform to 8-4-4-4-12 hex format (RFC 9562 §4).
-	ErrInvalidFormat = errors.New("foundation/uuid: invalid UUID hex-and-dash format")
+	ErrInvalidFormat = errors.New("uuid: invalid UUID hex-and-dash format")
 
 	// ErrScanType is returned when an unsupported type is passed to [UUID.Scan].
-	ErrScanType = errors.New("foundation/uuid: cannot scan type into UUID")
+	ErrScanType = errors.New("uuid: cannot scan type into UUID")
 )
 
 // IsValid checks whether s conforms to the standard 36-character "8-4-4-4-12"
@@ -123,7 +123,7 @@ func parseScalar(s string) (UUID, bool) {
 func MustParse(s string) UUID {
 	u, err := Parse(s)
 	if err != nil {
-		panic(fmt.Sprintf("foundation/uuid: MustParse(%q): %v", s, err))
+		panic(fmt.Sprintf("uuid: MustParse(%q): %v", s, err))
 	}
 
 	return u
@@ -133,7 +133,7 @@ func MustParse(s string) UUID {
 func NewV4() (UUID, error) {
 	var u UUID
 	if _, err := rand.Read(u[:]); err != nil {
-		return u, fmt.Errorf("foundation/uuid: uuidv4 entropy generation failed: %w", err)
+		return u, fmt.Errorf("uuid: uuidv4 entropy generation failed: %w", err)
 	}
 
 	// Set version 4 (0b0100) in bits 48-51 (high nibble of octet 6)
@@ -164,7 +164,7 @@ func NewV7(t ...time.Time) (UUID, error) {
 	}
 
 	if _, err := rand.Read(u[6:]); err != nil {
-		return u, fmt.Errorf("foundation/uuid: uuidv7 entropy generation failed: %w", err)
+		return u, fmt.Errorf("uuid: uuidv7 entropy generation failed: %w", err)
 	}
 
 	// Encode 48-bit big-endian millisecond timestamp (bits 0-47)

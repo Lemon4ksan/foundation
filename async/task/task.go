@@ -29,20 +29,11 @@ var (
 	// ErrDuplicate is returned when attempting to add a task ID that is already being tracked by the tracker.
 	ErrDuplicate = errors.New("task: duplicate task ID")
 
-	// ErrAlreadyExists is returned when attempting to add a task ID that already exists in the tracker.
-	ErrAlreadyExists = errors.New("task: duplicate task ID")
-
 	// ErrNotFound is returned when attempting to resolve, wait for, or remove a task ID that does not exist in the tracker's registry.
 	ErrNotFound = errors.New("task: not found")
 
 	// ErrWaitFor is returned when [Tracker.WaitFor] is invoked on a task that was not initialized with the [WithWait] option.
 	ErrWaitFor = errors.New("task: was not created with WithWait option")
-
-	// ErrFailed is returned when a task fails execution.
-	ErrFailed = errors.New("task: execution failed")
-
-	// ErrPanic is returned when a task execution panics.
-	ErrPanic = errors.New("task: execution panicked")
 )
 
 // Callback defines the function signature for handling completed jobs.
@@ -112,9 +103,8 @@ type Store[K comparable, T any] interface {
 
 // Tracker coordinates the lifecycle, asynchronous resolution, and synchronous wait states of multiple correlation-tracked jobs.
 //
-// The zero value is empty and not ready to use.
-// Read-only operations are safe for concurrent use; mutations require external synchronization unless stated otherwise.
-// Note that methods on [Tracker] manage their own internal locks.
+// The zero value is empty and not ready to use; use [NewTracker] or [NewTrackerWithStore] to initialize.
+// All exported methods manage their own internal synchronization and are safe for concurrent use.
 type Tracker[K comparable, T any] struct {
 	mu       sync.Mutex
 	store    Store[K, T]
@@ -228,6 +218,15 @@ func (m *Tracker[K, T]) NextID() K {
 	case string:
 		return any(strconv.FormatUint(val, 10)).(K)
 	default:
+		rv := reflect.ValueOf(&zero).Elem()
+		switch rv.Kind() {
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+			rv.SetUint(val)
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			rv.SetInt(int64(val)) //nolint:gosec
+		case reflect.String:
+			rv.SetString(strconv.FormatUint(val, 10))
+		}
 		return zero
 	}
 }
@@ -331,6 +330,9 @@ func (m *Tracker[K, T]) Resolve(ctx context.Context, id K, response T, err error
 	wCh := e.waitCh
 	e.waitCh = nil
 	cb := e.callback
+	eCtx := e.ctx
+	eStrat := e.strategy
+	mStrat := m.strategy
 
 	m.mu.Unlock()
 
@@ -349,8 +351,21 @@ func (m *Tracker[K, T]) Resolve(ctx context.Context, id K, response T, err error
 	}
 
 	if cb != nil {
-		cbCtx := coalesceNil(ctx, e.ctx, context.Background())
-		strategy := coalesceNil(e.strategy, m.strategy, AsyncStrategy)
+		cbCtx := ctx
+		if cbCtx == nil {
+			cbCtx = eCtx
+		}
+		if cbCtx == nil {
+			cbCtx = context.Background()
+		}
+
+		strategy := eStrat
+		if strategy == nil {
+			strategy = mStrat
+		}
+		if strategy == nil {
+			strategy = AsyncStrategy
+		}
 
 		strategy(func() {
 			defer func() { _ = recover() }()
@@ -464,11 +479,12 @@ func (m *Tracker[K, T]) CancelAll(ctx context.Context, err error) {
 			_, _ = m.store.Delete(ctx, id)
 		}
 	}
+	mStrat := m.strategy
 
 	m.mu.Unlock()
 
 	if getErr == nil {
-		m.closePending(pending, err)
+		m.closePending(pending, err, mStrat)
 	}
 }
 
@@ -488,11 +504,12 @@ func (m *Tracker[K, T]) Close() error {
 			_, _ = m.store.Delete(context.Background(), id)
 		}
 	}
+	mStrat := m.strategy
 
 	m.mu.Unlock()
 
 	if getErr == nil {
-		m.closePending(pending, ErrClosed)
+		m.closePending(pending, ErrClosed, mStrat)
 	}
 
 	return nil
@@ -508,7 +525,7 @@ func (m *Tracker[K, T]) Count() int {
 	return c
 }
 
-func (m *Tracker[K, T]) closePending(pending map[K]*Entry[T], err error) {
+func (m *Tracker[K, T]) closePending(pending map[K]*Entry[T], err error, mStrat CallbackStrategy) {
 	for _, e := range pending {
 		if e.timerStop != nil {
 			e.timerStop()
@@ -524,8 +541,17 @@ func (m *Tracker[K, T]) closePending(pending map[K]*Entry[T], err error) {
 
 		cb := e.callback
 		if cb != nil {
-			cbCtx := coalesceNil(e.ctx, context.Background())
-			strategy := coalesceNil(e.strategy, m.strategy, AsyncStrategy)
+			cbCtx := e.ctx
+			if cbCtx == nil {
+				cbCtx = context.Background()
+			}
+			strategy := e.strategy
+			if strategy == nil {
+				strategy = mStrat
+			}
+			if strategy == nil {
+				strategy = AsyncStrategy
+			}
 
 			strategy(func() {
 				defer func() { _ = recover() }()
@@ -598,32 +624,4 @@ func (s *memoryStore[K, T]) All(ctx context.Context) (map[K]*Entry[T], error) {
 	res := make(map[K]*Entry[T], len(s.jobs))
 	maps.Copy(res, s.jobs)
 	return res, nil
-}
-
-// coalesceNil returns the first non-nil value from the provided list.
-func coalesceNil[T any](vals ...T) T {
-	for _, v := range vals {
-		if !isNil(v) {
-			return v
-		}
-	}
-
-	var zero T
-
-	return zero
-}
-
-// isNil safely determines if the provided interface value is nil.
-func isNil(val any) bool {
-	if val == nil {
-		return true
-	}
-
-	v := reflect.ValueOf(val)
-	switch v.Kind() {
-	case reflect.Chan, reflect.Func, reflect.Map, reflect.Pointer, reflect.UnsafePointer, reflect.Slice:
-		return v.IsNil()
-	}
-
-	return false
 }

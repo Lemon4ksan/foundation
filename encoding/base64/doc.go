@@ -6,7 +6,7 @@
 //
 // Base64 prioritizes speed and zero-allocation processing for URL-safe unpadded encodings. It acts as a fast-path override for high-throughput network transmission where standard library encoding becomes a bottleneck.
 //
-// See [EncodeURL] (or [Base64EncodeURL]) for the primary encoding function.
+// See [EncodeURL] for the primary encoding function.
 //
 // # Compared to the standard library
 //

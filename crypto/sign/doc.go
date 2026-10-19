@@ -16,5 +16,5 @@
 //
 // Accepted cost: Hardcodes Ed25519 as the primary scheme, making it less flexible if other signature algorithms are required.
 //
-// Allocations: zero
+// Allocations: amortized
 package sign

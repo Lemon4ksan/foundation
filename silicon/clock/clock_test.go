@@ -27,9 +27,14 @@ func TestCoarseClock(t *testing.T) {
 		t.Fatal("expected non-zero coarse time")
 	}
 
-	time.Sleep(5 * time.Millisecond)
-
-	newNano := clock.CoarseNowNano()
+	var newNano int64
+	for range 25 {
+		time.Sleep(2 * time.Millisecond)
+		newNano = clock.CoarseNowNano()
+		if newNano > nano {
+			break
+		}
+	}
 	if newNano <= nano {
 		t.Fatalf("expected coarse nano to advance, before=%d after=%d", nano, newNano)
 	}

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
+	"unsafe"
 )
 
 type testService interface {
@@ -113,8 +114,9 @@ func TestMockController_AllMatchers(t *testing.T) {
 	var nilMap map[string]int
 	var nilChan chan int
 	var nilFunc func()
+	var nilUnsafe unsafe.Pointer
 	if !nilM.Matches(nil) || !nilM.Matches(nilPtr) || !nilM.Matches(nilSlice) ||
-		!nilM.Matches(nilMap) || !nilM.Matches(nilChan) || !nilM.Matches(nilFunc) {
+		!nilM.Matches(nilMap) || !nilM.Matches(nilChan) || !nilM.Matches(nilFunc) || !nilM.Matches(nilUnsafe) {
 		t.Fatalf("Nil matcher failed on nil values")
 	}
 	val := 10

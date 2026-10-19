@@ -6,7 +6,7 @@
 //
 // The package compiles type metadata once into an opcode execution sequence and performs direct memory writes
 // via standard ABI-safe unsafe offsets without reflection overhead, runtime linkname hacks, or GC churn.
-// For steady-state streaming data, [Iterator] and [Stream] provide completely zero-allocation parsing APIs.
+// For steady-state streaming data, [Scanner], [Encoder], and [Decoder] provide streaming and zero-allocation parsing APIs.
 // Note that convenience functions like [Marshal] and [Unmarshal] do allocate memory for boxing and slice creation.
 //
 // # Compared to the standard library

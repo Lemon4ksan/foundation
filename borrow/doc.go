@@ -37,5 +37,5 @@
 //
 // Accepted cost: Developer ergonomics of explicit lifecycle management and minor CPU overhead from generation counters.
 //
-// Allocations: zero
+// Allocations: amortized
 package borrow

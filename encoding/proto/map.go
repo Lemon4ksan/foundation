@@ -38,14 +38,17 @@ func ScanMapEntry(data []byte) (key, val Field, err error) {
 			wireType = WireType(b0 & 7)
 			offset++
 		} else {
-			tag, tagBytes := binary.Uvarint(data[offset:])
-			if tagBytes <= 0 {
-				return Field{}, Field{}, ErrTruncated
+			tag, tagBytes, err := DecodeUvarint(data[offset:])
+			if err != nil {
+				return Field{}, Field{}, err
+			}
+			if tag > math.MaxUint32 {
+				return Field{}, Field{}, ErrInvalidTag
 			}
 			offset += tagBytes
 			fieldNum, wireType = SplitTag(uint32(tag))
 		}
-		if fieldNum == 0 {
+		if fieldNum == 0 || fieldNum > MaxFieldNumber {
 			return Field{}, Field{}, ErrInvalidTag
 		}
 

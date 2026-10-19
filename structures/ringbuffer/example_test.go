@@ -11,11 +11,11 @@ import (
 )
 
 func ExampleBuffer() {
-	rb := new(ringbuffer.Buffer[int])
-	rb.Init(2)
+	rb := ringbuffer.NewWithCapacity[int](2)
 	rb.PushBack(1)
 	rb.PushBack(2)
 
-	fmt.Printf("Popped: %d\n", rb.PopFront())
+	v, _ := rb.PopFront()
+	fmt.Printf("Popped: %d\n", v)
 	// Output: Popped: 1
 }

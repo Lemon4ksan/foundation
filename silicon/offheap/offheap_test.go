@@ -400,16 +400,8 @@ func TestAllocStruct_ConcurrentAtomicSafety_Race(t *testing.T) {
 
 func TestAllocStruct_AlignmentOverflow_NoCorruption(t *testing.T) {
 	// Allocate a very small arena. Verify that alignment padding at exhaustion
-	// causes graceful heap fallback without corrupting arena.offset > arena.size.
+	// returns nil deterministically without corrupting arena.offset > arena.size.
 	type u64 struct{ X uint64 } // 8-byte alignment, 8-byte size
-
-	// Arena of 9 bytes: fits one u64 (8 bytes), then 1 byte remains.
-	// Next AllocStruct[u64] needs 7 bytes of padding (offset=8 → already aligned... let's use 11)
-	// Arena of 11 bytes: first u64 at 0 (8 bytes). offset=8. Remaining=3.
-	// Next u64 needs: rem = 8%8=0, no padding. Needs 8 bytes. 8>3 → fallback. ✓
-	// Use 13 bytes: first u64 at 0. offset=8. Remaining=5.
-	// Next u64: rem=8%8=0, no pad. Needs 8. 8>5 → Alloc returns nil → fallback. ✓
-	// Use 15 bytes: offset=8. Remaining=7. Needs 8 → fallback. ✓
 
 	arena, err := offheap.NewArena(15)
 	require.NoError(t, err)
@@ -420,10 +412,9 @@ func TestAllocStruct_AlignmentOverflow_NoCorruption(t *testing.T) {
 	require.NotNil(t, p1, "first allocation must succeed")
 	p1.X = 0xDEADBEEF_CAFEBABE
 
-	// Second must fall back to heap - but must NOT panic or corrupt state
+	// Second must return nil when arena is exhausted - and must NOT panic or corrupt state
 	p2 := offheap.AllocStruct[u64](arena)
-	require.NotNil(t, p2, "fallback must return valid heap pointer")
-	p2.X = 0x1234
+	assert.Nil(t, p2, "exhausted arena must return nil")
 
 	// First value must still be intact
 	assert.Equal(t, uint64(0xDEADBEEF_CAFEBABE), p1.X, "off-heap data must not be corrupted")

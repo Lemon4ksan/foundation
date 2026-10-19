@@ -28,16 +28,16 @@ func TestBox_Ownership_And_Release(t *testing.T) {
 	require.True(t, box.IsValid())
 
 	// Shared borrow
-	ref := box.Borrow()
+	ref := box.MustBorrow()
 	require.Equal(t, 42, ref.Get().ID)
 	require.Equal(t, "Aoni", ref.Val().Name)
 	assert.Equal(t, uint32(1), ref.Generation())
 
 	// Mutable borrow while shared borrow is active must fail/panic
 	assert.Panics(t, func() {
-		_ = box.BorrowMut()
+		_ = box.MustBorrowMut()
 	})
-	_, err := box.TryBorrowMut()
+	_, err := box.BorrowMut()
 	assert.ErrorIs(t, err, borrow.ErrAlreadyBorrowedShared)
 
 	// Release shared borrow
@@ -45,16 +45,16 @@ func TestBox_Ownership_And_Release(t *testing.T) {
 	assert.False(t, ref.IsValid())
 
 	// Mutable borrow now succeeds
-	mut := box.BorrowMut()
+	mut := box.MustBorrowMut()
 	mut.Get().Name = "Aoni-Engine"
 	assert.Equal(t, uint32(1), mut.Generation())
 	assert.True(t, mut.IsValid())
 
 	// Shared borrow while mutable borrow is active must fail/panic
 	assert.Panics(t, func() {
-		_ = box.Borrow()
+		_ = box.MustBorrow()
 	})
-	_, err = box.TryBorrow()
+	_, err = box.Borrow()
 	assert.ErrorIs(t, err, borrow.ErrAlreadyBorrowedMut)
 
 	// Write
@@ -278,7 +278,7 @@ func TestScope_Allocation_And_LexicalLifetime(t *testing.T) {
 	t.Parallel()
 
 	// 1. Manual scope allocation
-	s := borrow.NewScope()
+	s := borrow.AcquireScope()
 	assert.NotNil(t, s.Slot())
 
 	bSmall := s.AllocBytes(64)
@@ -351,18 +351,18 @@ func TestRegression_Bug1_GhostBorrowChecker_ExclusiveVsSharedConflict(t *testing
 	require.True(t, box.IsValid())
 
 	// 1. Multiple shared borrows can coexist
-	r1 := box.Borrow()
-	r2 := box.Borrow()
+	r1 := box.MustBorrow()
+	r2 := box.MustBorrow()
 	assert.Equal(t, 100, *r1.Get())
 	assert.Equal(t, 100, *r2.Get())
 	assert.True(t, r1.IsValid())
 	assert.True(t, r2.IsValid())
 
 	// 2. Mutable borrow must fail while shared borrows are active
-	_, err := box.TryBorrowMut()
+	_, err := box.BorrowMut()
 	assert.ErrorIs(t, err, borrow.ErrAlreadyBorrowedShared)
 	assert.Panics(t, func() {
-		_ = box.BorrowMut()
+		_ = box.MustBorrowMut()
 	})
 
 	// 3. Release first reader, second is still active -> mutable borrow still fails
@@ -371,28 +371,28 @@ func TestRegression_Bug1_GhostBorrowChecker_ExclusiveVsSharedConflict(t *testing
 	// Double release is idempotent
 	r1.Release()
 
-	_, err = box.TryBorrowMut()
+	_, err = box.BorrowMut()
 	assert.ErrorIs(t, err, borrow.ErrAlreadyBorrowedShared)
 
 	// 4. Release second reader -> mutable borrow now succeeds
 	r2.Release()
 	assert.False(t, r2.IsValid())
 
-	mut := box.BorrowMut()
+	mut := box.MustBorrowMut()
 	assert.True(t, mut.IsValid())
 	mut.Write(200)
 
 	// 5. Shared and mutable borrows must fail while mutable borrow is active
-	_, err = box.TryBorrow()
+	_, err = box.Borrow()
 	assert.ErrorIs(t, err, borrow.ErrAlreadyBorrowedMut)
 	assert.Panics(t, func() {
-		_ = box.Borrow()
+		_ = box.MustBorrow()
 	})
 
-	_, err = box.TryBorrowMut()
+	_, err = box.BorrowMut()
 	assert.ErrorIs(t, err, borrow.ErrAlreadyBorrowedMut)
 	assert.Panics(t, func() {
-		_ = box.BorrowMut()
+		_ = box.MustBorrowMut()
 	})
 
 	// 6. Release exclusive borrow -> shared borrow succeeds again
@@ -401,7 +401,7 @@ func TestRegression_Bug1_GhostBorrowChecker_ExclusiveVsSharedConflict(t *testing
 	// Double release is idempotent
 	mut.Release()
 
-	r3 := box.Borrow()
+	r3 := box.MustBorrow()
 	assert.Equal(t, 200, *r3.Get())
 	r3.Release()
 
@@ -425,7 +425,7 @@ func TestRegression_Bug1_GhostBorrowChecker_FreezeLifecycle(t *testing.T) {
 	t.Parallel()
 
 	box := borrow.NewBox("initial")
-	mut := box.BorrowMut()
+	mut := box.MustBorrowMut()
 	mut.Write("mutated")
 
 	// Freeze mut into ref
@@ -435,11 +435,11 @@ func TestRegression_Bug1_GhostBorrowChecker_FreezeLifecycle(t *testing.T) {
 	assert.Equal(t, "mutated", *frozen.Get())
 
 	// Another shared reader can now join
-	r2 := box.Borrow()
+	r2 := box.MustBorrow()
 	assert.Equal(t, "mutated", *r2.Get())
 
 	// Exclusive borrow must still fail because readers are active
-	_, err := box.TryBorrowMut()
+	_, err := box.BorrowMut()
 	assert.ErrorIs(t, err, borrow.ErrAlreadyBorrowedShared)
 
 	// Release both readers
@@ -447,7 +447,7 @@ func TestRegression_Bug1_GhostBorrowChecker_FreezeLifecycle(t *testing.T) {
 	r2.Release()
 
 	// Exclusive borrow can now be acquired
-	mut2 := box.BorrowMut()
+	mut2 := box.MustBorrowMut()
 	mut2.Write("final")
 	mut2.Release()
 
@@ -460,7 +460,7 @@ func TestRegression_Bug1_GhostBorrowChecker_FreezeLifecycle(t *testing.T) {
 func TestRegression_Bug2_ScopeAllocBytes_ReleaseDoesNotInvalidateScope(t *testing.T) {
 	t.Parallel()
 
-	s := borrow.NewScope()
+	s := borrow.AcquireScope()
 
 	b1 := s.AllocBytes(64)
 	b2 := s.AllocBytes(64)
@@ -530,7 +530,7 @@ func TestRegression_Bug3_BoxMove_InvalidatesPreMoveBorrows(t *testing.T) {
 	require.True(t, box1.IsValid())
 
 	// Acquire pre-move shared borrow
-	refPreMove := box1.Borrow()
+	refPreMove := box1.MustBorrow()
 	assert.Equal(t, "original-value", *refPreMove.Get())
 	assert.True(t, refPreMove.IsValid())
 
@@ -554,13 +554,13 @@ func TestRegression_Bug3_BoxMove_InvalidatesPreMoveBorrows(t *testing.T) {
 	assert.Equal(t, "original-value", *box2.Get())
 
 	// New borrows on box2 succeed
-	refPostMove := box2.Borrow()
+	refPostMove := box2.MustBorrow()
 	assert.True(t, refPostMove.IsValid())
 	assert.Equal(t, "original-value", *refPostMove.Get())
 	refPostMove.Release()
 
 	// Mutable borrow on box2 succeeds
-	mutPostMove := box2.BorrowMut()
+	mutPostMove := box2.MustBorrowMut()
 	mutPostMove.Write("updated-value")
 	mutPostMove.Release()
 
@@ -574,7 +574,7 @@ func TestRegression_Bug3_BoxMove_InvalidatesPreMoveMutableBorrow(t *testing.T) {
 	t.Parallel()
 
 	box1 := borrow.NewBox(999)
-	mutPreMove := box1.BorrowMut()
+	mutPreMove := box1.MustBorrowMut()
 	assert.True(t, mutPreMove.IsValid())
 
 	box2 := box1.Move()
@@ -606,7 +606,7 @@ func TestRegression_Concurrency_BoxSharedBorrows(t *testing.T) {
 	for range iterations {
 		go func() {
 			defer wg.Done()
-			ref := box.Borrow()
+			ref := box.MustBorrow()
 			assert.Equal(t, 42, *ref.Get())
 			ref.Release()
 		}()
@@ -648,7 +648,7 @@ func TestFreezeDataRace(t *testing.T) {
 	defer box.Release()
 
 	for range 500 {
-		mut, err := box.TryBorrowMut()
+		mut, err := box.BorrowMut()
 		require.NoError(t, err)
 
 		var stopSpin atomic.Bool
@@ -660,7 +660,7 @@ func TestFreezeDataRace(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for !stopSpin.Load() {
-				newMut, err := box.TryBorrowMut()
+				newMut, err := box.BorrowMut()
 				if err == nil {
 					if !refReleased.Load() {
 						violation.Store(true)

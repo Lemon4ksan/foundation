@@ -17,6 +17,11 @@ type entry[K, V any] struct {
 // A Heap is a minimum heap ordered by key.
 type Heap[K cmp.Ordered, V any] []entry[K, V]
 
+// New returns an empty, initialized heap.
+func New[K cmp.Ordered, V any]() *Heap[K, V] {
+	return &Heap[K, V]{}
+}
+
 // NewWithCapacity returns an empty heap with pre-allocated capacity.
 func NewWithCapacity[K cmp.Ordered, V any](capacity int) Heap[K, V] {
 	if capacity <= 0 {
@@ -68,6 +73,17 @@ func (h Heap[K, V]) Peek() (K, V) {
 	return v.key, v.value
 }
 
+// TryPeek returns the smallest element in the heap, or (zero, zero, false) if empty.
+func (h Heap[K, V]) TryPeek() (K, V, bool) {
+	if len(h) == 0 {
+		var zeroK K
+		var zeroV V
+		return zeroK, zeroV, false
+	}
+	v := h[0]
+	return v.key, v.value, true
+}
+
 // Push adds an element to the heap.
 func (h *Heap[K, V]) Push(key K, value V) {
 	*h = append(*h, entry[K, V]{key: key, value: value})
@@ -94,6 +110,17 @@ func (h *Heap[K, V]) Pop() (K, V) {
 	*h = values
 
 	return v.key, v.value
+}
+
+// TryPop removes and returns the smallest element in the heap, or (zero, zero, false) if empty.
+func (h *Heap[K, V]) TryPop() (K, V, bool) {
+	if len(*h) == 0 {
+		var zeroK K
+		var zeroV V
+		return zeroK, zeroV, false
+	}
+	k, v := h.Pop()
+	return k, v, true
 }
 
 // Clear removes all elements from the heap.

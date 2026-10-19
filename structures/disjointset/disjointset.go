@@ -8,7 +8,9 @@ package disjointset
 //
 // The zero value is empty and ready to use.
 // Read-only operations are safe for concurrent use; mutations require external synchronization.
-// Note that [Set.Find] mutates internal state for path compression and requires synchronization.
+// Note that [Set.Find], [Set.Connected], and [Set.Size] mutate internal state for path compression
+// and require synchronization; use [Set.FindReadOnly], [Set.ConnectedReadOnly], and [Set.SizeReadOnly]
+// for concurrent read-only access.
 type Set struct {
 	parent []int // parent[i] is the parent of element i; if parent[i] == i, i is the set root
 	size   []int // size[i] is the number of elements in the component rooted at i
@@ -88,6 +90,23 @@ func (d *Set) Find(x int) int {
 	return root
 }
 
+// FindReadOnly returns the representative root of the set containing element x
+// without mutating internal state (no path compression).
+//
+// Safe for concurrent use with other read-only operations.
+// Panics if x is out of bounds.
+func (d *Set) FindReadOnly(x int) int {
+	if d == nil || x < 0 || x >= len(d.parent) {
+		panic("disjointset: index out of range")
+	}
+
+	root := x
+	for root != d.parent[root] {
+		root = d.parent[root]
+	}
+	return root
+}
+
 // Union merges the disjoint sets containing elements x and y using the union-by-size heuristic.
 //
 // Returns true if x and y belonged to different sets and were successfully merged, or false if they were already in the same set.
@@ -118,11 +137,30 @@ func (d *Set) Connected(x, y int) bool {
 	return d.Find(x) == d.Find(y)
 }
 
+// ConnectedReadOnly reports whether elements x and y belong to the same disjoint set
+// without mutating internal state.
+//
+// Safe for concurrent use with other read-only operations.
+// Panics if either x or y is out of bounds.
+func (d *Set) ConnectedReadOnly(x, y int) bool {
+	return d.FindReadOnly(x) == d.FindReadOnly(y)
+}
+
 // Size returns the number of elements in the disjoint set containing element x.
 //
 // Panics if x is out of bounds.
 func (d *Set) Size(x int) int {
 	root := d.Find(x)
+	return d.size[root]
+}
+
+// SizeReadOnly returns the number of elements in the disjoint set containing element x
+// without mutating internal state.
+//
+// Safe for concurrent use with other read-only operations.
+// Panics if x is out of bounds.
+func (d *Set) SizeReadOnly(x int) int {
+	root := d.FindReadOnly(x)
 	return d.size[root]
 }
 

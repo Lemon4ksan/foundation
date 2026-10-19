@@ -110,8 +110,7 @@ var CopyBufPool = sync.Pool{
 	},
 }
 
-// ErrBodyTooLarge is returned if either request or response body exceeds
-// the given limit.
+// ErrBodyTooLarge is returned when a stream payload exceeds the given size limit.
 var ErrBodyTooLarge = errors.New("bytesconv: body size exceeds the given limit")
 
 // CopyZeroAllocWithLimit copies up to maxBodySize bytes from r to w with zero heap allocations, returning ErrBodyTooLarge if the limit is exceeded.

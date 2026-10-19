@@ -690,13 +690,16 @@ func TestRing_Iterators(t *testing.T) {
 	require.Equal(t, 5, r.Len())
 
 	// All() with early break
+	var indices []int
 	var items []int
-	for v := range r.All() {
+	for idx, v := range r.All() {
+		indices = append(indices, idx)
 		items = append(items, v)
 		if len(items) == 2 {
 			break
 		}
 	}
+	assert.Equal(t, []int{0, 1}, indices)
 	assert.Equal(t, []int{10, 20}, items)
 	assert.Equal(t, 5, r.Len())
 
@@ -707,6 +710,16 @@ func TestRing_Iterators(t *testing.T) {
 	}
 	assert.Equal(t, []int{10, 20, 30, 40, 50}, items)
 	assert.Equal(t, 5, r.Len())
+
+	// Values() with early break
+	items = nil
+	for v := range r.Values() {
+		items = append(items, v)
+		if len(items) == 2 {
+			break
+		}
+	}
+	assert.Equal(t, []int{10, 20}, items)
 
 	// Drain() with early exit
 	items = nil
@@ -736,7 +749,7 @@ func TestRing_ByteSliceIterators(t *testing.T) {
 	r.Push([]byte("chunk2"))
 
 	var collected []string
-	for b := range r.All() {
+	for _, b := range r.All() {
 		collected = append(collected, string(b))
 	}
 	assert.Equal(t, []string{"chunk1", "chunk2"}, collected)

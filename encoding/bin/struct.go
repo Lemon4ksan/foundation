@@ -43,17 +43,17 @@ var layoutCache sync.Map // map[reflect.Type]*structLayout
 
 func checkStructTarget(val reflect.Value) error {
 	if !val.IsValid() {
-		return errors.New("binkit: target must be a pointer to struct, got <nil>")
+		return errors.New("bin: target must be a pointer to struct, got <nil>")
 	}
 	if val.Kind() != reflect.Pointer || val.IsNil() {
-		return fmt.Errorf("binkit: target must be a pointer to struct, got %v", val.Type())
+		return fmt.Errorf("bin: target must be a pointer to struct, got %v", val.Type())
 	}
 	return nil
 }
 
 func getLayout(t reflect.Type) (*structLayout, error) {
 	if t == nil || t.Kind() != reflect.Pointer || t.Elem().Kind() != reflect.Struct {
-		return nil, fmt.Errorf("binkit: target must be a pointer to struct, got %v", t)
+		return nil, fmt.Errorf("bin: target must be a pointer to struct, got %v", t)
 	}
 
 	elemType := t.Elem()
@@ -69,7 +69,11 @@ func getLayout(t reflect.Type) (*structLayout, error) {
 		if !field.IsExported() {
 			continue
 		}
-		if tag := field.Tag.Get("binkit"); tag == "-" || tag == "skip" {
+		tag := field.Tag.Get("bin")
+		if tag == "" {
+			tag = field.Tag.Get("binkit")
+		}
+		if tag == "-" || tag == "skip" {
 			continue
 		}
 
@@ -119,8 +123,7 @@ func getLayout(t reflect.Type) (*structLayout, error) {
 	return layout, nil
 }
 
-// UnmarshalLE automatically decodes little-endian binary fields from b into the target struct pointer.
-func UnmarshalLE(b []byte, dest any) error {
+func unmarshalStruct(b []byte, dest any, order binary.ByteOrder) error {
 	val := reflect.ValueOf(dest)
 	if err := checkStructTarget(val); err != nil {
 		return err
@@ -145,19 +148,19 @@ func UnmarshalLE(b []byte, dest any) error {
 		case kindU8:
 			*(*uint8)(targetPtr) = src[0]
 		case kindU16:
-			*(*uint16)(targetPtr) = binary.LittleEndian.Uint16(src)
+			*(*uint16)(targetPtr) = order.Uint16(src)
 		case kindU32:
-			*(*uint32)(targetPtr) = binary.LittleEndian.Uint32(src)
+			*(*uint32)(targetPtr) = order.Uint32(src)
 		case kindU64:
-			*(*uint64)(targetPtr) = binary.LittleEndian.Uint64(src)
+			*(*uint64)(targetPtr) = order.Uint64(src)
 		case kindI8:
 			*(*int8)(targetPtr) = int8(src[0])
 		case kindI16:
-			*(*int16)(targetPtr) = int16(binary.LittleEndian.Uint16(src))
+			*(*int16)(targetPtr) = int16(order.Uint16(src))
 		case kindI32:
-			*(*int32)(targetPtr) = int32(binary.LittleEndian.Uint32(src))
+			*(*int32)(targetPtr) = int32(order.Uint32(src))
 		case kindI64:
-			*(*int64)(targetPtr) = int64(binary.LittleEndian.Uint64(src))
+			*(*int64)(targetPtr) = int64(order.Uint64(src))
 		case kindBytes:
 			copy(unsafe.Slice((*byte)(targetPtr), op.wireSize), src[:op.wireSize])
 		}
@@ -166,163 +169,79 @@ func UnmarshalLE(b []byte, dest any) error {
 	}
 
 	return nil
+}
+
+func marshalStruct(src any, buf []byte, order binary.ByteOrder) ([]byte, error) {
+	val := reflect.ValueOf(src)
+	if err := checkStructTarget(val); err != nil {
+		return nil, err
+	}
+	layout, err := getLayout(val.Type())
+	if err != nil {
+		return nil, err
+	}
+
+	needed := layout.wireTotal
+	if cap(buf)-len(buf) < needed {
+		newBuf := make([]byte, len(buf), len(buf)+needed)
+		copy(newBuf, buf)
+		buf = newBuf
+	}
+
+	start := len(buf)
+	buf = buf[:start+needed]
+	ptr := val.UnsafePointer()
+	wirePos := start
+
+	for _, op := range layout.ops {
+		targetPtr := unsafe.Add(ptr, op.structOffset)
+		dst := buf[wirePos:]
+
+		switch op.kind {
+		case kindU8:
+			dst[0] = *(*uint8)(targetPtr)
+		case kindU16:
+			order.PutUint16(dst, *(*uint16)(targetPtr))
+		case kindU32:
+			order.PutUint32(dst, *(*uint32)(targetPtr))
+		case kindU64:
+			order.PutUint64(dst, *(*uint64)(targetPtr))
+		case kindI8:
+			dst[0] = byte(*(*int8)(targetPtr))
+		case kindI16:
+			order.PutUint16(dst, uint16(*(*int16)(targetPtr)))
+		case kindI32:
+			order.PutUint32(dst, uint32(*(*int32)(targetPtr)))
+		case kindI64:
+			order.PutUint64(dst, uint64(*(*int64)(targetPtr)))
+		case kindBytes:
+			copy(dst[:op.wireSize], unsafe.Slice((*byte)(targetPtr), op.wireSize))
+		}
+
+		wirePos += op.wireSize
+	}
+
+	return buf, nil
+}
+
+// UnmarshalLE automatically decodes little-endian binary fields from b into the target struct pointer.
+func UnmarshalLE(b []byte, dest any) error {
+	return unmarshalStruct(b, dest, binary.LittleEndian)
 }
 
 // MarshalLE automatically encodes the target struct pointer's fields into little-endian binary bytes.
 func MarshalLE(src any, buf []byte) ([]byte, error) {
-	val := reflect.ValueOf(src)
-	if err := checkStructTarget(val); err != nil {
-		return nil, err
-	}
-	layout, err := getLayout(val.Type())
-	if err != nil {
-		return nil, err
-	}
-
-	needed := layout.wireTotal
-	if cap(buf)-len(buf) < needed {
-		newBuf := make([]byte, len(buf), len(buf)+needed)
-		copy(newBuf, buf)
-		buf = newBuf
-	}
-
-	start := len(buf)
-	buf = buf[:start+needed]
-	ptr := val.UnsafePointer()
-	wirePos := start
-
-	for _, op := range layout.ops {
-		targetPtr := unsafe.Add(ptr, op.structOffset)
-		dst := buf[wirePos:]
-
-		switch op.kind {
-		case kindU8:
-			dst[0] = *(*uint8)(targetPtr)
-		case kindU16:
-			binary.LittleEndian.PutUint16(dst, *(*uint16)(targetPtr))
-		case kindU32:
-			binary.LittleEndian.PutUint32(dst, *(*uint32)(targetPtr))
-		case kindU64:
-			binary.LittleEndian.PutUint64(dst, *(*uint64)(targetPtr))
-		case kindI8:
-			dst[0] = byte(*(*int8)(targetPtr))
-		case kindI16:
-			binary.LittleEndian.PutUint16(dst, uint16(*(*int16)(targetPtr)))
-		case kindI32:
-			binary.LittleEndian.PutUint32(dst, uint32(*(*int32)(targetPtr)))
-		case kindI64:
-			binary.LittleEndian.PutUint64(dst, uint64(*(*int64)(targetPtr)))
-		case kindBytes:
-			copy(dst[:op.wireSize], unsafe.Slice((*byte)(targetPtr), op.wireSize))
-		}
-
-		wirePos += op.wireSize
-	}
-
-	return buf, nil
+	return marshalStruct(src, buf, binary.LittleEndian)
 }
 
 // UnmarshalBE automatically decodes big-endian binary fields from b into the target struct pointer.
 func UnmarshalBE(b []byte, dest any) error {
-	val := reflect.ValueOf(dest)
-	if err := checkStructTarget(val); err != nil {
-		return err
-	}
-	layout, err := getLayout(val.Type())
-	if err != nil {
-		return err
-	}
-
-	if len(b) < layout.wireTotal {
-		return ErrBufferTooShort
-	}
-
-	ptr := val.UnsafePointer()
-	wirePos := 0
-
-	for _, op := range layout.ops {
-		targetPtr := unsafe.Add(ptr, op.structOffset)
-		src := b[wirePos:]
-
-		switch op.kind {
-		case kindU8:
-			*(*uint8)(targetPtr) = src[0]
-		case kindU16:
-			*(*uint16)(targetPtr) = binary.BigEndian.Uint16(src)
-		case kindU32:
-			*(*uint32)(targetPtr) = binary.BigEndian.Uint32(src)
-		case kindU64:
-			*(*uint64)(targetPtr) = binary.BigEndian.Uint64(src)
-		case kindI8:
-			*(*int8)(targetPtr) = int8(src[0])
-		case kindI16:
-			*(*int16)(targetPtr) = int16(binary.BigEndian.Uint16(src))
-		case kindI32:
-			*(*int32)(targetPtr) = int32(binary.BigEndian.Uint32(src))
-		case kindI64:
-			*(*int64)(targetPtr) = int64(binary.BigEndian.Uint64(src))
-		case kindBytes:
-			copy(unsafe.Slice((*byte)(targetPtr), op.wireSize), src[:op.wireSize])
-		}
-
-		wirePos += op.wireSize
-	}
-
-	return nil
+	return unmarshalStruct(b, dest, binary.BigEndian)
 }
 
 // MarshalBE automatically encodes the target struct pointer's fields into big-endian binary bytes.
 func MarshalBE(src any, buf []byte) ([]byte, error) {
-	val := reflect.ValueOf(src)
-	if err := checkStructTarget(val); err != nil {
-		return nil, err
-	}
-	layout, err := getLayout(val.Type())
-	if err != nil {
-		return nil, err
-	}
-
-	needed := layout.wireTotal
-	if cap(buf)-len(buf) < needed {
-		newBuf := make([]byte, len(buf), len(buf)+needed)
-		copy(newBuf, buf)
-		buf = newBuf
-	}
-
-	start := len(buf)
-	buf = buf[:start+needed]
-	ptr := val.UnsafePointer()
-	wirePos := start
-
-	for _, op := range layout.ops {
-		targetPtr := unsafe.Add(ptr, op.structOffset)
-		dst := buf[wirePos:]
-
-		switch op.kind {
-		case kindU8:
-			dst[0] = *(*uint8)(targetPtr)
-		case kindU16:
-			binary.BigEndian.PutUint16(dst, *(*uint16)(targetPtr))
-		case kindU32:
-			binary.BigEndian.PutUint32(dst, *(*uint32)(targetPtr))
-		case kindU64:
-			binary.BigEndian.PutUint64(dst, *(*uint64)(targetPtr))
-		case kindI8:
-			dst[0] = byte(*(*int8)(targetPtr))
-		case kindI16:
-			binary.BigEndian.PutUint16(dst, uint16(*(*int16)(targetPtr)))
-		case kindI32:
-			binary.BigEndian.PutUint32(dst, uint32(*(*int32)(targetPtr)))
-		case kindI64:
-			binary.BigEndian.PutUint64(dst, uint64(*(*int64)(targetPtr)))
-		case kindBytes:
-			copy(dst[:op.wireSize], unsafe.Slice((*byte)(targetPtr), op.wireSize))
-		}
-
-		wirePos += op.wireSize
-	}
-
-	return buf, nil
+	return marshalStruct(src, buf, binary.BigEndian)
 }
 
 // UnmarshalSeqBE returns a push iterator decoding consecutive big-endian struct records of type T from data.

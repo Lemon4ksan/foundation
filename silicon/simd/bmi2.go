@@ -13,7 +13,7 @@ func ExtractBits(val, mask uint64) uint64 {
 
 // DepositBits deposits contiguous bits from val into mask locations (BMI2 PDEP hardware or SWAR fallback).
 func DepositBits(val, mask uint64) uint64 {
-	return depositBitsSWAR(val, mask)
+	return ParallelDeposit64(val, mask)
 }
 
 // CountTrailingZeros returns the number of trailing zero bits in x (TZCNT).

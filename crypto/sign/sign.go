@@ -35,9 +35,6 @@ var (
 	// ErrInvalidKeyLength indicates that the key size does not match expected Ed25519 lengths.
 	ErrInvalidKeyLength = errors.New("sign: invalid key length")
 
-	// ErrInvalidSignatureLength indicates that the signature size is not 64 bytes.
-	ErrInvalidSignatureLength = errors.New("sign: invalid signature length")
-
 	// ErrInvalidPEM indicates that the input could not be decoded as a valid PEM block.
 	ErrInvalidPEM = errors.New("sign: invalid PEM block")
 )

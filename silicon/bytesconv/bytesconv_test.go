@@ -320,18 +320,6 @@ func TestScannerRoutines(t *testing.T) {
 	assert.Equal(t, map[string]string{"k1": "v1", "k2": "v2"}, pairBytes)
 }
 
-func TestBase64EncodeDecode(t *testing.T) {
-	raw := []byte("Hello, High-Performance Zero-Allocation Silicon World 12345!")
-	dst := make([]byte, 128)
-	n := Base64Encode(dst, raw)
-	encoded := dst[:n]
-
-	decDst := make([]byte, 128)
-	decN, err := Base64Decode(decDst, encoded)
-	assert.NoError(t, err)
-	assert.Equal(t, raw, decDst[:decN])
-}
-
 func BenchmarkAppendToLower1KB(b *testing.B) {
 	src := bytes.Repeat([]byte("The Quick Brown Fox Jumps Over The Lazy Dog. "), 23) // ~1KB
 	dst := make([]byte, 0, len(src))
@@ -341,21 +329,6 @@ func BenchmarkAppendToLower1KB(b *testing.B) {
 
 	for b.Loop() {
 		_ = AppendToLower(dst[:0], src)
-	}
-}
-
-func BenchmarkBase64Encode1KB(b *testing.B) {
-	src := make([]byte, 1024)
-	for i := range src {
-		src[i] = byte(i)
-	}
-	dst := make([]byte, 2048)
-	b.SetBytes(1024)
-
-	b.ReportAllocs()
-
-	for b.Loop() {
-		_ = Base64Encode(dst, src)
 	}
 }
 
@@ -396,4 +369,122 @@ func TestParseUintFast_ValidUint64(t *testing.T) {
 	if val != 9223372036854775808 {
 		t.Fatalf("expected 9223372036854775808, got %d", val)
 	}
+}
+
+func TestAppendToUpper_And_FormatNumber(t *testing.T) {
+	t.Parallel()
+
+	assert.Empty(t, AppendToUpper(nil, nil))
+	up := AppendToUpper([]byte("Key: "), []byte("x-custom-header-with-long-name-1234567890"))
+	assert.Equal(t, "Key: X-CUSTOM-HEADER-WITH-LONG-NAME-1234567890", string(up))
+
+	// Non-ASCII bytes in AppendToLower and AppendToUpper (>32 bytes and 8..31 bytes)
+	nonASCII := append(bytes.Repeat([]byte("AbCdEfGh"), 5), 0x80, 'Z', 'a')
+	lowNon := AppendToLower(nil, nonASCII)
+	assert.Equal(t, len(nonASCII), len(lowNon))
+	upNon := AppendToUpper(nil, nonASCII)
+	assert.Equal(t, len(nonASCII), len(upNon))
+
+	assert.Equal(t, "42", FormatNumber(int(42)))
+	assert.Equal(t, "-8", FormatNumber(int8(-8)))
+	assert.Equal(t, "-16", FormatNumber(int16(-16)))
+	assert.Equal(t, "-32", FormatNumber(int32(-32)))
+	assert.Equal(t, "-64", FormatNumber(int64(-64)))
+	assert.Equal(t, "42", FormatNumber(uint(42)))
+	assert.Equal(t, "8", FormatNumber(uint8(8)))
+	assert.Equal(t, "16", FormatNumber(uint16(16)))
+	assert.Equal(t, "32", FormatNumber(uint32(32)))
+	assert.Equal(t, "64", FormatNumber(uint64(64)))
+	assert.Equal(t, "100", FormatNumber(uintptr(100)))
+	assert.Equal(t, "3.5", FormatNumber(float32(3.5)))
+	assert.Equal(t, "2.25", FormatNumber(float64(2.25)))
+}
+
+func TestByteBuffer_And_Copy_And_StreamReader(t *testing.T) {
+	t.Parallel()
+
+	bb := AcquireByteBuffer()
+	defer ReleaseByteBuffer(bb)
+	ReleaseByteBuffer(nil)
+
+	_, _ = bb.Write([]byte("hello"))
+	_ = bb.WriteByte(' ')
+	_, _ = bb.WriteString("world")
+	assert.Equal(t, 11, bb.Len())
+	assert.Equal(t, "hello world", bb.String())
+	assert.Equal(t, []byte("hello world"), bb.Bytes())
+
+	var out bytes.Buffer
+	bb.ResetWriter(&out)
+	_, _ = bb.WriteString("flushed")
+	assert.NoError(t, bb.Flush())
+	assert.Equal(t, "flushed", out.String())
+	assert.NoError(t, bb.Flush()) // empty flush
+
+	bb.Set([]byte("set-bytes"))
+	assert.Equal(t, "set-bytes", bb.String())
+	bb.SetString("set-string")
+	assert.Equal(t, "set-string", bb.String())
+
+	bb.Reset()
+	nFrom, errFrom := bb.ReadFrom(strings.NewReader(strings.Repeat("x", 200)))
+	assert.NoError(t, errFrom)
+	assert.Equal(t, int64(200), nFrom)
+
+	out.Reset()
+	nTo, errTo := bb.WriteTo(&out)
+	assert.NoError(t, errTo)
+	assert.Equal(t, int64(200), nTo)
+
+	// CopyZeroAlloc and CopyZeroAllocWithLimit
+	var dst bytes.Buffer
+	nCopy, errCopy := CopyZeroAlloc(&dst, strings.NewReader("copy payload"))
+	assert.NoError(t, errCopy)
+	assert.Equal(t, int64(12), nCopy)
+
+	dst.Reset()
+	_, errLim := CopyZeroAllocWithLimit(&dst, strings.NewReader("too long payload"), 4)
+	assert.ErrorIs(t, errLim, ErrBodyTooLarge)
+
+	dst.Reset()
+	nLimOK, errLimOK := CopyZeroAllocWithLimit(&dst, strings.NewReader("ok"), 10)
+	assert.NoError(t, errLimOK)
+	assert.Equal(t, int64(2), nLimOK)
+
+	dst.Reset()
+	nNoLim, errNoLim := CopyZeroAllocWithLimit(&dst, strings.NewReader("nolim"), 0)
+	assert.NoError(t, errNoLim)
+	assert.Equal(t, int64(5), nNoLim)
+
+	// StreamReader methods
+	sr := NewStreamReader(strings.NewReader("line1\nline2\nrest"), 128)
+	assert.Equal(t, 0, sr.Buffered())
+	_, errNegPeek := sr.Peek(-1)
+	assert.Error(t, errNegPeek)
+	_, errNegDisc := sr.Discard(-1)
+	assert.Error(t, errNegDisc)
+	nZeroDisc, errZeroDisc := sr.Discard(0)
+	assert.NoError(t, errZeroDisc)
+	assert.Equal(t, 0, nZeroDisc)
+
+	line1, errSlice := sr.ReadSlice('\n')
+	assert.NoError(t, errSlice)
+	assert.Equal(t, "line1\n", string(line1))
+
+	b1, errB := sr.ReadByte()
+	assert.NoError(t, errB)
+	assert.Equal(t, byte('l'), b1)
+
+	p := make([]byte, 4)
+	nRead, errRead := sr.Read(p)
+	assert.NoError(t, errRead)
+	assert.Equal(t, "ine2", string(p[:nRead]))
+
+	nEmptyRead, errEmptyRead := sr.Read(nil)
+	assert.NoError(t, errEmptyRead)
+	assert.Equal(t, 0, nEmptyRead)
+
+	sr.Reset(strings.NewReader("short"))
+	_, errPeekEOF := sr.Peek(100)
+	assert.Error(t, errPeekEOF)
 }

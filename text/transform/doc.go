@@ -16,5 +16,5 @@
 //
 // Accepted cost: Additional complexity for stream transformations.
 //
-// Allocations: zero
+// Allocations: amortized
 package transform

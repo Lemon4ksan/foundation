@@ -143,7 +143,7 @@ func TestRingBuffer_EdgeCases(t *testing.T) {
 	rbDef := ringbuf.New[int](0)
 	assert.NotNil(t, rbDef)
 
-	spscDef := ringbuf.NewSPSCRingBuffer[int](-10)
+	spscDef := ringbuf.NewSPSC[int](-10)
 	assert.NotNil(t, spscDef)
 	assert.Equal(t, 2, spscDef.Cap()) // rounded to min power of 2
 }

@@ -7,13 +7,9 @@
 package bytesconv
 
 import (
-	"encoding/base64"
-	"errors"
 	"runtime"
 	"unsafe"
 )
-
-var ErrInvalidBase64 = errors.New("bytesconv: invalid base64 data")
 
 //go:inline
 func toLowerSWAR64(v uint64) uint64 {
@@ -125,23 +121,4 @@ func toUpperVector(dst, src []byte) {
 	}
 	runtime.KeepAlive(src)
 	runtime.KeepAlive(dst)
-}
-
-func base64EncodeVector(dst, src []byte) int {
-	if len(src) == 0 {
-		return 0
-	}
-	base64.StdEncoding.Encode(dst, src)
-	return base64.StdEncoding.EncodedLen(len(src))
-}
-
-func base64DecodeVector(dst, src []byte) (int, error) {
-	if len(src) == 0 {
-		return 0, nil
-	}
-	n, err := base64.StdEncoding.Decode(dst, src)
-	if err != nil {
-		return 0, ErrInvalidBase64
-	}
-	return n, nil
 }

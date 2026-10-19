@@ -48,6 +48,14 @@ func (t *RadixTree[V]) Len() int {
 	return t.size
 }
 
+// Empty reports whether the tree contains no keys.
+func (t *RadixTree[V]) Empty() bool {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+
+	return t.size == 0
+}
+
 // Insert adds or updates key with val. Returns the previous value and true if the key already existed.
 func (t *RadixTree[V]) Insert(key string, val V) (old V, updated bool) {
 	t.mu.Lock()
@@ -328,6 +336,30 @@ func (t *RadixTree[V]) All() iter.Seq2[string, V] {
 	}
 }
 
+// Keys returns an iterator over all keys stored in the tree in prefix order.
+func (t *RadixTree[V]) Keys() iter.Seq[string] {
+	return func(yield func(string) bool) {
+		t.mu.RLock()
+		defer t.mu.RUnlock()
+
+		walkNode("", t.root, func(k string, _ V) bool {
+			return yield(k)
+		})
+	}
+}
+
+// Values returns an iterator over all values stored in the tree in prefix order.
+func (t *RadixTree[V]) Values() iter.Seq[V] {
+	return func(yield func(V) bool) {
+		t.mu.RLock()
+		defer t.mu.RUnlock()
+
+		walkNode("", t.root, func(_ string, v V) bool {
+			return yield(v)
+		})
+	}
+}
+
 // Delete removes key from the tree. Returns the removed value and true if key was present.
 func (t *RadixTree[V]) Delete(key string) (V, bool) {
 	t.mu.Lock()
@@ -440,7 +472,6 @@ func (n *node[V]) addEdge(b byte, child *node[V]) {
 	n.edges = append(n.edges, edge[V]{label: b, node: child})
 }
 
-//go:inline
 func commonPrefixLength(a, b string) int {
 	maxLen := min(len(a), len(b))
 	if maxLen == 0 {

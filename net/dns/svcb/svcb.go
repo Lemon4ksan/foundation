@@ -2,11 +2,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package svcb implements Service Binding (SVCB) and HTTPS Resource Records strictly conforming to RFC 9460.
-//
-// It provides wire format decoding and encoding for SVCB (RR type 64) and HTTPS (RR type 65) resource records,
-// parameter parsing (alpn, port, ipv4hint, ipv6hint, ech, mandatory), query name construction,
-// and endpoint priority evaluation.
 package svcb
 
 import (

@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package require provides immediate-failure testing assertions.
 package require
 
 import (
@@ -112,12 +111,11 @@ func Falsef(t testing.TB, value bool, format string, args ...any) {
 }
 
 // Nil asserts that object is nil, failing immediately if not.
-func Nil(t testing.TB, object any, msgAndArgs ...any) bool {
+func Nil(t testing.TB, object any, msgAndArgs ...any) {
 	t.Helper()
 	if !assert.Nil(t, object, msgAndArgs...) {
 		t.FailNow()
 	}
-	return true
 }
 
 // Nilf asserts that object is nil with format, failing immediately if not.
@@ -129,12 +127,11 @@ func Nilf(t testing.TB, object any, format string, args ...any) {
 }
 
 // NotNil asserts that object is not nil, failing immediately if nil.
-func NotNil(t testing.TB, object any, msgAndArgs ...any) bool {
+func NotNil(t testing.TB, object any, msgAndArgs ...any) {
 	t.Helper()
 	if !assert.NotNil(t, object, msgAndArgs...) {
 		t.FailNow()
 	}
-	return true
 }
 
 // NotNilf asserts that object is not nil with format, failing immediately if nil.

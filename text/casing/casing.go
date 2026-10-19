@@ -9,21 +9,6 @@ import (
 	"unicode"
 )
 
-// Kind identifies a string casing convention.
-// The zero value is an empty string and represents an unspecified casing.
-type Kind string
-
-const (
-	// Snake represents lowercase underscore-separated casing (e.g. "snake_case").
-	Snake Kind = "snake_case"
-	// Camel represents lowerCamelCase casing (e.g. "camelCase").
-	Camel Kind = "camelCase"
-	// Pascal represents UpperCamelCase casing (e.g. "PascalCase").
-	Pascal Kind = "PascalCase"
-	// Kebab represents lowercase hyphen-separated casing (e.g. "kebab-case").
-	Kebab Kind = "kebab-case"
-)
-
 // ToSnake converts s into snake_case (e.g. "HTTPServerURL" -> "http_server_url", "userName" -> "user_name").
 func ToSnake(s string) string {
 	return convertDelimited(s, '_', false)

@@ -5,7 +5,9 @@
 package sysnet
 
 import (
+	"io"
 	"net"
+	"syscall"
 )
 
 // TuneSocketConn applies low-latency OS syscall flags (TCP_NODELAY and socket buffer tuning) to a [net.Conn].
@@ -56,12 +58,6 @@ func writeVectorBuffers(conn net.Conn, buffers [][]byte) (int64, error) {
 	return netBufs.WriteTo(conn)
 }
 
-type syscallConn interface {
-	Control(func(fd uintptr)) error
-	Read(func(fd uintptr) bool) error
-	Write(func(fd uintptr) bool) error
-}
-
 // BatchUDPConn wraps a [net.PacketConn] to execute vectorized UDP datagram batching.
 type BatchUDPConn struct {
 	net.PacketConn
@@ -89,7 +85,7 @@ func (c *BatchUDPConn) writeVector(buffers [][]byte) (int64, error) {
 
 // SyscallConnector wraps the standard SyscallConn method allowing access to underlying OS file descriptors.
 type SyscallConnector interface {
-	SyscallConn() (syscallConn, error)
+	SyscallConn() (syscall.RawConn, error)
 }
 
 func advanceBuffers(buffers [][]byte, written int64) [][]byte {
@@ -106,15 +102,23 @@ func advanceBuffers(buffers [][]byte, written int64) [][]byte {
 	return buffers
 }
 
-func writeVectorBuffersLoop(raw syscallConn, buffers [][]byte) (int64, error) {
+func writeVectorBuffersLoop(raw syscall.RawConn, buffers [][]byte) (int64, error) {
 	var (
 		totalWritten int64
 		sysErr       error
 	)
 
-	remaining := buffers
+	remaining := make([][]byte, len(buffers))
+	copy(remaining, buffers)
 	errCtrl := raw.Write(func(fd uintptr) bool {
 		for len(remaining) > 0 {
+			for len(remaining) > 0 && len(remaining[0]) == 0 {
+				remaining = remaining[1:]
+			}
+			if len(remaining) == 0 {
+				break
+			}
+
 			var written int64
 			written, sysErr = writeVectorBuffersFD(fd, remaining)
 			if written > 0 {
@@ -123,6 +127,10 @@ func writeVectorBuffersLoop(raw syscallConn, buffers [][]byte) (int64, error) {
 			}
 			if sysErr != nil {
 				return !isWouldBlock(sysErr)
+			}
+			if written == 0 {
+				sysErr = io.ErrShortWrite
+				return true
 			}
 		}
 		return true
@@ -133,7 +141,7 @@ func writeVectorBuffersLoop(raw syscallConn, buffers [][]byte) (int64, error) {
 	return totalWritten, sysErr
 }
 
-// WriteVectorTo writes multiple UDP datagram payload buffers to a target destination address in a single vectorized syscall.
+// WriteVectorTo writes multiple UDP datagram payload buffers to a target destination address.
 //
 //go:inline
 func (c *BatchUDPConn) WriteVectorTo(buffers [][]byte, addr net.Addr) (int64, error) {
@@ -145,11 +153,13 @@ func (c *BatchUDPConn) WriteVectorTo(buffers [][]byte, addr net.Addr) (int64, er
 }
 
 func (c *BatchUDPConn) writeVectorTo(buffers [][]byte, addr net.Addr) (int64, error) {
-	if sysConn, ok := c.PacketConn.(SyscallConnector); ok {
-		if raw, err := sysConn.SyscallConn(); err == nil {
-			totalWritten, err := writeVectorBuffersLoop(raw, buffers)
-			if err == nil {
-				return totalWritten, nil
+	if addr == nil {
+		if sysConn, ok := c.PacketConn.(SyscallConnector); ok {
+			if raw, err := sysConn.SyscallConn(); err == nil && raw != nil {
+				totalWritten, err := writeVectorBuffersLoop(raw, buffers)
+				if err == nil {
+					return totalWritten, nil
+				}
 			}
 		}
 	}
@@ -159,7 +169,19 @@ func (c *BatchUDPConn) writeVectorTo(buffers [][]byte, addr net.Addr) (int64, er
 		if len(buf) == 0 {
 			continue
 		}
-		n, err := c.WriteTo(buf, addr)
+		var (
+			n   int
+			err error
+		)
+		if addr == nil {
+			if w, ok := c.PacketConn.(io.Writer); ok {
+				n, err = w.Write(buf)
+			} else {
+				n, err = c.WriteTo(buf, nil)
+			}
+		} else {
+			n, err = c.WriteTo(buf, addr)
+		}
 		total += int64(n)
 		if err != nil {
 			return total, err
@@ -224,7 +246,7 @@ func (c *BatchUDPConn) SetGRO(enable bool) error {
 }
 
 // SyscallConn returns a raw network connection for OS syscall access.
-func (c *BatchUDPConn) SyscallConn() (syscallConn, error) {
+func (c *BatchUDPConn) SyscallConn() (syscall.RawConn, error) {
 	if sys, ok := c.PacketConn.(SyscallConnector); ok {
 		return sys.SyscallConn()
 	}

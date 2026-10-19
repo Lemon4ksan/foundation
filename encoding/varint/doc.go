@@ -4,7 +4,7 @@
 
 // Package varint implements QUIC variable-length integer encoding and decoding (RFC 9000).
 //
-// varint utilizes assembly-optimized SIMD intrinsics when available to process variable-length integers with zero allocations. It bounds-checks rigorously to fail fast on malformed streams, critical for secure QUIC transport.
+// varint uses direct bit manipulation and branchless bounds checks to process variable-length integers with zero allocations. It bounds-checks rigorously to fail fast on malformed streams, critical for secure QUIC transport.
 //
 // See [Read], [Parse], and [Append] for usage.
 //

@@ -19,5 +19,5 @@
 //
 // Accepted cost: extra 8 bytes of memory overhead for the lockless atomic pointer.
 //
-// Allocations: zero
+// Allocations: amortized
 package lazy

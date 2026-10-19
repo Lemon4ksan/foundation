@@ -29,19 +29,22 @@ type Buffer[T any] struct {
 	buffer     []cell[T]
 }
 
-// New instantiates a lock-free [Buffer] with power-of-two capacity.
-func New[T any](capacity int) *Buffer[T] {
+func roundUpPow2(capacity int) uint64 {
 	if capacity < 2 {
-		capacity = 2
+		return 2
 	}
 
-	capPow2 := uint64(1)
-	for capPow2 < uint64(capacity) && capPow2 != 0 {
+	capPow2 := uint64(2)
+	for capPow2 < uint64(capacity) {
 		capPow2 <<= 1
 	}
-	if capPow2 == 0 {
-		capPow2 = 1 << 62
-	}
+
+	return capPow2
+}
+
+// New instantiates a lock-free [Buffer] with power-of-two capacity.
+func New[T any](capacity int) *Buffer[T] {
+	capPow2 := roundUpPow2(capacity)
 
 	buf := make([]cell[T], capPow2)
 	for i := uint64(0); i < capPow2; i++ {

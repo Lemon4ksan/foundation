@@ -6,13 +6,6 @@
 
 package bytesconv
 
-import (
-	"encoding/base64"
-	"errors"
-)
-
-var ErrInvalidBase64 = errors.New("bytesconv: invalid base64 data")
-
 func toLowerVector(dst, src []byte) {
 	n := min(len(dst), len(src))
 	if n == 0 {
@@ -37,13 +30,4 @@ func toUpperVector(dst, src []byte) {
 	for i := 0; i < n; i++ {
 		dst[i] = toUpperTable[src[i]]
 	}
-}
-
-func base64EncodeVector(dst, src []byte) int {
-	base64.StdEncoding.Encode(dst, src)
-	return base64.StdEncoding.EncodedLen(len(src))
-}
-
-func base64DecodeVector(dst, src []byte) (int, error) {
-	return base64.StdEncoding.Decode(dst, src)
 }

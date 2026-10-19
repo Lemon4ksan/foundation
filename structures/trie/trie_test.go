@@ -9,7 +9,7 @@ import (
 	"maps"
 	"testing"
 
-	"github.com/lemon4ksan/foundation/silicon/trie"
+	"github.com/lemon4ksan/foundation/structures/trie"
 	"github.com/lemon4ksan/foundation/testing/assert"
 )
 
@@ -234,6 +234,19 @@ func TestRadixTree_All(t *testing.T) {
 		}
 	}
 	assert.Equal(t, 2, breakCount)
+
+	assert.False(t, tree.Empty())
+	var keys []string
+	for k := range tree.Keys() {
+		keys = append(keys, k)
+	}
+	assert.Equal(t, len(data), len(keys))
+
+	var vals []int
+	for v := range tree.Values() {
+		vals = append(vals, v)
+	}
+	assert.Equal(t, len(data), len(vals))
 }
 
 func BenchmarkRadixTree_Get_ZeroAlloc(b *testing.B) {

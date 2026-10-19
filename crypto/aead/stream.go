@@ -242,6 +242,54 @@ func NewStreamReader(r io.Reader, aead cipher.AEAD, nonceBase, streamAAD []byte)
 	}, nil
 }
 
+func (sr *StreamReader) readNextFrame() ([]byte, error) {
+	// Read next chunk frame header: 4 bytes length + 1 byte flag
+	var header [5]byte
+	_, err := io.ReadFull(sr.r, header[:])
+	if err != nil {
+		if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+			return nil, ErrStreamTruncated
+		}
+		return nil, fmt.Errorf("aead: read chunk %d header: %w", sr.chunkIdx, err)
+	}
+
+	ctLen := binary.BigEndian.Uint32(header[0:4])
+	flag := header[4]
+
+	if flag > flagLastChunk {
+		return nil, fmt.Errorf("%w: 0x%02x", ErrInvalidHeaderFlag, flag)
+	}
+	if ctLen > MaxChunkSize {
+		return nil, fmt.Errorf("%w: chunk length %d", ErrChunkTooLarge, ctLen)
+	}
+	if int(ctLen) < sr.aead.Overhead() {
+		return nil, fmt.Errorf("%w: chunk length %d smaller than tag overhead", ErrChunkTooSmall, ctLen)
+	}
+
+	ctBuf := make([]byte, ctLen)
+	if _, err := io.ReadFull(sr.r, ctBuf); err != nil {
+		if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+			return nil, ErrStreamTruncated
+		}
+		return nil, fmt.Errorf("aead: read chunk %d ciphertext: %w", sr.chunkIdx, err)
+	}
+
+	nonce := deriveChunkNonce(sr.nonceBase, sr.chunkIdx)
+	aad := deriveChunkAAD(sr.streamAAD, sr.chunkIdx, flag)
+
+	pt, err := sr.aead.Open(nil, nonce, ctBuf, aad)
+	if err != nil {
+		return nil, fmt.Errorf("aead: chunk %d authentication failed: %w", sr.chunkIdx, err)
+	}
+
+	if flag&flagLastChunk != 0 {
+		sr.reachedEOF = true
+	}
+
+	sr.chunkIdx++
+	return pt, nil
+}
+
 // Read decrypts chunks on demand and returns the authenticated plaintext.
 func (sr *StreamReader) Read(p []byte) (int, error) {
 	if len(p) == 0 {
@@ -253,50 +301,11 @@ func (sr *StreamReader) Read(p []byte) (int, error) {
 			return 0, io.EOF
 		}
 
-		// Read next chunk frame header: 4 bytes length + 1 byte flag
-		var header [5]byte
-		_, err := io.ReadFull(sr.r, header[:])
+		pt, err := sr.readNextFrame()
 		if err != nil {
-			if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
-				return 0, ErrStreamTruncated
-			}
-			return 0, fmt.Errorf("aead: read chunk %d header: %w", sr.chunkIdx, err)
+			return 0, err
 		}
 
-		ctLen := binary.BigEndian.Uint32(header[0:4])
-		flag := header[4]
-
-		if flag > flagLastChunk {
-			return 0, fmt.Errorf("%w: 0x%02x", ErrInvalidHeaderFlag, flag)
-		}
-		if ctLen > MaxChunkSize {
-			return 0, fmt.Errorf("%w: chunk length %d", ErrChunkTooLarge, ctLen)
-		}
-		if int(ctLen) < sr.aead.Overhead() {
-			return 0, fmt.Errorf("%w: chunk length %d smaller than tag overhead", ErrChunkTooSmall, ctLen)
-		}
-
-		ctBuf := make([]byte, ctLen)
-		if _, err := io.ReadFull(sr.r, ctBuf); err != nil {
-			if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
-				return 0, ErrStreamTruncated
-			}
-			return 0, fmt.Errorf("aead: read chunk %d ciphertext: %w", sr.chunkIdx, err)
-		}
-
-		nonce := deriveChunkNonce(sr.nonceBase, sr.chunkIdx)
-		aad := deriveChunkAAD(sr.streamAAD, sr.chunkIdx, flag)
-
-		pt, err := sr.aead.Open(nil, nonce, ctBuf, aad)
-		if err != nil {
-			return 0, fmt.Errorf("aead: chunk %d authentication failed: %w", sr.chunkIdx, err)
-		}
-
-		if flag&flagLastChunk != 0 {
-			sr.reachedEOF = true
-		}
-
-		sr.chunkIdx++
 		sr.buf = pt
 	}
 
@@ -327,56 +336,11 @@ func (sr *StreamReader) Chunks() iter.Seq2[[]byte, error] {
 				return
 			}
 
-			var header [5]byte
-			_, err := io.ReadFull(sr.r, header[:])
+			pt, err := sr.readNextFrame()
 			if err != nil {
-				if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
-					yield(nil, ErrStreamTruncated)
-				} else {
-					yield(nil, fmt.Errorf("aead: read chunk %d header: %w", sr.chunkIdx, err))
-				}
+				yield(nil, err)
 				return
 			}
-
-			ctLen := binary.BigEndian.Uint32(header[0:4])
-			flag := header[4]
-
-			if flag > flagLastChunk {
-				yield(nil, fmt.Errorf("%w: 0x%02x", ErrInvalidHeaderFlag, flag))
-				return
-			}
-			if ctLen > MaxChunkSize {
-				yield(nil, fmt.Errorf("%w: chunk length %d", ErrChunkTooLarge, ctLen))
-				return
-			}
-			if int(ctLen) < sr.aead.Overhead() {
-				yield(nil, fmt.Errorf("%w: chunk length %d smaller than tag overhead", ErrChunkTooSmall, ctLen))
-				return
-			}
-
-			ctBuf := make([]byte, ctLen)
-			if _, err := io.ReadFull(sr.r, ctBuf); err != nil {
-				if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
-					yield(nil, ErrStreamTruncated)
-				} else {
-					yield(nil, fmt.Errorf("aead: read chunk %d ciphertext: %w", sr.chunkIdx, err))
-				}
-				return
-			}
-
-			nonce := deriveChunkNonce(sr.nonceBase, sr.chunkIdx)
-			aad := deriveChunkAAD(sr.streamAAD, sr.chunkIdx, flag)
-
-			pt, err := sr.aead.Open(nil, nonce, ctBuf, aad)
-			if err != nil {
-				yield(nil, fmt.Errorf("aead: chunk %d authentication failed: %w", sr.chunkIdx, err))
-				return
-			}
-
-			if flag&flagLastChunk != 0 {
-				sr.reachedEOF = true
-			}
-			sr.chunkIdx++
 
 			if !yield(pt, nil) {
 				return

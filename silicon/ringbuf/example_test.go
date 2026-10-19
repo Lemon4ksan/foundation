@@ -11,8 +11,8 @@ import (
 	"github.com/lemon4ksan/foundation/silicon/ringbuf"
 )
 
-func ExampleSPSCRingBuffer() {
-	rb := ringbuf.NewSPSCRingBuffer[uint64](2048)
+func ExampleSPSC() {
+	rb := ringbuf.NewSPSC[uint64](2048)
 	var wg sync.WaitGroup
 	wg.Add(2)
 

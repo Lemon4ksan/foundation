@@ -9,8 +9,15 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
+	"io/fs"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"sort"
+	"strings"
 	"time"
 )
 
@@ -19,33 +26,70 @@ type fuzzTarget struct {
 	name string
 }
 
-var targets = []fuzzTarget{
-	{"./generic", "FuzzResult"},
-	{"./net/urlkit", "FuzzURLParse"},
-	{"./net/urlkit", "FuzzReplaceVar"},
-	{"./net/urlkit", "FuzzFastAppendQuery"},
-	{"./types/uuid", "FuzzUUIDParse"},
-	{"./encoding/json", "FuzzJSONUnmarshal"},
-	{"./silicon/hexkit", "FuzzHexEncodeDecode"},
-	{"./silicon/hexkit", "FuzzHexDecodeArbitrary"},
-	{"./silicon/bytesconv", "FuzzEqualFoldASCII"},
-	{"./silicon/bytesconv", "FuzzAppendToLower"},
-	{"./silicon/simd", "FuzzIndexByteSWAR"},
-	{"./silicon/simd", "FuzzIndexCRLF"},
-	{"./silicon/simd", "FuzzIndexDoubleCRLF"},
-	{"./silicon/offheap", "FuzzOffHeapBuffer"},
-	{"./silicon/trie", "FuzzRadixTree"},
-	{"./text/casing", "FuzzCasingConversions"},
-	{"./encoding/proto", "FuzzProtoScan"},
-	{"./encoding/proto", "FuzzProtoSkip"},
-	{"./encoding/proto", "FuzzProtoPacked"},
-	{"./encoding/proto", "FuzzProtoRecursive"},
+func discoverFuzzTargets(root string) ([]fuzzTarget, error) {
+	var discovered []fuzzTarget
+	fset := token.NewFileSet()
+	cleanRoot := filepath.Clean(root)
+
+	err := filepath.WalkDir(cleanRoot, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			if path == cleanRoot {
+				return nil
+			}
+			name := d.Name()
+			if strings.HasPrefix(name, ".") || name == "vendor" || name == "testdata" || name == "scripts" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !strings.HasSuffix(path, "_test.go") {
+			return nil
+		}
+		node, parseErr := parser.ParseFile(fset, path, nil, 0)
+		if parseErr != nil {
+			return parseErr
+		}
+		relDir, relErr := filepath.Rel(cleanRoot, filepath.Dir(path))
+		if relErr != nil {
+			return relErr
+		}
+		pkg := "./" + filepath.ToSlash(relDir)
+		for _, decl := range node.Decls {
+			fd, ok := decl.(*ast.FuncDecl)
+			if !ok || fd.Recv != nil || !strings.HasPrefix(fd.Name.Name, "Fuzz") {
+				continue
+			}
+			if fd.Type.Params != nil && len(fd.Type.Params.List) == 1 {
+				discovered = append(discovered, fuzzTarget{pkg: pkg, name: fd.Name.Name})
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	sort.Slice(discovered, func(i, j int) bool {
+		if discovered[i].pkg != discovered[j].pkg {
+			return discovered[i].pkg < discovered[j].pkg
+		}
+		return discovered[i].name < discovered[j].name
+	})
+	return discovered, nil
 }
 
 func main() {
 	fuzzDuration := flag.String("fuzztime", "3s", "duration to fuzz each target")
 
 	flag.Parse()
+
+	targets, err := discoverFuzzTargets(".")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to discover fuzz targets: %v\n", err)
+		os.Exit(1)
+	}
 
 	fmt.Printf(
 		"=== Starting Foundation Heavy Security Fuzzing Suite (%d targets, %s each) ===\n\n",

@@ -586,10 +586,28 @@ func (b *Set) Values() iter.Seq[int] {
 	return b.Bits()
 }
 
-// All returns an iterator yielding indices of all set bits in ascending order.
-// It is an alias for Bits().
-func (b *Set) All() iter.Seq[int] {
-	return b.Bits()
+// All returns an iterator yielding the ordinal position (0, 1, ...) and bit index
+// of all set bits in ascending order.
+func (b *Set) All() iter.Seq2[int, int] {
+	return func(yield func(int, int) bool) {
+		if b == nil || b.length == 0 {
+			return
+		}
+		ord := 0
+		n := numWords(b.length)
+		for i := range n {
+			w := b.words[i]
+			base := i << wordShift
+			for w != 0 {
+				tz := bits.TrailingZeros64(w)
+				if !yield(ord, base+tz) {
+					return
+				}
+				ord++
+				w &= w - 1
+			}
+		}
+	}
 }
 
 // Resize resizes the Set to nbits.

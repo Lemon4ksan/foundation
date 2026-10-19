@@ -294,12 +294,13 @@ func TestQueryEscape_And_UnescapeBytes(t *testing.T) {
 func TestPathEscape_And_UnescapeBytes(t *testing.T) {
 	t.Parallel()
 
-	raw := "user/profile with spaces+symbols"
+	raw := "user/profile with spaces+symbols:!$&'()*,;=@"
 	escapedBytes := urlkit.AppendPathEscape(nil, []byte(raw))
 	escapedStr := urlkit.AppendPathEscapeString(nil, raw)
 	assert.Equal(t, escapedBytes, escapedStr)
+	assert.Equal(t, "user%2Fprofile%20with%20spaces+symbols:!$&'()*,;=@", string(escapedBytes))
 
-	// PathUnescapeBytes preserves '+'
+	// PathUnescapeBytes preserves '+' and unescapes %20 and %2F
 	unescapedBytes, err := urlkit.PathUnescapeBytes(nil, escapedBytes)
 	require.NoError(t, err)
 	assert.Equal(t, []byte(raw), unescapedBytes)
@@ -419,51 +420,148 @@ func TestCloneURL(t *testing.T) {
 func TestResolve(t *testing.T) {
 	t.Parallel()
 
+	// BaseURL without trailing slash preserves "/v1" prefix for both "users" and "/users"
+	baseNoSlash, err := urlkit.Parse("https://api.example.com/v1")
+	require.NoError(t, err)
+
+	u, err := urlkit.Resolve(baseNoSlash, "users")
+	require.NoError(t, err)
+	assert.Equal(t, "https://api.example.com/v1/users", u.String())
+
+	u, err = urlkit.Resolve(baseNoSlash, "/users")
+	require.NoError(t, err)
+	assert.Equal(t, "https://api.example.com/v1/users", u.String())
+
+	u, err = urlkit.Resolve(baseNoSlash, "/users/")
+	require.NoError(t, err)
+	assert.Equal(t, "https://api.example.com/v1/users/", u.String())
+
+	u, err = urlkit.Resolve(baseNoSlash, "/")
+	require.NoError(t, err)
+	assert.Equal(t, "https://api.example.com/v1/", u.String())
+
+	// BaseURL with NormalizeBaseURL
 	base1, err := urlkit.NormalizeBaseURL("https://api.example.com/v1")
 	require.NoError(t, err)
 	assert.Equal(t, "https://api.example.com/v1/", base1.String())
 
-	// 1. Relative path without slash -> /v1/users
-	u, err := urlkit.Resolve(base1, "users")
+	// Protocol-relative URL -> inherits scheme from base
+	u, err = urlkit.Resolve(base1, "//cdn.example.com/assets/app.js")
 	require.NoError(t, err)
-	assert.Equal(t, "https://api.example.com/v1/users", u.String())
+	assert.Equal(t, "https://cdn.example.com/assets/app.js", u.String())
 
-	// 2. Relative path with leading slash -> /users (RFC 3986 compliant absolute path)
-	u, err = urlkit.Resolve(base1, "/users")
-	require.NoError(t, err)
-	assert.Equal(t, "https://api.example.com/users", u.String())
-
-	// 3. Absolute URL -> bypasses base
+	// Absolute HTTP/HTTPS and custom-scheme URLs -> bypass base
 	u, err = urlkit.Resolve(base1, "https://other.com/auth")
 	require.NoError(t, err)
 	assert.Equal(t, "https://other.com/auth", u.String())
 
-	// 4. Root BaseURL fast-path
+	u, err = urlkit.Resolve(base1, "wss://stream.example.com/feed")
+	require.NoError(t, err)
+	assert.Equal(t, "wss://stream.example.com/feed", u.String())
+
+	// Root BaseURL with leading and non-leading slash
 	baseRoot, _ := urlkit.Parse("https://api.example.com")
 	u, err = urlkit.Resolve(baseRoot, "/users/42")
 	require.NoError(t, err)
 	assert.Equal(t, "https://api.example.com/users/42", u.String())
 
-	// 5. Empty path and slash against base
+	u, err = urlkit.Resolve(baseRoot, "users/42")
+	require.NoError(t, err)
+	assert.Equal(t, "https://api.example.com/users/42", u.String())
+
+	// Query and fragment merging
+	baseWithQuery, _ := urlkit.Parse("https://api.example.com/v1?api_key=secret")
+	u, err = urlkit.Resolve(baseWithQuery, "/items?limit=10#top")
+	require.NoError(t, err)
+	assert.Equal(t, "https://api.example.com/v1/items?api_key=secret&limit=10#top", u.String())
+
+	u, err = urlkit.Resolve(baseNoSlash, "?page=2#section")
+	require.NoError(t, err)
+	assert.Equal(t, "https://api.example.com/v1?page=2#section", u.String())
+
+	// Empty ref against base and nil base
 	uEmpty, err := urlkit.Resolve(base1, "")
 	require.NoError(t, err)
 	assert.Equal(t, base1.String(), uEmpty.String())
 
-	// 6. NormalizeBaseURL with empty string
+	uNilEmpty, err := urlkit.Resolve(nil, "")
+	require.NoError(t, err)
+	assert.Equal(t, "", uNilEmpty.String())
+
+	// NormalizeBaseURL with empty string
 	normEmpty, err := urlkit.NormalizeBaseURL("")
 	require.NoError(t, err)
 	assert.Equal(t, "", normEmpty.String())
 
-	// 7. ResolveString
-	resStr, err := urlkit.ResolveString(base1, "")
+	// ResolveString
+	resStr, err := urlkit.ResolveString(baseNoSlash, "/orders")
 	require.NoError(t, err)
-	assert.Equal(t, base1.String(), resStr)
+	assert.Equal(t, "https://api.example.com/v1/orders", resStr)
+
+	resStrEmpty, err := urlkit.ResolveString(base1, "")
+	require.NoError(t, err)
+	assert.Equal(t, base1.String(), resStrEmpty)
 
 	resAbs, err := urlkit.ResolveString(nil, "https://api.com/users")
 	require.NoError(t, err)
 	assert.Equal(t, "https://api.com/users", resAbs)
 
 	_, err = urlkit.ResolveString(base1, ":bad-url")
+	assert.Error(t, err)
+}
+
+func TestResolveReference(t *testing.T) {
+	t.Parallel()
+
+	base1, err := urlkit.NormalizeBaseURL("https://api.example.com/v1")
+	require.NoError(t, err)
+	assert.Equal(t, "https://api.example.com/v1/", base1.String())
+
+	// 1. Relative path without slash -> /v1/users
+	u, err := urlkit.ResolveReference(base1, "users")
+	require.NoError(t, err)
+	assert.Equal(t, "https://api.example.com/v1/users", u.String())
+
+	// 2. Relative path with leading slash -> /users (RFC 3986 §5 root-relative displacement)
+	u, err = urlkit.ResolveReference(base1, "/users")
+	require.NoError(t, err)
+	assert.Equal(t, "https://api.example.com/users", u.String())
+
+	// 3. Base without trailing slash -> last segment displaced per RFC 3986 §5.2.3
+	baseNoSlash, _ := urlkit.Parse("https://api.example.com/v1/items")
+	u, err = urlkit.ResolveReference(baseNoSlash, "orders")
+	require.NoError(t, err)
+	assert.Equal(t, "https://api.example.com/v1/orders", u.String())
+
+	// 4. Absolute URL -> bypasses base
+	u, err = urlkit.ResolveReference(base1, "https://other.com/auth")
+	require.NoError(t, err)
+	assert.Equal(t, "https://other.com/auth", u.String())
+
+	// 5. Root BaseURL fast-path
+	baseRoot, _ := urlkit.Parse("https://api.example.com")
+	u, err = urlkit.ResolveReference(baseRoot, "/users/42")
+	require.NoError(t, err)
+	assert.Equal(t, "https://api.example.com/users/42", u.String())
+
+	// 6. Empty ref against base
+	uEmpty, err := urlkit.ResolveReference(base1, "")
+	require.NoError(t, err)
+	assert.Equal(t, base1.String(), uEmpty.String())
+
+	// 7. ResolveReferenceString
+	resStr, err := urlkit.ResolveReferenceString(base1, "")
+	require.NoError(t, err)
+	assert.Equal(t, base1.String(), resStr)
+
+	resAbs, err := urlkit.ResolveReferenceString(nil, "https://api.com/users")
+	require.NoError(t, err)
+	assert.Equal(t, "https://api.com/users", resAbs)
+
+	_, err = urlkit.ResolveReference(base1, ":bad-url")
+	assert.Error(t, err)
+
+	_, err = urlkit.ResolveReferenceString(base1, ":bad-url")
 	assert.Error(t, err)
 }
 

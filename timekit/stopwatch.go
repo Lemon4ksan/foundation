@@ -13,16 +13,11 @@ type Stopwatch struct {
 	start time.Time
 }
 
-// StartStopwatch creates and immediately starts a new [Stopwatch].
-func StartStopwatch() Stopwatch {
+// Start creates and immediately starts a new [Stopwatch].
+func Start() Stopwatch {
 	return Stopwatch{
 		start: time.Now(),
 	}
-}
-
-// Start creates and immediately starts a new [Stopwatch] without package stuttering.
-func Start() Stopwatch {
-	return StartStopwatch()
 }
 
 // Elapsed returns the duration elapsed since the stopwatch was started.

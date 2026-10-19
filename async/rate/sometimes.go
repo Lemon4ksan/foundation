@@ -13,8 +13,7 @@ import (
 //
 // The First, Every, and Interval fields govern the behavior of Do, which performs the action.
 // The zero value is empty and ready to use.
-// Read-only operations are safe for concurrent use; mutations require external synchronization unless stated otherwise.
-// Note that methods on [Sometimes] manage their own internal locks.
+// [Sometimes.Do] manages its own internal lock and is safe for concurrent use once the exported configuration fields are set.
 type Sometimes struct {
 	First    int           // if non-zero, the first N calls to Do will run f.
 	Every    int           // if non-zero, every Nth call to Do will run f.

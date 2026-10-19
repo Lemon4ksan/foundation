@@ -616,3 +616,26 @@ func TestAdaptive_Allocations(t *testing.T) {
 		t.Logf("Adaptive allocates %v per op", allocs)
 	}
 }
+
+func TestAdaptive_Acquire_CanceledAndNilContext(t *testing.T) {
+	l := NewAdaptive(5.0)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	// Should fail immediately even though capacity is available
+	err := l.Acquire(ctx)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context.Canceled when capacity available, got %v", err)
+	}
+	if l.active != 0 {
+		t.Fatalf("expected active to remain 0, got %d", l.active)
+	}
+
+	defer func() {
+		if r := recover(); r == nil {
+			t.Fatal("expected panic on nil context")
+		}
+	}()
+	_ = l.Acquire(nil) //nolint:staticcheck
+}

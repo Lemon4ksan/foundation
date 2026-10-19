@@ -115,7 +115,7 @@ func (a *Arena) AllocAligned(size, align int) unsafe.Pointer {
 	return ptr
 }
 
-// AllocBuffer allocates an [Buffer] bound to this arena's memory slab.
+// AllocBuffer allocates a [Buffer] bound to this arena's memory slab.
 func (a *Arena) AllocBuffer(capacity int) *Buffer {
 	ptr := a.Alloc(capacity)
 	if ptr == nil {
@@ -184,15 +184,8 @@ func (a *Arena) Release() {
 	}
 }
 
-// fallbackAllocStruct allocates T on Go runtime heap when off-heap arena memory is exhausted.
-//
-//go:noinline
-func fallbackAllocStruct[T any]() *T {
-	return new(T)
-}
-
 // AllocStruct allocates memory for a structure T directly inside the off-heap arena.
-// It executes zero heap allocations in Go's mheap when arena capacity suffices.
+// It executes zero heap allocations in Go's mheap and returns nil when arena capacity is exhausted.
 //
 // CRITICAL GC RULE: Type T MUST be a Plain Old Data (POD) structure.
 // It MUST NOT contain Go heap pointers, strings, maps, channels, or slices,
@@ -213,7 +206,7 @@ func AllocStruct[T any](a *Arena) *T {
 	align := int(unsafe.Alignof(zero))
 	ptr := a.AllocAligned(size, align)
 	if ptr == nil {
-		return fallbackAllocStruct[T]()
+		return nil
 	}
 
 	// Zero-initialize off-heap memory directly without escaping local zero variable.

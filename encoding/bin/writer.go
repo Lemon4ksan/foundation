@@ -100,15 +100,7 @@ func (w *Writer) U64BE(v uint64) *Writer {
 	return w
 }
 
-// BytesSlice appends a raw byte slice.
-//
-//go:inline
-func (w *Writer) BytesSlice(b []byte) *Writer {
-	w.buf = append(w.buf, b...)
-	return w
-}
-
-// Raw appends a raw byte slice (alias for BytesSlice).
+// Raw appends a raw byte slice.
 //
 //go:inline
 func (w *Writer) Raw(b []byte) *Writer {
@@ -116,15 +108,7 @@ func (w *Writer) Raw(b []byte) *Writer {
 	return w
 }
 
-// String appends a string.
-//
-//go:inline
-func (w *Writer) String(s string) *Writer {
-	w.buf = append(w.buf, s...)
-	return w
-}
-
-// RawString appends a string (alias for String).
+// RawString appends a string.
 //
 //go:inline
 func (w *Writer) RawString(s string) *Writer {

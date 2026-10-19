@@ -27,7 +27,9 @@ type bufferShard[T any] struct {
 	_     cpu.CacheLinePad
 }
 
-// PerCorePool provides a sharded per-CPU core memory pool with 0 cross-core CAS contention or Work Stealing locks.
+// PerCorePool provides a cache-line-padded, power-of-two sharded object pool
+// that retains up to 32 items per shard across GC cycles, using lockless state
+// pre-checks and per-shard spinlocks with fallback shard scanning.
 type PerCorePool[T any] struct {
 	shards  []bufferShard[T]
 	mask    uint64

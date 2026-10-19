@@ -32,11 +32,6 @@ func AcquireScope() *Scope {
 	return s
 }
 
-// NewScope creates or acquires an active [Scope] from the internal pool.
-func NewScope() *Scope {
-	return AcquireScope()
-}
-
 // Release returns the Scope to the internal pool and invalidates all borrows made within it.
 func (s *Scope) Release() {
 	if s == nil {
@@ -76,7 +71,8 @@ func (s *Scope) AllocBytes(size int) Bytes {
 	return NewBytes(large, s.slot)
 }
 
-// Alloc creates an owned [Box] bound to this scope's lifetime.
+// Alloc allocates a heap-backed instance of T and returns an owned [Box] bound to s's generational slot.
+// When s is released, the Box and any borrows derived from it are invalidated.
 func Alloc[T any](s *Scope) Box[T] {
 	ptr := new(T)
 	var slot *Slot

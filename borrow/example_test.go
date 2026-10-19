@@ -20,12 +20,12 @@ func ExampleBox() {
 	box := borrow.NewBox(Config{Workers: 4, Name: "worker-pool"})
 
 	// Immutable shared borrow
-	ref := box.Borrow()
+	ref := box.MustBorrow()
 	fmt.Printf("Config name: %s, workers: %d\n", ref.Get().Name, ref.Get().Workers)
 	ref.Release()
 
 	// Exclusive mutable borrow
-	mut := box.BorrowMut()
+	mut := box.MustBorrowMut()
 	mut.Get().Workers = 8
 	mut.Release()
 
@@ -46,7 +46,7 @@ func ExampleScoped() {
 		// Allocates an owned box inside the scope
 		box := borrow.Alloc[int](s)
 
-		mut := box.BorrowMut()
+		mut := box.MustBorrowMut()
 		mut.Write(42)
 		mut.Release()
 

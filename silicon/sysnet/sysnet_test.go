@@ -93,10 +93,47 @@ func TestBatchUDPConn_AllMethods(t *testing.T) {
 		[]byte("world"),
 	}
 
-	// WriteVectorTo
+	// WriteVectorTo with explicit destination address
 	n, err := batch.WriteVectorTo(bufs, uconn.LocalAddr())
 	require.NoError(t, err)
 	assert.Equal(t, int64(10), n)
+
+	// WriteVectorTo with empty slice element
+	nWithEmpty, errWithEmpty := batch.WriteVectorTo([][]byte{nil, []byte("abc")}, uconn.LocalAddr())
+	require.NoError(t, errWithEmpty)
+	assert.Equal(t, int64(3), nWithEmpty)
+
+	// Connected UDP socket for WriteVector (addr == nil -> writeVectorBuffersLoop)
+	dialConn, errDial := net.DialUDP("udp", nil, uconn.LocalAddr().(*net.UDPAddr))
+	require.NoError(t, errDial)
+	defer dialConn.Close()
+
+	dialBatch := sysnet.NewBatchUDPConn(dialConn)
+	nVec, errVec := dialBatch.WriteVector(bufs)
+	require.NoError(t, errVec)
+	assert.Equal(t, int64(10), nVec)
+
+	// Single buffer and leading empty buffer in WriteVector
+	nSingle, errSingle := dialBatch.WriteVector([][]byte{[]byte("single")})
+	require.NoError(t, errSingle)
+	assert.Equal(t, int64(6), nSingle)
+
+	nLeadEmpty, errLeadEmpty := dialBatch.WriteVector([][]byte{nil, []byte("lead")})
+	require.NoError(t, errLeadEmpty)
+	assert.Equal(t, int64(4), nLeadEmpty)
+
+	nAllEmpty, errAllEmpty := dialBatch.WriteVector([][]byte{nil, {}})
+	require.NoError(t, errAllEmpty)
+	assert.Equal(t, int64(0), nAllEmpty)
+
+	// >16 buffers to exercise heap-allocated WSABuf slice path
+	manyBufs := make([][]byte, 20)
+	for i := range manyBufs {
+		manyBufs[i] = []byte("x")
+	}
+	nMany, errMany := dialBatch.WriteVector(manyBufs)
+	require.NoError(t, errMany)
+	assert.Equal(t, int64(20), nMany)
 
 	// Nil / empty cases
 	var nilBatch *sysnet.BatchUDPConn
@@ -108,7 +145,7 @@ func TestBatchUDPConn_AllMethods(t *testing.T) {
 	assert.NoError(t, errEmpty)
 	assert.Equal(t, int64(0), nEmpty)
 
-	// WriteVector
+	// WriteVector nil/empty
 	nVecNil, errVecNil := nilBatch.WriteVector(bufs)
 	assert.NoError(t, errVecNil)
 	assert.Equal(t, int64(0), nVecNil)

@@ -6,55 +6,37 @@ package timekit
 
 import (
 	"iter"
-	"sync/atomic"
 	"time"
+
+	"github.com/lemon4ksan/foundation/silicon/clock"
 )
-
-var cachedTime atomic.Pointer[time.Time]
-
-func init() {
-	t := time.Now()
-	cachedTime.Store(&t)
-
-	// Background ticker updates atomic timestamp at a frequency of ~1ms
-	go func() {
-		ticker := time.NewTicker(time.Millisecond)
-		defer ticker.Stop()
-		for now := range ticker.C {
-			// A small heap allocation every 1ms in the background is acceptable
-			// to provide zero-allocation, monotonic lock-free time to callers.
-			n := now
-			cachedTime.Store(&n)
-		}
-	}()
-}
 
 // CoarseNow returns the approximate current [time.Time] with millisecond resolution, retaining monotonic clock readings without triggering OS clock system calls.
 //
 //go:inline
 func CoarseNow() time.Time {
-	return *cachedTime.Load()
+	return clock.CoarseTime()
 }
 
 // CoarseUnix returns the approximate Unix timestamp in seconds.
 //
 //go:inline
 func CoarseUnix() int64 {
-	return cachedTime.Load().Unix()
+	return clock.CoarseNowUnix()
 }
 
 // CoarseUnixMilli returns the approximate Unix timestamp in milliseconds.
 //
 //go:inline
 func CoarseUnixMilli() int64 {
-	return cachedTime.Load().UnixMilli()
+	return clock.CoarseNowNano() / 1e6
 }
 
 // CoarseUnixNano returns the approximate Unix timestamp in nanoseconds.
 //
 //go:inline
 func CoarseUnixNano() int64 {
-	return cachedTime.Load().UnixNano()
+	return clock.CoarseNowNano()
 }
 
 // RangeSeq returns an iterator yielding timestamps from start up to end (inclusive if exact match), advancing by step on each iteration.

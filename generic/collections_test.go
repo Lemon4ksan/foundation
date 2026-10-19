@@ -440,7 +440,7 @@ func BenchmarkSet_Intersect_AsymmetricSmallReceiver(b *testing.B) {
 
 func TestChunkAndContains(t *testing.T) {
 	nums := []int{1, 2, 3, 4, 5}
-	chunks := Chunk(nums, 2)
+	chunks := Chunked(nums, 2)
 	if len(chunks) != 3 || len(chunks[0]) != 2 || len(chunks[2]) != 1 {
 		t.Fatalf("unexpected chunks: %v", chunks)
 	}
@@ -449,7 +449,28 @@ func TestChunkAndContains(t *testing.T) {
 		t.Fatalf("Contains failed for nums")
 	}
 
-	if !ContainsFunc(nums, func(x int) bool { return x%2 == 0 }) {
-		t.Fatalf("ContainsFunc failed for even number")
+	if !Any(nums, func(x int) bool { return x%2 == 0 }) {
+		t.Fatalf("Any failed for even number")
+	}
+}
+
+func TestCacheZeroValueConcurrent(t *testing.T) {
+	var c Cache[string, int]
+	defer c.Close()
+
+	var wg sync.WaitGroup
+	for i := range 20 {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			c.Set("k", idx, time.Minute)
+			_, _ = c.Get("k")
+			_ = c.Len()
+		}(i)
+	}
+	wg.Wait()
+
+	if _, ok := c.Get("k"); !ok {
+		t.Fatal("expected key 'k' to be present in zero-value Cache")
 	}
 }

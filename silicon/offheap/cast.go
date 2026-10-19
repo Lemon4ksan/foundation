@@ -9,7 +9,7 @@ import "unsafe"
 // StructBytes returns a volatile byte slice view over the raw memory of s without allocation.
 // The returned slice shares memory with s and becomes invalid when s is freed, reset, or goes out of scope.
 //
-// This is useful for writing a POD struct directly to an [Buffer] or any [io.Writer]
+// This is useful for writing a POD struct directly to a [Buffer] or any [io.Writer]
 // without an intermediate encoding step.
 //
 // T MUST be a POD type (no heap pointers, strings, slices, maps, or channels).

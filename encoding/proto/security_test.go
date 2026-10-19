@@ -78,6 +78,28 @@ func TestRepro_Tag_OverflowAndInvalidFieldNum(t *testing.T) {
 	for _, err := range proto.Scan(buf) {
 		require.ErrorIs(t, err, proto.ErrInvalidTag)
 	}
+
+	_, _, err := proto.FindField(buf, 1)
+	require.ErrorIs(t, err, proto.ErrInvalidTag)
+
+	_, _, err = proto.FindLastField(buf, 1)
+	require.ErrorIs(t, err, proto.ErrInvalidTag)
+
+	_, _, err = proto.ScanMapEntry(buf)
+	require.ErrorIs(t, err, proto.ErrInvalidTag)
+
+	var maxFieldBuf []byte
+	maxFieldBuf = binary.AppendUvarint(maxFieldBuf, uint64(proto.MaxFieldNumber+1)<<3)
+	maxFieldBuf = binary.AppendUvarint(maxFieldBuf, 42)
+
+	_, _, err = proto.FindField(maxFieldBuf, 1)
+	require.ErrorIs(t, err, proto.ErrInvalidTag)
+
+	_, _, err = proto.FindLastField(maxFieldBuf, 1)
+	require.ErrorIs(t, err, proto.ErrInvalidTag)
+
+	_, _, err = proto.ScanMapEntry(maxFieldBuf)
+	require.ErrorIs(t, err, proto.ErrInvalidTag)
 }
 
 // TestSecurity_VarintOverflowLocations tests overflow detection across all syntactic positions.

@@ -26,14 +26,17 @@ func FindField(data []byte, targetFieldNum uint32) (Field, bool, error) {
 			wireType = WireType(b0 & 7)
 			offset++
 		} else {
-			tag, tagBytes := binary.Uvarint(data[offset:])
-			if tagBytes <= 0 {
-				return Field{}, false, ErrTruncated
+			tag, tagBytes, err := DecodeUvarint(data[offset:])
+			if err != nil {
+				return Field{}, false, err
+			}
+			if tag > math.MaxUint32 {
+				return Field{}, false, ErrInvalidTag
 			}
 			offset += tagBytes
 			fieldNum, wireType = SplitTag(uint32(tag))
 		}
-		if fieldNum == 0 {
+		if fieldNum == 0 || fieldNum > MaxFieldNumber {
 			return Field{}, false, ErrInvalidTag
 		}
 
@@ -165,14 +168,17 @@ func FindLastField(data []byte, targetFieldNum uint32) (Field, bool, error) {
 	n := len(data)
 
 	for offset < n {
-		tag, tagBytes := binary.Uvarint(data[offset:])
-		if tagBytes <= 0 {
-			return Field{}, false, ErrTruncated
+		tag, tagBytes, err := DecodeUvarint(data[offset:])
+		if err != nil {
+			return Field{}, false, err
+		}
+		if tag > math.MaxUint32 {
+			return Field{}, false, ErrInvalidTag
 		}
 		offset += tagBytes
 
 		fieldNum, wireType := SplitTag(uint32(tag))
-		if fieldNum == 0 {
+		if fieldNum == 0 || fieldNum > MaxFieldNumber {
 			return Field{}, false, ErrInvalidTag
 		}
 

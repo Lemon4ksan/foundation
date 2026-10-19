@@ -16,5 +16,5 @@
 //
 // Accepted cost: Forces adherence to a specific chunked framing format which may not be compatible with non-conforming external receivers.
 //
-// Allocations: zero
+// Allocations: amortized
 package aead

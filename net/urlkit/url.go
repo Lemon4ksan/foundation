@@ -9,6 +9,7 @@ import (
 	"iter"
 	"net/netip"
 	"net/url"
+	"path"
 	"strings"
 	"sync"
 
@@ -129,9 +130,6 @@ func (u URLView) IsAbs() bool {
 	return u.Scheme != ""
 }
 
-// QueryValue returns the first value associated with the given key in the raw query, or an empty string and false.
-//
-// If the key exists without percent encoding, it returns a slice directly.
 func unescapeQueryComponent(s string) string {
 	if strings.IndexByte(s, '%') >= 0 || strings.IndexByte(s, '+') >= 0 {
 		if unesc, err := QueryUnescape(s); err == nil {
@@ -478,30 +476,131 @@ func NormalizeBaseURL(raw string) (*url.URL, error) {
 	return Parse(formatted)
 }
 
-// Resolve resolves a relative path or absolute URL against the base [*url.URL] (RFC 3986 §5).
+// Resolve resolves a relative request path or absolute URL against baseURL.
 //
-// It features a zero-allocation fast-path for root-domain paths and normalizes slash boundaries.
-func Resolve(baseURL *url.URL, path string) (*url.URL, error) {
-	if (path == "" || path == "/") && baseURL != nil && baseURL.Host != "" {
+// Unlike RFC 3986 / browser reference resolution, it guarantees that baseURL paths
+// (e.g. "/api/v1" or "/api/v1/") are preserved as base prefixes and not displaced
+// when relative paths begin with or lack a leading slash.
+//
+// Absolute URLs and protocol-relative URLs bypass the base URL.
+func Resolve(baseURL *url.URL, ref string) (*url.URL, error) {
+	if ref == "" {
+		if baseURL == nil {
+			return &url.URL{}, nil
+		}
+
 		return CloneURL(baseURL), nil
 	}
 
-	if IsAbsURL(path) || baseURL == nil || baseURL.Host == "" {
-		return Parse(path)
+	if IsAbsURL(ref) || baseURL == nil || baseURL.Host == "" {
+		return Parse(ref)
+	}
+
+	if strings.HasPrefix(ref, "//") {
+		return Parse(baseURL.Scheme + ":" + ref)
+	}
+
+	rel, err := url.Parse(ref)
+	if err != nil {
+		return nil, err
+	}
+
+	if rel.IsAbs() {
+		return rel, nil
+	}
+
+	result := CloneURL(baseURL)
+
+	baseP := baseURL.Path
+	relP := rel.Path
+
+	switch {
+	case relP == "":
+		result.Path = baseP
+	case baseP == "" || baseP == "/":
+		if !strings.HasPrefix(relP, "/") {
+			result.Path = "/" + relP
+		} else {
+			result.Path = relP
+		}
+
+	default:
+		cleanBase := strings.TrimSuffix(baseP, "/")
+		cleanRel := strings.TrimPrefix(relP, "/")
+
+		if cleanRel == "" {
+			result.Path = cleanBase + "/"
+		} else {
+			combined := path.Join(cleanBase, cleanRel)
+			if strings.HasSuffix(relP, "/") && !strings.HasSuffix(combined, "/") {
+				combined += "/"
+			}
+
+			result.Path = combined
+		}
+	}
+
+	if rel.RawQuery != "" {
+		if baseURL.RawQuery != "" {
+			result.RawQuery = baseURL.RawQuery + "&" + rel.RawQuery
+		} else {
+			result.RawQuery = rel.RawQuery
+		}
+	}
+
+	if rel.Fragment != "" {
+		result.Fragment = rel.Fragment
+	}
+
+	return result, nil
+}
+
+// ResolveString computes the resolved target URL string from baseURL and ref,
+// preserving baseURL path prefixes. For strict RFC 3986 §5 reference resolution,
+// use [ResolveReferenceString].
+func ResolveString(baseURL *url.URL, ref string) (string, error) {
+	if IsAbsURL(ref) || baseURL == nil || baseURL.Host == "" {
+		return ref, nil
+	}
+
+	if ref == "" {
+		return baseURL.String(), nil
+	}
+
+	u, err := Resolve(baseURL, ref)
+	if err != nil {
+		return "", err
+	}
+
+	return u.String(), nil
+}
+
+// ResolveReference resolves a URI reference against baseURL according to strict
+// RFC 3986 §5 browser reference resolution rules (where a leading slash in ref
+// replaces the entire baseURL path, and a baseURL path without a trailing slash
+// has its last segment replaced).
+//
+// For backend-friendly prefix-preserving resolution, use [Resolve].
+func ResolveReference(baseURL *url.URL, ref string) (*url.URL, error) {
+	if (ref == "" || ref == "/") && baseURL != nil && baseURL.Host != "" &&
+		(ref == "" || baseURL.Path == "" || baseURL.Path == "/") {
+		return CloneURL(baseURL), nil
+	}
+
+	if IsAbsURL(ref) || baseURL == nil || baseURL.Host == "" {
+		return Parse(ref)
 	}
 
 	// Fast-path: root domain (no subpath) + root-relative path (e.g. "https://api.com" + "/users")
-	if len(path) > 0 && path[0] == '/' && (baseURL.Path == "" || baseURL.Path == "/") {
-		return &url.URL{
-			Scheme:   baseURL.Scheme,
-			Host:     baseURL.Host,
-			Path:     path,
-			User:     baseURL.User,
-			RawQuery: baseURL.RawQuery,
-		}, nil
+	if len(ref) > 0 && ref[0] == '/' && (baseURL.Path == "" || baseURL.Path == "/") &&
+		strings.IndexByte(ref, '?') < 0 &&
+		strings.IndexByte(ref, '#') < 0 {
+		res := CloneURL(baseURL)
+		res.Path = ref
+		return res, nil
 	}
 
-	targetStr, err := ResolveString(baseURL, path)
+	targetStr, err := ResolveReferenceString(baseURL, ref)
 	if err != nil {
 		return nil, err
 	}
@@ -509,19 +608,24 @@ func Resolve(baseURL *url.URL, path string) (*url.URL, error) {
 	return Parse(targetStr)
 }
 
-// ResolveString computes the resolved target URL string from the base [*url.URL] and path (RFC 3986 §5).
-func ResolveString(baseURL *url.URL, path string) (string, error) {
-	if IsAbsURL(path) || baseURL == nil || baseURL.Host == "" {
-		return path, nil
+// ResolveReferenceString computes the resolved target URL string from baseURL and ref
+// according to strict RFC 3986 §5 reference resolution rules.
+//
+// For backend-friendly prefix-preserving resolution, use [ResolveString].
+func ResolveReferenceString(baseURL *url.URL, ref string) (string, error) {
+	if IsAbsURL(ref) || baseURL == nil || baseURL.Host == "" {
+		return ref, nil
 	}
-	if path == "" {
+
+	if ref == "" {
 		return baseURL.String(), nil
 	}
 
-	rel, err := url.Parse(path)
+	rel, err := url.Parse(ref)
 	if err != nil {
 		return "", err
 	}
+
 	return baseURL.ResolveReference(rel).String(), nil
 }
 
@@ -783,18 +887,37 @@ func AppendQueryEscapeString(dst []byte, src string) []byte {
 	return AppendQueryEscape(dst, bytesconv.S2B(src))
 }
 
-// AppendPathEscape appends percent-encoded bytes of src to dst according to RFC 3986 §3.3.
-//
-//go:inline
-func AppendPathEscape(dst, src []byte) []byte {
-	return AppendQueryEscape(dst, src)
+var noEscapePathTable = [256]bool{
+	'-': true, '.': true, '_': true, '~': true,
+	'!': true, '$': true, '&': true, '\'': true, '(': true, ')': true,
+	'*': true, '+': true, ',': true, ';': true, '=': true, ':': true, '@': true,
+	'0': true, '1': true, '2': true, '3': true, '4': true, '5': true, '6': true, '7': true, '8': true, '9': true,
+	'A': true, 'B': true, 'C': true, 'D': true, 'E': true, 'F': true, 'G': true, 'H': true, 'I': true, 'J': true,
+	'K': true, 'L': true, 'M': true, 'N': true, 'O': true, 'P': true, 'Q': true, 'R': true, 'S': true, 'T': true,
+	'U': true, 'V': true, 'W': true, 'X': true, 'Y': true, 'Z': true,
+	'a': true, 'b': true, 'c': true, 'd': true, 'e': true, 'f': true, 'g': true, 'h': true, 'i': true, 'j': true,
+	'k': true, 'l': true, 'm': true, 'n': true, 'o': true, 'p': true, 'q': true, 'r': true, 's': true, 't': true,
+	'u': true, 'v': true, 'w': true, 'x': true, 'y': true, 'z': true,
 }
 
-// AppendPathEscapeString appends percent-encoded bytes of string src to dst.
+// AppendPathEscape appends percent-encoded bytes of src to dst according to RFC 3986 §3.3.
+func AppendPathEscape(dst, src []byte) []byte {
+	for _, b := range src {
+		if noEscapePathTable[b] {
+			dst = append(dst, b)
+		} else {
+			dst = append(dst, '%', hexDigits[b>>4], hexDigits[b&15])
+		}
+	}
+
+	return dst
+}
+
+// AppendPathEscapeString appends percent-encoded bytes of string src to dst according to RFC 3986 §3.3.
 //
 //go:inline
 func AppendPathEscapeString(dst []byte, src string) []byte {
-	return AppendQueryEscape(dst, bytesconv.S2B(src))
+	return AppendPathEscape(dst, bytesconv.S2B(src))
 }
 
 // QueryUnescape unescapes URL percent-encoded characters (%XX) and replaces '+' with ' '.

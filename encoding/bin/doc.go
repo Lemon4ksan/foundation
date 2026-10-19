@@ -16,5 +16,5 @@
 //
 // Accepted cost: JIT caching requires an initial setup cost, and ABI-safe pointer arithmetic bypasses some of Go's safe memory boundaries.
 //
-// Allocations: zero
+// Allocations: amortized
 package bin

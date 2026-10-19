@@ -37,7 +37,7 @@ func init() {
 func calibrateRDTSC() {
 	start := time.Now()
 	startTSC := rdtsc()
-	for time.Since(start) < 100*time.Millisecond {
+	for time.Since(start) < 25*time.Millisecond {
 		// spin-wait for exact wall-clock boundary
 	}
 	endTSC := rdtsc()

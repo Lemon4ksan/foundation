@@ -227,8 +227,8 @@ func TestGuarded(t *testing.T) {
 	}
 }
 
-func TestSyncMap(t *testing.T) {
-	sm := NewSyncMap[string, int]()
+func TestConcurrentMap(t *testing.T) {
+	sm := NewConcurrentMap[string, int]()
 	sm.Store("a", 1)
 	sm.Store("b", 2)
 

@@ -10,10 +10,10 @@ import (
 	"github.com/lemon4ksan/foundation/encoding/base64"
 )
 
-func ExampleBase64EncodeURL() {
+func ExampleEncodeURL() {
 	src := []byte("hello world")
-	dst := make([]byte, base64.Base64URLEncodedLen(len(src)))
-	base64.Base64EncodeURL(src, dst)
+	dst := make([]byte, base64.URLEncodedLen(len(src)))
+	base64.EncodeURL(src, dst)
 
 	fmt.Printf("%s\n", dst)
 	// Output: aGVsbG8gd29ybGQ

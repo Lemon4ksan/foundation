@@ -72,8 +72,8 @@ func SubscribeTo[E any](ctx context.Context, bus *Bus, handler func(E), bufSize 
 // SubscribeSeq returns a Go 1.23+ streaming iterator (iter.Seq[T]) over typed events.
 // It enables Go for-range iteration:
 //
-//	for ev := range eventutil.SubscribeSeq[*web.NewOfferEvent](ctx, bus) {
-//	    log.Info("offer received", "id", ev.Offer.ID)
+//	for ev := range event.SubscribeSeq[*OrderCreatedEvent](ctx, bus) {
+//	    log.Info("order created", "id", ev.OrderID)
 //	}
 //
 // Concurrency & Lifetime Guarantees:

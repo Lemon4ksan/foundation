@@ -6,16 +6,12 @@
 
 package sysnet
 
-import "net"
+import "syscall"
 
 func writeVectorBuffersFD(_ uintptr, buffers [][]byte) (int64, error) {
 	if len(buffers) == 0 {
 		return 0, nil
 	}
 
-	netBufs := make(net.Buffers, len(buffers))
-	copy(netBufs, buffers)
-
-	// Fallback using Go net.Buffers writev abstraction
-	return 0, nil
+	return 0, syscall.ENOSYS
 }

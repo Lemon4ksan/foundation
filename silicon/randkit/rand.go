@@ -161,7 +161,8 @@ func b2s(b []byte) string {
 	return unsafe.String(unsafe.SliceData(b), len(b))
 }
 
-// AlphaNumeric generates a pseudo-random alphanumeric string of length n with zero heap allocations.
+// AlphaNumeric generates a pseudo-random alphanumeric string of length n.
+// It allocates a single backing buffer for the returned string; use [Read] for zero-allocation byte filling.
 func AlphaNumeric(n int) string {
 	return String(n, alphaNumericCharset)
 }

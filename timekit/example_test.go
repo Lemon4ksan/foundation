@@ -25,8 +25,8 @@ func ExampleAppendHTTPDate() {
 	// Output: Wed, 26 Aug 2026 18:30:00 GMT
 }
 
-func ExampleStartStopwatch() {
-	sw := timekit.StartStopwatch()
+func ExampleStart() {
+	sw := timekit.Start()
 	// Execute critical section...
 	elapsed := sw.Elapsed()
 	_ = elapsed
