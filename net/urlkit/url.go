@@ -9,6 +9,7 @@ import (
 	"iter"
 	"net/netip"
 	"net/url"
+	"path"
 	"strings"
 	"sync"
 
@@ -475,51 +476,101 @@ func NormalizeBaseURL(raw string) (*url.URL, error) {
 	return Parse(formatted)
 }
 
-// Resolve resolves a relative path or absolute URL against the base [*url.URL] (RFC 3986 §5).
+// Resolve resolves a relative request path or absolute URL against baseURL.
 //
-// It features a zero-allocation fast-path for root-domain paths and normalizes slash boundaries.
-func Resolve(baseURL *url.URL, path string) (*url.URL, error) {
-	if (path == "" || path == "/") && baseURL != nil && baseURL.Host != "" {
+// Unlike RFC 3986 / browser reference resolution, it guarantees that baseURL paths
+// (e.g. "/api/v1" or "/api/v1/") are preserved as base prefixes and not displaced
+// when relative paths begin with or lack a leading slash.
+//
+// Absolute URLs and protocol-relative URLs bypass the base URL.
+func Resolve(baseURL *url.URL, ref string) (*url.URL, error) {
+	if ref == "" {
+		if baseURL == nil {
+			return &url.URL{}, nil
+		}
+
 		return CloneURL(baseURL), nil
 	}
 
-	if IsAbsURL(path) || baseURL == nil || baseURL.Host == "" {
-		return Parse(path)
+	if IsAbsURL(ref) || baseURL == nil || baseURL.Host == "" {
+		return Parse(ref)
 	}
 
-	// Fast-path: root domain (no subpath) + root-relative path (e.g. "https://api.com" + "/users")
-	if len(path) > 0 && path[0] == '/' && (baseURL.Path == "" || baseURL.Path == "/") {
-		return &url.URL{
-			Scheme:   baseURL.Scheme,
-			Host:     baseURL.Host,
-			Path:     path,
-			User:     baseURL.User,
-			RawQuery: baseURL.RawQuery,
-		}, nil
+	if strings.HasPrefix(ref, "//") {
+		return Parse(baseURL.Scheme + ":" + ref)
 	}
 
-	targetStr, err := ResolveString(baseURL, path)
+	rel, err := url.Parse(ref)
 	if err != nil {
 		return nil, err
 	}
 
-	return Parse(targetStr)
+	if rel.IsAbs() {
+		return rel, nil
+	}
+
+	result := CloneURL(baseURL)
+
+	baseP := baseURL.Path
+	relP := rel.Path
+
+	switch {
+	case relP == "":
+		result.Path = baseP
+	case baseP == "" || baseP == "/":
+		if !strings.HasPrefix(relP, "/") {
+			result.Path = "/" + relP
+		} else {
+			result.Path = relP
+		}
+
+	default:
+		cleanBase := strings.TrimSuffix(baseP, "/")
+		cleanRel := strings.TrimPrefix(relP, "/")
+
+		if cleanRel == "" {
+			result.Path = cleanBase + "/"
+		} else {
+			combined := path.Join(cleanBase, cleanRel)
+			if strings.HasSuffix(relP, "/") && !strings.HasSuffix(combined, "/") {
+				combined += "/"
+			}
+
+			result.Path = combined
+		}
+	}
+
+	if rel.RawQuery != "" {
+		if baseURL.RawQuery != "" {
+			result.RawQuery = baseURL.RawQuery + "&" + rel.RawQuery
+		} else {
+			result.RawQuery = rel.RawQuery
+		}
+	}
+
+	if rel.Fragment != "" {
+		result.Fragment = rel.Fragment
+	}
+
+	return result, nil
 }
 
-// ResolveString computes the resolved target URL string from the base [*url.URL] and path (RFC 3986 §5).
-func ResolveString(baseURL *url.URL, path string) (string, error) {
-	if IsAbsURL(path) || baseURL == nil || baseURL.Host == "" {
-		return path, nil
+// ResolveString computes the resolved target URL string from baseURL and ref.
+func ResolveString(baseURL *url.URL, ref string) (string, error) {
+	if IsAbsURL(ref) || baseURL == nil || baseURL.Host == "" {
+		return ref, nil
 	}
-	if path == "" {
+
+	if ref == "" {
 		return baseURL.String(), nil
 	}
 
-	rel, err := url.Parse(path)
+	u, err := Resolve(baseURL, ref)
 	if err != nil {
 		return "", err
 	}
-	return baseURL.ResolveReference(rel).String(), nil
+
+	return u.String(), nil
 }
 
 // ReplaceVar performs path variable replacement ({key} -> value) in the path.
