@@ -7,6 +7,7 @@ package comkit_test
 import (
 	"crypto/md5"
 	"errors"
+	"runtime"
 	"syscall"
 	"testing"
 	"unsafe"
@@ -232,6 +233,8 @@ func TestVtblSlot_And_Ptr(t *testing.T) {
 	allocs := testing.AllocsPerRun(1000, func() {
 		_ = comkit.VtblSlot(instance, 2)
 	})
+	runtime.KeepAlive(&fakeSlots)
+	runtime.KeepAlive(&vtblPtr)
 	if allocs != 0 {
 		t.Fatalf("VtblSlot allocated %v times, want 0", allocs)
 	}
