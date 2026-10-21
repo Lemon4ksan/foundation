@@ -95,43 +95,6 @@ const (
 	IORING_OFF_SQES int64 = 0x10000000
 )
 
-type ioSQOffsets struct {
-	head        uint32
-	tail        uint32
-	ringMask    uint32
-	ringEntries uint32
-	flags       uint32
-	dropped     uint32
-	array       uint32
-	resv1       uint32
-	userAddr    uint64
-}
-
-type ioCQOffsets struct {
-	head        uint32
-	tail        uint32
-	ringMask    uint32
-	ringEntries uint32
-	overflow    uint32
-	cqes        uint32
-	flags       uint32
-	resv1       uint32
-	userAddr    uint64
-}
-
-type ioUringParams struct {
-	sqEntries    uint32
-	cqEntries    uint32
-	flags        uint32
-	sqThreadCPU  uint32
-	sqThreadIdle uint32
-	features     uint32
-	wqFD         uint32
-	resv         [3]uint32
-	sqOff        ioSQOffsets
-	cqOff        ioCQOffsets
-}
-
 // SQE represents a 64-byte Linux io_uring submission queue entry (struct io_uring_sqe).
 type SQE struct {
 	Opcode      uint8
@@ -159,7 +122,7 @@ func (s *SQE) PrepNop(userData uint64) {
 }
 
 // PrepRead configures the [SQE] as an [OpRead] operation into buf at file offset off.
-func (s *SQE) PrepRead(fd int32, buf []byte, off uint64, userData uint64) {
+func (s *SQE) PrepRead(fd int32, buf []byte, off, userData uint64) {
 	var addr uint64
 	if len(buf) > 0 {
 		addr = uint64(uintptr(unsafe.Pointer(&buf[0])))
@@ -175,7 +138,7 @@ func (s *SQE) PrepRead(fd int32, buf []byte, off uint64, userData uint64) {
 }
 
 // PrepWrite configures the [SQE] as an [OpWrite] operation from buf at file offset off.
-func (s *SQE) PrepWrite(fd int32, buf []byte, off uint64, userData uint64) {
+func (s *SQE) PrepWrite(fd int32, buf []byte, off, userData uint64) {
 	var addr uint64
 	if len(buf) > 0 {
 		addr = uint64(uintptr(unsafe.Pointer(&buf[0])))

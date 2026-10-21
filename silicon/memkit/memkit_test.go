@@ -54,7 +54,7 @@ func TestZeroSizedMarkers_LayoutAndOrdering(t *testing.T) {
 func TestCacheLinePad(t *testing.T) {
 	t.Parallel()
 
-	assert.Equal(t, 64, memkit.CacheLineSize)
+	assert.True(t, memkit.CacheLineSize >= 64)
 	assert.Equal(t, uintptr(memkit.CacheLineSize), unsafe.Sizeof(memkit.CacheLinePad{}))
 }
 

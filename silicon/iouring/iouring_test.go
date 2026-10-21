@@ -96,6 +96,81 @@ func TestIOUring_EchoServer_Linux(t *testing.T) {
 		t.Skip("skipping io_uring socket test on non-linux OS")
 	}
 
+	// 1. Direct Ring lifecycle, SQE/CQE operations, and error branches.
+	ring, err := iouring.New(0)
+	if err != nil {
+		t.Fatalf("iouring.New(0) failed: %v", err)
+	}
+	if ring.FD() <= 0 || ring.Entries() == 0 {
+		t.Fatalf("unexpected ring FD=%d Entries=%d", ring.FD(), ring.Entries())
+	}
+	if _, ok := ring.PeekCQE(); ok {
+		t.Fatal("expected empty CQ before submission")
+	}
+
+	sqe, err := ring.GetSQE()
+	if err != nil {
+		t.Fatalf("GetSQE failed: %v", err)
+	}
+	sqe.PrepNop(777)
+	if _, err := ring.SubmitAndWait(1); err != nil {
+		t.Fatalf("SubmitAndWait(1) failed: %v", err)
+	}
+	cqe, ok := ring.PeekCQE()
+	if !ok || cqe.UserData != 777 {
+		t.Fatalf("PeekCQE = (%+v, %v), want UserData=777", cqe, ok)
+	}
+
+	// Fill SQ to capacity to test ErrRingFull.
+	for i := uint32(0); i < ring.Entries(); i++ {
+		s, err := ring.GetSQE()
+		if err != nil {
+			t.Fatalf("GetSQE(%d) failed: %v", i, err)
+		}
+		s.PrepNop(uint64(i))
+	}
+	if _, err := ring.GetSQE(); !errors.Is(err, iouring.ErrRingFull) {
+		t.Fatalf("expected ErrRingFull when SQ is full, got %v", err)
+	}
+	if _, err := ring.Submit(); err != nil {
+		t.Fatalf("Submit full batch failed: %v", err)
+	}
+	WaitCQE, err := ring.WaitCQE()
+	if err != nil || WaitCQE.Err() != nil {
+		t.Fatalf("WaitCQE failed: %v, cqe=%+v", err, WaitCQE)
+	}
+
+	if err := ring.Close(); err != nil {
+		t.Fatalf("ring.Close() failed: %v", err)
+	}
+	if err := ring.Close(); err != nil {
+		t.Fatalf("second ring.Close() failed: %v", err)
+	}
+	if _, err := ring.GetSQE(); !errors.Is(err, iouring.ErrRingClosed) {
+		t.Fatalf("expected ErrRingClosed from GetSQE, got %v", err)
+	}
+	if _, err := ring.SubmitAndWait(1); !errors.Is(err, iouring.ErrRingClosed) {
+		t.Fatalf("expected ErrRingClosed from SubmitAndWait, got %v", err)
+	}
+	if _, ok := ring.PeekCQE(); ok {
+		t.Fatal("expected false from PeekCQE on closed ring")
+	}
+	if _, err := ring.WaitCQE(); !errors.Is(err, iouring.ErrRingClosed) {
+		t.Fatalf("expected ErrRingClosed from WaitCQE, got %v", err)
+	}
+
+	// 2. DialIOUring error validation.
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	if _, err := iouring.DialIOUring(ctx, "tcp", "missing-port"); err == nil {
+		t.Fatal("expected error for invalid host:port")
+	}
+	if _, err := iouring.DialIOUring(ctx, "tcp", "127.0.0.1:notaport"); err == nil {
+		t.Fatal("expected error for invalid port")
+	}
+
+	// 3. Echo server end-to-end test.
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("failed to start listener: %v", err)
@@ -120,14 +195,24 @@ func TestIOUring_EchoServer_Linux(t *testing.T) {
 		}
 	}()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
 	conn, err := iouring.DialIOUring(ctx, "tcp", ln.Addr().String())
 	if err != nil {
 		t.Fatalf("failed to dial io_uring socket: %v", err)
 	}
 	defer conn.Close()
+
+	_ = conn.LocalAddr()
+	_ = conn.RemoteAddr()
+	_ = conn.SetDeadline(time.Now().Add(time.Second))
+	_ = conn.SetReadDeadline(time.Now().Add(time.Second))
+	_ = conn.SetWriteDeadline(time.Now().Add(time.Second))
+
+	if n, err := conn.Read(nil); n != 0 || err != nil {
+		t.Fatalf("Read(nil) = (%d, %v), want (0, nil)", n, err)
+	}
+	if n, err := conn.Write(nil); n != 0 || err != nil {
+		t.Fatalf("Write(nil) = (%d, %v), want (0, nil)", n, err)
+	}
 
 	payload := []byte("HELLO_IO_URING_SILICON_SPEED")
 
@@ -144,5 +229,14 @@ func TestIOUring_EchoServer_Linux(t *testing.T) {
 
 	if string(readBuf) != string(payload) {
 		t.Fatalf("mismatched payload: got %q, want %q", string(readBuf), string(payload))
+	}
+
+	_ = conn.Close()
+	_ = conn.Close()
+	if _, err := conn.Read(readBuf); !errors.Is(err, io.EOF) {
+		t.Fatalf("expected EOF on Read after Close, got %v", err)
+	}
+	if _, err := conn.Write(payload); !errors.Is(err, io.ErrClosedPipe) {
+		t.Fatalf("expected ErrClosedPipe on Write after Close, got %v", err)
 	}
 }

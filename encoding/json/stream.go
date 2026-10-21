@@ -79,7 +79,7 @@ func (d *Decoder) Decode(v any) error {
 	}
 
 	if v == nil {
-		return fmt.Errorf("json: Unmarshal(nil)")
+		return errors.New("json: Unmarshal(nil)")
 	}
 
 	rt := reflect.TypeOf(v)

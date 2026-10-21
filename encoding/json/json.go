@@ -7,6 +7,7 @@ package json
 import (
 	"bytes"
 	stdjson "encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 	"runtime"
@@ -162,7 +163,7 @@ func UnmarshalWithConfig(data []byte, v any, cfg DecoderConfig) error {
 	}
 
 	if v == nil {
-		return fmt.Errorf("json: Unmarshal(nil)")
+		return errors.New("json: Unmarshal(nil)")
 	}
 
 	rt := reflect.TypeOf(v)

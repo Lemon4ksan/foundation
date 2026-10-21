@@ -474,6 +474,13 @@ func VtblSlot(instance uintptr, slot int) uintptr {
 	return *(*uintptr)(ptrFromUintptr(vtbl + uintptr(slot)*unsafe.Sizeof(uintptr(0))))
 }
 
+// AppendUTF16AsUTF8 transcodes a UTF-16 code unit slice (including surrogate pairs
+// and stopping at the first NUL terminator) directly into dst with zero heap
+// allocations when dst has sufficient capacity.
+func AppendUTF16AsUTF8(dst []byte, u16 []uint16) []byte {
+	return appendUTF16AsUTF8(dst, u16)
+}
+
 // appendUTF16AsUTF8 transcodes a UTF-16 slice (including surrogate pairs) directly into dst
 // with zero heap allocations when dst has sufficient capacity.
 func appendUTF16AsUTF8(dst []byte, u16 []uint16) []byte {

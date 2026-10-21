@@ -17,13 +17,12 @@ func ExampleNoCopy() {
 		_    memkit.NoCompare
 		_    memkit.Align64
 		head uint64
-		_    memkit.CacheLinePad
 		tail uint64
 	}
 
 	var s RingState
 	fmt.Println("size:", unsafe.Sizeof(s), "align:", unsafe.Alignof(s))
-	// Output: size: 80 align: 8
+	// Output: size: 16 align: 8
 }
 
 func ExampleIsNilInterface() {

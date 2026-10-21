@@ -135,7 +135,7 @@ func IsNilInterface(v any) bool {
 //
 //go:nosplit
 func NoEscape[T any](p *T) *T {
-	x := uintptr(unsafe.Pointer(p)) ^ 0
+	x := uintptr(unsafe.Pointer(p))
 	return (*T)(*(*unsafe.Pointer)(unsafe.Pointer(&x)))
 }
 
@@ -145,7 +145,7 @@ func NoEscape[T any](p *T) *T {
 //
 //go:nosplit
 func NoEscapePointer(p unsafe.Pointer) unsafe.Pointer {
-	x := uintptr(p) ^ 0
+	x := uintptr(p)
 	return *(*unsafe.Pointer)(unsafe.Pointer(&x))
 }
 

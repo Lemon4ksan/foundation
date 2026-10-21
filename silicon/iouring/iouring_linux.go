@@ -28,6 +28,43 @@ const (
 	sysIOUringRegister = 427
 )
 
+type ioSQOffsets struct {
+	head        uint32
+	tail        uint32
+	ringMask    uint32
+	ringEntries uint32
+	flags       uint32
+	dropped     uint32
+	array       uint32
+	resv1       uint32
+	userAddr    uint64
+}
+
+type ioCQOffsets struct {
+	head        uint32
+	tail        uint32
+	ringMask    uint32
+	ringEntries uint32
+	overflow    uint32
+	cqes        uint32
+	flags       uint32
+	resv1       uint32
+	userAddr    uint64
+}
+
+type ioUringParams struct {
+	sqEntries    uint32
+	cqEntries    uint32
+	flags        uint32
+	sqThreadCPU  uint32
+	sqThreadIdle uint32
+	features     uint32
+	wqFD         uint32
+	resv         [3]uint32
+	sqOff        ioSQOffsets
+	cqOff        ioCQOffsets
+}
+
 type sqRing struct {
 	khead        *uint32
 	ktail        *uint32
