@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.0](https://github.com/Lemon4ksan/foundation/compare/v0.2.2...v0.3.0) (2026-10-21)
+
+
+### Features
+
+* add logo ([5258396](https://github.com/Lemon4ksan/foundation/commit/5258396e8791b916f51fe0add67ab26b17496a13))
+* **silicon/comkit:** add zero-alloc COM/WinRT ABI and vtable substrate (ADR-0011) ([#18](https://github.com/Lemon4ksan/foundation/issues/18)) ([74d98b1](https://github.com/Lemon4ksan/foundation/commit/74d98b19c7e91d2d1458d254cc2feb0a5ac0508a))
+* **silicon:** add iouring and memkit L0 packages, ADR-0012, and standardize Godoc ([#19](https://github.com/Lemon4ksan/foundation/issues/19)) ([dcac310](https://github.com/Lemon4ksan/foundation/commit/dcac3103cc4981a6cf1ce730580d1d02e572b003))
+
+
+### Bug Fixes
+
+* **generic:** eliminate TestPool_Generic race flake and purge stale audit artifacts ([#14](https://github.com/Lemon4ksan/foundation/issues/14)) ([1cd4d11](https://github.com/Lemon4ksan/foundation/commit/1cd4d1174b39e44d730993f39941f78dc0982715))
+
 ## [0.2.2](https://github.com/Lemon4ksan/foundation/compare/v0.2.1...v0.2.2) (2026-10-17)
 
 
