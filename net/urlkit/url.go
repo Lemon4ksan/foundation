@@ -16,10 +16,13 @@ import (
 	"github.com/lemon4ksan/foundation/silicon/bytesconv"
 )
 
+// UnescapeMode specifies how percent-encoded sequences and plus signs are decoded.
 type UnescapeMode int
 
 const (
+	// UnescapeModeQuery decodes percent-escapes and converts '+' to space.
 	UnescapeModeQuery UnescapeMode = iota
+	// UnescapeModePath decodes percent-escapes while preserving '+' literally.
 	UnescapeModePath
 )
 

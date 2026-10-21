@@ -11,9 +11,12 @@
 //
 // Stdlib counterpart: net
 //
-// Rejected compromise: The standard net package hides underlying socket tuning and applies generic defaults, leaving high-frequency trading and low-latency systems unable to optimize kernel queues.
+// Rejected compromise: The standard net package hides underlying socket tuning and
+// applies generic defaults, leaving high-frequency trading and low-latency systems
+// unable to optimize kernel queues.
 //
-// Accepted cost: Relying on raw syscalls introduces OS-specific dependencies (Linux/Windows) and makes network initialization more verbose.
+// Accepted cost: Relying on raw syscalls introduces OS-specific dependencies
+// (Linux/Windows) and makes network initialization more verbose.
 //
 // Allocations: amortized
 package sysnet

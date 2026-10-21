@@ -2,13 +2,15 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package casing provides string case conversion algorithms (snake_case, camelCase, PascalCase, kebab-case, SCREAMING_SNAKE_CASE).
+// Package casing provides string case conversion algorithms (snake_case, camelCase,
+// PascalCase, kebab-case, SCREAMING_SNAKE_CASE).
 //
 // # Compared to the standard library
 //
 // Stdlib counterpart: strings
 //
-// Rejected compromise: The [strings] package does not have case converters for variable naming formats.
+// Rejected compromise: The [strings] package does not have case converters for variable
+// naming formats.
 //
 // Accepted cost: It adds surface area outside the standard [strings] package.
 //

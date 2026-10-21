@@ -28,7 +28,7 @@ type Unmarshaler = stdjson.Unmarshaler
 // and can be used to delay JSON decoding or precompute a JSON encoding.
 type RawMessage = stdjson.RawMessage
 
-// A Number represents a JSON number literal.
+// Number represents a JSON number literal.
 type Number = stdjson.Number
 
 // Marshal returns the JSON encoding of v.

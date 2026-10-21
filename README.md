@@ -39,7 +39,7 @@ Autonomous packages with zero internal dependencies.
 * `simd`, `cpukit`: AVX2/BMI2/GFNI vector processing for frame scanning, bit deposit, and Galois field arithmetic.
 * `hexkit`, `bytesconv`, `endian`: SIMD hex codec (13 GB/s), zero-copy string/byte conversions, and branchless byte-order primitives.
 * `pool`, `ringbuf`, `offheap`: Multi-tiered memory arenas, lock-free SPSC/MPSC ring buffers, and off-heap kernel page buffers/slabs.
-* `clock`, `randkit`, `sysnet`: Syscall-free RDTSC/coarse clocks, lock-free PRNG, and low-level socket/vectored I/O primitives.
+* `clock`, `randkit`, `sysnet`, `iouring`, `comkit`: Syscall-free RDTSC/coarse clocks, lock-free PRNG, low-level socket/vectored I/O, Linux `io_uring` shared rings, and Windows COM/WinRT vtable primitives.
 
 ### Layer 1: Memory & Structures
 * `borrow`: Generational affine ownership and borrow checkers (`Box`, `Cell`, `Ref`, `Mut`).

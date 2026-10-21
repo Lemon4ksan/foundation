@@ -203,6 +203,7 @@ func (c *Call) SetArg(index int, val any) *Call {
 	return c
 }
 
+// String returns a formatted description of the expected method call and its arguments.
 func (c *Call) String() string {
 	return fmt.Sprintf("%T.%s(%v)", c.receiver, c.method, c.args)
 }

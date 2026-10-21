@@ -19,7 +19,7 @@ type Reader interface {
 
 var _ Reader = &bytes.Reader{}
 
-// A Peeker can peek bytes without consuming them.
+// Peeker can peek bytes without consuming them.
 type Peeker interface {
 	Peek(b []byte) (int, error)
 }

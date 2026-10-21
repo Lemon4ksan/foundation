@@ -207,6 +207,7 @@ type ExplicitBufferedBody struct {
 	Prefix []byte
 }
 
+// Read reads from the pre-buffered prefix first and then from the underlying stream.
 func (e *ExplicitBufferedBody) Read(p []byte) (int, error) {
 	if e.reader == nil {
 		e.reader = io.MultiReader(bytes.NewReader(e.Prefix), e.Stream)
@@ -281,6 +282,7 @@ type ProgressReader struct {
 	current    atomic.Int64
 }
 
+// Read reads from the underlying reader and reports cumulative progress via OnProgress.
 func (pr *ProgressReader) Read(p []byte) (int, error) {
 	n, err := pr.Reader.Read(p)
 	if n > 0 {
@@ -314,6 +316,7 @@ func (c *ContextCancelingReadCloser) Close() error {
 	return err
 }
 
+// Unwrap returns the underlying [io.Closer].
 func (c *ContextCancelingReadCloser) Unwrap() io.Closer { return c.ReadCloser }
 
 // DecompressReadCloser combines decompression streams with underlying resource closers.
@@ -336,6 +339,7 @@ func (d *DecompressReadCloser) Close() error {
 	return firstErr
 }
 
+// Unwrap returns the underlying transport [io.Closer].
 func (d *DecompressReadCloser) Unwrap() io.Closer { return d.Closer }
 
 var gzipReaderPool = sync.Pool{
@@ -392,6 +396,7 @@ type LimitCheckingReadCloser struct {
 	read  int64
 }
 
+// Read reads up to Limit cumulative bytes, returning [ErrResponseTooLarge] if exceeded.
 func (l *LimitCheckingReadCloser) Read(p []byte) (int, error) {
 	n, err := l.ReadCloser.Read(p)
 	l.read += int64(n)
@@ -403,6 +408,7 @@ func (l *LimitCheckingReadCloser) Read(p []byte) (int, error) {
 	return n, err
 }
 
+// Unwrap returns the underlying [io.Closer].
 func (l *LimitCheckingReadCloser) Unwrap() io.Closer { return l.ReadCloser }
 
 // ResponseBodyReadCloser manages response stream teardown.
@@ -430,6 +436,7 @@ func (r *ResponseBodyReadCloser) Bytes() (data []byte, onOffHeap bool) {
 	return nil, false
 }
 
+// Unwrap returns the underlying [io.Closer].
 func (r *ResponseBodyReadCloser) Unwrap() io.Closer { return r.ReadCloser }
 
 // MultiReadBody buffers payload streams in RAM, off-heap pages, or temp files for repeatable reads.
@@ -569,6 +576,7 @@ func writeInitialAndStreamData(tmpFile *os.File, rc io.Reader, initialBytes []by
 	return err
 }
 
+// Read reads from the current buffered or spooled stream position.
 func (m *MultiReadBody) Read(p []byte) (int, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -653,6 +661,7 @@ type JitterReader struct {
 	once  sync.Once
 }
 
+// Read pauses for Delay on the first call before reading from the underlying ReadCloser.
 func (r *JitterReader) Read(p []byte) (int, error) {
 	r.once.Do(func() {
 		time.Sleep(r.Delay)
@@ -667,6 +676,7 @@ type BufferedConn struct {
 	R *bufio.Reader
 }
 
+// Read drains any buffered bytes from R before reading directly from Conn.
 func (c *BufferedConn) Read(b []byte) (int, error) {
 	if c.R.Buffered() > 0 {
 		return c.R.Read(b)

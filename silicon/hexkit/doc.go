@@ -8,9 +8,11 @@
 //
 // Stdlib counterpart: encoding/hex
 //
-// Rejected compromise: Standard library hex encoding allocates new strings and byte slices on every call, creating garbage collector pressure.
+// Rejected compromise: Standard library hex encoding allocates new strings and byte
+// slices on every call, creating garbage collector pressure.
 //
-// Accepted cost: Encoding and decoding happens into caller-provided buffers, pushing memory lifecycle management to the caller.
+// Accepted cost: Encoding and decoding happens into caller-provided buffers, pushing
+// memory lifecycle management to the caller.
 //
 // Allocations: zero
 package hexkit

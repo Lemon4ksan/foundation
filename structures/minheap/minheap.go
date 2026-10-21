@@ -14,7 +14,7 @@ type entry[K, V any] struct {
 	value V
 }
 
-// A Heap is a minimum heap ordered by key.
+// Heap is a minimum heap ordered by key.
 type Heap[K cmp.Ordered, V any] []entry[K, V]
 
 // New returns an empty, initialized heap.

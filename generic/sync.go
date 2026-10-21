@@ -460,10 +460,12 @@ type PanicError struct {
 	Stack []byte
 }
 
+// Error returns the formatted panic value and captured stack trace.
 func (p *PanicError) Error() string {
 	return fmt.Sprintf("singleflight: panic: %v\n\n%s", p.Value, p.Stack)
 }
 
+// Unwrap returns the underlying error if the recovered panic value implements error.
 func (p *PanicError) Unwrap() error {
 	if err, ok := p.Value.(error); ok {
 		return err

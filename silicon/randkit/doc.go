@@ -8,16 +8,20 @@
 // Standard pseudo-random number generators using global mutexes bottleneck under
 // multi-core concurrency, and standard UUID generation libraries produce multiple heap
 // allocations per identifier. Package randkit combines lock-free math/rand/v2 and
-// per-goroutine Wyrand ([RNG]) primitives with zero-allocation [AppendUUIDv7] formatting
-// and CSPRNG token generators ([SecureBytes], [TokenHex], [TokenBase64], [TokenURLSafe]).
+// per-goroutine Wyrand ([RNG]) primitives with zero-allocation [AppendUUIDv7]
+// formatting and CSPRNG token generators ([SecureBytes], [TokenHex], [TokenBase64],
+// [TokenURLSafe]).
 //
 // # Compared to the standard library
 //
 // Stdlib counterpart: math/rand, crypto/rand
 //
-// Rejected compromise: Global mutexes that bottleneck under concurrency and multiple heap allocations per generated identifier.
+// Rejected compromise: Global mutexes that bottleneck under concurrency and multiple
+// heap allocations per generated identifier.
 //
-// Accepted cost: [RNG] is not safe for concurrent use without external synchronization and is not cryptographically secure (use [SecureBytes] or Token* helpers for cryptographic entropy).
+// Accepted cost: [RNG] is not safe for concurrent use without external synchronization
+// and is not cryptographically secure (use [SecureBytes] or Token* helpers for
+// cryptographic entropy).
 //
 // Allocations: amortized
 package randkit

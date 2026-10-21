@@ -4,21 +4,25 @@
 
 // Package iokit provides high-performance streaming I/O wrappers.
 //
-// The package offers low-level streaming primitives, replayable body decorators ([AsReplayable], [NewReplayableBody]),
-// multi-read buffers ([MultiReadBody]), zero-copy vectored scatter-gather queues ([BufferQueue]),
-// and pooled zero-allocation copy helpers designed for line-rate data processing.
-// A common use case is wrapping an incoming request body via [AsReplayable] or [NewMultiReadBody] to inspect
-// payload contents (e.g. for cryptographic hashing or routing) before resetting the stream
-// and passing it to the final handler. Another is queuing non-contiguous header/body buffers
-// into a [BufferQueue] to flush them via writev/WSASend without memory flattening.
+// The package offers low-level streaming primitives, replayable body decorators
+// ([AsReplayable], [NewReplayableBody]), multi-read buffers ([MultiReadBody]),
+// zero-copy vectored scatter-gather queues ([BufferQueue]), and pooled zero-allocation
+// copy helpers designed for line-rate data processing. A common use case is wrapping an
+// incoming request body via [AsReplayable] or [NewMultiReadBody] to inspect payload
+// contents (e.g. for cryptographic hashing or routing) before resetting the stream and
+// passing it to the final handler. Another is queuing non-contiguous header/body
+// buffers into a [BufferQueue] to flush them via writev/WSASend without memory
+// flattening.
 //
 // # Compared to the standard library
 //
 // Stdlib counterpart: io / bytes
 //
-// Rejected compromise: allocating fresh 32KB buffers for every stream copy and forcing full payload materialization in memory for replay
+// Rejected compromise: allocating fresh 32KB buffers for every stream copy and forcing
+// full payload materialization in memory for replay
 //
-// Accepted cost: manual buffer pooling management and explicit ReallyClose() calls for disk-backed streams
+// Accepted cost: manual buffer pooling management and explicit ReallyClose() calls for
+// disk-backed streams
 //
 // Allocations: bounded(1/op)
 package iokit

@@ -10,9 +10,11 @@
 //
 // # Compared to the standard library
 //
-// Stdlib counterpart: none - fills gap: automated interface mocking and behavior verification
+// Stdlib counterpart: none - fills gap: automated interface mocking and behavior
+// verification
 //
-// Rejected compromise: hand-rolling mock implementations and manual state verification for every interface
+// Rejected compromise: hand-rolling mock implementations and manual state verification
+// for every interface
 //
 // Accepted cost: utilizing generated code and complex matching logic during tests
 //

@@ -22,7 +22,8 @@ var (
 )
 
 const (
-	hextable      = "0123456789abcdef"
+	hextable = "0123456789abcdef"
+	// UpperHexTable is the 16-character uppercase hexadecimal alphabet lookup string.
 	UpperHexTable = "0123456789ABCDEF"
 )
 

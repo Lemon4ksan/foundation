@@ -256,6 +256,7 @@ type HresultError struct {
 	Hr HRESULT
 }
 
+// Error returns the formatted COM operation and 32-bit hexadecimal HRESULT code.
 func (e *HresultError) Error() string {
 	var buf [128]byte
 	b := buf[:0]
@@ -267,6 +268,7 @@ func (e *HresultError) Error() string {
 	return string(b)
 }
 
+// Unwrap returns the underlying Win32 error code if the HRESULT encodes FacilityWin32.
 func (e *HresultError) Unwrap() error {
 	return e.Hr.Win32Error()
 }
@@ -295,6 +297,7 @@ type NtStatusError struct {
 	Status NTSTATUS
 }
 
+// Error returns the formatted kernel operation and 32-bit hexadecimal NTSTATUS code.
 func (e *NtStatusError) Error() string {
 	var buf [96]byte
 	b := buf[:0]

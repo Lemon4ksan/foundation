@@ -19,9 +19,13 @@
 //
 // Stdlib counterpart: time.Ticker and time.AfterFunc
 //
-// Rejected compromise: individual time.Ticker instances manage their own background timer goroutines, consuming system resources and drifting under load without centralized coordination.
+// Rejected compromise: individual time.Ticker instances manage their own background
+// timer goroutines, consuming system resources and drifting under load without
+// centralized coordination.
 //
-// Accepted cost: all tasks are dispatched onto new background goroutines when executed, meaning a flood of tasks arriving simultaneously will spawn an equal number of goroutines.
+// Accepted cost: all tasks are dispatched onto new background goroutines when executed,
+// meaning a flood of tasks arriving simultaneously will spawn an equal number of
+// goroutines.
 //
 // Allocations: amortized
 package scheduler
