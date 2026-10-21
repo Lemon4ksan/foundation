@@ -10,6 +10,8 @@ import (
 	"iter"
 	"sync"
 	"unsafe"
+
+	"github.com/lemon4ksan/foundation/silicon/memkit"
 )
 
 // DefaultChunkSize is the fixed allocation size for pooled memory chunks (4096 bytes),
@@ -40,6 +42,7 @@ func releaseChunk(b []byte) {
 // avoiding continuous reallocation and copying when growing dynamic payloads.
 // The zero value is empty and ready to use.
 type Chain struct {
+	_       memkit.NoCopy
 	initial [8][]byte // inline storage for up to 8 chunks (32KB) without heap slice allocation
 	chunks  [][]byte
 	headIdx int // Read offset within chunks[0]

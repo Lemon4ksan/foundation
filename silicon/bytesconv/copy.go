@@ -12,19 +12,6 @@ import (
 	"sync"
 )
 
-// NoCopy may be embedded into structs which must not be copied
-// after the first use.
-//
-// See https://golang.org/issues/8005#issuecomment-190753527
-// for details.
-type NoCopy struct{}
-
-// Lock is a no-op used by -copylocks checker from go vet.
-func (*NoCopy) Lock() {}
-
-// Unlock is a no-op used by -copylocks checker from go vet.
-func (*NoCopy) Unlock() {}
-
 // CopyZeroAlloc optimizes io.Copy by calling ReadFrom or WriteTo only when
 // copying between os.File and net.TCPConn.
 func CopyZeroAlloc(w io.Writer, r io.Reader) (int64, error) {

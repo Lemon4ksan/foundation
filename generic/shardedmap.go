@@ -8,6 +8,8 @@ import (
 	"hash/maphash"
 	"maps"
 	"sync"
+
+	"github.com/lemon4ksan/foundation/silicon/memkit"
 )
 
 // ShardCount is the number of shards in the sharded map (power of two).
@@ -19,12 +21,13 @@ const (
 type paddedShard[K comparable, V any] struct {
 	mu    sync.RWMutex
 	items map[K]V
-	_     [32]byte // Cache-line padding isolating 64-byte L1 cache lines across CPU cores
+	_     memkit.CacheLinePad
 }
 
 // ShardedMap is a high-performance, thread-safe sharded map with zero lock contention between different keys,
 // hardware-accelerated maphash hashing, and cache-line alignment to eliminate False Sharing.
 type ShardedMap[K comparable, V any] struct {
+	_      memkit.NoCopy
 	shards [ShardCount]paddedShard[K, V]
 	seed   maphash.Seed
 }

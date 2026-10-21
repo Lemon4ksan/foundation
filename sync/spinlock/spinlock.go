@@ -7,6 +7,8 @@ package spinlock
 import (
 	"runtime"
 	"sync/atomic"
+
+	"github.com/lemon4ksan/foundation/silicon/memkit"
 )
 
 // Lock is an adaptive spinlock employing Test-and-Test-and-Set (TTAS)
@@ -17,8 +19,9 @@ import (
 // The zero value for a Lock is an unlocked spinlock ready for use.
 // A Lock must not be copied after first use.
 type Lock struct {
+	_     memkit.NoCopy
 	state uint32
-	_     [60]byte
+	_     [memkit.CacheLineSize - 4]byte
 }
 
 // Lock acquires the spinlock.

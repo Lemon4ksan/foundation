@@ -9,7 +9,7 @@ import (
 	"math/bits"
 	"sync/atomic"
 
-	"golang.org/x/sys/cpu"
+	"github.com/lemon4ksan/foundation/silicon/memkit"
 )
 
 // Ring represents a lock-free, cacheline-aligned generic circular ring buffer.
@@ -21,15 +21,17 @@ import (
 // producer-local cachedHead and consumer-local cachedTail variables, keeping cacheline ownership
 // private to each core during sustained streaming and eliminating bus contention.
 type Ring[T any] struct {
+	_ memkit.NoCopy
+
 	// Producer cacheline
 	tail       atomic.Uint64
 	cachedHead uint64
-	_          cpu.CacheLinePad
+	_          memkit.CacheLinePad
 
 	// Consumer cacheline
 	head       atomic.Uint64
 	cachedTail uint64
-	_          cpu.CacheLinePad
+	_          memkit.CacheLinePad
 
 	// Read-only shared cacheline
 	mask     uint64

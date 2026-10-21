@@ -7,11 +7,13 @@ package bufkit
 import (
 	"math/bits"
 	"unsafe"
+
+	"github.com/lemon4ksan/foundation/silicon/memkit"
 )
 
 // CacheLineSize is the standard CPU cache line size (64 bytes on x86/ARM64),
 // used as an alignment boundary to prevent false sharing across cores.
-const CacheLineSize = 64
+const CacheLineSize = memkit.CacheLineSize
 
 // PageSize is the standard OS memory page size (4096 bytes).
 // Aligning bulk allocations to this boundary minimizes TLB misses

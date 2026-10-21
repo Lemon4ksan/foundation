@@ -14,6 +14,7 @@ import (
 	"sync"
 
 	"github.com/lemon4ksan/foundation/silicon/bytesconv"
+	"github.com/lemon4ksan/foundation/silicon/memkit"
 )
 
 // UnescapeMode specifies how percent-encoded sequences and plus signs are decoded.
@@ -38,11 +39,11 @@ func fastHash(s string) uint32 {
 
 // cacheShard protects an isolated hash map partition with an RWMutex to minimize lock contention.
 //
-// It is padded to 64 bytes to eliminate false sharing across CPU cachelines.
+// It is separated by a cacheline padding barrier to eliminate false sharing across CPU cores.
 type cacheShard struct {
 	mu sync.RWMutex
 	m  map[string]*url.URL
-	_  [32]byte
+	_  memkit.CacheLinePad
 }
 
 type shardedURLCache struct {
