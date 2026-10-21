@@ -982,13 +982,32 @@ var Discard Logger = &DiscardType{}
 // DiscardType is an alias for [Discard]. Use it for struct embedding.
 type DiscardType struct{}
 
-func (d *DiscardType) Close() error                                              { return nil } //nolint:revive
-func (d *DiscardType) With(args ...any) Logger                                   { return d }   //nolint:revive
-func (d *DiscardType) Debug(msg string, args ...any)                             { _ = msg }    //nolint:revive
-func (d *DiscardType) DebugContext(ctx context.Context, msg string, args ...any) { _ = msg }    //nolint:revive
-func (d *DiscardType) Info(msg string, args ...any)                              { _ = msg }    //nolint:revive
-func (d *DiscardType) InfoContext(ctx context.Context, msg string, args ...any)  { _ = msg }    //nolint:revive
-func (d *DiscardType) Warn(msg string, args ...any)                              { _ = msg }    //nolint:revive
-func (d *DiscardType) WarnContext(ctx context.Context, msg string, args ...any)  { _ = msg }    //nolint:revive
-func (d *DiscardType) Error(msg string, args ...any)                             { _ = msg }    //nolint:revive
-func (d *DiscardType) ErrorContext(ctx context.Context, msg string, args ...any) { _ = msg }    //nolint:revive
+// Close implements [Logger] as a no-op.
+func (d *DiscardType) Close() error { return nil } //nolint:revive
+
+// With returns the discard logger unchanged.
+func (d *DiscardType) With(args ...any) Logger { return d } //nolint:revive
+
+// Debug discards the debug log entry.
+func (d *DiscardType) Debug(msg string, args ...any) { _ = msg } //nolint:revive
+
+// DebugContext discards the context-aware debug log entry.
+func (d *DiscardType) DebugContext(ctx context.Context, msg string, args ...any) { _ = msg } //nolint:revive
+
+// Info discards the info log entry.
+func (d *DiscardType) Info(msg string, args ...any) { _ = msg } //nolint:revive
+
+// InfoContext discards the context-aware info log entry.
+func (d *DiscardType) InfoContext(ctx context.Context, msg string, args ...any) { _ = msg } //nolint:revive
+
+// Warn discards the warning log entry.
+func (d *DiscardType) Warn(msg string, args ...any) { _ = msg } //nolint:revive
+
+// WarnContext discards the context-aware warning log entry.
+func (d *DiscardType) WarnContext(ctx context.Context, msg string, args ...any) { _ = msg } //nolint:revive
+
+// Error discards the error log entry.
+func (d *DiscardType) Error(msg string, args ...any) { _ = msg } //nolint:revive
+
+// ErrorContext discards the context-aware error log entry.
+func (d *DiscardType) ErrorContext(ctx context.Context, msg string, args ...any) { _ = msg } //nolint:revive

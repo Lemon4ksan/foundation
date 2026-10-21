@@ -14,6 +14,8 @@ import (
 	"sync"
 	"syscall"
 	"unsafe"
+
+	"github.com/lemon4ksan/foundation/silicon/memkit"
 )
 
 type windowsMmap struct {
@@ -59,8 +61,7 @@ func OpenMmap(path string) (MmapFile, error) {
 		_ = f.Close()
 		return nil, fmt.Errorf("fskit: MapViewOfFile: %w", err)
 	}
-	//nolint:govet // addr is an OS memory-mapped address outside the Go heap
-	data := unsafe.Slice((*byte)(unsafe.Pointer(addr)), int(size))
+	data := unsafe.Slice((*byte)(memkit.UintptrToPointer(addr)), int(size))
 
 	return &windowsMmap{
 		f:      f,

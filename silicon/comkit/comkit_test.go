@@ -7,6 +7,7 @@ package comkit_test
 import (
 	"crypto/md5"
 	"errors"
+	"runtime"
 	"syscall"
 	"testing"
 	"unsafe"
@@ -119,6 +120,9 @@ func TestHRESULT_And_NTSTATUS(t *testing.T) {
 	if !comkit.E_ACCESSDENIED.Failed() || comkit.E_ACCESSDENIED.Succeeded() {
 		t.Fatal("E_ACCESSDENIED must fail")
 	}
+	if comkit.E_ACCESSDENIED.Uint32() != 0x80070005 {
+		t.Fatalf("E_ACCESSDENIED.Uint32() = 0x%X, want 0x80070005", comkit.E_ACCESSDENIED.Uint32())
+	}
 	if comkit.E_ACCESSDENIED.Win32Error() != syscall.Errno(5) {
 		t.Fatalf("E_ACCESSDENIED.Win32Error() = %v, want 5", comkit.E_ACCESSDENIED.Win32Error())
 	}
@@ -229,7 +233,16 @@ func TestVtblSlot_And_Ptr(t *testing.T) {
 	allocs := testing.AllocsPerRun(1000, func() {
 		_ = comkit.VtblSlot(instance, 2)
 	})
+	runtime.KeepAlive(&fakeSlots)
+	runtime.KeepAlive(&vtblPtr)
 	if allocs != 0 {
 		t.Fatalf("VtblSlot allocated %v times, want 0", allocs)
+	}
+
+	// Test AppendUTF16AsUTF8 with ASCII, surrogate pair (U+1F680), and NUL terminator.
+	u16 := []uint16{'H', 'i', ' ', 0xD83D, 0xDE80, 0, 'X'}
+	utf8Out := comkit.AppendUTF16AsUTF8(nil, u16)
+	if string(utf8Out) != "Hi 🚀" {
+		t.Fatalf("AppendUTF16AsUTF8 = %q, want %q", string(utf8Out), "Hi 🚀")
 	}
 }

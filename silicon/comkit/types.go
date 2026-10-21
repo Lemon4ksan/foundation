@@ -256,6 +256,7 @@ type HresultError struct {
 	Hr HRESULT
 }
 
+// Error returns the formatted COM operation and 32-bit hexadecimal HRESULT code.
 func (e *HresultError) Error() string {
 	var buf [128]byte
 	b := buf[:0]
@@ -267,6 +268,7 @@ func (e *HresultError) Error() string {
 	return string(b)
 }
 
+// Unwrap returns the underlying Win32 error code if the HRESULT encodes FacilityWin32.
 func (e *HresultError) Unwrap() error {
 	return e.Hr.Win32Error()
 }
@@ -295,6 +297,7 @@ type NtStatusError struct {
 	Status NTSTATUS
 }
 
+// Error returns the formatted kernel operation and 32-bit hexadecimal NTSTATUS code.
 func (e *NtStatusError) Error() string {
 	var buf [96]byte
 	b := buf[:0]
@@ -469,6 +472,13 @@ func VtblSlot(instance uintptr, slot int) uintptr {
 		return 0
 	}
 	return *(*uintptr)(ptrFromUintptr(vtbl + uintptr(slot)*unsafe.Sizeof(uintptr(0))))
+}
+
+// AppendUTF16AsUTF8 transcodes a UTF-16 code unit slice (including surrogate pairs
+// and stopping at the first NUL terminator) directly into dst with zero heap
+// allocations when dst has sufficient capacity.
+func AppendUTF16AsUTF8(dst []byte, u16 []uint16) []byte {
+	return appendUTF16AsUTF8(dst, u16)
 }
 
 // appendUTF16AsUTF8 transcodes a UTF-16 slice (including surrogate pairs) directly into dst

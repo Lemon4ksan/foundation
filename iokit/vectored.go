@@ -9,6 +9,8 @@ import (
 	"iter"
 	"net"
 	"sync"
+
+	"github.com/lemon4ksan/foundation/silicon/memkit"
 )
 
 // DefaultMaxVectoredSlices is the maximum number of distinct buffers to hold
@@ -21,6 +23,7 @@ const DefaultMaxVectoredSlices = 16
 // payload chunks, and trailers) and writing them directly into the underlying socket
 // via a single writev (POSIX) or WSASend (Windows) syscall without flattening/copying memory.
 type BufferQueue struct {
+	_          memkit.NoCopy
 	bufs       net.Buffers
 	raw        net.Buffers
 	totalBytes int64

@@ -17,8 +17,10 @@ import (
 )
 
 var (
+	// ErrRIONotSupported is returned when Windows Registered I/O (RIO) is unavailable on the current OS.
 	ErrRIONotSupported = errors.New("sysnet: Registered I/O extensions not supported on this OS")
-	ErrRIOFailed       = errors.New("sysnet: RIORegisterBuffer kernel syscall failed")
+	// ErrRIOFailed is returned when a Winsock RIORegisterBuffer kernel operation fails.
+	ErrRIOFailed = errors.New("sysnet: RIORegisterBuffer kernel syscall failed")
 
 	modkernel32       = syscall.NewLazyDLL("kernel32.dll")
 	procVirtualLock   = modkernel32.NewProc("VirtualLock")
@@ -29,6 +31,7 @@ var (
 	rioDeregisterBufFn uintptr
 )
 
+// RIO_EXTENSION_FUNCTION_TABLE holds the Winsock Registered I/O (RIO) dispatch function pointers retrieved via WSAIoctl.
 type RIO_EXTENSION_FUNCTION_TABLE struct {
 	CbSize                uint32
 	RIOReceive            uintptr

@@ -2,9 +2,12 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package disjointset implements an array-backed Disjoint Set Union (DSU / Union-Find) data structure.
+// Package disjointset implements an array-backed Disjoint Set Union (DSU / Union-Find)
+// data structure.
 //
-// Set offers near-O(1) amortized set operations utilizing two-pass iterative path compression and union-by-size heuristics. It is optimized for zero steady-state allocations during Find and Union operations.
+// Set offers near-O(1) amortized set operations utilizing two-pass iterative path
+// compression and union-by-size heuristics. It is optimized for zero steady-state
+// allocations during Find and Union operations.
 //
 // Use [New] to instantiate, and [Set.Find], [Set.Union] to manage sets.
 //
@@ -12,9 +15,11 @@
 //
 // Stdlib counterpart: none - fills gap: standard disjoint-set / union-find structure
 //
-// Rejected compromise: Using generic maps for union-find algorithms involves heavy constant factors, frequent rehashing, and many allocations.
+// Rejected compromise: Using generic maps for union-find algorithms involves heavy
+// constant factors, frequent rehashing, and many allocations.
 //
-// Accepted cost: Elements must be contiguous integers from 0 to N-1, requiring callers to maintain ID mappings for complex objects.
+// Accepted cost: Elements must be contiguous integers from 0 to N-1, requiring callers
+// to maintain ID mappings for complex objects.
 //
 // Allocations: zero
 package disjointset

@@ -4,19 +4,21 @@
 
 // Package fsm implements a strictly typed, thread-safe finite state machine.
 //
-// The core coordinator is [Machine], a generic state machine parameterized over comparable
-// State and Event types, ensuring that invalid transitions are caught at compile time.
-// All state transitions are atomic, thread-safe, and support transactional
-// cancellation via pre-transition hooks. The [Machine] separates transition execution
-// from state reads using a dual-lock architecture. An internal mutex serializes
-// transitions, preventing optimistic side-effect leaks. Non-blocking reads use
-// a read-write lock so readers are not blocked by transition hooks.
+// The core coordinator is [Machine], a generic state machine parameterized over
+// comparable State and Event types, ensuring that invalid transitions are caught at
+// compile time. All state transitions are atomic, thread-safe, and support
+// transactional cancellation via pre-transition hooks. The [Machine] separates
+// transition execution from state reads using a dual-lock architecture. An internal
+// mutex serializes transitions, preventing optimistic side-effect leaks. Non-blocking
+// reads use a read-write lock so readers are not blocked by transition hooks.
 //
 // # Compared to the standard library
 //
-// Stdlib counterpart: none - fills gap: type-safe state machines with transactional rollback
+// Stdlib counterpart: none - fills gap: type-safe state machines with transactional
+// rollback
 //
-// Rejected compromise: typical FSMs use untyped strings and no rollback on hook failure.
+// Rejected compromise: typical FSMs use untyped strings and no rollback on hook
+// failure.
 //
 // Accepted cost: extra locks and indirection during transitions.
 //

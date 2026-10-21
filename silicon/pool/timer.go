@@ -4,27 +4,17 @@
 
 package pool
 
-import (
-	"sync"
-	"time"
-)
+import "time"
 
-var timerPool sync.Pool
+var timerPool = NewPerCorePool[*time.Timer](nil)
 
 // AcquireTimer fetches a [*time.Timer] from the pool or instantiates a new one, setting its deadline to d.
 func AcquireTimer(d time.Duration) *time.Timer {
-	v := timerPool.Get()
-	if v == nil {
+	t := timerPool.Get()
+	if t == nil {
 		return time.NewTimer(d)
 	}
 
-	t := v.(*time.Timer)
-	if !t.Stop() {
-		select {
-		case <-t.C:
-		default:
-		}
-	}
 	t.Reset(d)
 
 	return t

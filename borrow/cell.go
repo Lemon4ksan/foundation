@@ -4,12 +4,16 @@
 
 package borrow
 
+import "github.com/lemon4ksan/foundation/silicon/memkit"
+
 // Cell provides interior mutability with runtime borrow checking,
 // analogous to Rust's RefCell<T>.
 //
 // It allows mutation of data even when referenced through a shared handle,
 // while dynamically enforcing the Aliasing XOR Mutability invariant at runtime.
 type Cell[T any] struct {
+	_    memkit.NoCopy
+	_    memkit.NoCompare
 	val  T
 	slot *Slot
 }

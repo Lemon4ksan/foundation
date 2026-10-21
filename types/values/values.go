@@ -33,6 +33,7 @@ type ValueError struct {
 // Error is an alias for [ValueError] to eliminate package stuttering.
 type Error = ValueError
 
+// Error returns a formatted description of the value unmarshaling error.
 func (e *ValueError) Error() string {
 	if e == nil {
 		return "<nil>"
@@ -72,6 +73,7 @@ func (e *ValueError) Error() string {
 	return sb.String()
 }
 
+// Unwrap returns the underlying cause of the value unmarshaling error.
 func (e *ValueError) Unwrap() error { return e.Err }
 
 // Uint64String parses uint64 values from numeric or quoted string JSON payloads.

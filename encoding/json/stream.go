@@ -10,7 +10,9 @@ import (
 	"fmt"
 	"io"
 	"reflect"
-	"unsafe"
+	"runtime"
+
+	"github.com/lemon4ksan/foundation/silicon/memkit"
 )
 
 // Decoder reads and decodes JSON values from an input stream.
@@ -76,19 +78,24 @@ func (d *Decoder) Decode(v any) error {
 		return io.EOF
 	}
 
-	rv := reflect.ValueOf(v)
-	if rv.Kind() != reflect.Pointer || rv.IsNil() {
-		return fmt.Errorf("json: Unmarshal(non-pointer %s)", reflect.TypeOf(v).String())
+	if v == nil {
+		return errors.New("json: Unmarshal(nil)")
 	}
 
-	elemType := rv.Type().Elem()
+	rt := reflect.TypeOf(v)
+	e := memkit.EfaceOf(&v)
+	if rt.Kind() != reflect.Pointer || e.Data == nil {
+		return fmt.Errorf("json: Unmarshal(non-pointer %s)", rt.String())
+	}
+
+	elemType := rt.Elem()
 	dec, err := getDecoder(elemType)
 	if err != nil {
 		return err
 	}
 
-	ptr := unsafe.Pointer(rv.Pointer())
-	newCursor, err := dec(d.buf, d.cursor, ptr, &d.cfg)
+	newCursor, err := dec(d.buf, d.cursor, e.Data, &d.cfg)
+	runtime.KeepAlive(v)
 	if err != nil {
 		return err
 	}

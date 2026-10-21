@@ -6,6 +6,8 @@ package borrow
 
 import (
 	"sync"
+
+	"github.com/lemon4ksan/foundation/silicon/memkit"
 )
 
 var scopePool = sync.Pool{
@@ -21,6 +23,8 @@ var scopePool = sync.Pool{
 // All resources allocated from a Scope are guaranteed to be valid during the execution
 // of the scope, and are automatically recycled with 0 heap allocations upon scope exit.
 type Scope struct {
+	_    memkit.NoCopy
+	_    memkit.NoCompare
 	slot *Slot
 	buf  []byte
 }

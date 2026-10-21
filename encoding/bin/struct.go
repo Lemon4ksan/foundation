@@ -10,8 +10,11 @@ import (
 	"fmt"
 	"iter"
 	"reflect"
+	"runtime"
 	"sync"
 	"unsafe"
+
+	"github.com/lemon4ksan/foundation/silicon/memkit"
 )
 
 type fieldKind uint8
@@ -41,14 +44,16 @@ type structLayout struct {
 
 var layoutCache sync.Map // map[reflect.Type]*structLayout
 
-func checkStructTarget(val reflect.Value) error {
-	if !val.IsValid() {
-		return errors.New("bin: target must be a pointer to struct, got <nil>")
+func unpackStructPointer(v any) (reflect.Type, unsafe.Pointer, error) {
+	if v == nil {
+		return nil, nil, errors.New("bin: target must be a pointer to struct, got <nil>")
 	}
-	if val.Kind() != reflect.Pointer || val.IsNil() {
-		return fmt.Errorf("bin: target must be a pointer to struct, got %v", val.Type())
+	rt := reflect.TypeOf(v)
+	e := memkit.EfaceOf(&v)
+	if rt.Kind() != reflect.Pointer || e.Data == nil {
+		return nil, nil, fmt.Errorf("bin: target must be a pointer to struct, got %v", rt)
 	}
-	return nil
+	return rt, e.Data, nil
 }
 
 func getLayout(t reflect.Type) (*structLayout, error) {
@@ -124,11 +129,11 @@ func getLayout(t reflect.Type) (*structLayout, error) {
 }
 
 func unmarshalStruct(b []byte, dest any, order binary.ByteOrder) error {
-	val := reflect.ValueOf(dest)
-	if err := checkStructTarget(val); err != nil {
+	rt, ptr, err := unpackStructPointer(dest)
+	if err != nil {
 		return err
 	}
-	layout, err := getLayout(val.Type())
+	layout, err := getLayout(rt)
 	if err != nil {
 		return err
 	}
@@ -137,7 +142,6 @@ func unmarshalStruct(b []byte, dest any, order binary.ByteOrder) error {
 		return ErrBufferTooShort
 	}
 
-	ptr := val.UnsafePointer()
 	wirePos := 0
 
 	for _, op := range layout.ops {
@@ -168,15 +172,16 @@ func unmarshalStruct(b []byte, dest any, order binary.ByteOrder) error {
 		wirePos += op.wireSize
 	}
 
+	runtime.KeepAlive(dest)
 	return nil
 }
 
 func marshalStruct(src any, buf []byte, order binary.ByteOrder) ([]byte, error) {
-	val := reflect.ValueOf(src)
-	if err := checkStructTarget(val); err != nil {
+	rt, ptr, err := unpackStructPointer(src)
+	if err != nil {
 		return nil, err
 	}
-	layout, err := getLayout(val.Type())
+	layout, err := getLayout(rt)
 	if err != nil {
 		return nil, err
 	}
@@ -190,7 +195,6 @@ func marshalStruct(src any, buf []byte, order binary.ByteOrder) ([]byte, error) 
 
 	start := len(buf)
 	buf = buf[:start+needed]
-	ptr := val.UnsafePointer()
 	wirePos := start
 
 	for _, op := range layout.ops {
@@ -221,6 +225,7 @@ func marshalStruct(src any, buf []byte, order binary.ByteOrder) ([]byte, error) 
 		wirePos += op.wireSize
 	}
 
+	runtime.KeepAlive(src)
 	return buf, nil
 }
 

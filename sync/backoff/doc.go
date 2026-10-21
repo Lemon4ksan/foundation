@@ -4,11 +4,12 @@
 
 // Package backoff provides mathematical backoff calculators with jitter distributions.
 //
-// The package prevents the thundering herd problem in high-throughput resilience pipelines
-// by calculating backoff delays when operations fail. It includes stateful and stateless
-// generators ([Exponential], [Linear], [Constant]) implementing the [Policy] interface,
-// as well as multiple jitter modes such as equal, full, and decorrelated. These generators
-// can be securely embedded across retry loops and circuit breakers to provide stable delay progression.
+// The package prevents the thundering herd problem in high-throughput resilience
+// pipelines by calculating backoff delays when operations fail. It includes stateful
+// and stateless generators ([Exponential], [Linear], [Constant]) implementing the
+// [Policy] interface, as well as multiple jitter modes such as equal, full, and
+// decorrelated. These generators can be securely embedded across retry loops and
+// circuit breakers to provide stable delay progression.
 //
 // # Compared to the standard library
 //

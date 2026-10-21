@@ -7,16 +7,14 @@ package json
 import (
 	"bytes"
 	stdjson "encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 	"runtime"
 	"unsafe"
-)
 
-type emptyInterface struct {
-	typ  unsafe.Pointer
-	word unsafe.Pointer
-}
+	"github.com/lemon4ksan/foundation/silicon/memkit"
+)
 
 // Marshaler is the interface implemented by types that can marshal themselves into valid JSON.
 type Marshaler = stdjson.Marshaler
@@ -28,7 +26,7 @@ type Unmarshaler = stdjson.Unmarshaler
 // and can be used to delay JSON decoding or precompute a JSON encoding.
 type RawMessage = stdjson.RawMessage
 
-// A Number represents a JSON number literal.
+// Number represents a JSON number literal.
 type Number = stdjson.Number
 
 // Marshal returns the JSON encoding of v.
@@ -53,21 +51,21 @@ func marshalWithOpts(v any, escapeHTML bool) ([]byte, error) {
 		return nil, err
 	}
 
-	e := (*emptyInterface)(unsafe.Pointer(&v))
+	e := memkit.EfaceOf(&v)
 	var ptr unsafe.Pointer
 	switch t.Kind() {
 	case reflect.Pointer, reflect.Map, reflect.Chan, reflect.Func:
-		ptr = unsafe.Pointer(&e.word)
+		ptr = unsafe.Pointer(&e.Data)
 	case reflect.Struct, reflect.Array:
 		if t.Size() <= unsafe.Sizeof(uintptr(0)) {
 			vp := reflect.New(t)
 			vp.Elem().Set(reflect.ValueOf(v))
 			ptr = vp.UnsafePointer()
 		} else {
-			ptr = e.word
+			ptr = e.Data
 		}
 	default:
-		ptr = e.word
+		ptr = e.Data
 	}
 
 	if err := enc(state, ptr); err != nil {
@@ -98,21 +96,21 @@ func MarshalTo(dst []byte, v any) ([]byte, error) {
 		return nil, err
 	}
 
-	e := (*emptyInterface)(unsafe.Pointer(&v))
+	e := memkit.EfaceOf(&v)
 	var ptr unsafe.Pointer
 	switch t.Kind() {
 	case reflect.Pointer, reflect.Map, reflect.Chan, reflect.Func:
-		ptr = unsafe.Pointer(&e.word)
+		ptr = unsafe.Pointer(&e.Data)
 	case reflect.Struct, reflect.Array:
 		if t.Size() <= unsafe.Sizeof(uintptr(0)) {
 			vp := reflect.New(t)
 			vp.Elem().Set(reflect.ValueOf(v))
 			ptr = vp.UnsafePointer()
 		} else {
-			ptr = e.word
+			ptr = e.Data
 		}
 	default:
-		ptr = e.word
+		ptr = e.Data
 	}
 
 	err = enc(state, ptr)
@@ -164,21 +162,27 @@ func UnmarshalWithConfig(data []byte, v any, cfg DecoderConfig) error {
 		return errUnexpectedEnd
 	}
 
-	rv := reflect.ValueOf(v)
-	if rv.Kind() != reflect.Pointer || rv.IsNil() {
-		return fmt.Errorf("json: Unmarshal(non-pointer %s)", reflect.TypeOf(v).String())
+	if v == nil {
+		return errors.New("json: Unmarshal(nil)")
 	}
 
-	elemType := rv.Type().Elem()
+	rt := reflect.TypeOf(v)
+	e := memkit.EfaceOf(&v)
+	if rt.Kind() != reflect.Pointer || e.Data == nil {
+		return fmt.Errorf("json: Unmarshal(non-pointer %s)", rt.String())
+	}
+
+	elemType := rt.Elem()
 	dec, err := getDecoder(elemType)
 	if err != nil {
 		return err
 	}
 
-	ptr := unsafe.Pointer(rv.Pointer())
+	ptr := e.Data
 	cursor := skipWhitespace(data, 0)
 
 	newCursor, err := dec(data, cursor, ptr, &cfg)
+	runtime.KeepAlive(v)
 	if err != nil {
 		return err
 	}

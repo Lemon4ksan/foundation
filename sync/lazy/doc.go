@@ -4,12 +4,12 @@
 
 // Package lazy provides a thread-safe lazy initializer with reset support.
 //
-// The [Value] container caches the result of its initialization function
-// after the first call. All subsequent [Value.Get] calls return the cached
-// result without re-executing the function. [Value.Reset] clears the cache,
-// allowing the next Get to re-initialize. If the initialization function
-// returns an error, it is cached and returned on all subsequent Get calls
-// until [Value.Reset] is called, allowing callers to retry initialization.
+// The [Value] container caches the result of its initialization function after the
+// first call. All subsequent [Value.Get] calls return the cached result without
+// re-executing the function. [Value.Reset] clears the cache, allowing the next Get to
+// re-initialize. If the initialization function returns an error, it is cached and
+// returned on all subsequent Get calls until [Value.Reset] is called, allowing callers
+// to retry initialization.
 //
 // # Compared to the standard library
 //

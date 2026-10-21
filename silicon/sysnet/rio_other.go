@@ -8,6 +8,7 @@ package sysnet
 
 import "errors"
 
+// ErrRIONotSupported is returned when Windows Registered I/O (RIO) is unavailable on the current OS.
 var ErrRIONotSupported = errors.New("sysnet: Registered I/O extensions not supported on this OS")
 
 // BufferRegistration is a stub for non-Windows platforms.

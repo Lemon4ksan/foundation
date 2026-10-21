@@ -4,15 +4,19 @@
 
 // Package list implements an array-backed generic doubly linked list.
 //
-// List provides standard doubly linked list manipulations without the type assertion overhead of [container/list], utilizing Go generics for strong typing and Push iterators like [List.Values] and [List.Backward] for traversal.
+// List provides standard doubly linked list manipulations without the type assertion
+// overhead of [container/list], utilizing Go generics for strong typing and Push
+// iterators like [List.Values] and [List.Backward] for traversal.
 //
 // # Compared to the standard library
 //
 // Stdlib counterpart: container/list
 //
-// Rejected compromise: container/list boxes all elements inside an interface{}, which degrades performance and memory locality.
+// Rejected compromise: container/list boxes all elements inside an interface{}, which
+// degrades performance and memory locality.
 //
-// Accepted cost: Pointer jumping is still present, meaning traversal may not be as cache-friendly as contiguous arrays.
+// Accepted cost: Pointer jumping is still present, meaning traversal may not be as
+// cache-friendly as contiguous arrays.
 //
 // Allocations: amortized
 package list

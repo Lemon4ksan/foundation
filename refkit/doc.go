@@ -2,25 +2,25 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package refkit provides zero-allocation reflection inspection, struct layout
-// caching, and high-speed struct tag parsing for high-throughput serializers and systems code.
+// Package refkit provides zero-allocation reflection inspection, struct layout caching,
+// and high-speed struct tag parsing for high-throughput serializers and systems code.
 //
-// Standard Go reflection frequently introduces performance bottlenecks in schema builders,
-// codecs, and serializers due to interface boxing heap allocations, slice allocations during
-// field traversal, and repetitive tag string parsing. This package eliminates these overheads
-// through five core primitives:
+// Standard Go reflection frequently introduces performance bottlenecks in schema
+// builders, codecs, and serializers due to interface boxing heap allocations, slice
+// allocations during field traversal, and repetitive tag string parsing. This package
+// eliminates these overheads through five core primitives:
 //
-// 1. [VisibleFields]: A Go 1.27 push iterator (iter.Seq[reflect.StructField]) that traverses
-// struct fields and embedded fields without allocating slices on the heap.
+// 1. [VisibleFields]: A Go 1.27 push iterator (iter.Seq[reflect.StructField]) that
+// traverses struct fields and embedded fields without allocating slices on the heap.
 //
 // 2. Unboxed Accessors: Non-allocating primitive extractors ([AsInt64], [AsUint64],
 // [AsFloat64], [AsBool], [AsBytes], [AsString]) that inspect [reflect.Value] without
 // calling [reflect.Value.Interface], preventing interface boxing allocations.
 //
 // 3. [SchemaCache]: A thread-safe, read-optimized cache storing parsed struct layouts
-// ([StructSchema] and [FieldSchema]) with pre-computed field byte offsets (or [OffsetInvalid]
-// for indirect pointer-embedded fields) and pre-parsed tags, delivering zero heap allocations
-// on cache hit hot paths.
+// ([StructSchema] and [FieldSchema]) with pre-computed field byte offsets (or
+// [OffsetInvalid] for indirect pointer-embedded fields) and pre-parsed tags, delivering
+// zero heap allocations on cache hit hot paths.
 //
 // 4. [Implements]: A generic interface compliance checker utilizing [reflect.TypeFor]
 // that validates interface satisfaction safely without panics or boxing.
@@ -35,9 +35,13 @@
 //
 // Stdlib counterpart: reflect
 //
-// Rejected compromise: Slice allocations in reflect.VisibleFields, interface boxing allocations in reflect.Value.Interface, runtime panics on kind mismatches, and redundant string-scanning in reflect.StructTag.
+// Rejected compromise: Slice allocations in reflect.VisibleFields, interface boxing
+// allocations in reflect.Value.Interface, runtime panics on kind mismatches, and
+// redundant string-scanning in reflect.StructTag.
 //
-// Accepted cost: Memory overhead for SchemaCache pre-computed layouts, stack-bounded recursion depth for deeply nested anonymous structs, and exclusion of generic string formatting utilities.
+// Accepted cost: Memory overhead for SchemaCache pre-computed layouts, stack-bounded
+// recursion depth for deeply nested anonymous structs, and exclusion of generic string
+// formatting utilities.
 //
 // Allocations: amortized
 package refkit

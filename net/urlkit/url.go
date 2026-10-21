@@ -14,12 +14,16 @@ import (
 	"sync"
 
 	"github.com/lemon4ksan/foundation/silicon/bytesconv"
+	"github.com/lemon4ksan/foundation/silicon/memkit"
 )
 
+// UnescapeMode specifies how percent-encoded sequences and plus signs are decoded.
 type UnescapeMode int
 
 const (
+	// UnescapeModeQuery decodes percent-escapes and converts '+' to space.
 	UnescapeModeQuery UnescapeMode = iota
+	// UnescapeModePath decodes percent-escapes while preserving '+' literally.
 	UnescapeModePath
 )
 
@@ -35,11 +39,11 @@ func fastHash(s string) uint32 {
 
 // cacheShard protects an isolated hash map partition with an RWMutex to minimize lock contention.
 //
-// It is padded to 64 bytes to eliminate false sharing across CPU cachelines.
+// It is separated by a cacheline padding barrier to eliminate false sharing across CPU cores.
 type cacheShard struct {
 	mu sync.RWMutex
 	m  map[string]*url.URL
-	_  [32]byte
+	_  memkit.CacheLinePad
 }
 
 type shardedURLCache struct {
@@ -236,19 +240,45 @@ func (u URLView) String() string {
 }
 
 // normalizeIPv6Zone normalizes an unescaped IPv6 zone identifier (e.g. "[fe80::1%eth0]")
-// to RFC 6874 format ("[fe80::1%25eth0]"). It strictly verifies that the bracketed host
-// contains a valid IPv6 address before escaping the percent sign.
+// to RFC 6874 format ("[fe80::1%25eth0]"). It strictly verifies that the bracketed segment
+// is in the host/authority position and contains a valid IPv6 address before escaping '%'.
 func normalizeIPv6Zone(s string) string {
-	start := strings.Index(s, "[")
+	start := -1
+	if strings.HasPrefix(s, "[") {
+		start = 0
+	} else if authIdx := strings.Index(s, "//"); authIdx >= 0 {
+		// Ensure "//" is not inside a path, query, or fragment.
+		prefix := s[:authIdx]
+		if strings.IndexByte(prefix, '/') < 0 && strings.IndexByte(prefix, '?') < 0 &&
+			strings.IndexByte(prefix, '#') < 0 {
+			rest := s[authIdx+2:]
+			// Find end of authority.
+			authEnd := len(rest)
+			for i := 0; i < len(rest); i++ {
+				if rest[i] == '/' || rest[i] == '?' || rest[i] == '#' {
+					authEnd = i
+					break
+				}
+			}
+			auth := rest[:authEnd]
+			hostStart := 0
+			if atIdx := strings.LastIndexByte(auth, '@'); atIdx >= 0 {
+				hostStart = atIdx + 1
+			}
+			if hostStart < len(auth) && auth[hostStart] == '[' {
+				start = authIdx + 2 + hostStart
+			}
+		}
+	}
 	if start < 0 {
 		return s
 	}
-	end := strings.Index(s[start:], "]")
+	end := strings.IndexByte(s[start:], ']')
 	if end < 0 {
 		return s
 	}
 	ipv6 := s[start : start+end+1]
-	pct := strings.Index(ipv6, "%")
+	pct := strings.IndexByte(ipv6, '%')
 	if pct < 0 || strings.HasPrefix(ipv6[pct:], "%25") {
 		return s
 	}

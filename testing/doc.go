@@ -6,15 +6,17 @@
 //
 // It replaces bulky external testing dependencies with a lightweight, high-performance
 // alternative that integrates directly with the standard library. The toolkit comprises
-// subpackages for non-terminating assertions ([github.com/lemon4ksan/foundation/testing/assert]),
-// immediate-terminating requirements ([github.com/lemon4ksan/foundation/testing/require]),
-// and interface mocking primitives ([github.com/lemon4ksan/foundation/testing/mock]).
+// subpackages for non-terminating assertions
+// ([github.com/lemon4ksan/foundation/testing/assert]), immediate-terminating
+// requirements ([github.com/lemon4ksan/foundation/testing/require]), and interface
+// mocking primitives ([github.com/lemon4ksan/foundation/testing/mock]).
 //
 // # Compared to the standard library
 //
 // Stdlib counterpart: testing
 //
-// Rejected compromise: relying purely on manual if-statements and boilerplate for value comparisons
+// Rejected compromise: relying purely on manual if-statements and boilerplate for value
+// comparisons
 //
 // Accepted cost: adopting a custom API surface for assertions and mocks
 //

@@ -45,8 +45,13 @@ func TestTimerPool(t *testing.T) {
 }
 
 func TestTimerPool_ZeroAlloc(t *testing.T) {
-	tm := pool.AcquireTimer(time.Hour)
-	pool.ReleaseTimer(tm)
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
+	for range 8 {
+		tm := pool.AcquireTimer(time.Hour)
+		pool.ReleaseTimer(tm)
+	}
 
 	allocs := testing.AllocsPerRun(100, func() {
 		timer := pool.AcquireTimer(time.Hour)

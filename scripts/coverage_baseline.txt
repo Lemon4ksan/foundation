@@ -36,9 +36,12 @@ github.com/lemon4ksan/foundation/scripts                           0.0%
 github.com/lemon4ksan/foundation/scripts/coverage_ratchet          50.4%
 github.com/lemon4ksan/foundation/silicon/bytesconv                 51.1%
 github.com/lemon4ksan/foundation/silicon/clock                     93.9%
+github.com/lemon4ksan/foundation/silicon/comkit                    70.5%
 github.com/lemon4ksan/foundation/silicon/cpukit                    93.8%
 github.com/lemon4ksan/foundation/silicon/endian                    100.0%
 github.com/lemon4ksan/foundation/silicon/hexkit                    89.9%
+github.com/lemon4ksan/foundation/silicon/iouring                   72.4%
+github.com/lemon4ksan/foundation/silicon/memkit                    100.0%
 github.com/lemon4ksan/foundation/silicon/offheap                   86.1%
 github.com/lemon4ksan/foundation/silicon/pool                      96.0%
 github.com/lemon4ksan/foundation/silicon/randkit                   95.1%
