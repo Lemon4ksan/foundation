@@ -20,6 +20,13 @@ func Start() Stopwatch {
 	}
 }
 
+// StartStopwatch creates and immediately starts a new [Stopwatch].
+//
+// Deprecated: Use [Start] instead.
+func StartStopwatch() Stopwatch {
+	return Start()
+}
+
 // Elapsed returns the duration elapsed since the stopwatch was started.
 func (s Stopwatch) Elapsed() time.Duration {
 	return time.Since(s.start)
