@@ -24,6 +24,11 @@ type Value[T any] struct {
 	res  atomic.Pointer[result[T]]
 }
 
+// Lazy is a backward-compatible type alias for [Value].
+//
+// Deprecated: Use [Value] instead.
+type Lazy[T any] = Value[T]
+
 // New returns a [Value] configured with the given initialization function.
 func New[T any](init func() (T, error)) *Value[T] {
 	return &Value[T]{init: init}

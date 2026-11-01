@@ -175,6 +175,11 @@ type Keyed[K comparable] struct {
 	closed   bool
 }
 
+// KeyedLimiter is a backward-compatible type alias for [Keyed].
+//
+// Deprecated: Use [Keyed] instead.
+type KeyedLimiter[K comparable] = Keyed[K]
+
 // NewKeyed returns a [Keyed] limiter maintaining rate limit r and burst b per key,
 // evicting inactive limiters after ttl.
 func NewKeyed[K comparable](r rate.Limit, b int, ttl time.Duration) *Keyed[K] {
@@ -189,6 +194,13 @@ func NewKeyed[K comparable](r rate.Limit, b int, ttl time.Duration) *Keyed[K] {
 	kl.wg.Go(kl.sweepLoop)
 
 	return kl
+}
+
+// NewKeyedLimiter returns a [Keyed] limiter maintaining rate limit r and burst b per key.
+//
+// Deprecated: Use [NewKeyed] instead.
+func NewKeyedLimiter[K comparable](r rate.Limit, b int, ttl time.Duration) *Keyed[K] {
+	return NewKeyed[K](r, b, ttl)
 }
 
 func (kl *Keyed[K]) sweepLoop() {
