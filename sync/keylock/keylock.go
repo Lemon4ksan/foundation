@@ -30,11 +30,23 @@ type Mutex[K comparable] struct {
 	locks map[K]*refCounter
 }
 
+// KeyMutex is a backward-compatible type alias for [Mutex].
+//
+// Deprecated: Use [Mutex] instead.
+type KeyMutex[K comparable] = Mutex[K]
+
 // New creates a new [Mutex] instance for keys of type K.
 func New[K comparable]() *Mutex[K] {
 	return &Mutex[K]{
 		locks: make(map[K]*refCounter),
 	}
+}
+
+// NewKeyMutex creates a new [Mutex] instance for keys of type K.
+//
+// Deprecated: Use [New] instead.
+func NewKeyMutex[K comparable]() *Mutex[K] {
+	return New[K]()
 }
 
 // Keys returns a newly allocated slice containing all currently tracked keys,
