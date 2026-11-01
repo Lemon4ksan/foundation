@@ -46,6 +46,11 @@ type Machine[State, Event comparable] struct {
 	afterHooks  map[Event][]TransitionCallback[State, Event]
 }
 
+// FSM is a backward-compatible type alias for [Machine].
+//
+// Deprecated: Use [Machine] instead.
+type FSM[State, Event comparable] = Machine[State, Event]
+
 // New instantiates and returns a new [Machine] with the given initial state.
 func New[State, Event comparable](initial State) *Machine[State, Event] {
 	return &Machine[State, Event]{
@@ -54,6 +59,13 @@ func New[State, Event comparable](initial State) *Machine[State, Event] {
 		beforeHooks: make(map[Event][]TransitionCallback[State, Event]),
 		afterHooks:  make(map[Event][]TransitionCallback[State, Event]),
 	}
+}
+
+// NewFSM instantiates and returns a new [Machine] with the given initial state.
+//
+// Deprecated: Use [New] instead.
+func NewFSM[State, Event comparable](initial State) *Machine[State, Event] {
+	return New[State, Event](initial)
 }
 
 // AddRules registers one or more valid [TransitionRule] objects in the state machine.

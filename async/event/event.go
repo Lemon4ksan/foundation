@@ -30,6 +30,11 @@ type Envelope struct {
 	Ctx context.Context
 }
 
+// BaseEvent is a backward-compatible type alias for [Envelope].
+//
+// Deprecated: Use [Envelope] instead.
+type BaseEvent = Envelope
+
 func (Envelope) isEvent() {}
 
 // Context returns the event's execution context, defaulting to [context.Background] if nil.
