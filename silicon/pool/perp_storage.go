@@ -36,6 +36,11 @@ type PerCorePool[T any] struct {
 	factory func() T
 }
 
+// PerPStorage is a backward-compatible type alias for [PerCorePool].
+//
+// Deprecated: Use [PerCorePool] instead.
+type PerPStorage[T any] = PerCorePool[T]
+
 // nextPowerOfTwo calculates the smallest power of 2 greater than or equal to n.
 func nextPowerOfTwo(n int) int {
 	if n <= 1 {
@@ -53,6 +58,13 @@ func nextPowerOfTwo(n int) int {
 // NewPerCorePool constructs a PerCorePool sharded according to runtime.GOMAXPROCS(0) rounded to a power of 2.
 func NewPerCorePool[T any](factory func() T) *PerCorePool[T] {
 	return newPerCorePoolWithShards(runtime.GOMAXPROCS(0), factory)
+}
+
+// NewPerPStorage constructs a PerCorePool sharded according to runtime.GOMAXPROCS(0) rounded to a power of 2.
+//
+// Deprecated: Use [NewPerCorePool] instead.
+func NewPerPStorage[T any](factory func() T) *PerCorePool[T] {
+	return NewPerCorePool(factory)
 }
 
 func newPerCorePoolWithShards[T any](n int, factory func() T) *PerCorePool[T] {

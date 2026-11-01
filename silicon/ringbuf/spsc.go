@@ -35,6 +35,11 @@ type SPSC[T any] struct {
 	buffer []atomic.Pointer[T]
 }
 
+// SPSCRingBuffer is a backward-compatible type alias for [SPSC].
+//
+// Deprecated: Use [SPSC] instead.
+type SPSCRingBuffer[T any] = SPSC[T]
+
 // NewSPSC constructs an [SPSC] ring buffer with the requested capacity.
 // Capacity is automatically rounded up to the next power of two.
 func NewSPSC[T any](capacity int) *SPSC[T] {
@@ -44,6 +49,13 @@ func NewSPSC[T any](capacity int) *SPSC[T] {
 		mask:   capPow2 - 1,
 		buffer: make([]atomic.Pointer[T], capPow2),
 	}
+}
+
+// NewSPSCRingBuffer constructs an [SPSC] ring buffer with the requested capacity.
+//
+// Deprecated: Use [NewSPSC] instead.
+func NewSPSCRingBuffer[T any](capacity int) *SPSC[T] {
+	return NewSPSC[T](capacity)
 }
 
 // Push enqueues item into the ring buffer.
