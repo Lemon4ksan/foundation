@@ -116,6 +116,11 @@ type Tracker[K comparable, T any] struct {
 	entryPool sync.Pool
 }
 
+// Manager is a backward-compatible type alias for [Tracker].
+//
+// Deprecated: Use [Tracker] instead.
+type Manager[K comparable, T any] = Tracker[K, T]
+
 // NewTracker creates a new [Tracker] instance using the default in-memory storage.
 func NewTracker[K comparable, T any](capacity int) *Tracker[K, T] {
 	m := &Tracker[K, T]{
@@ -127,6 +132,13 @@ func NewTracker[K comparable, T any](capacity int) *Tracker[K, T] {
 	}
 
 	return m
+}
+
+// NewManager creates a new [Tracker] instance using the default in-memory storage.
+//
+// Deprecated: Use [NewTracker] instead.
+func NewManager[K comparable, T any](capacity int) *Tracker[K, T] {
+	return NewTracker[K, T](capacity)
 }
 
 // NewTrackerWithStore creates a new [Tracker] instance using a custom [Store] backend.
